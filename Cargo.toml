@@ -1,0 +1,37 @@
+[package]
+name = "genai"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.78"
+license = "MIT OR Apache-2.0"
+description = "Multiprovider generative AI client"
+keywords = [
+	"generative-ai",
+	"library",
+	"openai",
+	"llama",
+	"ollama"
+]
+homepage = "https://github.com/jeremychone/rust-genai"
+repository = "https://github.com/jeremychone/rust-genai"
+
+
+[lints.rust]
+unsafe_code = "forbid"
+unused = { level = "allow", priority = -1 } # For exploratory dev.
+
+[dependencies]
+# -- Async
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+async-trait = "0.1"
+tokio-stream = "0.1"
+# -- Json
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_with = { version = "3", features = ["macros"] }
+# -- AI
+async-openai = "0.21"
+# -- Others
+derive_more = {version = "1.0.0-beta", features = ["from"] }
+

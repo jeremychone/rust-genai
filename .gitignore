@@ -1,0 +1,60 @@
+# -- Base
+.*
+!.gitignore
+
+*.lock
+*.lockb
+*.log
+
+# -- Rust
+target/
+# !Cargo.lock # commented by default
+!.cargo/
+
+# -- Safety net
+dist/
+out/
+
+# Data Files
+*.parquet
+*.map
+*.zip
+*.gz
+*.tar
+*.tgz
+*.vsix
+
+# Videos
+*.mov
+*.mp4
+*.webm
+*.ogg
+*.avi
+
+# Images
+*.icns
+*.ico
+*.jpeg
+*.jpg
+*.png
+*.bmp
+
+# -- Nodejs
+node_modules/
+!.mocharc.yaml
+report.*.json
+
+# -- Python
+__pycache__/
+
+
+# -- others
+_*
+# '_' in src dir, ok.
+!**/src/**/_*
+
+# Allows .env (make sure only dev info) 
+# !.env # Commented by default
+
+# Allow vscode
+# !.vscode # Commented by default
