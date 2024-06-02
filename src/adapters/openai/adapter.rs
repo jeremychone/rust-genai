@@ -6,12 +6,14 @@ use tokio::sync::Mutex;
 
 // region:    --- Adapter
 
-pub(in crate::adapters::openai) type AsyncOaClient = AsyncOpenAIClient<AsyncOpenAIConfig>;
-
+/// async-openai adapter
+/// Note: for now, only support single chat completion mode (which is recommended for cost anyway)
 #[derive(Clone)]
 pub struct OpenAIAdapter {
 	pub(in crate::adapters::openai) conn: Arc<Mutex<AsyncOaClient>>,
 }
+
+pub(in crate::adapters::openai) type AsyncOaClient = AsyncOpenAIClient<AsyncOpenAIConfig>;
 
 // Constructors
 impl OpenAIAdapter {

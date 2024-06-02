@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 // region:    --- Adapter
 
+/// OllamaRs client adapter
 #[derive(Debug, Default)]
 pub struct OllamaAdapter {
 	pub(in crate::adapters::ollama) conn: Arc<Ollama>,

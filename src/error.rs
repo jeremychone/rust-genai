@@ -13,8 +13,7 @@ pub enum Error {
 	Io(std::io::Error), // as example
 
 	// -- Raw AI Clients
-	AsyncOpenAI(RawClientError),
-	OllamaRs(RawClientError),
+	AdapterConnector(AdapterConnectorInfo),
 }
 
 // region:    --- Custom
@@ -33,30 +32,37 @@ impl From<&str> for Error {
 
 // endregion: --- Custom
 
+// region:    --- Impl
+
+impl Error {
+	pub fn adapter_connector(client_kind: ClientKind, cause: impl Into<String>) -> Self {
+		Self::AdapterConnector(AdapterConnectorInfo {
+			client_kind,
+			cause: cause.into(),
+		})
+	}
+}
+
+// endregion: --- Impl
+
 // region:    --- From AI Clients
 
 #[allow(unused)]
 #[derive(Debug)]
-pub struct RawClientError {
-	client_kind: ClientKind,
-	cause: String,
+pub struct AdapterConnectorInfo {
+	pub client_kind: ClientKind,
+	pub cause: String,
 }
 
 impl From<async_openai::error::OpenAIError> for Error {
 	fn from(raw_client_error: async_openai::error::OpenAIError) -> Self {
-		Self::AsyncOpenAI(RawClientError {
-			client_kind: ClientKind::OpenAI,
-			cause: raw_client_error.to_string(),
-		})
+		Self::adapter_connector(ClientKind::AsyncOpenAI, raw_client_error.to_string())
 	}
 }
 
 impl From<ollama_rs::error::OllamaError> for Error {
 	fn from(raw_client_error: ollama_rs::error::OllamaError) -> Self {
-		Self::OllamaRs(RawClientError {
-			client_kind: ClientKind::Ollama,
-			cause: raw_client_error.to_string(),
-		})
+		Self::adapter_connector(ClientKind::OllamaRs, raw_client_error.to_string())
 	}
 }
 

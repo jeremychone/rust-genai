@@ -1,10 +1,10 @@
-use crate::{ChatMsg, ChatRes, ChatRole};
-use ollama_rs::generation::chat::{ChatMessage, ChatMessageResponse, MessageRole};
+use crate::{ChatMessage, ChatResponse, ChatRole, StreamItem};
+use ollama_rs::generation::chat as ol_chat;
 
 // region:    --- From [genai] to [raw]
 
-impl From<ChatMsg> for ChatMessage {
-	fn from(value: ChatMsg) -> Self {
+impl From<ChatMessage> for ol_chat::ChatMessage {
+	fn from(value: ChatMessage) -> Self {
 		Self {
 			role: value.role.into(),
 			content: value.content,
@@ -13,7 +13,7 @@ impl From<ChatMsg> for ChatMessage {
 	}
 }
 
-impl From<ChatRole> for MessageRole {
+impl From<ChatRole> for ol_chat::MessageRole {
 	fn from(value: ChatRole) -> Self {
 		match value {
 			ChatRole::User => Self::User,
@@ -29,10 +29,18 @@ impl From<ChatRole> for MessageRole {
 
 // region:    --- From [raw] to [genai]
 
-impl From<ChatMessageResponse> for ChatRes {
-	fn from(value: ChatMessageResponse) -> Self {
+impl From<ol_chat::ChatMessageResponse> for ChatResponse {
+	fn from(value: ol_chat::ChatMessageResponse) -> Self {
 		let response = value.message.map(|m| m.content);
-		ChatRes { response }
+		ChatResponse { content: response }
+	}
+}
+
+impl From<ol_chat::ChatMessageResponse> for StreamItem {
+	fn from(value: ol_chat::ChatMessageResponse) -> Self {
+		let response = value.message.map(|m| m.content);
+
+		StreamItem { content: response }
 	}
 }
 

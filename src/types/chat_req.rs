@@ -1,16 +1,12 @@
-use crate::Result;
-use futures::Stream;
-use std::pin::Pin;
-
 // region:    --- ChatReq
 
 #[derive(Debug, Clone)]
-pub struct ChatReq {
-	pub messages: Vec<ChatMsg>,
+pub struct ChatRequest {
+	pub messages: Vec<ChatMessage>,
 }
 
-impl ChatReq {
-	pub fn new(messages: Vec<ChatMsg>) -> Self {
+impl ChatRequest {
+	pub fn new(messages: Vec<ChatMessage>) -> Self {
 		Self { messages }
 	}
 }
@@ -20,10 +16,10 @@ impl ChatReq {
 // region:    --- ChatMsg
 
 #[derive(Debug, Clone)]
-pub struct ChatMsg {
+pub struct ChatMessage {
 	pub role: ChatRole,
 	pub content: String,
-	pub extra: Option<ChatMsgExtra>,
+	pub extra: Option<MessageExtra>,
 }
 
 #[derive(Debug, Clone)]
@@ -35,7 +31,7 @@ pub enum ChatRole {
 }
 
 #[derive(Debug, Clone)]
-pub enum ChatMsgExtra {
+pub enum MessageExtra {
 	Tool(ToolExtra),
 }
 
@@ -46,7 +42,7 @@ pub struct ToolExtra {
 }
 
 /// Convenient constructors
-impl ChatMsg {
+impl ChatMessage {
 	pub fn system(content: impl Into<String>) -> Self {
 		Self {
 			role: ChatRole::System,
@@ -73,24 +69,3 @@ impl ChatMsg {
 }
 
 // endregion: --- ChatMsg
-
-// region:    --- ChatRes
-
-#[derive(Debug, Clone)]
-pub struct ChatRes {
-	pub response: Option<String>,
-}
-
-// endregion: --- ChatRes
-
-// region:    --- ChatResStream
-
-pub type ChatResStream = Pin<Box<dyn Stream<Item = Result<ChatResChunks>>>>;
-
-pub type ChatResChunks = Vec<ChatResChunk>;
-
-pub struct ChatResChunk {
-	pub response: String,
-}
-
-// endregion: --- ChatResStream

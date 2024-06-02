@@ -1,13 +1,9 @@
-use crate::adapters::openai::{AsyncOaClient, OpenAIAdapter};
-use crate::openai::OpenAIAdapterConfig;
-use crate::Result;
-use crate::{ChatReq, ChatRes, ChatResStream, Client};
-use async_openai::config::OpenAIConfig as AsyncOpenAIConfig;
-use async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs};
-use async_openai::Client as AsyncOpenAIClient;
+use crate::adapters::openai::OpenAIAdapter;
+use crate::{ChatRequest, ChatResponse, ChatStream, Client};
+use crate::{Error, Result, StreamItem};
+use async_openai::types as oa_types;
 use async_trait::async_trait;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use futures::StreamExt;
 
 #[async_trait]
 impl Client for OpenAIAdapter {
@@ -15,28 +11,53 @@ impl Client for OpenAIAdapter {
 		Ok(vec![])
 	}
 
-	async fn exec_chat(&self, model: &str, req: ChatReq) -> Result<ChatRes> {
-		let raw_messages = req
-			.messages
-			.into_iter()
-			.map(ChatCompletionRequestMessage::from)
-			.collect::<Vec<_>>();
+	async fn exec_chat(&self, model: &str, req: ChatRequest) -> Result<ChatResponse> {
+		// -- Get the async openai request
+		let oa_req = into_oa_chat_req(model, req)?;
 
-		let raw_req = CreateChatCompletionRequestArgs::default()
-			.max_tokens(512u16)
-			.model(model)
-			.messages(raw_messages)
-			.build()?;
+		// -- Exec the request
+		let oa_client = self.conn.lock().await;
+		let oa_chat_client = oa_client.chat();
+		let oa_res = oa_chat_client.create(oa_req).await?;
 
-		let conn = self.conn.lock().await;
-		let chat_client = conn.chat();
-		let raw_res = chat_client.create(raw_req).await?;
-
-		let chat_res = raw_res.into();
+		let chat_res = oa_res.into();
 		Ok(chat_res)
 	}
 
-	async fn exec_chat_stream(&self, _model: &str, _req: ChatReq) -> Result<ChatResStream> {
-		todo!()
+	async fn exec_chat_stream(&self, model: &str, req: ChatRequest) -> Result<ChatStream> {
+		// -- Get the async openai request
+		let oa_req = into_oa_chat_req(model, req)?;
+
+		// -- Exec the request
+		let oa_client = self.conn.lock().await;
+		let oa_chat_client = oa_client.chat();
+		let oa_res_stream = oa_chat_client.create_stream(oa_req).await?;
+
+		let stream = oa_res_stream.map(|oa_stream_res| oa_stream_res.map(StreamItem::from).map_err(Error::from));
+
+		Ok(ChatStream {
+			stream: Box::pin(stream),
+		})
 	}
 }
+
+// region:    --- Support
+
+fn into_oa_chat_req(model: &str, req: ChatRequest) -> Result<oa_types::CreateChatCompletionRequest> {
+	let raw_messages = req
+		.messages
+		.into_iter()
+		.map(oa_types::ChatCompletionRequestMessage::from)
+		.collect::<Vec<_>>();
+
+	let oa_req = oa_types::CreateChatCompletionRequestArgs::default()
+		.max_tokens(512u16)
+		.model(model)
+		.n(1)
+		.messages(raw_messages)
+		.build()?;
+
+	Ok(oa_req)
+}
+
+// endregion: --- Support

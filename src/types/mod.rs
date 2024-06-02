@@ -3,19 +3,15 @@
 
 // region:    --- Modules
 
-mod chat;
+mod chat_req;
+mod chat_res;
 mod client;
 mod tool;
 
 // -- Flatten
-pub use chat::*;
+pub use chat_req::*;
+pub use chat_res::*;
 pub use client::*;
 pub use tool::*;
 
 // endregion: --- Modules
-
-#[derive(Debug)]
-pub enum OutFormat {
-	Text,
-	Json,
-}
