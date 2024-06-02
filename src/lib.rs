@@ -1,10 +1,10 @@
 // region:    --- Modules
 
-mod client;
+mod adapters;
 mod error;
 mod types;
 
-pub use client::*;
+pub use adapters::*;
 pub use error::{Error, Result};
 pub use types::*;
 

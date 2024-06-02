@@ -32,6 +32,7 @@ serde_json = "1"
 serde_with = { version = "3", features = ["macros"] }
 # -- AI
 async-openai = "0.21"
+ollama-rs = {version = "0.1", features = ["stream"]}
 # -- Others
 derive_more = {version = "1.0.0-beta", features = ["from"] }
 

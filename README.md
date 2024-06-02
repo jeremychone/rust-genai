@@ -1,4 +1,4 @@
-# genai - multi-ai provider gen-ai client
+# genai - Multiprovider generative AI client
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI providers, such as OpenAI and Ollama.
 

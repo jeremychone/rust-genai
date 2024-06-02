@@ -1,12 +1,15 @@
+//! Note: In this module, the sub-modules are
+//!       for code organization and all constructs are flatten out.
+
 // region:    --- Modules
 
 mod chat;
-mod gen;
+mod client;
 mod tool;
 
 // -- Flatten
 pub use chat::*;
-pub use gen::*;
+pub use client::*;
 pub use tool::*;
 
 // endregion: --- Modules
