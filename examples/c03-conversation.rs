@@ -1,7 +1,7 @@
 mod support;
 use support::print_chat_stream;
 
-use genai::ollama::OllamaAdapter;
+use genai::ollama::OllamaProvider;
 use genai::{ChatMessage, ChatRequest, Client};
 
 const MODEL_OL: &str = "mixtral";
@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		"Why does people say it is blue?", // here it is to show conversation is passed back
 	];
 
-	let oa_client = OllamaAdapter::default_client();
+	let oa_client = OllamaProvider::default_client();
 
 	let mut last_model_response: Option<String> = None;
 	let mut chat_req = ChatRequest::new(Vec::new());

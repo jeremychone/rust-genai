@@ -1,4 +1,4 @@
-use crate::adapters::openai::OpenAIAdapter;
+use crate::providers::openai::OpenAIProvider;
 use crate::{ChatRequest, ChatResponse, ChatStream, Client};
 use crate::{Error, Result, StreamItem};
 use async_openai::types as oa_types;
@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 
 #[async_trait]
-impl Client for OpenAIAdapter {
+impl Client for OpenAIProvider {
 	async fn list_models(&self) -> Result<Vec<String>> {
 		Ok(vec![])
 	}

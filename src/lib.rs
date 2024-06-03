@@ -1,11 +1,11 @@
 // region:    --- Modules
 
-mod adapters;
 mod error;
+mod providers;
 mod types;
 
-pub use adapters::*;
 pub use error::{Error, Result};
+pub use providers::*;
 pub use types::*;
 
 // endregion: --- Modules

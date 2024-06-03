@@ -13,7 +13,7 @@ pub enum Error {
 	Io(std::io::Error), // as example
 
 	// -- Raw AI Clients
-	AdapterConnector(AdapterConnectorInfo),
+	ProviderConnector(ProviderConnectorInfo),
 }
 
 // region:    --- Custom
@@ -35,8 +35,8 @@ impl From<&str> for Error {
 // region:    --- Impl
 
 impl Error {
-	pub fn adapter_connector(client_kind: ClientKind, cause: impl Into<String>) -> Self {
-		Self::AdapterConnector(AdapterConnectorInfo {
+	pub fn provider_connector(client_kind: ClientKind, cause: impl Into<String>) -> Self {
+		Self::ProviderConnector(ProviderConnectorInfo {
 			client_kind,
 			cause: cause.into(),
 		})
@@ -49,20 +49,20 @@ impl Error {
 
 #[allow(unused)]
 #[derive(Debug)]
-pub struct AdapterConnectorInfo {
+pub struct ProviderConnectorInfo {
 	pub client_kind: ClientKind,
 	pub cause: String,
 }
 
 impl From<async_openai::error::OpenAIError> for Error {
 	fn from(raw_client_error: async_openai::error::OpenAIError) -> Self {
-		Self::adapter_connector(ClientKind::AsyncOpenAI, raw_client_error.to_string())
+		Self::provider_connector(ClientKind::AsyncOpenAI, raw_client_error.to_string())
 	}
 }
 
 impl From<ollama_rs::error::OllamaError> for Error {
 	fn from(raw_client_error: ollama_rs::error::OllamaError) -> Self {
-		Self::adapter_connector(ClientKind::OllamaRs, raw_client_error.to_string())
+		Self::provider_connector(ClientKind::OllamaRs, raw_client_error.to_string())
 	}
 }
 
