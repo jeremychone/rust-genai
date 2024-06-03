@@ -9,6 +9,11 @@ impl ChatRequest {
 	pub fn new(messages: Vec<ChatMessage>) -> Self {
 		Self { messages }
 	}
+
+	pub fn append_message(&mut self, msg: ChatMessage) -> &mut Self {
+		self.messages.push(msg);
+		self
+	}
 }
 
 // endregion: --- ChatReq

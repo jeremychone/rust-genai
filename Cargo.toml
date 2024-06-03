@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 rust-version = "1.78"
 license = "MIT OR Apache-2.0"
-description = "Multiprovider generative AI client"
+description = "Multiprovider generative AI client (supports ollama-rs and async_openai for now)"
 keywords = [
 	"generative-ai",
 	"library",
