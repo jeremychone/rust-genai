@@ -16,8 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);
 
 	// -- Exec with OpenAI
-	let api_key = std::env::var("OPENAI_API_KEY")?;
-	let oa_client = OpenAIProvider::client_from_api_key(api_key)?;
+	let oa_client = OpenAIProvider::default_client(); // will use default env key
 	let res = oa_client.exec_chat_stream(MODEL_OA, chat_req.clone()).await?;
 	println!("\n=== QUESTION: {question}\n");
 	println!("=== RESPONSE from OpenAI ({MODEL_OA}):\n");

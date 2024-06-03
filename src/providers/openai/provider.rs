@@ -1,32 +1,61 @@
-use crate::{Client, Result};
-use async_openai::config::OpenAIConfig as AsyncOpenAIConfig;
-use async_openai::Client as AsyncOpenAIClient;
+use crate::{Client, ClientConfig, Result};
+use async_openai as oa;
+use async_openai::config as oac;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
-// region:    --- Provider
+type OaClient = oa::Client<oac::OpenAIConfig>;
 
 /// async-openai provider
 /// Note: for now, only support single chat completion mode (which is recommended for cost anyway)
-#[derive(Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct OpenAIProvider {
-	pub(in crate::providers::openai) conn: Arc<Mutex<AsyncOaClient>>,
+	inner: Arc<Inner>,
 }
 
-pub(in crate::providers::openai) type AsyncOaClient = AsyncOpenAIClient<AsyncOpenAIConfig>;
+#[derive(Debug)]
+struct Inner {
+	conn: OaClient,
+	#[allow(unused)] // for now, we do not use it
+	config: Option<ClientConfig>,
+}
+
+// implement default
+impl Default for Inner {
+	fn default() -> Self {
+		let conn = OaClient::new();
+		Self { conn, config: None }
+	}
+}
+
+impl OpenAIProvider {
+	pub fn conn(&self) -> &OaClient {
+		&self.inner.conn
+	}
+	pub fn config(&self) -> Option<&ClientConfig> {
+		self.inner.config.as_ref()
+	}
+}
 
 // Constructors
 impl OpenAIProvider {
+	pub fn default_client() -> impl Client {
+		Self::default()
+	}
+
 	/// Returns the client trait implementation.
-	pub fn new_client(config: OpenAIProviderConfig) -> Result<impl Client> {
-		OpenAIProvider::new(config)
+	pub fn new_client(config: ClientConfig) -> Result<impl Client> {
+		OpenAIProvider::new_provider(config)
 	}
 
 	/// Returns the raw Provider
-	pub fn new(config: OpenAIProviderConfig) -> Result<Self> {
-		let config = AsyncOpenAIConfig::new().with_api_key(config.api_key);
-		let conn = Arc::new(Mutex::new(AsyncOpenAIClient::with_config(config)));
-		Ok(Self { conn })
+	pub fn new_provider(config: ClientConfig) -> Result<Self> {
+		let oa_config: oac::OpenAIConfig = (&config).into();
+		let conn = oa::Client::with_config(oa_config);
+		let inner = Inner {
+			config: Some(config),
+			conn,
+		};
+		Ok(Self { inner: inner.into() })
 	}
 
 	/// Returns the client trait implementation.
@@ -36,43 +65,33 @@ impl OpenAIProvider {
 
 	/// Returns the raw Provider
 	pub fn from_api_key(api_key: String) -> Result<Self> {
-		let config = OpenAIProviderConfig { api_key };
-		Self::new(config)
+		let config = ClientConfig::default().key(api_key);
+		Self::new_provider(config)
 	}
 
+	// region:    --- Lower Level Constructors
+
 	/// Returns the client trait implementation.
-	pub fn client_from_async_openai_client(async_client: AsyncOaClient) -> Self {
+	pub fn client_from_async_openai_client(async_client: OaClient) -> Result<impl Client> {
 		OpenAIProvider::from_async_openai_client(async_client)
 	}
 
-	pub fn from_async_openai_client(async_client: AsyncOaClient) -> Self {
-		let conn = Arc::new(Mutex::new(async_client));
-		Self { conn }
+	pub fn from_async_openai_client(async_client: OaClient) -> Result<Self> {
+		let conn = async_client;
+		let inner = Inner { config: None, conn };
+		Ok(Self { inner: inner.into() })
 	}
 
-	pub fn client_from_async_openai_config(config: AsyncOpenAIConfig) -> Self {
+	pub fn client_from_async_openai_config(config: oac::OpenAIConfig) -> Result<impl Client> {
 		OpenAIProvider::from_async_openai_config(config)
 	}
 
 	// From async-openai config config
-	pub fn from_async_openai_config(config: AsyncOpenAIConfig) -> Self {
-		let conn = Arc::new(Mutex::new(AsyncOpenAIClient::with_config(config)));
-		Self { conn }
+	pub fn from_async_openai_config(config: oac::OpenAIConfig) -> Result<Self> {
+		let conn = oa::Client::with_config(config);
+		let inner = Inner { config: None, conn };
+		Ok(Self { inner: inner.into() })
 	}
+
+	// endregion: --- Lower Level Constructors
 }
-
-// endregion: --- Provider
-
-// region:    --- OpenAIConfig
-
-pub struct OpenAIProviderConfig {
-	pub(super) api_key: String,
-}
-
-impl std::fmt::Debug for OpenAIProviderConfig {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("OpenaiClientConfig").field("api_key", &"REDACTED").finish()
-	}
-}
-
-// endregion: --- OpenAIConfig

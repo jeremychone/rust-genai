@@ -1,4 +1,6 @@
+use crate::ClientConfig;
 use crate::{ChatMessage, ChatResponse, ChatRole, StreamItem};
+use async_openai::config as oac;
 use async_openai::types as oa_types;
 
 // region:    --- From [genai] to [raw]
@@ -57,3 +59,19 @@ impl From<oa_types::CreateChatCompletionStreamResponse> for StreamItem {
 }
 
 // endregion: --- From [raw] to [genai]
+
+// region:    --- From ClientConfig
+
+/// Important: This is from the reference of ClientConfig
+///            as the client_config should be kept for other
+///            runtime behavior
+impl From<&ClientConfig> for oac::OpenAIConfig {
+	fn from(value: &ClientConfig) -> Self {
+		let mut oa_config = oac::OpenAIConfig::default();
+		if let Some(key) = &value.key {
+			oa_config = oa_config.with_api_key(key.clone());
+		}
+		oa_config
+	}
+}
+// endregion: --- From ClientConfig

@@ -16,8 +16,7 @@ impl Client for OpenAIProvider {
 		let oa_req = into_oa_chat_req(model, req)?;
 
 		// -- Exec the request
-		let oa_client = self.conn.lock().await;
-		let oa_chat_client = oa_client.chat();
+		let oa_chat_client = &self.conn().chat();
 		let oa_res = oa_chat_client.create(oa_req).await?;
 
 		let chat_res = oa_res.into();
@@ -29,8 +28,7 @@ impl Client for OpenAIProvider {
 		let oa_req = into_oa_chat_req(model, req)?;
 
 		// -- Exec the request
-		let oa_client = self.conn.lock().await;
-		let oa_chat_client = oa_client.chat();
+		let oa_chat_client = &self.conn().chat();
 		let oa_res_stream = oa_chat_client.create_stream(oa_req).await?;
 
 		let stream = oa_res_stream.map(|oa_stream_res| oa_stream_res.map(StreamItem::from).map_err(Error::from));

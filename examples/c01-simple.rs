@@ -1,6 +1,6 @@
 use genai::ollama::OllamaProvider;
 use genai::openai::OpenAIProvider;
-use genai::{ChatMessage, ChatRequest, Client};
+use genai::{ChatMessage, ChatRequest, Client, ClientConfig};
 
 const MODEL_OA: &str = "gpt-3.5-turbo";
 const MODEL_OL: &str = "mixtral";
@@ -13,8 +13,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);
 
 	// -- Exec with OpenAI
-	let api_key = std::env::var("OPENAI_API_KEY")?;
-	let oa_client = OpenAIProvider::client_from_api_key(api_key)?;
+	let config = ClientConfig::from_key(std::env::var("OPENAI_API_KEY")?);
+	let oa_client = OpenAIProvider::new_client(config)?;
 	let res = oa_client.exec_chat(MODEL_OA, chat_req.clone()).await?;
 	println!("\n=== QUESTION: {question}\n");
 	println!(

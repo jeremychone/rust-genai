@@ -5,7 +5,6 @@
 <a href="https://crates.io/crates/genai">
 <img src="https://img.shields.io/crates/v/genai.svg" />
 </a> 
-
 <a href="https://github.com/jeremychone/rust-genai">
 <img alt="Static Badge" src="https://img.shields.io/badge/GitHub-Repo?color=%23336699">
 </a>

@@ -14,8 +14,7 @@ impl Client for OllamaProvider {
 	async fn exec_chat(&self, model: &str, req: ChatRequest) -> Result<ChatResponse> {
 		let ol_req = into_ol_chat_req(model, req)?;
 
-		let ol_client = &self.conn;
-		let ol_res = ol_client.send_chat_messages(ol_req).await?;
+		let ol_res = self.conn().send_chat_messages(ol_req).await?;
 
 		let res: ChatResponse = ol_res.into();
 
@@ -27,9 +26,7 @@ impl Client for OllamaProvider {
 		let ol_req = into_ol_chat_req(model, req)?;
 
 		// -- Exec the request
-		let ol_client = &self.conn;
-		// IMPORTANT:
-		let ol_res_stream = ol_client.send_chat_messages_stream(ol_req).await?;
+		let ol_res_stream = self.conn().send_chat_messages_stream(ol_req).await?;
 
 		let stream = ol_res_stream.map(|ol_stream_res| {
 			let chat_item = ol_stream_res.map(StreamItem::from);

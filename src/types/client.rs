@@ -8,7 +8,7 @@ pub enum ClientKind {
 }
 
 #[async_trait]
-pub trait Client {
+pub trait Client: Clone {
 	async fn list_models(&self) -> Result<Vec<String>>;
 
 	async fn exec_chat(&self, model: &str, req: ChatRequest) -> Result<ChatResponse>;
