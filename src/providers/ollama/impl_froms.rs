@@ -1,4 +1,4 @@
-use crate::{ChatMessage, ChatResponse, ChatRole, StreamItem};
+use crate::{ChatMessage, ChatResponse, ChatRole, ClientKind, Error, StreamItem};
 use ollama_rs::generation::chat as ol_chat;
 
 // region:    --- From [genai] to [raw]
@@ -45,3 +45,9 @@ impl From<ol_chat::ChatMessageResponse> for StreamItem {
 }
 
 // endregion: --- From [raw] to [genai]
+
+impl From<ollama_rs::error::OllamaError> for Error {
+	fn from(raw_client_error: ollama_rs::error::OllamaError) -> Self {
+		Self::provider_connector(ClientKind::OllamaRs, raw_client_error.to_string())
+	}
+}

@@ -1,5 +1,5 @@
-use crate::ClientConfig;
 use crate::{ChatMessage, ChatResponse, ChatRole, StreamItem};
+use crate::{ClientConfig, ClientKind, Error};
 use async_openai::config as oac;
 use async_openai::types as oa_types;
 
@@ -75,3 +75,13 @@ impl From<&ClientConfig> for oac::OpenAIConfig {
 	}
 }
 // endregion: --- From ClientConfig
+
+// region:    --- From async-openai Error
+
+impl From<async_openai::error::OpenAIError> for Error {
+	fn from(raw_client_error: async_openai::error::OpenAIError) -> Self {
+		Self::provider_connector(ClientKind::AsyncOpenAI, raw_client_error.to_string())
+	}
+}
+
+// endregion: --- From async-openai Error

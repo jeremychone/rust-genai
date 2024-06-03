@@ -11,6 +11,11 @@
 
 </div>
 
+```toml
+# cargo.toml
+genai = {version: '=0.0.3', features = ["with-all-providers"]}
+```
+
 <br />
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI providers, such as OpenAI and Ollama.
@@ -37,9 +42,23 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 - Function calling will probably come before image support. The challenge is to normalize it between the OpenAI function API, which is relatively mature, and the open model ones, which are a little more ad hoc but still relatively well supported by some open models.
 
-- It's probable that for `0.2.x` [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs) will be under features.
-
 - One of the goals is to support serverless (i.e., without Ollama server) support for open models. [floneum](https://github.com/floneum/floneum) seems very promising but probably heavy (hence the feature approach for that provider).
+
+## Dev Commands
+
+Here are some quick dev commands. 
+
+```sh
+# cargo watch c01-simple
+cargo watch -q -x "run -q --example c01-simple"
+
+# cargo watch c02-stream
+cargo watch -q -x "run -q --example c02-stream"
+
+# cargo watch c03-conv
+cargo watch -q -x "run -q --example c03-conv"
+
+```
 
 ## Links
 

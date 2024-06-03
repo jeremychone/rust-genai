@@ -45,28 +45,13 @@ impl Error {
 
 // endregion: --- Impl
 
-// region:    --- From AI Clients
-
-#[allow(unused)]
+/// Type that capture the provider error information
+/// Each provider implements their `From<..>` for `Error` with the `ProviderConnector` variant
 #[derive(Debug)]
 pub struct ProviderConnectorInfo {
 	pub client_kind: ClientKind,
 	pub cause: String,
 }
-
-impl From<async_openai::error::OpenAIError> for Error {
-	fn from(raw_client_error: async_openai::error::OpenAIError) -> Self {
-		Self::provider_connector(ClientKind::AsyncOpenAI, raw_client_error.to_string())
-	}
-}
-
-impl From<ollama_rs::error::OllamaError> for Error {
-	fn from(raw_client_error: ollama_rs::error::OllamaError) -> Self {
-		Self::provider_connector(ClientKind::OllamaRs, raw_client_error.to_string())
-	}
-}
-
-// endregion: --- From AI Clients
 
 // region:    --- Error Boilerplate
 
