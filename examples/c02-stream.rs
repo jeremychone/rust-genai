@@ -5,7 +5,7 @@ use crate::support::has_env;
 use genai::anthropic::AnthropicProvider;
 use genai::ext_async_openai::OpenAIProvider;
 use genai::ext_ollama_rs::OllamaProvider;
-use genai::{ChatMessage, ChatRequest, Client};
+use genai::{ChatMessage, ChatRequest, LegacyClient};
 
 const MODEL_OA: &str = "gpt-3.5-turbo";
 const MODEL_OL: &str = "mixtral";
@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// -- Create the ChatReq
 	let chat_req = ChatRequest::new(vec![
-		// Messages (activate to see the differences)
+		// -- Messages (de/activate system to see the differences)
 		ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user(question),
 	]);

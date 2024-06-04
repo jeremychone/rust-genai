@@ -4,7 +4,7 @@ use crate::support::has_env;
 use genai::anthropic::AnthropicProvider;
 use genai::ext_async_openai::OpenAIProvider;
 use genai::ext_ollama_rs::OllamaProvider;
-use genai::{ChatMessage, ChatRequest, Client, ClientConfig};
+use genai::{ChatMessage, ChatRequest, LegacyClient, LegacyClientConfig};
 
 const MODEL_OA: &str = "gpt-3.5-turbo";
 const MODEL_OL: &str = "mixtral";
@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// -- Create the ChatReq
 	let chat_req = ChatRequest::new(vec![
-		// Messages (activate to see the differences)
+		// -- Messages (activate to see the differences)
 		// ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user(question),
 	]);
@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// -- Exec with OpenAI
 	if has_env("OPENAI_API_KEY") {
-		let config = ClientConfig::from_key(std::env::var("OPENAI_API_KEY")?);
+		let config = LegacyClientConfig::from_key(std::env::var("OPENAI_API_KEY")?);
 		let oa_client = OpenAIProvider::new_client(config)?;
 		let res = oa_client.exec_chat(MODEL_OA, chat_req.clone()).await?;
 		println!("\n=== QUESTION: {question}\n");

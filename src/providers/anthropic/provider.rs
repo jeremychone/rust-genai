@@ -1,6 +1,6 @@
 use crate::providers::support::{Provider, ProviderInner};
 use crate::webc::WebClient;
-use crate::{Client, ClientConfig, Result};
+use crate::{LegacyClient, LegacyClientConfig, Result};
 use std::sync::Arc;
 
 const DEFAULT_BASE_URL: &str = "https://api.anthropic.com/v1/";
@@ -25,7 +25,7 @@ impl Provider for AnthropicProvider {
 }
 
 impl AnthropicProvider {
-	pub fn default_client() -> impl Client {
+	pub fn default_client() -> impl LegacyClient {
 		let inner = ProviderInner {
 			web_client: WebClient::new().base_url(DEFAULT_BASE_URL),
 			config: None,
@@ -33,7 +33,7 @@ impl AnthropicProvider {
 		Self { inner: inner.into() }
 	}
 
-	pub fn new_provider(_config: ClientConfig) -> Result<Self> {
+	pub fn new_provider(_config: LegacyClientConfig) -> Result<Self> {
 		todo!()
 	}
 }

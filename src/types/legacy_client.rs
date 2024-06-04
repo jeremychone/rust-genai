@@ -2,13 +2,13 @@ use crate::{ChatRequest, ChatResponse, ChatStream, Result};
 use async_trait::async_trait;
 
 #[derive(Debug)]
-pub enum ClientKind {
+pub enum LegacyClientKind {
 	OllamaRs,
 	AsyncOpenAI,
 }
 
 #[async_trait]
-pub trait Client: Clone {
+pub trait LegacyClient: Clone {
 	async fn list_models(&self) -> Result<Vec<String>>;
 
 	async fn exec_chat(&self, model: &str, req: ChatRequest) -> Result<ChatResponse>;

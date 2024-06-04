@@ -2,8 +2,8 @@ use crate::anthropic::streamer::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::anthropic::AnthropicProvider;
 use crate::providers::support::{get_api_key_from_config, Provider};
 use crate::utils::x_value::XValue;
-use crate::webc::Response;
-use crate::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, Client, Result, StreamItem};
+use crate::webc::WebResponse;
+use crate::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, LegacyClient, Result, StreamItem};
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::{json, Value};
@@ -12,7 +12,7 @@ const MAX_TOKENS: u32 = 1024;
 const ANTRHOPIC_VERSION: &str = "2023-06-01";
 
 #[async_trait]
-impl Client for AnthropicProvider {
+impl LegacyClient for AnthropicProvider {
 	async fn list_models(&self) -> Result<Vec<String>> {
 		// TODO:
 		Ok(vec![])
@@ -21,7 +21,6 @@ impl Client for AnthropicProvider {
 	// see: https://docs.anthropic.com/en/api/messages
 	async fn exec_chat(&self, model: &str, req: ChatRequest) -> Result<ChatResponse> {
 		let WebRequestData { headers, payload } = self.to_anthrophic_web_request_data(model, req, false)?;
-		let headers: Vec<(&str, &str)> = headers.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
 
 		let response = self.web_client().do_post("messages", &headers, payload).await?;
 
@@ -32,8 +31,6 @@ impl Client for AnthropicProvider {
 
 	async fn exec_chat_stream(&self, model: &str, req: ChatRequest) -> Result<crate::ChatStream> {
 		let WebRequestData { headers, payload } = self.to_anthrophic_web_request_data(model, req, true)?;
-
-		let headers: Vec<(&str, &str)> = headers.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
 
 		let event_source = self.web_client().do_post_stream("messages", &headers, payload).await?;
 
@@ -99,7 +96,7 @@ impl AnthropicProvider {
 /// NOTE: Since ChatResponse is for multi-provider, we have to have an intermediary
 ///       step, and right now, just just go from raw Value to ChatResponse
 ///       This makes the system more flexible, but we could change that later.
-fn into_genai_chat_response(mut response: Response) -> Result<ChatResponse> {
+fn into_genai_chat_response(mut response: WebResponse) -> Result<ChatResponse> {
 	let json_content_items: Vec<Value> = response.body.x_take("content")?;
 
 	let mut content: Vec<String> = Vec::new();

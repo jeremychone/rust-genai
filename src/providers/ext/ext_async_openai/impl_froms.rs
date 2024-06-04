@@ -1,5 +1,5 @@
 use crate::{ChatMessage, ChatResponse, ChatRole, StreamItem};
-use crate::{ClientConfig, ClientKind, Error};
+use crate::{Error, LegacyClientConfig, LegacyClientKind};
 use async_openai::config as oac;
 use async_openai::types as oa_types;
 
@@ -65,8 +65,8 @@ impl From<oa_types::CreateChatCompletionStreamResponse> for StreamItem {
 /// Important: This is from the reference of ClientConfig
 ///            as the client_config should be kept for other
 ///            runtime behavior
-impl From<&ClientConfig> for oac::OpenAIConfig {
-	fn from(value: &ClientConfig) -> Self {
+impl From<&LegacyClientConfig> for oac::OpenAIConfig {
+	fn from(value: &LegacyClientConfig) -> Self {
 		let mut oa_config = oac::OpenAIConfig::default();
 		if let Some(key) = &value.key {
 			oa_config = oa_config.with_api_key(key.clone());
@@ -80,7 +80,7 @@ impl From<&ClientConfig> for oac::OpenAIConfig {
 
 impl From<async_openai::error::OpenAIError> for Error {
 	fn from(raw_client_error: async_openai::error::OpenAIError) -> Self {
-		Self::provider_connector(ClientKind::AsyncOpenAI, raw_client_error.to_string())
+		Self::provider_connector(LegacyClientKind::AsyncOpenAI, raw_client_error.to_string())
 	}
 }
 

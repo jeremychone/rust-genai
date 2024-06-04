@@ -1,4 +1,5 @@
-use crate::{webc, ClientKind};
+use crate::adapter::AdapterKind;
+use crate::{webc, LegacyClientKind};
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -15,6 +16,11 @@ pub enum Error {
 	// -- Web
 	#[from]
 	Webc(webc::Error),
+
+	// -- Adapter
+	AdapterRequiresApiKey {
+		adapter_kind: AdapterKind,
+	},
 
 	// -- Provider
 	ProviderHasNoDefaultApiKeyEnvName,
@@ -54,7 +60,7 @@ impl From<&str> for Error {
 // region:    --- Impl
 
 impl Error {
-	pub fn provider_connector(client_kind: ClientKind, cause: impl Into<String>) -> Self {
+	pub fn provider_connector(client_kind: LegacyClientKind, cause: impl Into<String>) -> Self {
 		Self::ProviderConnector(ProviderConnectorInfo {
 			client_kind,
 			cause: cause.into(),
@@ -68,7 +74,7 @@ impl Error {
 /// Each provider implements their `From<..>` for `Error` with the `ProviderConnector` variant
 #[derive(Debug)]
 pub struct ProviderConnectorInfo {
-	pub client_kind: ClientKind,
+	pub client_kind: LegacyClientKind,
 	pub cause: String,
 }
 

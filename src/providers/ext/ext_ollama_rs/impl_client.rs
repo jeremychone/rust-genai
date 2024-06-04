@@ -1,12 +1,12 @@
 use crate::ext_ollama_rs::provider::OllamaProvider;
-use crate::{ChatRequest, ChatResponse, ChatStream, Client, ClientKind, Error, Result, StreamItem};
+use crate::{ChatRequest, ChatResponse, ChatStream, Error, LegacyClient, LegacyClientKind, Result, StreamItem};
 use async_trait::async_trait;
 use futures::StreamExt;
 use ollama_rs::generation::chat as ol_chat;
 use ollama_rs::generation::chat::request as ol_req;
 
 #[async_trait]
-impl Client for OllamaProvider {
+impl LegacyClient for OllamaProvider {
 	async fn list_models(&self) -> Result<Vec<String>> {
 		Ok(vec![])
 	}
@@ -33,7 +33,10 @@ impl Client for OllamaProvider {
 			// Note: here, ollama `ol_stream_res` is a result with () error, so, add some context
 			// TODO: need to create the custom
 			chat_item.map_err(|_| {
-				Error::provider_connector(ClientKind::OllamaRs, "() ollama-rs error (error on a stream response)")
+				Error::provider_connector(
+					LegacyClientKind::OllamaRs,
+					"() ollama-rs error (error on a stream response)",
+				)
 			})
 		});
 

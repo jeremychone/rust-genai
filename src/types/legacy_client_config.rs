@@ -1,6 +1,6 @@
 use std::fmt;
 
-pub struct ClientConfig {
+pub struct LegacyClientConfig {
 	/// The api key to be used. Will take precendence over key_from_env is set
 	pub key: Option<String>,
 
@@ -15,14 +15,14 @@ pub struct ClientConfig {
 /// Convenient Constructors
 /// Note: Those constructor(s) will call `default()` and sent the given property
 ///       They are just for convenience, the builder setter function can be used.
-impl ClientConfig {
+impl LegacyClientConfig {
 	pub fn from_key(key: impl Into<String>) -> Self {
 		Self::default().key(key)
 	}
 }
 
 /// Builder setters
-impl ClientConfig {
+impl LegacyClientConfig {
 	pub fn key(mut self, key: impl Into<String>) -> Self {
 		self.key = Some(key.into());
 		self
@@ -39,7 +39,7 @@ impl ClientConfig {
 
 // region:    --- Std Implementations
 
-impl fmt::Debug for ClientConfig {
+impl fmt::Debug for LegacyClientConfig {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("ClientConfig")
 			.field("key_from_env", &self.key_from_env)
@@ -50,7 +50,7 @@ impl fmt::Debug for ClientConfig {
 }
 
 /// Create the default config.
-impl Default for ClientConfig {
+impl Default for LegacyClientConfig {
 	fn default() -> Self {
 		Self {
 			key_from_env: Some(EnvName::ProviderDefault),

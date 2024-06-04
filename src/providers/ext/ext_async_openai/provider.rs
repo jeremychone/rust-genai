@@ -1,4 +1,4 @@
-use crate::{Client, ClientConfig, Result};
+use crate::{LegacyClient, LegacyClientConfig, Result};
 use async_openai as oa;
 use async_openai::config as oac;
 use std::sync::Arc;
@@ -20,7 +20,7 @@ impl OpenAIProvider {
 struct Inner {
 	conn: OaClient,
 	#[allow(unused)] // for now, we do not use it
-	config: Option<ClientConfig>,
+	config: Option<LegacyClientConfig>,
 }
 
 // implement default
@@ -36,24 +36,24 @@ impl OpenAIProvider {
 		&self.inner.conn
 	}
 	#[allow(unused)]
-	pub(in crate::providers::ext::ext_async_openai) fn config(&self) -> Option<&ClientConfig> {
+	pub(in crate::providers::ext::ext_async_openai) fn config(&self) -> Option<&LegacyClientConfig> {
 		self.inner.config.as_ref()
 	}
 }
 
 // Constructors
 impl OpenAIProvider {
-	pub fn default_client() -> impl Client {
+	pub fn default_client() -> impl LegacyClient {
 		Self::default()
 	}
 
 	/// Returns the client trait implementation.
-	pub fn new_client(config: ClientConfig) -> Result<impl Client> {
+	pub fn new_client(config: LegacyClientConfig) -> Result<impl LegacyClient> {
 		OpenAIProvider::new_provider(config)
 	}
 
 	/// Returns the raw Provider
-	pub fn new_provider(config: ClientConfig) -> Result<Self> {
+	pub fn new_provider(config: LegacyClientConfig) -> Result<Self> {
 		let oa_config: oac::OpenAIConfig = (&config).into();
 		let conn = oa::Client::with_config(oa_config);
 		let inner = Inner {
@@ -64,20 +64,20 @@ impl OpenAIProvider {
 	}
 
 	/// Returns the client trait implementation.
-	pub fn client_from_api_key(api_key: String) -> Result<impl Client> {
+	pub fn client_from_api_key(api_key: String) -> Result<impl LegacyClient> {
 		OpenAIProvider::from_api_key(api_key)
 	}
 
 	/// Returns the raw Provider
 	pub fn from_api_key(api_key: String) -> Result<Self> {
-		let config = ClientConfig::default().key(api_key);
+		let config = LegacyClientConfig::default().key(api_key);
 		Self::new_provider(config)
 	}
 
 	// region:    --- Lower Level Constructors
 
 	/// Returns the client trait implementation.
-	pub fn client_from_async_openai_client(async_client: OaClient) -> Result<impl Client> {
+	pub fn client_from_async_openai_client(async_client: OaClient) -> Result<impl LegacyClient> {
 		OpenAIProvider::from_async_openai_client(async_client)
 	}
 
@@ -87,7 +87,7 @@ impl OpenAIProvider {
 		Ok(Self { inner: inner.into() })
 	}
 
-	pub fn client_from_async_openai_config(config: oac::OpenAIConfig) -> Result<impl Client> {
+	pub fn client_from_async_openai_config(config: oac::OpenAIConfig) -> Result<impl LegacyClient> {
 		OpenAIProvider::from_async_openai_config(config)
 	}
 

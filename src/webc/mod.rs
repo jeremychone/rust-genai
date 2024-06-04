@@ -10,9 +10,10 @@ use reqwest_eventsource::EventSource;
 use serde_json::Value;
 
 // endregion: --- Modules
-
+#[derive(Debug)]
 pub struct WebClient {
 	reqwest_client: reqwest::Client,
+	// TODO: to deprecate
 	base_url: Option<String>,
 }
 
@@ -37,17 +38,17 @@ impl WebClient {
 // region:    --- Web Method Impl
 
 impl WebClient {
-	pub async fn do_post(&self, url: &str, headers: &[(&str, &str)], content: Value) -> Result<Response> {
+	pub async fn do_post(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<WebResponse> {
 		let reqwest_builder = self.req_builder(url, headers, content)?;
 
 		let reqwest_res = reqwest_builder.send().await?;
 
-		let response = Response::from_reqwest_response(reqwest_res).await?;
+		let response = WebResponse::from_reqwest_response(reqwest_res).await?;
 
 		Ok(response)
 	}
 
-	pub async fn do_post_stream(&self, url: &str, headers: &[(&str, &str)], content: Value) -> Result<EventSource> {
+	pub async fn do_post_stream(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<EventSource> {
 		let reqwest_builder = self.req_builder(url, headers, content)?;
 
 		let es = EventSource::new(reqwest_builder)?;
@@ -55,13 +56,13 @@ impl WebClient {
 		Ok(es)
 	}
 
-	pub fn req_builder(&self, url: &str, headers: &[(&str, &str)], content: Value) -> Result<RequestBuilder> {
+	pub fn req_builder(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<RequestBuilder> {
 		let url = self.compose_url(url);
 		let method = Method::POST;
 
 		let mut reqwest_builder = self.reqwest_client.request(method.clone(), url);
-		for entry in headers.iter() {
-			reqwest_builder = reqwest_builder.header(entry.0, entry.1);
+		for (k, v) in headers.iter() {
+			reqwest_builder = reqwest_builder.header(k, v);
 		}
 		reqwest_builder = reqwest_builder.json(&content);
 
@@ -135,14 +136,14 @@ impl From<(&str, &'static str)> for PostContent {
 
 // region:    --- Response
 #[derive(Debug)]
-pub struct Response {
+pub struct WebResponse {
 	pub status: StatusCode,
 	pub body: Value,
 }
 
-impl Response {
+impl WebResponse {
 	/// Note: For now, assume only json response
-	pub(crate) async fn from_reqwest_response(mut res: reqwest::Response) -> Result<Response> {
+	pub(crate) async fn from_reqwest_response(mut res: reqwest::Response) -> Result<WebResponse> {
 		let status = res.status();
 
 		// Move the headers into a new HeaderMap
@@ -159,7 +160,7 @@ impl Response {
 			});
 		};
 
-		Ok(Response { status, body })
+		Ok(WebResponse { status, body })
 	}
 }
 // endregion: --- Response

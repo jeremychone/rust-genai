@@ -1,5 +1,5 @@
 use crate::webc::WebClient;
-use crate::{ClientConfig, EnvName};
+use crate::{EnvName, LegacyClientConfig};
 use crate::{Error, Result};
 
 pub(in crate::providers) trait Provider {
@@ -16,7 +16,7 @@ pub(in crate::providers) trait Provider {
 		&self.provider_inner().web_client
 	}
 
-	fn config(&self) -> Option<&ClientConfig> {
+	fn config(&self) -> Option<&LegacyClientConfig> {
 		self.provider_inner().config.as_ref()
 	}
 }
@@ -27,13 +27,13 @@ pub(in crate::providers) trait Provider {
 pub struct ProviderInner {
 	pub(in crate::providers) web_client: WebClient,
 	#[allow(unused)] // for now, we do not use it
-	pub(in crate::providers) config: Option<ClientConfig>,
+	pub(in crate::providers) config: Option<LegacyClientConfig>,
 }
 
 // endregion: --- ProviderInner
 
 pub(crate) fn get_api_key_from_config(
-	config: Option<&ClientConfig>,
+	config: Option<&LegacyClientConfig>,
 	default_env_name: Option<&'static str>,
 ) -> Result<String> {
 	// -- First we try to ket it from the `key` property
