@@ -63,7 +63,10 @@ impl Default for ClientConfig {
 
 // endregion: --- Std Implementations
 
-pub fn get_api_key_from_config(config: Option<&ClientConfig>, default_env_name: &'static str) -> Result<String> {
+pub fn get_api_key_from_config(
+	config: Option<&ClientConfig>,
+	default_env_name: Option<&'static str>,
+) -> Result<String> {
 	// -- First we try to ket it from the `key` property
 	if let Some(key) = config.and_then(|c| c.key.as_ref()) {
 		return Ok(key.clone());
@@ -71,9 +74,18 @@ pub fn get_api_key_from_config(config: Option<&ClientConfig>, default_env_name: 
 
 	// -- If not found, we look on the environment
 	let env_name = match config.and_then(|c| c.key_from_env.as_ref()) {
-		Some(EnvName::ProviderDefault) => default_env_name,
+		// if there is a named env name, then, return it
 		Some(EnvName::Named(name)) => name.as_ref(),
-		None => default_env_name,
+
+		// otherwise, try to get the default name
+		// for now, if key_from_env is None or ProviderDefault, same logic
+		Some(EnvName::ProviderDefault) | None => {
+			if let Some(name) = default_env_name {
+				name
+			} else {
+				return Err(Error::ProviderHasNoDefaultApiKeyEnvName);
+			}
+		}
 	};
 
 	let key = std::env::var(env_name).map_err(|e| Error::ApiKeyEnvNotFound {

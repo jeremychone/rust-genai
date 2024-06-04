@@ -12,11 +12,20 @@ pub enum Error {
 		env_name: String,
 	},
 
-	#[from]
-	XValue(crate::utils::x_value::Error),
-
+	// -- Web
 	#[from]
 	Webc(webc::Error),
+
+	// -- Provider
+	ProviderHasNoDefaultApiKeyEnvName,
+
+	// -- Stream
+	StreamParse(serde_json::Error),
+	ReqwestEventSource(reqwest_eventsource::Error),
+
+	// -- Utils
+	#[from]
+	XValue(crate::utils::x_value::Error),
 
 	// -- Externals
 	#[from]

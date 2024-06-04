@@ -4,8 +4,11 @@ mod error;
 
 pub use self::error::{Error, Result};
 
+use crate::utils::x_value::XValue;
+use futures::stream::StreamExt;
 use reqwest::header::HeaderMap;
-use reqwest::{Method, StatusCode};
+use reqwest::{Method, RequestBuilder, StatusCode};
+use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -38,19 +41,34 @@ impl WebClient {
 
 impl WebClient {
 	pub async fn do_post(&self, url: &str, headers: &[(&str, &str)], content: Value) -> Result<Response> {
-		let url = self.compose_url(url);
-		let method = Method::POST;
+		let reqwest_builder = self.req_builder(url, headers, content)?;
 
-		let mut reqwest_builder = self.reqwest_client.request(method.clone(), &url);
-		for entry in headers.iter() {
-			reqwest_builder = reqwest_builder.header(entry.0, entry.1);
-		}
-
-		let reqwest_res = reqwest_builder.json(&content).send().await?;
+		let reqwest_res = reqwest_builder.send().await?;
 
 		let response = Response::from_reqwest_response(reqwest_res).await?;
 
 		Ok(response)
+	}
+
+	pub async fn do_post_stream(&self, url: &str, headers: &[(&str, &str)], content: Value) -> Result<EventSource> {
+		let reqwest_builder = self.req_builder(url, headers, content)?;
+
+		let es = EventSource::new(reqwest_builder)?;
+
+		Ok(es)
+	}
+
+	pub fn req_builder(&self, url: &str, headers: &[(&str, &str)], content: Value) -> Result<RequestBuilder> {
+		let url = self.compose_url(url);
+		let method = Method::POST;
+
+		let mut reqwest_builder = self.reqwest_client.request(method.clone(), url);
+		for entry in headers.iter() {
+			reqwest_builder = reqwest_builder.header(entry.0, entry.1);
+		}
+		reqwest_builder = reqwest_builder.json(&content);
+
+		Ok(reqwest_builder)
 	}
 
 	fn compose_url(&self, url: &str) -> String {

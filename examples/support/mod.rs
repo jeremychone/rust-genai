@@ -32,7 +32,7 @@ pub async fn print_chat_stream(chat_res: ChatStream) -> Result<String, Box<dyn s
 
 		// Poor man's wrapping
 		char_count += bytes.len();
-		if char_count > 80 {
+		if char_count > 11980 {
 			stdout.write_all(b"\n").await?;
 			char_count = 0;
 		}

@@ -1,8 +1,8 @@
 // region:    --- Modules
 
 mod impl_client;
-mod impl_froms;
 mod provider;
+mod streamer;
 
 pub use provider::*;
 

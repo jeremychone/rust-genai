@@ -1,3 +1,4 @@
+use crate::utils;
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -8,9 +9,15 @@ pub enum Error {
 		content_type: String,
 	},
 
+	// -- Utils
+	#[from]
+	XValue(utils::x_value::Error),
+
 	// -- Externals
 	#[from]
 	Reqwest(reqwest::Error),
+	#[from]
+	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
 }
 
 // region:    --- Error Boilerplate

@@ -28,21 +28,22 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 ## Library Focus:
 
-- Focuses on ergonomics and commonality first, and depth second. (If you need client API completeness, use [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); they are awesome and relatively simple to use.)
+- Focuses on standardizing chat completion APIs across major AI Providers.
+
+- Prioritizes ergonomics and commonality, with depth being secondary. (If you require complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); they are both excellent and easy to use.)
 
 - Initially, this library will mostly focus on text chat API (no simple generation, images, or even function calling in the first stage).
 
 - The `0.1.x` version will work, but the APIs will change in the patch version, not following semver strictly.
 
-- For now, it focuses on OpenAI and Ollama, using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs).
-
 - Version `0.2.x` will follow semver more strictly.
 
 ## Notes on Possible Direction
 
+- Currently, it uses [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs) to communicate with those respective services. However, the goal is to implement native request implementation for those services. All of these web APIs are quite similar, and they all use Server-Sent Events (SSE) for streaming. Managing the differences at a lower layer is actually simpler and more cumulative, requiring less complex handling overall.
+
 - Function calling will probably come before image support. The challenge is to normalize it between the OpenAI function API, which is relatively mature, and the open model ones, which are a little more ad hoc but still relatively well supported by some open models.
 
-- One of the goals is to support serverless (i.e., without Ollama server) support for open models. [floneum](https://github.com/floneum/floneum) seems very promising but probably heavy (hence the feature approach for that provider).
 
 ## Dev Commands
 
