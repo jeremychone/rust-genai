@@ -18,10 +18,10 @@ struct Inner {
 }
 
 impl OllamaProvider {
-	pub(in crate::providers::ollama) fn conn(&self) -> &Ollama {
+	pub(in crate::providers::ext::ext_ollama_rs) fn conn(&self) -> &Ollama {
 		&self.inner.conn
 	}
-	pub(in crate::providers::ollama) fn config(&self) -> Option<&ClientConfig> {
+	pub(in crate::providers::ext::ext_ollama_rs) fn config(&self) -> Option<&ClientConfig> {
 		self.inner.config.as_ref()
 	}
 }

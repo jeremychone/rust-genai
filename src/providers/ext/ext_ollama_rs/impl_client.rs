@@ -1,4 +1,4 @@
-use crate::ollama::provider::OllamaProvider;
+use crate::ext_ollama_rs::provider::OllamaProvider;
 use crate::{ChatRequest, ChatResponse, ChatStream, Client, ClientKind, Error, Result, StreamItem};
 use async_trait::async_trait;
 use futures::StreamExt;

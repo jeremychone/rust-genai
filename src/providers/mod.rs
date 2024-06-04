@@ -1,9 +1,12 @@
 // region:    --- Modules
 
+// External providers
+mod ext;
+
+// Flatten external providers (they are prefixed with ext to allow their crate name)
+pub use ext::*;
+
+// -- Here the native providers
 pub mod anthropic;
-#[cfg(feature = "with-ollama-rs")]
-pub mod ollama;
-#[cfg(feature = "with-async-openai")]
-pub mod openai;
 
 // endregion: --- Modules

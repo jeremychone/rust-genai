@@ -1,7 +1,7 @@
 mod support;
 use support::print_chat_stream;
 
-use genai::ollama::OllamaProvider;
+use genai::ext_ollama_rs::OllamaProvider;
 use genai::{ChatMessage, ChatRequest, Client};
 
 const MODEL_OL: &str = "mixtral";

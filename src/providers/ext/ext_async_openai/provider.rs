@@ -32,10 +32,10 @@ impl Default for Inner {
 }
 
 impl OpenAIProvider {
-	pub(in crate::providers::openai) fn conn(&self) -> &OaClient {
+	pub(in crate::providers::ext::ext_async_openai) fn conn(&self) -> &OaClient {
 		&self.inner.conn
 	}
-	pub(in crate::providers::openai) fn config(&self) -> Option<&ClientConfig> {
+	pub(in crate::providers::ext::ext_async_openai) fn config(&self) -> Option<&ClientConfig> {
 		self.inner.config.as_ref()
 	}
 }

@@ -2,8 +2,8 @@ mod support;
 
 use crate::support::has_env;
 use genai::anthropic::AnthropicProvider;
-use genai::ollama::OllamaProvider;
-use genai::openai::OpenAIProvider;
+use genai::ext_async_openai::OpenAIProvider;
+use genai::ext_ollama_rs::OllamaProvider;
 use genai::{ChatMessage, ChatRequest, Client, ClientConfig};
 
 const MODEL_OA: &str = "gpt-3.5-turbo";
@@ -26,6 +26,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		res.content.as_deref().unwrap_or("NO ANSWER")
 	);
 
+	println!();
+
 	// -- Exec with OpenAI
 	if has_env("OPENAI_API_KEY") {
 		let config = ClientConfig::from_key(std::env::var("OPENAI_API_KEY")?);
@@ -37,6 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			res.content.as_deref().unwrap_or("NO ANSWER")
 		);
 	}
+
+	println!();
 
 	// -- Exec with Anthropic
 	if has_env(AnthropicProvider::DEFAULT_API_KEY_ENV_NAME) {

@@ -2,8 +2,8 @@ mod support;
 use support::print_chat_stream;
 
 use crate::support::has_env;
-use genai::ollama::OllamaProvider;
-use genai::openai::OpenAIProvider;
+use genai::ext_async_openai::OpenAIProvider;
+use genai::ext_ollama_rs::OllamaProvider;
 use genai::{ChatMessage, ChatRequest, Client};
 
 const MODEL_OA: &str = "gpt-3.5-turbo";
@@ -22,6 +22,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let res = oa_client.exec_chat_stream(MODEL_OL, chat_req.clone()).await?;
 	println!("=== RESPONSE from Ollama ({MODEL_OL}):\n");
 	print_chat_stream(res).await?;
+
+	println!();
 
 	// -- Exec with OpenAI
 	if has_env(OpenAIProvider::DEFAULT_API_KEY_ENV_NAME) {

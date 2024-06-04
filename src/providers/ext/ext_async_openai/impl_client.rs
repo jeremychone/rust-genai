@@ -1,4 +1,4 @@
-use crate::providers::openai::OpenAIProvider;
+use crate::providers::ext_async_openai::OpenAIProvider;
 use crate::{ChatRequest, ChatResponse, ChatStream, Client};
 use crate::{Error, Result, StreamItem};
 use async_openai::types as oa_types;
