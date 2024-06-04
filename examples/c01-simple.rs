@@ -1,9 +1,14 @@
+mod support;
+
+use crate::support::has_env;
+use genai::anthropic::AnthropicProvider;
 use genai::ollama::OllamaProvider;
 use genai::openai::OpenAIProvider;
 use genai::{ChatMessage, ChatRequest, Client, ClientConfig};
 
 const MODEL_OA: &str = "gpt-3.5-turbo";
 const MODEL_OL: &str = "mixtral";
+const MODEL_AN: &str = "claude-3-haiku-20240307";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,24 +17,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// -- Create the ChatReq
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);
 
-	// -- Exec with OpenAI
-	let config = ClientConfig::from_key(std::env::var("OPENAI_API_KEY")?);
-	let oa_client = OpenAIProvider::new_client(config)?;
-	let res = oa_client.exec_chat(MODEL_OA, chat_req.clone()).await?;
-	println!("\n=== QUESTION: {question}\n");
-	println!(
-		"=== RESPONSE from OpenAI ({MODEL_OA}):\n\n{}",
-		res.content.as_deref().unwrap_or("NO ANSWER")
-	);
-
 	// -- Exec with Ollama
+	println!("\n=== QUESTION: {question}\n");
 	let ol_client = OllamaProvider::default_client();
 	let res = ol_client.exec_chat(MODEL_OL, chat_req.clone()).await?;
-	println!("\n=== QUESTION: {question}\n");
 	println!(
 		"=== RESPONSE from Ollama ({MODEL_OL}):\n\n{}",
 		res.content.as_deref().unwrap_or("NO ANSWER")
 	);
+
+	// -- Exec with OpenAI
+	if has_env("OPENAI_API_KEY") {
+		let config = ClientConfig::from_key(std::env::var("OPENAI_API_KEY")?);
+		let oa_client = OpenAIProvider::new_client(config)?;
+		let res = oa_client.exec_chat(MODEL_OA, chat_req.clone()).await?;
+		println!("\n=== QUESTION: {question}\n");
+		println!(
+			"=== RESPONSE from OpenAI ({MODEL_OA}):\n\n{}",
+			res.content.as_deref().unwrap_or("NO ANSWER")
+		);
+	}
+
+	// -- Exec with Anthropic
+	if has_env(AnthropicProvider::DEFAULT_API_KEY_ENV_NAME) {
+		println!("\n=== QUESTION: {question}\n");
+
+		let an_client = AnthropicProvider::default_client();
+		let res = an_client.exec_chat(MODEL_AN, chat_req.clone()).await?;
+		println!(
+			"=== RESPONSE from Anthropic ({MODEL_AN}):\n\n{}",
+			res.content.as_deref().unwrap_or("NO ANSWER")
+		);
+	}
 
 	Ok(())
 }

@@ -1,3 +1,4 @@
+use crate::{Error, Result};
 use std::fmt;
 
 pub struct ClientConfig {
@@ -37,6 +38,8 @@ impl ClientConfig {
 	}
 }
 
+// region:    --- Std Implementations
+
 impl fmt::Debug for ClientConfig {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("ClientConfig")
@@ -58,7 +61,30 @@ impl Default for ClientConfig {
 	}
 }
 
-// region:    --- KeyFrom
+// endregion: --- Std Implementations
+
+pub fn get_api_key_from_config(config: Option<&ClientConfig>, default_env_name: &'static str) -> Result<String> {
+	// -- First we try to ket it from the `key` property
+	if let Some(key) = config.and_then(|c| c.key.as_ref()) {
+		return Ok(key.clone());
+	}
+
+	// -- If not found, we look on the environment
+	let env_name = match config.and_then(|c| c.key_from_env.as_ref()) {
+		Some(EnvName::ProviderDefault) => default_env_name,
+		Some(EnvName::Named(name)) => name.as_ref(),
+		None => default_env_name,
+	};
+
+	let key = std::env::var(env_name).map_err(|e| Error::ApiKeyEnvNotFound {
+		env_name: env_name.to_string(),
+	})?;
+
+	Ok(key)
+}
+
+// region:    --- EnvName
+
 #[derive(Debug)]
 pub enum EnvName {
 	ProviderDefault,
@@ -82,9 +108,10 @@ impl From<&String> for EnvName {
 		Self::Named(name.to_string())
 	}
 }
-// endregion: --- KeyFrom
+// endregion: --- EnvName
 
 // region:    --- EndPoint
+
 #[derive(Debug)]
 pub struct EndPoint {
 	pub host: Option<String>,

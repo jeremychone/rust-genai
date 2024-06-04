@@ -1,4 +1,4 @@
-use crate::ClientKind;
+use crate::{webc, ClientKind};
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -7,6 +7,16 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
 	#[from]
 	Custom(String),
+
+	ApiKeyEnvNotFound {
+		env_name: String,
+	},
+
+	#[from]
+	XValue(crate::utils::x_value::Error),
+
+	#[from]
+	Webc(webc::Error),
 
 	// -- Externals
 	#[from]

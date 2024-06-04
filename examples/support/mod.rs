@@ -4,6 +4,10 @@ use futures::StreamExt;
 use genai::ChatStream;
 use tokio::io::AsyncWriteExt as _;
 
+pub fn has_env(env_name: &str) -> bool {
+	std::env::var(env_name).is_ok()
+}
+
 // Convenient function that print a chat stream and also capture the content and returns it.
 pub async fn print_chat_stream(chat_res: ChatStream) -> Result<String, Box<dyn std::error::Error>> {
 	let mut stdout = tokio::io::stdout();

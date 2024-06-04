@@ -12,6 +12,10 @@ pub struct OpenAIProvider {
 	inner: Arc<Inner>,
 }
 
+impl OpenAIProvider {
+	pub const DEFAULT_API_KEY_ENV_NAME: &'static str = "OPENAI_API_KEY";
+}
+
 #[derive(Debug)]
 struct Inner {
 	conn: OaClient,
@@ -28,10 +32,10 @@ impl Default for Inner {
 }
 
 impl OpenAIProvider {
-	pub fn conn(&self) -> &OaClient {
+	pub(in crate::providers::openai) fn conn(&self) -> &OaClient {
 		&self.inner.conn
 	}
-	pub fn config(&self) -> Option<&ClientConfig> {
+	pub(in crate::providers::openai) fn config(&self) -> Option<&ClientConfig> {
 		self.inner.config.as_ref()
 	}
 }
