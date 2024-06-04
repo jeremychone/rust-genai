@@ -4,13 +4,10 @@ mod error;
 
 pub use self::error::{Error, Result};
 
-use crate::utils::x_value::XValue;
-use futures::stream::StreamExt;
 use reqwest::header::HeaderMap;
 use reqwest::{Method, RequestBuilder, StatusCode};
-use reqwest_eventsource::{Event, EventSource};
+use reqwest_eventsource::EventSource;
 use serde_json::Value;
-use std::collections::HashMap;
 
 // endregion: --- Modules
 

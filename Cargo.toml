@@ -1,6 +1,6 @@
 [package]
 name = "genai"
-version = "0.0.4"
+version = "0.0.5-alpha.1"
 edition = "2021"
 rust-version = "1.78"
 license = "MIT OR Apache-2.0"
@@ -22,7 +22,7 @@ with-ollama-rs = ["ollama-rs"]
 
 [lints.rust]
 unsafe_code = "forbid"
-unused = { level = "allow", priority = -1 } # For exploratory dev.
+# unused = { level = "allow", priority = -1 } # For exploratory dev.
 
 [dependencies]
 # -- Async

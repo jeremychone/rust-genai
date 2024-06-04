@@ -33,7 +33,7 @@ impl AnthropicProvider {
 		Self { inner: inner.into() }
 	}
 
-	pub fn new_provider(config: ClientConfig) -> Result<Self> {
+	pub fn new_provider(_config: ClientConfig) -> Result<Self> {
 		todo!()
 	}
 }

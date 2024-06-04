@@ -1,3 +1,5 @@
+#![allow(unused)] // for example support files
+
 //! Some support function of the examples
 
 use futures::StreamExt;

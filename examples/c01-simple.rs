@@ -15,7 +15,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let question = "Why is the sky red?";
 
 	// -- Create the ChatReq
-	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);
+	let chat_req = ChatRequest::new(vec![
+		// Messages (activate to see the differences)
+		// ChatMessage::system("Answer in one sentence"),
+		ChatMessage::user(question),
+	]);
 
 	// -- Exec with Ollama
 	println!("\n=== QUESTION: {question}\n");

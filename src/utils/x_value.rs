@@ -1,9 +1,12 @@
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json::Value;
 
+#[allow(unused)]
 pub trait XValue {
 	fn x_get<T: DeserializeOwned>(&self, name: &str) -> Result<T>;
 	fn x_take<T: DeserializeOwned>(&mut self, name: &str) -> Result<T>;
+	fn x_insert<T: Serialize>(&mut self, name: &str, value: T) -> Result<()>;
 }
 
 impl XValue for Value {
@@ -32,6 +35,30 @@ impl XValue for Value {
 		let value: T = serde_json::from_value(value)?;
 		Ok(value)
 	}
+
+	fn x_insert<T: Serialize>(&mut self, path: &str, value: T) -> Result<()> {
+		let value = serde_json::to_value(value)?;
+		let (name, container) = if path.starts_with('/') {
+			let name = path
+				.rsplitn(2, '/')
+				.last()
+				.ok_or_else(|| Error::custom("json pointer not valid"))?;
+			let container = self
+				.pointer_mut(path)
+				.ok_or_else(|| Error::custom("json value not found at pointer"))?;
+			(name, container)
+		} else {
+			(path, self)
+		};
+
+		let container = container
+			.as_object_mut()
+			.ok_or_else(|| Error::custom("value is not a object"))?;
+
+		container.insert(name.to_string(), value);
+
+		Ok(())
+	}
 }
 
 // region:    --- Error
@@ -39,9 +66,17 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, derive_more::From)]
 pub enum Error {
+	Custom(String),
+
 	PropertyNotFound(String),
 	#[from]
 	SerdeJson(serde_json::Error),
+}
+
+impl Error {
+	fn custom(val: impl std::fmt::Display) -> Self {
+		Self::Custom(val.to_string())
+	}
 }
 
 // region:    --- Error Boilerplate

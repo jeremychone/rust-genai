@@ -21,6 +21,7 @@ impl OllamaProvider {
 	pub(in crate::providers::ext::ext_ollama_rs) fn conn(&self) -> &Ollama {
 		&self.inner.conn
 	}
+	#[allow(unused)]
 	pub(in crate::providers::ext::ext_ollama_rs) fn config(&self) -> Option<&ClientConfig> {
 		self.inner.config.as_ref()
 	}

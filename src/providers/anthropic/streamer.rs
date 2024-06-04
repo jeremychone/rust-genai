@@ -1,6 +1,6 @@
 use crate::utils::x_value::XValue;
-pub use eventsource_stream::{Event as MessageEvent, EventStreamError};
-use futures::StreamExt;
+use crate::{Error, Result};
+pub use eventsource_stream::Event as MessageEvent;
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
@@ -19,7 +19,7 @@ impl AnthropicMessagesStream {
 }
 
 impl futures::Stream for AnthropicMessagesStream {
-	type Item = Result<AnthropicStreamEvent, crate::Error>;
+	type Item = Result<AnthropicStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		if self.done {
@@ -35,7 +35,7 @@ impl futures::Stream for AnthropicMessagesStream {
 					}
 					"content_block_start" => return Poll::Ready(Some(Ok(AnthropicStreamEvent::BlockStart))),
 					"content_block_delta" => {
-						let mut data: Value = serde_json::from_str(&message.data).map_err(crate::Error::StreamParse)?;
+						let mut data: Value = serde_json::from_str(&message.data).map_err(Error::StreamParse)?;
 						let text: String = data.x_take("/delta/text")?;
 						return Poll::Ready(Some(Ok(AnthropicStreamEvent::BlockDelta(text))));
 					}
@@ -46,13 +46,13 @@ impl futures::Stream for AnthropicMessagesStream {
 						self.done = true;
 						return Poll::Ready(Some(Ok(AnthropicStreamEvent::MessageStop)));
 					}
-					"ping" => (),               // loop to the next event
-					"content_block_stop" => (), // loop to the next event
+					"content_block_stop" => return Poll::Ready(Some(Ok(AnthropicStreamEvent::BlockStop))),
+					"ping" => (), // loop to the next event
 					other => println!("UNKNOWN MESSAGE TYPE: {other}"),
 				},
 				Some(Err(err)) => {
 					println!("Error: {}", err);
-					return Poll::Ready(Some(Err(crate::Error::ReqwestEventSource(err))));
+					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err))));
 				}
 				None => return Poll::Ready(None),
 			}
@@ -67,6 +67,6 @@ pub enum AnthropicStreamEvent {
 	MessageDelta(MessageEvent),
 	BlockStart,
 	BlockDelta(String),
-	BlockEnd,
+	BlockStop,
 	MessageStop,
 }

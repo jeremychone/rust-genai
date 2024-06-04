@@ -1,12 +1,9 @@
 use crate::anthropic::streamer::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::anthropic::AnthropicProvider;
-use crate::providers::support::Provider;
+use crate::providers::support::{get_api_key_from_config, Provider};
 use crate::utils::x_value::XValue;
 use crate::webc::Response;
-use crate::{
-	get_api_key_from_config, ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, Client, ClientConfig,
-	ClientKind, EnvName, Error, Result, StreamItem,
-};
+use crate::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, Client, Result, StreamItem};
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::{json, Value};
@@ -23,7 +20,7 @@ impl Client for AnthropicProvider {
 
 	// see: https://docs.anthropic.com/en/api/messages
 	async fn exec_chat(&self, model: &str, req: ChatRequest) -> Result<ChatResponse> {
-		let WebRequestData { headers, payload } = self.to_anthrophic_messages_headers_payload(model, req, false)?;
+		let WebRequestData { headers, payload } = self.to_anthrophic_web_request_data(model, req, false)?;
 		let headers: Vec<(&str, &str)> = headers.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
 
 		let response = self.web_client().do_post("messages", &headers, payload).await?;
@@ -34,13 +31,13 @@ impl Client for AnthropicProvider {
 	}
 
 	async fn exec_chat_stream(&self, model: &str, req: ChatRequest) -> Result<crate::ChatStream> {
-		let WebRequestData { headers, payload } = self.to_anthrophic_messages_headers_payload(model, req, true)?;
+		let WebRequestData { headers, payload } = self.to_anthrophic_web_request_data(model, req, true)?;
 
 		let headers: Vec<(&str, &str)> = headers.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
 
-		let mut event_source = self.web_client().do_post_stream("messages", &headers, payload).await?;
+		let event_source = self.web_client().do_post_stream("messages", &headers, payload).await?;
 
-		let mut anthropic_stream = AnthropicMessagesStream::new(event_source);
+		let anthropic_stream = AnthropicMessagesStream::new(event_source);
 
 		let stream = anthropic_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {
@@ -64,12 +61,7 @@ struct WebRequestData {
 }
 
 impl AnthropicProvider {
-	fn to_anthrophic_messages_headers_payload(
-		&self,
-		model: &str,
-		req: ChatRequest,
-		stream: bool,
-	) -> Result<WebRequestData> {
+	fn to_anthrophic_web_request_data(&self, model: &str, req: ChatRequest, stream: bool) -> Result<WebRequestData> {
 		let api_key = get_api_key_from_config(self.config(), Self::default_api_key_env_name())?;
 		let headers: Vec<(String, String)> = [
 			// request headers (required)
@@ -83,13 +75,15 @@ impl AnthropicProvider {
 		// endregion: --- Section
 
 		let AnthropicsRequestParts { system, messages } = into_anthropic_request_parts(req.messages)?;
-		let payload = json!({
+		let mut payload = json!({
 			"model": model,
 			"max_tokens": MAX_TOKENS,
 			"messages": messages,
 			"stream": stream
 		});
-
+		if let Some(system) = system {
+			payload.x_insert("system", system)?;
+		}
 		Ok(WebRequestData { headers, payload })
 	}
 }

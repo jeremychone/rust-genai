@@ -35,6 +35,7 @@ impl OpenAIProvider {
 	pub(in crate::providers::ext::ext_async_openai) fn conn(&self) -> &OaClient {
 		&self.inner.conn
 	}
+	#[allow(unused)]
 	pub(in crate::providers::ext::ext_async_openai) fn config(&self) -> Option<&ClientConfig> {
 		self.inner.config.as_ref()
 	}
