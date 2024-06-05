@@ -1,7 +1,8 @@
 use crate::adapter::support::get_api_key_from_config;
+use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::client::ClientConfig;
 use crate::webc::WebResponse;
-use crate::{ChatRequest, ChatResponse, ChatStream, Result};
+use crate::Result;
 use reqwest_eventsource::EventSource;
 use serde_json::Value;
 

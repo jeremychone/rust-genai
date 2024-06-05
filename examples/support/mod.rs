@@ -3,7 +3,7 @@
 //! Some support function of the examples
 
 use futures::StreamExt;
-use genai::ChatStream;
+use genai::chat::ChatStream;
 use tokio::io::AsyncWriteExt as _;
 
 pub fn has_env(env_name: &str) -> bool {

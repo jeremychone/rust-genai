@@ -2,9 +2,9 @@ use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
-use crate::{ChatRequest, ChatResponse};
-use crate::{ChatStream, Result};
+use crate::Result;
 use reqwest_eventsource::EventSource;
 
 pub struct AdapterDispatcher;

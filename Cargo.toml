@@ -15,11 +15,6 @@ keywords = [
 homepage = "https://github.com/jeremychone/rust-genai"
 repository = "https://github.com/jeremychone/rust-genai"
 
-[features]
-all-ext-providers = ["with-async-openai", "with-ollama-rs"]
-with-async-openai = ["async-openai"]
-with-ollama-rs = ["ollama-rs"]
-
 [lints.rust]
 unsafe_code = "forbid"
 unused = { level = "allow", priority = -1 } # For exploratory dev.
@@ -40,10 +35,3 @@ reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
 # -- Others
 derive_more = { version = "1.0.0-beta", features = ["from"] }
-
-# -- For Features
-async-openai = { version = "0.21", optional = true }
-ollama-rs = { version = "0.1", features = ["stream"], optional = true }
-
-[dev-dependencies]
-genai = { path = ".", features = ["all-ext-providers"] }

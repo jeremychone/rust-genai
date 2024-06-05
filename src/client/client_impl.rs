@@ -1,6 +1,7 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
+use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::client::Client;
-use crate::{ChatRequest, ChatResponse, Result};
+use crate::Result;
 
 /// Public AI Functions
 impl Client {
@@ -23,7 +24,7 @@ impl Client {
 		Ok(chat_res)
 	}
 
-	pub async fn exec_chat_stream(&self, model: &str, chat_req: ChatRequest) -> Result<crate::ChatStream> {
+	pub async fn exec_chat_stream(&self, model: &str, chat_req: ChatRequest) -> Result<ChatStream> {
 		let adapter_kind = AdapterKind::from_model(model)?;
 
 		let WebRequestData { headers, payload } =

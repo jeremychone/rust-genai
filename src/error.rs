@@ -1,5 +1,6 @@
 use crate::adapter::AdapterKind;
-use crate::{webc, ChatRole, LegacyClientKind};
+use crate::chat::ChatRole;
+use crate::webc;
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -36,13 +37,6 @@ pub enum Error {
 	// -- Utils
 	#[from]
 	XValue(crate::utils::x_value::Error),
-
-	// -- Externals
-	#[from]
-	Io(std::io::Error), // as example
-
-	// -- Raw AI Clients
-	ProviderConnector(ProviderConnectorInfo),
 }
 
 // region:    --- Custom
@@ -60,27 +54,6 @@ impl From<&str> for Error {
 }
 
 // endregion: --- Custom
-
-// region:    --- Impl
-
-impl Error {
-	pub fn provider_connector(client_kind: LegacyClientKind, cause: impl Into<String>) -> Self {
-		Self::ProviderConnector(ProviderConnectorInfo {
-			client_kind,
-			cause: cause.into(),
-		})
-	}
-}
-
-// endregion: --- Impl
-
-/// Type that capture the provider error information
-/// Each provider implements their `From<..>` for `Error` with the `ProviderConnector` variant
-#[derive(Debug)]
-pub struct ProviderConnectorInfo {
-	pub client_kind: LegacyClientKind,
-	pub cause: String,
-}
 
 // region:    --- Error Boilerplate
 
