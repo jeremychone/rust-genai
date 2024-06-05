@@ -1,20 +1,14 @@
 //! API DOC: https://github.com/ollama/ollama/blob/main/docs/openai.md
 
-use crate::adapter::ollama::{OllamaStream, OllamaStreamEvent};
-use crate::adapter::openai::{into_openai_messages, OpenAIAdapter};
-use crate::adapter::support::get_api_key_from_config;
+use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
-use crate::utils::x_value::XValue;
+use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
-use crate::{Error, Result};
-use futures::StreamExt;
+use crate::Result;
 use reqwest_eventsource::EventSource;
-use serde_json::{json, Value};
 
 pub struct OllamaAdapter;
 
-const MAX_TOKENS: u32 = 1024;
 const BASE_URL: &str = "http://localhost:11434/v1/";
 
 /// Note: For now, it uses the openai compatibility layer

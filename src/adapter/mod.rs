@@ -11,10 +11,13 @@ mod adapter_types;
 mod adapters;
 mod dispatcher;
 
+// flatten the adapters sub module
+// (over nesting not needed, adapters/ is just here for code organizational purposed)
+use adapters::*;
+
 pub(in crate::adapter) mod support;
 
 pub use adapter_types::*;
-pub use adapters::*;
 pub use dispatcher::*;
 
 // endregion: --- Modules

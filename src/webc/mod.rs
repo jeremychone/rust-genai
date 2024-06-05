@@ -4,17 +4,17 @@ mod error;
 
 pub use self::error::{Error, Result};
 
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::header::HeaderMap;
 use reqwest::{Method, RequestBuilder, StatusCode};
 use reqwest_eventsource::EventSource;
 use serde_json::Value;
 
 // endregion: --- Modules
+
+/// Simple reqwest client wrapper for this library.
 #[derive(Debug)]
 pub struct WebClient {
 	reqwest_client: reqwest::Client,
-	// TODO: to deprecate
-	base_url: Option<String>,
 }
 
 // region:    --- Constructors
@@ -23,13 +23,7 @@ impl WebClient {
 	pub(crate) fn new() -> Self {
 		Self {
 			reqwest_client: reqwest::Client::new(),
-			base_url: None,
 		}
-	}
-
-	pub(crate) fn base_url(mut self, base_url: impl Into<String>) -> Self {
-		self.base_url = Some(base_url.into());
-		self
 	}
 }
 
@@ -39,7 +33,7 @@ impl WebClient {
 
 impl WebClient {
 	pub async fn do_post(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<WebResponse> {
-		let reqwest_builder = self.req_builder(url, headers, content)?;
+		let reqwest_builder = self.new_req_builder(url, headers, content)?;
 
 		let reqwest_res = reqwest_builder.send().await?;
 
@@ -49,15 +43,14 @@ impl WebClient {
 	}
 
 	pub async fn do_post_stream(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<EventSource> {
-		let reqwest_builder = self.req_builder(url, headers, content)?;
+		let reqwest_builder = self.new_req_builder(url, headers, content)?;
 
 		let es = EventSource::new(reqwest_builder)?;
 
 		Ok(es)
 	}
 
-	pub fn req_builder(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<RequestBuilder> {
-		let url = self.compose_url(url);
+	fn new_req_builder(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<RequestBuilder> {
 		let method = Method::POST;
 
 		let mut reqwest_builder = self.reqwest_client.request(method.clone(), url);
@@ -67,13 +60,6 @@ impl WebClient {
 		reqwest_builder = reqwest_builder.json(&content);
 
 		Ok(reqwest_builder)
-	}
-
-	fn compose_url(&self, url: &str) -> String {
-		match &self.base_url {
-			Some(base_url) => format!("{base_url}{url}"),
-			None => url.to_string(),
-		}
 	}
 }
 // endregion: --- Web Method Impl

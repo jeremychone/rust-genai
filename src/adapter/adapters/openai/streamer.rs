@@ -2,7 +2,6 @@
 
 use crate::utils::x_value::XValue;
 use crate::{Error, Result};
-pub use eventsource_stream::Event as MessageEvent;
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;

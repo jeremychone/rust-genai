@@ -1,3 +1,3 @@
-pub mod anthropic;
-pub mod ollama;
-pub mod openai;
+pub(crate) mod anthropic;
+pub(crate) mod ollama;
+pub(crate) mod openai;

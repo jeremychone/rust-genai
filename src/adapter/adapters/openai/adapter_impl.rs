@@ -13,7 +13,6 @@ use serde_json::{json, Value};
 
 pub struct OpenAIAdapter;
 
-const MAX_TOKENS: u32 = 1024;
 const BASE_URL: &str = "https://api.openai.com/v1/";
 
 impl Adapter for OpenAIAdapter {
