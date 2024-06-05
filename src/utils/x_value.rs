@@ -7,6 +7,7 @@ pub trait XValue {
 	fn x_get<T: DeserializeOwned>(&self, name: &str) -> Result<T>;
 	fn x_take<T: DeserializeOwned>(&mut self, name: &str) -> Result<T>;
 	fn x_insert<T: Serialize>(&mut self, name: &str, value: T) -> Result<()>;
+	fn x_pretty(&self) -> Result<String>;
 }
 
 impl XValue for Value {
@@ -58,6 +59,11 @@ impl XValue for Value {
 		container.insert(name.to_string(), value);
 
 		Ok(())
+	}
+
+	fn x_pretty(&self) -> Result<String> {
+		let content = serde_json::to_string_pretty(self)?;
+		Ok(content)
 	}
 }
 

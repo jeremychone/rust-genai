@@ -17,7 +17,7 @@ repository = "https://github.com/jeremychone/rust-genai"
 
 [lints.rust]
 unsafe_code = "forbid"
-# unused = { level = "allow", priority = -1 } # For exploratory dev.
+unused = { level = "allow", priority = -1 } # For exploratory dev.
 
 [dependencies]
 # -- Async
@@ -35,3 +35,4 @@ reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
 # -- Others
 derive_more = { version = "1.0.0-beta", features = ["from"] }
+bytes = "1.6.0"

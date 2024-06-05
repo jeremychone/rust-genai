@@ -15,7 +15,7 @@ Currently supports natively: **Ollama**, **OpenAI**, **Anthropic** (more to come
 
 ```toml
 # cargo.toml
-genai = {version: '=0.0.6', features = ["with-all-providers"]}
+genai = {version: '=0.0.6'}
 ```
 
 <br />

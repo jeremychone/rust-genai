@@ -32,8 +32,8 @@ impl Client {
 
 		let url = AdapterDispatcher::get_service_url(adapter_kind, ServiceType::Chat);
 
-		let event_source = self.web_client().do_post_stream(&url, &headers, payload).await?;
+		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;
 
-		AdapterDispatcher::to_chat_stream(adapter_kind, event_source)
+		AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder)
 	}
 }

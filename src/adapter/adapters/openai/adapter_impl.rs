@@ -8,6 +8,7 @@ use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{Error, Result};
 use futures::StreamExt;
+use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
 
@@ -44,7 +45,9 @@ impl Adapter for OpenAIAdapter {
 		Ok(ChatResponse { content })
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, event_source: EventSource) -> Result<ChatStream> {
+	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
+		let event_source = EventSource::new(reqwest_builder)?;
+
 		let openai_stream = OpenAIMessagesStream::new(event_source);
 		let stream = openai_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {

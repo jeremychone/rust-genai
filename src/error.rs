@@ -18,6 +18,15 @@ pub enum Error {
 	#[from]
 	Webc(webc::Error),
 
+	// -- Adapter Chat Request
+	AdapterChatReqHasNoMessages,
+	AdapterLastChatMessageIsNoUser {
+		actual_role: ChatRole,
+	},
+
+	// -- Adapter Chat Response
+	AdapterNoChatResponse,
+
 	// -- Adapter
 	AdapterRequiresApiKey {
 		adapter_kind: AdapterKind,
@@ -26,17 +35,21 @@ pub enum Error {
 		adapter_kind: AdapterKind,
 		role: ChatRole,
 	},
-
-	// -- Provider
-	ProviderHasNoDefaultApiKeyEnvName,
+	AdapterHasNoDefaultApiKeyEnvName,
 
 	// -- Stream
 	StreamParse(serde_json::Error),
 	ReqwestEventSource(reqwest_eventsource::Error),
+	// TODO: need to add more context
+	WebStream,
 
 	// -- Utils
 	#[from]
 	XValue(crate::utils::x_value::Error),
+
+	// -- Externals
+	#[from]
+	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
 }
 
 // region:    --- Custom

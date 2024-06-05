@@ -1,5 +1,3 @@
-//! API DOC: https://docs.anthropic.com/en/api/messages
-
 use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::adapter::support::get_api_key_from_config;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -8,6 +6,7 @@ use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{Error, Result};
 use futures::StreamExt;
+use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
 
@@ -17,7 +16,6 @@ const MAX_TOKENS: u32 = 1024;
 const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
-// see: https://docs.anthropic.com/en/api/messages
 impl Adapter for AnthropicAdapter {
 	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
 		Some("ANTHROPIC_API_KEY")
@@ -80,7 +78,8 @@ impl Adapter for AnthropicAdapter {
 		Ok(ChatResponse { content })
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, event_source: EventSource) -> Result<ChatStream> {
+	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
+		let event_source = EventSource::new(reqwest_builder)?;
 		let anthropic_stream = AnthropicMessagesStream::new(event_source);
 		let stream = anthropic_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {

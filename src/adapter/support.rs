@@ -22,7 +22,7 @@ pub(crate) fn get_api_key_from_config(
 			if let Some(name) = default_env_name {
 				name
 			} else {
-				return Err(Error::ProviderHasNoDefaultApiKeyEnvName);
+				return Err(Error::AdapterHasNoDefaultApiKeyEnvName);
 			}
 		}
 		None => match default_env_name {

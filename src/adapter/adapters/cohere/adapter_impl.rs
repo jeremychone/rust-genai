@@ -1,0 +1,163 @@
+use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
+use crate::adapter::cohere::{CohereStream, CohereStreamEvent};
+use crate::adapter::support::get_api_key_from_config;
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
+use crate::utils::x_value::XValue;
+use crate::webc::{WebResponse, WebStream};
+use crate::{Error, Result};
+use futures::StreamExt;
+use reqwest::RequestBuilder;
+use reqwest_eventsource::EventSource;
+use serde_json::{json, Value};
+
+pub struct CohereAdapter;
+
+const MAX_TOKENS: u32 = 1024;
+const ANTRHOPIC_VERSION: &str = "2023-06-01";
+const BASE_URL: &str = "https://api.cohere.com/v1/";
+
+impl Adapter for CohereAdapter {
+	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("COHERE_API_KEY")
+	}
+
+	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {
+		match service_type {
+			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}chat"),
+		}
+	}
+
+	fn to_web_request_data(
+		kind: AdapterKind,
+		model: &str,
+		chat_req: ChatRequest,
+		stream: bool,
+	) -> Result<WebRequestData> {
+		// -- api_key (this Adapter requires it)
+		let Some(api_key) = get_api_key_from_config(None, Self::default_api_key_env_name(kind))? else {
+			return Err(Error::AdapterRequiresApiKey { adapter_kind: kind });
+		};
+
+		let headers = vec![
+			// headers
+			("Authorization".to_string(), format!("Bearer {api_key}")),
+		];
+
+		let CohereChatRequestParts {
+			preamble,
+			message,
+			chat_history,
+		} = into_cohere_request_parts(kind, chat_req)?;
+
+		let mut payload = json!({
+			"model": model,
+			"max_tokens": MAX_TOKENS,
+			"message": message,
+			"stream": stream
+		});
+
+		if !chat_history.is_empty() {
+			payload.x_insert("chat_history", chat_history)?;
+		}
+
+		if let Some(preamble) = preamble {
+			payload.x_insert("preamble", preamble)?;
+		}
+
+		Ok(WebRequestData { headers, payload })
+	}
+
+	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
+		let WebResponse { mut body, status } = web_response;
+
+		let mut last_chat_history_item = body
+			.x_take::<Vec<Value>>("chat_history")?
+			.pop()
+			.ok_or(Error::AdapterNoChatResponse)?;
+
+		let content: Option<String> = last_chat_history_item.x_take("message")?;
+
+		Ok(ChatResponse { content })
+	}
+
+	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
+		let web_stream = WebStream::new(reqwest_builder);
+		let cohere_stream = CohereStream::new(web_stream);
+		let stream = cohere_stream.filter_map(|an_stream_event| async move {
+			match an_stream_event {
+				Err(err) => Some(Err(err)),
+				Ok(CohereStreamEvent::Chunk(content)) => Some(Ok(StreamItem { content })),
+				_ => None,
+			}
+		});
+		Ok(ChatStream {
+			stream: Box::pin(stream),
+		})
+	}
+}
+
+// region:    --- Support
+
+struct CohereChatRequestParts {
+	/// The "system" in the cohere world
+	preamble: Option<String>,
+	/// The last user message
+	message: String,
+	/// The chat history (user and assistant, except last user message which is message)
+	chat_history: Vec<Value>,
+}
+
+/// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
+/// - pop the last chat user message, and set it as message
+/// - put all of the system message in the 'preamble' (this might change when ChatReq will have `.system`)
+/// - build the chat_history with the rest
+fn into_cohere_request_parts(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Result<CohereChatRequestParts> {
+	let ChatRequest { mut messages } = chat_req;
+
+	let mut chat_history: Vec<Value> = Vec::new();
+	let mut systems: Vec<String> = Vec::new();
+
+	// -- Build extract the last user message
+	let last_chat_msg = messages.pop().ok_or(Error::AdapterChatReqHasNoMessages)?;
+	if !matches!(last_chat_msg.role, ChatRole::User) {
+		return Err(Error::AdapterLastChatMessageIsNoUser {
+			actual_role: last_chat_msg.role,
+		});
+	}
+	let message = last_chat_msg.content;
+
+	// -- Build
+	for msg in messages {
+		let content = msg.content;
+		match msg.role {
+			// for now, system and tool goes to system
+			ChatRole::System => systems.push(content),
+			ChatRole::User => chat_history.push(json! ({"role": "USER", "content": content})),
+			ChatRole::Assistant => chat_history.push(json! ({"role": "CHATBOT", "content": content})),
+			ChatRole::Tool => {
+				return Err(Error::AdapterMessageRoleNotSupport {
+					adapter_kind,
+					role: ChatRole::Tool,
+				})
+			}
+		}
+	}
+
+	// -- Build the preamble
+	// Note: For now, we just concatenate the systems messages into the preamble as recommended by cohere
+	//       Later, the ChatRequest should have `.system` property
+	let preamble = if !systems.is_empty() {
+		Some(systems.join("\n"))
+	} else {
+		None
+	};
+
+	Ok(CohereChatRequestParts {
+		preamble,
+		message,
+		chat_history,
+	})
+}
+
+// endregion: --- Support

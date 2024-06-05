@@ -5,6 +5,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
 use crate::Result;
+use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 
 pub struct OllamaAdapter;
@@ -36,8 +37,8 @@ impl Adapter for OllamaAdapter {
 		OpenAIAdapter::to_chat_response(kind, web_response)
 	}
 
-	fn to_chat_stream(kind: AdapterKind, event_source: EventSource) -> Result<ChatStream> {
-		OpenAIAdapter::to_chat_stream(kind, event_source)
+	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
+		OpenAIAdapter::to_chat_stream(kind, reqwest_builder)
 	}
 }
 

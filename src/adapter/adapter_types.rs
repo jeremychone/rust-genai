@@ -3,6 +3,7 @@ use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::client::ClientConfig;
 use crate::webc::WebResponse;
 use crate::Result;
+use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::Value;
 
@@ -11,6 +12,7 @@ pub enum AdapterKind {
 	OpenAI,
 	Ollama,
 	Anthropic,
+	Cohere,
 	// -- Not implemented, just to show direction
 	Gemini,
 	AnthropicBerock,
@@ -21,8 +23,10 @@ impl AdapterKind {
 	pub fn from_model(model: &str) -> Result<Self> {
 		if model.starts_with("gpt") {
 			Ok(AdapterKind::OpenAI)
-		} else if model.contains("claude") {
+		} else if model.starts_with("claude") {
 			Ok(AdapterKind::Anthropic)
+		} else if model.starts_with("command") {
+			Ok(AdapterKind::Cohere)
 		}
 		// for now, fallback on Ollama
 		else {
@@ -57,7 +61,7 @@ pub trait Adapter {
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse>;
 
 	/// To be implemented by Adapters
-	fn to_chat_stream(kind: AdapterKind, event_source: EventSource) -> Result<ChatStream>;
+	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream>;
 }
 
 // region:    --- AdapterKind

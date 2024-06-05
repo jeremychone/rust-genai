@@ -1,5 +1,5 @@
-//!     API DOC: https://docs.anthropic.com/en/api/messages
-//! MODEL NAMES: https://docs.anthropic.com/en/docs/models-overview
+//!     API DOC: https://docs.cohere.com/reference/chat
+//! MODEL NAMES: https://docs.cohere.com/docs/models
 
 // region:    --- Modules
 
