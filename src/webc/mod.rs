@@ -4,7 +4,7 @@ mod error;
 
 pub use self::error::{Error, Result};
 
-use reqwest::header::HeaderMap;
+use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Method, RequestBuilder, StatusCode};
 use reqwest_eventsource::EventSource;
 use serde_json::Value;
