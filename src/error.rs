@@ -1,5 +1,5 @@
 use crate::adapter::AdapterKind;
-use crate::{webc, LegacyClientKind};
+use crate::{webc, ChatRole, LegacyClientKind};
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -20,6 +20,10 @@ pub enum Error {
 	// -- Adapter
 	AdapterRequiresApiKey {
 		adapter_kind: AdapterKind,
+	},
+	AdapterMessageRoleNotSupport {
+		adapter_kind: AdapterKind,
+		role: ChatRole,
 	},
 
 	// -- Provider

@@ -10,11 +10,11 @@
 mod adapter_types;
 mod adapters;
 mod dispatcher;
-mod support;
+
+pub(in crate::adapter) mod support;
 
 pub use adapter_types::*;
 pub use adapters::*;
 pub use dispatcher::*;
-pub use support::*;
 
 // endregion: --- Modules

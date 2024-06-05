@@ -1,4 +1,4 @@
-use crate::adapter::get_api_key_from_config;
+use crate::adapter::support::get_api_key_from_config;
 use crate::client::ClientConfig;
 use crate::webc::WebResponse;
 use crate::{ChatRequest, ChatResponse, ChatStream, Result};
@@ -33,7 +33,7 @@ impl AdapterKind {
 pub trait Adapter {
 	/// Provide the default api_key environment name by this adapter
 	/// default: return None
-	fn default_api_key_env_name(kind: AdapterKind) -> Option<&'static str> {
+	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
 		None
 	}
 

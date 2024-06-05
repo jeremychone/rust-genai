@@ -1,7 +1,6 @@
-use crate::adapter::AdapterKind;
 use crate::client::ClientConfig;
 use crate::webc::WebClient;
-use crate::{ChatRequest, ChatResponse, Result};
+use crate::Result;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -25,6 +24,7 @@ impl Client {
 	pub(crate) fn web_client(&self) -> &WebClient {
 		&self.inner.web_client
 	}
+	#[allow(unused)]
 	pub(crate) fn config(&self) -> Option<&ClientConfig> {
 		self.inner.config.as_ref()
 	}

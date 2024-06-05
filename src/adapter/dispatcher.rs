@@ -1,4 +1,5 @@
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::webc::WebResponse;
 use crate::{ChatRequest, ChatResponse};
@@ -10,7 +11,7 @@ pub struct AdapterDispatcher;
 impl Adapter for AdapterDispatcher {
 	fn default_api_key_env_name(kind: AdapterKind) -> Option<&'static str> {
 		match kind {
-			AdapterKind::OpenAI => todo!(),
+			AdapterKind::OpenAI => OpenAIAdapter::default_api_key_env_name(kind),
 			AdapterKind::Ollama => todo!(),
 			AdapterKind::Anthropic => AnthropicAdapter::default_api_key_env_name(kind),
 			AdapterKind::Gemini => todo!(),
@@ -20,7 +21,7 @@ impl Adapter for AdapterDispatcher {
 
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String {
 		match kind {
-			AdapterKind::OpenAI => todo!(),
+			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(kind, service_type),
 			AdapterKind::Ollama => todo!(),
 			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(kind, service_type),
 			AdapterKind::Gemini => todo!(),
@@ -35,7 +36,7 @@ impl Adapter for AdapterDispatcher {
 		stream: bool,
 	) -> Result<WebRequestData> {
 		match kind {
-			AdapterKind::OpenAI => todo!(),
+			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(kind, model, chat_req, stream),
 			AdapterKind::Ollama => todo!(),
 			AdapterKind::Anthropic => AnthropicAdapter::to_web_request_data(kind, model, chat_req, stream),
 			AdapterKind::Gemini => todo!(),
@@ -45,7 +46,7 @@ impl Adapter for AdapterDispatcher {
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
 		match kind {
-			AdapterKind::OpenAI => todo!(),
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(kind, web_response),
 			AdapterKind::Ollama => todo!(),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(kind, web_response),
 			AdapterKind::Gemini => todo!(),
@@ -55,7 +56,7 @@ impl Adapter for AdapterDispatcher {
 
 	fn to_chat_stream(kind: AdapterKind, event_source: EventSource) -> Result<ChatStream> {
 		match kind {
-			AdapterKind::OpenAI => todo!(),
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(kind, event_source),
 			AdapterKind::Ollama => todo!(),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(kind, event_source),
 			AdapterKind::Gemini => todo!(),

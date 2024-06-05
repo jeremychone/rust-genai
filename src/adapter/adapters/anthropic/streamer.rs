@@ -1,3 +1,5 @@
+//! API DOC: https://docs.anthropic.com/en/api/messages
+
 use crate::utils::x_value::XValue;
 use crate::{Error, Result};
 pub use eventsource_stream::Event as MessageEvent;
@@ -26,6 +28,8 @@ impl futures::Stream for AnthropicMessagesStream {
 			return Poll::Ready(None);
 		}
 		while let Poll::Ready(event) = Pin::new(&mut self.inner).poll_next(cx) {
+			// NOTE: At this point we capture more events than needed for genai::StreamItem, but it serves as documentation.
+			//       see: https://docs.anthropic.com/en/api/messages
 			match event {
 				Some(Ok(Event::Open)) => return Poll::Ready(Some(Ok(AnthropicStreamEvent::ConnectionOpen))),
 				Some(Ok(Event::Message(message))) => match message.event.as_str() {

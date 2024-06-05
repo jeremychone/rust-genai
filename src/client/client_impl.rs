@@ -4,7 +4,7 @@ use crate::{ChatRequest, ChatResponse, Result};
 
 /// Public AI Functions
 impl Client {
-	pub async fn list_models(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
+	pub async fn list_models(&self, _adapter_kind: AdapterKind) -> Result<Vec<String>> {
 		todo!()
 	}
 

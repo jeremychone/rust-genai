@@ -1,6 +1,6 @@
-//! API DOC: https://docs.anthropic.com/en/api/messages
+//! API DOC: https://platform.openai.com/docs/api-reference/chat
 
-use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
+use crate::adapter::openai::{OpenAIMessagesStream, OpenAIStreamEvent};
 use crate::adapter::support::get_api_key_from_config;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::utils::x_value::XValue;
@@ -10,21 +10,19 @@ use futures::StreamExt;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
 
-pub struct AnthropicAdapter;
+pub struct OpenAIAdapter;
 
 const MAX_TOKENS: u32 = 1024;
-const ANTRHOPIC_VERSION: &str = "2023-06-01";
-const BASE_URL: &str = "https://api.anthropic.com/v1/";
+const BASE_URL: &str = "https://api.openai.com/v1/";
 
-// see: https://docs.anthropic.com/en/api/messages
-impl Adapter for AnthropicAdapter {
+impl Adapter for OpenAIAdapter {
 	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		Some("ANTHROPIC_API_KEY")
+		Some("OPENAI_API_KEY")
 	}
 
 	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {
 		match service_type {
-			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}messages"),
+			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}chat/completions"),
 		}
 	}
 
@@ -41,50 +39,33 @@ impl Adapter for AnthropicAdapter {
 
 		let headers = vec![
 			// headers
-			("x-api-key".to_string(), api_key.to_string()),
-			("anthropic-version".to_string(), ANTRHOPIC_VERSION.to_string()),
+			("Authorization".to_string(), format!("Bearer {api_key}")),
 		];
 
-		let AnthropicsRequestParts { system, messages } = into_anthropic_request_parts(chat_req.messages)?;
-		let mut payload = json!({
+		let messages = into_openai_messages(kind, chat_req.messages)?;
+		let payload = json!({
 			"model": model,
 			"max_tokens": MAX_TOKENS,
 			"messages": messages,
 			"stream": stream
 		});
-		if let Some(system) = system {
-			payload.x_insert("system", system)?;
-		}
 
 		Ok(WebRequestData { headers, payload })
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-		let json_content_items: Vec<Value> = body.x_take("content")?;
-
-		let mut content: Vec<String> = Vec::new();
-
-		for mut item in json_content_items {
-			let item_text: String = item.x_take("text")?;
-			content.push(item_text);
-		}
-
-		let content = if content.is_empty() {
-			None
-		} else {
-			Some(content.join(""))
-		};
-
+		let first_choice: Option<Value> = body.x_take("/choices/0")?;
+		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
 		Ok(ChatResponse { content })
 	}
 
 	fn to_chat_stream(_kind: AdapterKind, event_source: EventSource) -> Result<ChatStream> {
-		let anthropic_stream = AnthropicMessagesStream::new(event_source);
-		let stream = anthropic_stream.filter_map(|an_stream_event| async move {
+		let openai_stream = OpenAIMessagesStream::new(event_source);
+		let stream = openai_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {
+				Ok(OpenAIStreamEvent::Chunck(content)) => Some(Ok(StreamItem { content: Some(content) })),
 				Err(err) => Some(Err(err)),
-				Ok(AnthropicStreamEvent::BlockDelta(content)) => Some(Ok(StreamItem { content: Some(content) })),
 				_ => None,
 			}
 		});
@@ -96,35 +77,28 @@ impl Adapter for AnthropicAdapter {
 
 // region:    --- Support
 
-struct AnthropicsRequestParts {
-	system: Option<String>,
-	messages: Vec<Value>,
-	// TODO: need to add tools
-}
-
 /// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
 /// NOTE: Here we do not use serde serialization as we might want to use the annotations for other purpose later.
-fn into_anthropic_request_parts(msgs: Vec<ChatMessage>) -> Result<AnthropicsRequestParts> {
+fn into_openai_messages(adapter_kind: AdapterKind, chat_msgs: Vec<ChatMessage>) -> Result<Vec<Value>> {
 	let mut messages: Vec<Value> = Vec::new();
-	let mut systems: Vec<String> = Vec::new();
 
-	for msg in msgs {
-		let content = msg.content;
-		match msg.role {
+	for chat_msg in chat_msgs {
+		let content = chat_msg.content;
+		match chat_msg.role {
 			// for now, system and tool goes to system
-			ChatRole::System | ChatRole::Tool => systems.push(content),
+			ChatRole::System => messages.push(json!({"role": "system", "content": content})),
 			ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
 			ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
+			ChatRole::Tool => {
+				return Err(Error::AdapterMessageRoleNotSupport {
+					adapter_kind,
+					role: ChatRole::Tool,
+				})
+			}
 		}
 	}
 
-	let system = if !systems.is_empty() {
-		Some(systems.join("\n"))
-	} else {
-		None
-	};
-
-	Ok(AnthropicsRequestParts { system, messages })
+	Ok(messages)
 }
 
 // endregion: --- Support

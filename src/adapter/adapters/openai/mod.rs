@@ -1,4 +1,4 @@
-//! API DOC: https://docs.anthropic.com/en/api/messages
+//! API DOC: https://platform.openai.com/docs/api-reference/chat
 
 // region:    --- Modules
 
