@@ -45,7 +45,7 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 ## Example
 
-[`examples/c00-readme.rs`](examples/readme.md)
+[`examples/c00-readme.rs`](examples/c00-readme.rs)
 
 ```rust
 mod support; // For examples support funtions
@@ -129,6 +129,8 @@ cargo watch -q -x "run -q --example c00-readme"
 
 
 ## Notes on Possible Direction
+
+- Will add more data on ChatResponse and ChatStream, especially metadata about usage.
 
 - Add vision/image support to the chat messages and responses
 
