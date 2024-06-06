@@ -1,15 +1,15 @@
 [package]
 name = "genai"
-version = "0.0.6-alpha.1"
+version = "0.0.6"
 edition = "2021"
 rust-version = "1.78"
 license = "MIT OR Apache-2.0"
-description = "Multiprovider generative AI client (supports ollama-rs and async_openai for now)"
+description = "Multiprovider generative AI client (Ollama, OpenAI, Anthropic, Cohere, ...)"
 keywords = [
 	"generative-ai",
 	"library",
 	"openai",
-	"llama",
+	"Ollama",
 	"ollama"
 ]
 homepage = "https://github.com/jeremychone/rust-genai"

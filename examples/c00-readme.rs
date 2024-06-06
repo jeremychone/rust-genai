@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
-		// ChatMessage::system("Answer in one sentence"),
+		ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user(question),
 	]);
 
@@ -46,9 +46,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 		println!("\n--- Question:\n{question}");
 
-		// println!("\n--- Answer: (oneshot response)");
-		// let chat_res = client.exec_chat(model, chat_req.clone()).await?;
-		// println!("{}", chat_res.content.as_deref().unwrap_or("NO ANSWER"));
+		println!("\n--- Answer: (oneshot response)");
+		let chat_res = client.exec_chat(model, chat_req.clone()).await?;
+		println!("{}", chat_res.content.as_deref().unwrap_or("NO ANSWER"));
 
 		println!("\n--- Answer: (streaming)");
 		let chat_res = client.exec_chat_stream(model, chat_req.clone()).await?;

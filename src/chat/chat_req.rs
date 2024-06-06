@@ -10,7 +10,7 @@ impl ChatRequest {
 		Self { messages }
 	}
 
-	pub fn append_message(&mut self, msg: ChatMessage) -> &mut Self {
+	pub fn append_message(mut self, msg: ChatMessage) -> Self {
 		self.messages.push(msg);
 		self
 	}
