@@ -1,39 +1,21 @@
-use crate::client::{ClientConfig, EnvName};
-use crate::{Error, Result};
+use crate::adapter::AdapterKind;
+use crate::client::ClientConfig;
+use crate::{ConfigSet, Error, Result};
 
-/// NOTE: Later will have to get the client_config and the adapter_config
-pub(crate) fn get_api_key_from_config(
-	client_config: Option<&ClientConfig>,
-	default_env_name: Option<&'static str>,
-) -> Result<Option<String>> {
-	// -- First we try to ket it from the `key` property
-	if let Some(key) = client_config.and_then(|c| c.api_key.as_ref()) {
-		return Ok(Some(key.clone()));
-	}
+/// Returns the `api_key` value from the config_set auth_resolver
+/// This function should be called if the adapter must have a api_key
+/// Fail if the no auth_resolver or no auth_data
+pub(crate) fn get_api_key_resolver(adapter_kind: AdapterKind, config_set: &ConfigSet<'_>) -> Result<String> {
+	let auth_resolver = config_set
+		.adapter_config()
+		.auth_resolver()
+		.ok_or(Error::AdapterNoAuthResolver { adapter_kind })?;
 
-	// -- If not found, we look on the environment
-	let env_name = match client_config.and_then(|c| c.api_key_from_env.as_ref()) {
-		// if there is a named env name, then, return it
-		Some(EnvName::Named(name)) => name.as_ref(),
+	let auth_data = auth_resolver
+		.resolve(adapter_kind, config_set)?
+		.ok_or(Error::AdapterAuthResolverNoAuthData { adapter_kind })?;
 
-		// otherwise, try to get the default name
-		// for now, if key_from_env is None or ProviderDefault, same logic
-		Some(EnvName::AdapterDefault) => {
-			if let Some(name) = default_env_name {
-				name
-			} else {
-				return Err(Error::AdapterHasNoDefaultApiKeyEnvName);
-			}
-		}
-		None => match default_env_name {
-			Some(name) => name,
-			None => return Ok(None),
-		},
-	};
+	let key = auth_data.single_value()?.to_string();
 
-	let key = std::env::var(env_name).map_err(|_| Error::ApiKeyEnvNotFound {
-		env_name: env_name.to_string(),
-	})?;
-
-	Ok(Some(key))
+	Ok(key)
 }

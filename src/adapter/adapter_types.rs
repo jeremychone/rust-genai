@@ -1,8 +1,9 @@
-use crate::adapter::support::get_api_key_from_config;
+use crate::adapter::support::get_api_key_resolver;
+use crate::adapter::AdapterConfig;
 use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::client::ClientConfig;
 use crate::webc::WebResponse;
-use crate::Result;
+use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::Value;
@@ -36,22 +37,23 @@ impl AdapterKind {
 }
 
 pub trait Adapter {
-	/// Provide the default api_key environment name by this adapter
-	/// default: return None
-	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		None
+	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig;
+
+	fn require_auth(_kind: AdapterKind, config_set: &ConfigSet<'_>) -> bool {
+		true
 	}
 
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String;
 
 	/// Get the api_key, with default implementation.
-	fn get_api_key(kind: AdapterKind, client_config: Option<&ClientConfig>) -> Result<Option<String>> {
-		get_api_key_from_config(client_config, Self::default_api_key_env_name(kind))
+	fn get_api_key(kind: AdapterKind, config_set: &ConfigSet<'_>) -> Result<String> {
+		get_api_key_resolver(kind, config_set)
 	}
 
 	/// To be implemented by Adapters
 	fn to_web_request_data(
 		kind: AdapterKind,
+		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
 		stream: bool,

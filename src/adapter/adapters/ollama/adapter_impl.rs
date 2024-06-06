@@ -1,10 +1,10 @@
 //! API DOC: https://github.com/ollama/ollama/blob/main/docs/openai.md
 
 use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
-use crate::Result;
+use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 
@@ -16,8 +16,12 @@ const BASE_URL: &str = "http://localhost:11434/v1/";
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
 ///       Since the base ollama API supports `application/x-ndjson` for streaming whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
-	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		None
+	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+		AdapterConfig::default()
+	}
+
+	fn require_auth(_kind: AdapterKind, config_set: &ConfigSet<'_>) -> bool {
+		false
 	}
 
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String {
@@ -26,11 +30,12 @@ impl Adapter for OllamaAdapter {
 
 	fn to_web_request_data(
 		kind: AdapterKind,
+		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
 		stream: bool,
 	) -> Result<WebRequestData> {
-		OpenAIAdapter::util_to_web_request_data(kind, model, chat_req, stream, "ollama".to_string())
+		OpenAIAdapter::util_to_web_request_data(kind, model, chat_req, stream, "ollama")
 	}
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
@@ -41,7 +46,3 @@ impl Adapter for OllamaAdapter {
 		OpenAIAdapter::to_chat_stream(kind, reqwest_builder)
 	}
 }
-
-// region:    --- Support
-
-// endregion: --- Support

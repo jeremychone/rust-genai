@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
-		ChatMessage::system("Answer in one sentence"),
+		// ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user(question),
 	]);
 

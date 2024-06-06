@@ -2,22 +2,22 @@ use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
-use crate::Result;
+use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 
 pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
-	fn default_api_key_env_name(kind: AdapterKind) -> Option<&'static str> {
+	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::default_api_key_env_name(kind),
-			AdapterKind::Anthropic => AnthropicAdapter::default_api_key_env_name(kind),
-			AdapterKind::Cohere => CohereAdapter::default_api_key_env_name(kind),
-			AdapterKind::Ollama => OllamaAdapter::default_api_key_env_name(kind),
+			AdapterKind::OpenAI => OpenAIAdapter::default_adapter_config(kind),
+			AdapterKind::Anthropic => AnthropicAdapter::default_adapter_config(kind),
+			AdapterKind::Cohere => CohereAdapter::default_adapter_config(kind),
+			AdapterKind::Ollama => OllamaAdapter::default_adapter_config(kind),
 			AdapterKind::Gemini => todo!(),
 			AdapterKind::AnthropicBerock => todo!(),
 		}
@@ -36,15 +36,16 @@ impl Adapter for AdapterDispatcher {
 
 	fn to_web_request_data(
 		kind: AdapterKind,
+		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
 		stream: bool,
 	) -> Result<WebRequestData> {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(kind, model, chat_req, stream),
-			AdapterKind::Anthropic => AnthropicAdapter::to_web_request_data(kind, model, chat_req, stream),
-			AdapterKind::Cohere => CohereAdapter::to_web_request_data(kind, model, chat_req, stream),
-			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(kind, model, chat_req, stream),
+			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
+			AdapterKind::Anthropic => AnthropicAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
+			AdapterKind::Cohere => CohereAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
+			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
 			AdapterKind::Gemini => todo!(),
 			AdapterKind::AnthropicBerock => todo!(),
 		}

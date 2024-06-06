@@ -13,7 +13,7 @@ impl Client {
 		let web_client = WebClient::new();
 		let inner = ClientInner {
 			web_client,
-			config: None,
+			config: Default::default(),
 		};
 		Ok(Self { inner: Arc::new(inner) })
 	}
@@ -25,8 +25,8 @@ impl Client {
 		&self.inner.web_client
 	}
 	#[allow(unused)]
-	pub(crate) fn config(&self) -> Option<&ClientConfig> {
-		self.inner.config.as_ref()
+	pub(crate) fn config(&self) -> &ClientConfig {
+		&self.inner.config
 	}
 }
 
@@ -35,5 +35,5 @@ struct ClientInner {
 	pub web_client: WebClient,
 
 	#[allow(unused)] // for now, we do not use it
-	pub config: Option<ClientConfig>,
+	pub config: ClientConfig,
 }

@@ -36,12 +36,21 @@ pub enum Error {
 		role: ChatRole,
 	},
 	AdapterHasNoDefaultApiKeyEnvName,
+	AdapterNoAuthResolver {
+		adapter_kind: AdapterKind,
+	},
+	AdapterAuthResolverNoAuthData {
+		adapter_kind: AdapterKind,
+	},
 
 	// -- Stream
 	StreamParse(serde_json::Error),
 	ReqwestEventSource(reqwest_eventsource::Error),
 	// TODO: need to add more context
 	WebStream,
+
+	// -- Resolver
+	ResolverAuthDataNotSingleValue,
 
 	// -- Utils
 	#[from]

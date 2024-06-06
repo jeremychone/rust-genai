@@ -36,32 +36,6 @@ impl WebClient {
 		Ok(response)
 	}
 
-	pub async fn deprecated_do_post_event_source_stream(
-		&self,
-		url: &str,
-		headers: &[(String, String)],
-		content: Value,
-	) -> Result<EventSource> {
-		let reqwest_builder = self.new_req_builder(url, headers, content)?;
-
-		let es = EventSource::new(reqwest_builder)?;
-
-		Ok(es)
-	}
-
-	pub async fn deprecated_do_post_web_stream(
-		&self,
-		url: &str,
-		headers: &[(String, String)],
-		content: Value,
-	) -> Result<WebStream> {
-		let reqwest_builder = self.new_req_builder(url, headers, content)?;
-
-		let ws = WebStream::new(reqwest_builder);
-
-		Ok(ws)
-	}
-
 	pub fn new_req_builder(&self, url: &str, headers: &[(String, String)], content: Value) -> Result<RequestBuilder> {
 		let method = Method::POST;
 
@@ -88,7 +62,10 @@ pub struct WebResponse {
 }
 
 impl WebResponse {
-	/// Note: For now, assume only json response
+	/// Note 1: For now, assume only a JSON response.
+	/// Note 2: Currently, the WebResponse holds a Value (parsed from the whole body), and then the caller
+	///         can cherry-pick/deserialize further. In the future, we might consider returning `body: String`
+	///         to enable more optimized parsing, allowing for selective parsing constrained by the struct.
 	pub(crate) async fn from_reqwest_response(mut res: reqwest::Response) -> Result<WebResponse> {
 		let status = res.status();
 

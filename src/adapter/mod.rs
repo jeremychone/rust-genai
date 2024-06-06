@@ -7,6 +7,7 @@
 
 // region:    --- Modules
 
+mod adapter_config;
 mod adapter_types;
 mod adapters;
 mod dispatcher;
@@ -17,6 +18,7 @@ use adapters::*;
 
 pub(in crate::adapter) mod support;
 
+pub use adapter_config::*;
 pub use adapter_types::*;
 pub use dispatcher::*;
 

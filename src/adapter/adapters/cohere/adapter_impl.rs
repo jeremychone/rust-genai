@@ -1,11 +1,11 @@
 use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::adapter::cohere::{CohereStream, CohereStreamEvent};
-use crate::adapter::support::get_api_key_from_config;
-use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key_resolver;
+use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
-use crate::{Error, Result};
+use crate::{ConfigSet, Error, Result};
 use futures::StreamExt;
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -18,8 +18,8 @@ const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const BASE_URL: &str = "https://api.cohere.com/v1/";
 
 impl Adapter for CohereAdapter {
-	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		Some("COHERE_API_KEY")
+	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+		AdapterConfig::default().with_auth_env_name("COHERE_API_KEY")
 	}
 
 	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {
@@ -30,14 +30,13 @@ impl Adapter for CohereAdapter {
 
 	fn to_web_request_data(
 		kind: AdapterKind,
+		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
 		stream: bool,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
-		let Some(api_key) = get_api_key_from_config(None, Self::default_api_key_env_name(kind))? else {
-			return Err(Error::AdapterRequiresApiKey { adapter_kind: kind });
-		};
+		let api_key = get_api_key_resolver(kind, config_set)?;
 
 		let headers = vec![
 			// headers
@@ -82,7 +81,7 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
-		let web_stream = WebStream::new(reqwest_builder);
+		let web_stream = WebStream::new(reqwest_builder, "\n");
 		let cohere_stream = CohereStream::new(web_stream);
 		let stream = cohere_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {
@@ -110,16 +109,20 @@ struct CohereChatRequestParts {
 
 /// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
 /// - pop the last chat user message, and set it as message
-/// - put all of the system message in the 'preamble' (this might change when ChatReq will have `.system`)
+/// - set the eventual `system` as first `preamble`
+/// - add all of the system message in the 'preamble' (this might change when ChatReq will have `.system`)
 /// - build the chat_history with the rest
-fn into_cohere_request_parts(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Result<CohereChatRequestParts> {
-	let ChatRequest { mut messages } = chat_req;
-
+fn into_cohere_request_parts(adapter_kind: AdapterKind, mut chat_req: ChatRequest) -> Result<CohereChatRequestParts> {
 	let mut chat_history: Vec<Value> = Vec::new();
 	let mut systems: Vec<String> = Vec::new();
 
+	// -- Add the eventual system as pr
+	if let Some(system) = chat_req.system {
+		systems.push(system);
+	}
+
 	// -- Build extract the last user message
-	let last_chat_msg = messages.pop().ok_or(Error::AdapterChatReqHasNoMessages)?;
+	let last_chat_msg = chat_req.messages.pop().ok_or(Error::AdapterChatReqHasNoMessages)?;
 	if !matches!(last_chat_msg.role, ChatRole::User) {
 		return Err(Error::AdapterLastChatMessageIsNoUser {
 			actual_role: last_chat_msg.role,
@@ -128,7 +131,7 @@ fn into_cohere_request_parts(adapter_kind: AdapterKind, chat_req: ChatRequest) -
 	let message = last_chat_msg.content;
 
 	// -- Build
-	for msg in messages {
+	for msg in chat_req.messages {
 		let content = msg.content;
 		match msg.role {
 			// for now, system and tool goes to system

@@ -1,12 +1,10 @@
-//! API DOC: https://platform.openai.com/docs/api-reference/chat
-
 use crate::adapter::openai::{OpenAIMessagesStream, OpenAIStreamEvent};
-use crate::adapter::support::get_api_key_from_config;
-use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key_resolver;
+use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
-use crate::{Error, Result};
+use crate::{ConfigSet, Error, Result};
 use futures::StreamExt;
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -17,8 +15,8 @@ pub struct OpenAIAdapter;
 const BASE_URL: &str = "https://api.openai.com/v1/";
 
 impl Adapter for OpenAIAdapter {
-	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		Some("OPENAI_API_KEY")
+	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+		AdapterConfig::default().with_auth_env_name("OPENAI_API_KEY")
 	}
 
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String {
@@ -27,15 +25,14 @@ impl Adapter for OpenAIAdapter {
 
 	fn to_web_request_data(
 		kind: AdapterKind,
+		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
 		stream: bool,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
-		let Some(api_key) = get_api_key_from_config(None, Self::default_api_key_env_name(kind))? else {
-			return Err(Error::AdapterRequiresApiKey { adapter_kind: kind });
-		};
-		OpenAIAdapter::util_to_web_request_data(kind, model, chat_req, stream, api_key)
+		let api_key = get_api_key_resolver(kind, config_set)?;
+		OpenAIAdapter::util_to_web_request_data(kind, model, chat_req, stream, &api_key)
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
@@ -81,14 +78,14 @@ impl OpenAIAdapter {
 		chat_req: ChatRequest,
 		stream: bool,
 		// -- utils args
-		api_key: String,
+		api_key: &str,
 	) -> Result<WebRequestData> {
 		let headers = vec![
 			// headers
 			("Authorization".to_string(), format!("Bearer {api_key}")),
 		];
 
-		let messages = into_openai_messages(kind, chat_req.messages)?;
+		let OpenAIRequestParts { messages } = into_openai_messages(kind, chat_req)?;
 		let payload = json!({
 			"model": model,
 			"messages": messages,
@@ -101,15 +98,22 @@ impl OpenAIAdapter {
 
 // region:    --- Support
 
-/// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
-/// NOTE: Here we do not use serde serialization as we might want to use the annotations for other purpose later.
-pub(in crate::adapter) fn into_openai_messages(
-	adapter_kind: AdapterKind,
-	chat_msgs: Vec<ChatMessage>,
-) -> Result<Vec<Value>> {
+struct OpenAIRequestParts {
+	messages: Vec<Value>,
+}
+
+/// Takes the genai ChatMessages and build the OpenAIChatRequestParts
+/// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
+/// - All messages get added with the corresponding roles (does not support tools for now)
+/// -
+fn into_openai_messages(adapter_kind: AdapterKind, mut chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 	let mut messages: Vec<Value> = Vec::new();
 
-	for chat_msg in chat_msgs {
+	if let Some(system_msg) = chat_req.system {
+		messages.push(json!({"role": "system", "content": system_msg}));
+	}
+
+	for chat_msg in chat_req.messages {
 		let content = chat_msg.content;
 		match chat_msg.role {
 			// for now, system and tool goes to system
@@ -125,7 +129,7 @@ pub(in crate::adapter) fn into_openai_messages(
 		}
 	}
 
-	Ok(messages)
+	Ok(OpenAIRequestParts { messages })
 }
 
 // endregion: --- Support

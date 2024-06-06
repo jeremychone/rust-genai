@@ -1,10 +1,10 @@
 use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
-use crate::adapter::support::get_api_key_from_config;
-use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key_resolver;
+use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
-use crate::{Error, Result};
+use crate::{ConfigSet, Error, Result};
 use futures::StreamExt;
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -17,8 +17,8 @@ const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
 impl Adapter for AnthropicAdapter {
-	fn default_api_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		Some("ANTHROPIC_API_KEY")
+	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+		AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY")
 	}
 
 	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {
@@ -29,14 +29,13 @@ impl Adapter for AnthropicAdapter {
 
 	fn to_web_request_data(
 		kind: AdapterKind,
+		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
 		stream: bool,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
-		let Some(api_key) = get_api_key_from_config(None, Self::default_api_key_env_name(kind))? else {
-			return Err(Error::AdapterRequiresApiKey { adapter_kind: kind });
-		};
+		let api_key = get_api_key_resolver(kind, config_set)?;
 
 		let headers = vec![
 			// headers
@@ -44,7 +43,7 @@ impl Adapter for AnthropicAdapter {
 			("anthropic-version".to_string(), ANTRHOPIC_VERSION.to_string()),
 		];
 
-		let AnthropicsRequestParts { system, messages } = into_anthropic_request_parts(chat_req.messages)?;
+		let AnthropicsRequestParts { system, messages } = into_anthropic_request_parts(chat_req)?;
 		let mut payload = json!({
 			"model": model,
 			"max_tokens": MAX_TOKENS,
@@ -103,12 +102,16 @@ struct AnthropicsRequestParts {
 }
 
 /// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
-/// NOTE: Here we do not use serde serialization as we might want to use the annotations for other purpose later.
-fn into_anthropic_request_parts(msgs: Vec<ChatMessage>) -> Result<AnthropicsRequestParts> {
+/// - Will push the `ChatRequest.system` and systems message to `AnthropicsRequestParts.system`
+fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicsRequestParts> {
 	let mut messages: Vec<Value> = Vec::new();
 	let mut systems: Vec<String> = Vec::new();
 
-	for msg in msgs {
+	if let Some(system) = chat_req.system {
+		systems.push(system);
+	}
+
+	for msg in chat_req.messages {
 		let content = msg.content;
 		match msg.role {
 			// for now, system and tool goes to system

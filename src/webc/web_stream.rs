@@ -7,8 +7,12 @@ use std::error::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+/// WebStream is a simple web stream implementation that splits the stream message by a given delimiter.
+/// - It's intended to be a pragmatic solution for services that do not adhere to the `text/event-stream` format and content-type.
+/// - For providers that support the standard `text/event-stream`, `genai` uses the `reqwest-eventsource`/`eventsource-stream` crates.
 #[allow(clippy::type_complexity)]
 pub struct WebStream {
+	message_delimiter: &'static str,
 	reqwest_builder: Option<RequestBuilder>,
 	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>>>>>,
 	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>>>>>,
@@ -19,8 +23,9 @@ pub struct WebStream {
 }
 
 impl WebStream {
-	pub fn new(reqwest_builder: RequestBuilder) -> Self {
+	pub fn new(reqwest_builder: RequestBuilder, message_delimiter: &'static str) -> Self {
 		Self {
+			message_delimiter,
 			reqwest_builder: Some(reqwest_builder),
 			response_future: None,
 			bytes_stream: None,
@@ -69,7 +74,7 @@ impl Stream for WebStream {
 						};
 
 						//  -- iterate through the parts
-						let mut parts = string.split('\n');
+						let mut parts = string.split(this.message_delimiter);
 						let mut first_message: Option<String> = None;
 						let mut candidate_message: Option<String> = None;
 

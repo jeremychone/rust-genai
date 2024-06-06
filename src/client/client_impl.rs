@@ -1,7 +1,7 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::client::Client;
-use crate::Result;
+use crate::{ConfigSet, Result};
 
 /// Public AI Functions
 impl Client {
@@ -11,9 +11,12 @@ impl Client {
 
 	pub async fn exec_chat(&self, model: &str, chat_req: ChatRequest) -> Result<ChatResponse> {
 		let adapter_kind = AdapterKind::from_model(model)?;
+		let adapter_config = AdapterDispatcher::default_adapter_config(adapter_kind);
+
+		let config_set = ConfigSet::new(self.config(), &adapter_config);
 
 		let WebRequestData { headers, payload } =
-			AdapterDispatcher::to_web_request_data(adapter_kind, model, chat_req, false)?;
+			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, false)?;
 
 		let url = AdapterDispatcher::get_service_url(adapter_kind, ServiceType::Chat);
 
@@ -26,9 +29,12 @@ impl Client {
 
 	pub async fn exec_chat_stream(&self, model: &str, chat_req: ChatRequest) -> Result<ChatStream> {
 		let adapter_kind = AdapterKind::from_model(model)?;
+		let adapter_config = AdapterDispatcher::default_adapter_config(adapter_kind);
+
+		let config_set = ConfigSet::new(self.config(), &adapter_config);
 
 		let WebRequestData { headers, payload } =
-			AdapterDispatcher::to_web_request_data(adapter_kind, model, chat_req, true)?;
+			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, true)?;
 
 		let url = AdapterDispatcher::get_service_url(adapter_kind, ServiceType::Chat);
 
