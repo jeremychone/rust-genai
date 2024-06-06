@@ -1,7 +1,7 @@
 use crate::adapter::openai::{OpenAIMessagesStream, OpenAIStreamEvent};
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Error, Result};
@@ -15,7 +15,7 @@ pub struct OpenAIAdapter;
 const BASE_URL: &str = "https://api.openai.com/v1/";
 
 impl Adapter for OpenAIAdapter {
-	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+	fn default_adapter_config(_kind: AdapterKind) -> AdapterConfig {
 		AdapterConfig::default().with_auth_env_name("OPENAI_API_KEY")
 	}
 
@@ -106,7 +106,7 @@ struct OpenAIRequestParts {
 /// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
 /// - All messages get added with the corresponding roles (does not support tools for now)
 /// -
-fn into_openai_messages(adapter_kind: AdapterKind, mut chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
+fn into_openai_messages(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 	let mut messages: Vec<Value> = Vec::new();
 
 	if let Some(system_msg) = chat_req.system {

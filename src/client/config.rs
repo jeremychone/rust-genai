@@ -1,5 +1,3 @@
-use std::fmt;
-
 #[derive(Debug, Default)]
 pub struct ClientConfig {}
 

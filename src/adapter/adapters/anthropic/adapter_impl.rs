@@ -1,10 +1,10 @@
 use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
-use crate::{ConfigSet, Error, Result};
+use crate::{ConfigSet, Result};
 use futures::StreamExt;
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -17,7 +17,7 @@ const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
 impl Adapter for AnthropicAdapter {
-	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+	fn default_adapter_config(_kind: AdapterKind) -> AdapterConfig {
 		AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY")
 	}
 

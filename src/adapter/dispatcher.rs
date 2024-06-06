@@ -7,7 +7,6 @@ use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 
 pub struct AdapterDispatcher;
 

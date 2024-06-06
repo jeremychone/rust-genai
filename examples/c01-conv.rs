@@ -1,5 +1,5 @@
 mod support; // For examples support funtions
-use crate::support::{has_env, print_chat_stream};
+use crate::support::print_chat_stream;
 
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::client::Client;

@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use futures::stream::{StreamExt, TryStreamExt};
+use futures::stream::TryStreamExt;
 use futures::{Future, Stream};
 use reqwest::{RequestBuilder, Response};
 use std::collections::VecDeque;
@@ -74,11 +74,11 @@ impl Stream for WebStream {
 						};
 
 						//  -- iterate through the parts
-						let mut parts = string.split(this.message_delimiter);
+						let parts = string.split(this.message_delimiter);
 						let mut first_message: Option<String> = None;
 						let mut candidate_message: Option<String> = None;
 
-						for (idx, part) in parts.enumerate() {
+						for part in parts {
 							// if we already have a candidate, the candidate become the message
 							if let Some(canditate_message) = candidate_message.take() {
 								// if canditate is empty, we skip

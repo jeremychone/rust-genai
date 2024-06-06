@@ -44,6 +44,7 @@ impl AuthResolver {
 enum AuthResolverInner {
 	EnvName(String),
 	Fixed(AuthData),
+	#[allow(unused)] // future
 	SyncFn(SyncFnType),
 }
 

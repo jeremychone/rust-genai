@@ -1,5 +1,4 @@
 use crate::adapter::AdapterKind;
-use crate::client::ClientConfig;
 use crate::{ConfigSet, Error, Result};
 
 /// Returns the `api_key` value from the config_set auth_resolver

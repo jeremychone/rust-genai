@@ -1,11 +1,9 @@
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::AdapterConfig;
 use crate::chat::{ChatRequest, ChatResponse, ChatStream};
-use crate::client::ClientConfig;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Copy)]
@@ -38,10 +36,6 @@ impl AdapterKind {
 
 pub trait Adapter {
 	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig;
-
-	fn require_auth(_kind: AdapterKind, config_set: &ConfigSet<'_>) -> bool {
-		true
-	}
 
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String;
 

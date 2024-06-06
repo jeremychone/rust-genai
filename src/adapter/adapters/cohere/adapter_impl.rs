@@ -1,24 +1,21 @@
-use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::adapter::cohere::{CohereStream, CohereStreamEvent};
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatMessage, ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
 use crate::{ConfigSet, Error, Result};
 use futures::StreamExt;
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
 
 pub struct CohereAdapter;
 
 const MAX_TOKENS: u32 = 1024;
-const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const BASE_URL: &str = "https://api.cohere.com/v1/";
 
 impl Adapter for CohereAdapter {
-	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+	fn default_adapter_config(_kind: AdapterKind) -> AdapterConfig {
 		AdapterConfig::default().with_auth_env_name("COHERE_API_KEY")
 	}
 
@@ -68,7 +65,7 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
-		let WebResponse { mut body, status } = web_response;
+		let WebResponse { mut body, .. } = web_response;
 
 		let mut last_chat_history_item = body
 			.x_take::<Vec<Value>>("chat_history")?

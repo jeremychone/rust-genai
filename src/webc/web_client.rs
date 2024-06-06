@@ -1,8 +1,7 @@
-use crate::webc::{Error, Result, WebStream};
+use crate::webc::{Error, Result};
 
 use reqwest::header::HeaderMap;
 use reqwest::{Method, RequestBuilder, StatusCode};
-use reqwest_eventsource::EventSource;
 use serde_json::Value;
 
 /// Simple reqwest client wrapper for this library.

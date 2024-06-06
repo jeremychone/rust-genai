@@ -1,10 +1,6 @@
-use crate::utils::x_value::XValue;
 use crate::webc::WebStream;
 use crate::{Error, Result};
-pub use eventsource_stream::Event as MessageEvent;
-use reqwest_eventsource::{Event, EventSource};
 use serde::Deserialize;
-use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -69,6 +65,7 @@ pub enum CohereStreamEvent {
 
 #[derive(Deserialize, Debug)]
 struct CohereStreamMessage {
+	#[allow(unused)]
 	is_finished: bool,
 	event_type: String,
 	text: Option<String>,
