@@ -15,14 +15,14 @@ Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **Cohere** (
 
 ```toml
 # cargo.toml
-genai = {version: '=0.0.6'}
+genai = {version: '=0.0.7'}
 ```
 
 <br />
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI providers, such as OpenAI and Ollama.
 
-- **IMPORTANT 1** `0.0.x` is still in heavy development. Cherry-pick code, don't depend on it. `0.0.x` releases will be yanked.
+- **IMPORTANT 1** `0.0.x` is still in heavy development. Cherry-pick code, don't depend on it. (It's starting to work pretty well though)
 
 - **IMPORTANT 2** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.0"`. In short, `0.1.x` can be considered "beta releases."
 
