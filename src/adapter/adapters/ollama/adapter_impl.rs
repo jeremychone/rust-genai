@@ -6,6 +6,7 @@ use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
+use std::sync::OnceLock;
 
 pub struct OllamaAdapter;
 
@@ -15,8 +16,9 @@ const BASE_URL: &str = "http://localhost:11434/v1/";
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
 ///       Since the base ollama API supports `application/x-ndjson` for streaming whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
-	fn default_adapter_config(_kind: AdapterKind) -> AdapterConfig {
-		AdapterConfig::default()
+	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
+		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
+		INSTANCE.get_or_init(AdapterConfig::default)
 	}
 
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String {

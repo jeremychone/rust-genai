@@ -1,8 +1,11 @@
 mod support; // For examples support funtions
 use crate::support::print_chat_stream;
 
+use genai::adapter::{AdapterConfig, AdapterKind};
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::client::Client;
+use genai::resolver::{AuthData, AuthResolver};
+use genai::ConfigSet;
 
 const MODEL: &str = "gpt-3.5-turbo";
 
@@ -14,10 +17,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		"Why is it red sometime?",
 	];
 
-	let client = Client::default();
+	// -- Build a auth_resolver and the AdapterConfig
+	let auth_resolver = AuthResolver::from_provider_sync(
+		|kind: AdapterKind, _config_set: &ConfigSet<'_>| -> Result<Option<AuthData>, genai::Error> {
+			println!("\n>> Custom auth provider for {kind} <<");
+			let key = std::env::var("OPENAI_API_KEY").map_err(|_| genai::Error::ApiKeyEnvNotFound {
+				env_name: "OPENAI_API_KEY".to_string(),
+			})?;
+			Ok(Some(AuthData::from_single(key)))
+		},
+	);
+	let adapter_config = AdapterConfig::default().with_auth_resolver(auth_resolver);
+
+	// -- Build the new client with this adapter_config
+	let client = Client::builder()
+		.with_adapter_config(AdapterKind::OpenAI, adapter_config)
+		.build();
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
-	// Similar to put a first System Chat Message(s) (will be cummulative with sytem chat messages)
 
 	for &question in questions {
 		chat_req = chat_req.append_message(ChatMessage::user(question));

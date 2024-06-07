@@ -20,7 +20,7 @@ genai = {version: '=0.0.7'}
 
 <br />
 
-The goal of this library is to provide a common and ergonomic single API to many generative AI providers, such as OpenAI and Ollama.
+The goal of this library is to provide a common and ergonomic single API to many generative AI Providers, such as OpenAI, Anthropic, Cohere, Ollama.
 
 - **IMPORTANT 1** `0.0.x` is still in heavy development. Cherry-pick code, don't depend on it. (It's starting to work pretty well though)
 
@@ -30,9 +30,9 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 ## Library Focus:
 
-- Focuses on standardizing chat completion APIs across major AI Providers.
+- Focuses on standardizing chat completion APIs across major AI Services.
 
-- Native implementation, meaning no per-provider SDKs. 
+- Native implementation, meaning no per-service SDKs. 
 	- Reason: While there are some variations between all of the various APIs, they all follow the same pattern and high-level flow and constructs. Managing the differences at a lower layer is actually simpler and more cumulative accross services than doing sdks gymnastic.
 
 - Prioritizes ergonomics and commonality, with depth being secondary. (If you require complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); they are both excellent and easy to use.)
@@ -67,11 +67,12 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_OLLAMA, ""),
 ];
 
-// NOTE: for now, Client Adapter/Provider mapping rule
+// NOTE: Model to AdapterKind (AI Provider) type mapping rule
 //  - starts_with "gpt"      -> OpenAI
 //  - starts_with "claude"   -> Anthropic
 //  - starts_with "command"  -> Cohere
 //  - For anything else      -> Ollama
+//
 // Refined mapping rules will be added later and extended as provider support grows.
 
 #[tokio::main]
@@ -84,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		ChatMessage::user(question),
 	]);
 
-	let client = Client::new()?;
+	let client = Client::default();
 
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
 		// Skip if does not have the environment name set
@@ -109,22 +110,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	Ok(())
 }
-```
-
-## Running the examples
-
-Here are some quick dev commands. 
-
-Requirements:
-- For Ollama: Ollama server running, with the `mixtral` model (or change the model in the file)
-- To have the openai run, have `OPENAI_API_KEY` set.
-- To have the anthropic run, have `ANTHROPIC_API_KEY` set.
-
-```sh
-cargo run -q --example c00-readme
-
-# cargo watch (cargo install cargo-watch)
-cargo watch -q -x "run -q --example c00-readme"
 ```
 
 

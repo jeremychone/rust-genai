@@ -1,11 +1,16 @@
+//! An AuthResolver is responsible for returning the AuthData (typically containing the `api_key`).
+//! It can take the following forms:
+//! - Configured with a custom environment name,
+//! - Contain a fixed auth value,
+//! - Contain an `AuthDataProvider` trait object or closure that will be called to return the AuthData.
+//!
+//! Note: AuthData is typically a single value but can be Multi for future adapters (e.g., AWS Berock).
+
 use crate::adapter::AdapterKind;
 use crate::ConfigSet;
 use crate::{Error, Result};
 use std::collections::HashMap;
-
-trait SyncAuthDataProvider {
-	fn provide_auth_data(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>>;
-}
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct AuthResolver {
@@ -25,8 +30,52 @@ impl AuthResolver {
 		}
 	}
 
-	// todo more
+	pub fn from_provider_sync(provider: impl IntoAuthDataProviderSync) -> Self {
+		AuthResolver {
+			inner: AuthResolverInner::SyncProvider(provider.into_provider()),
+		}
+	}
 }
+
+// region:    --- AuthDataProvider & IntoAuthDataProvider
+
+pub trait AuthDataProviderSync: Send + Sync {
+	fn provide_auth_data_sync(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>>;
+}
+
+// Define a trait for types that can be converted into Arc<dyn AuthDataProviderSync>
+pub trait IntoAuthDataProviderSync {
+	fn into_provider(self) -> Arc<dyn AuthDataProviderSync>;
+}
+
+// Implement IntoProvider for Arc<dyn AuthDataProviderSync>
+impl IntoAuthDataProviderSync for Arc<dyn AuthDataProviderSync> {
+	fn into_provider(self) -> Arc<dyn AuthDataProviderSync> {
+		self
+	}
+}
+
+// Implement IntoProvider for closures
+impl<F> IntoAuthDataProviderSync for F
+where
+	F: Fn(AdapterKind, &ConfigSet) -> Result<Option<AuthData>> + Send + Sync + 'static,
+{
+	fn into_provider(self) -> Arc<dyn AuthDataProviderSync> {
+		Arc::new(self)
+	}
+}
+
+// Implement AuthDataProviderSync for closures
+impl<F> AuthDataProviderSync for F
+where
+	F: Fn(AdapterKind, &ConfigSet) -> Result<Option<AuthData>> + Send + Sync,
+{
+	fn provide_auth_data_sync(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>> {
+		self(adapter_kind, config_set)
+	}
+}
+
+// endregion: --- AuthDataProvider & IntoAuthDataProvider
 
 impl AuthResolver {
 	pub(crate) fn resolve(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>> {
@@ -38,7 +87,9 @@ impl AuthResolver {
 				Ok(Some(AuthData::from_single(key)))
 			}
 			AuthResolverInner::Fixed(auth_data) => Ok(Some(auth_data.clone())),
-			AuthResolverInner::SyncProvider(sync_provider) => sync_provider.provide_auth_data(adapter_kind, config_set),
+			AuthResolverInner::SyncProvider(sync_provider) => {
+				sync_provider.provide_auth_data_sync(adapter_kind, config_set)
+			}
 		}
 	}
 }
@@ -47,7 +98,7 @@ enum AuthResolverInner {
 	EnvName(String),
 	Fixed(AuthData),
 	#[allow(unused)] // future
-	SyncProvider(Box<dyn SyncAuthDataProvider>),
+	SyncProvider(Arc<dyn AuthDataProviderSync>),
 }
 
 // impl debug for AuthResolverInner

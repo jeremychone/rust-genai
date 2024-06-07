@@ -9,6 +9,7 @@ use futures::StreamExt;
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
+use std::sync::OnceLock;
 
 pub struct AnthropicAdapter;
 
@@ -17,8 +18,9 @@ const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
 impl Adapter for AnthropicAdapter {
-	fn default_adapter_config(_kind: AdapterKind) -> AdapterConfig {
-		AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY")
+	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
+		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
+		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY"))
 	}
 
 	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {

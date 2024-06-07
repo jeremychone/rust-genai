@@ -10,15 +10,16 @@ pub struct WebClient {
 	reqwest_client: reqwest::Client,
 }
 
-// region:    --- Constructors
-
-impl WebClient {
-	pub(crate) fn new() -> Self {
-		Self {
+// impl default
+impl Default for WebClient {
+	fn default() -> Self {
+		WebClient {
 			reqwest_client: reqwest::Client::new(),
 		}
 	}
 }
+
+// region:    --- Constructors
 
 // endregion: --- Constructors
 

@@ -3,10 +3,11 @@ use crate::adapter::AdapterConfig;
 use crate::chat::{ChatRequest, ChatResponse, ChatStream};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
+use derive_more::Display;
 use reqwest::RequestBuilder;
 use serde_json::Value;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash)]
 pub enum AdapterKind {
 	OpenAI,
 	Ollama,
@@ -35,7 +36,9 @@ impl AdapterKind {
 }
 
 pub trait Adapter {
-	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig;
+	/// The static default AdapterConfig for this AdapterKind
+	/// Note: Implementation typically using OnceLock
+	fn default_adapter_config(kind: AdapterKind) -> &'static AdapterConfig;
 
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String;
 

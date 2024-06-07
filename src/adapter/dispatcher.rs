@@ -11,7 +11,7 @@ use reqwest::RequestBuilder;
 pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
-	fn default_adapter_config(kind: AdapterKind) -> AdapterConfig {
+	fn default_adapter_config(kind: AdapterKind) -> &'static AdapterConfig {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::default_adapter_config(kind),
 			AdapterKind::Anthropic => AnthropicAdapter::default_adapter_config(kind),

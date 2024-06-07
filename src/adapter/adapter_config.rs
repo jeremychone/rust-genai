@@ -5,8 +5,15 @@ pub struct AdapterConfig {
 	auth_resolver: Option<AuthResolver>,
 }
 
-/// Setter (builder style)
+/// Auth Related Setters (builder style)
 impl AdapterConfig {
+	/// Set the built auth resolver
+	pub fn with_auth_resolver(mut self, auth_resolver: AuthResolver) -> Self {
+		self.auth_resolver = Some(auth_resolver);
+		self
+	}
+
+	/// Convenient setter to set a AuthResolver from_env_name
 	pub fn with_auth_env_name(mut self, auth_env_name: impl Into<String>) -> Self {
 		let auth_env_name = auth_env_name.into();
 		self.auth_resolver = Some(AuthResolver::from_env_name(auth_env_name));

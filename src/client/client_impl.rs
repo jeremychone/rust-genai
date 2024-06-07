@@ -11,9 +11,12 @@ impl Client {
 
 	pub async fn exec_chat(&self, model: &str, chat_req: ChatRequest) -> Result<ChatResponse> {
 		let adapter_kind = AdapterKind::from_model(model)?;
-		let adapter_config = AdapterDispatcher::default_adapter_config(adapter_kind);
 
-		let config_set = ConfigSet::new(self.config(), &adapter_config);
+		let adapter_config = self
+			.custom_adapter_config(adapter_kind)
+			.unwrap_or_else(|| AdapterDispatcher::default_adapter_config(adapter_kind));
+
+		let config_set = ConfigSet::new(self.config(), adapter_config);
 
 		let WebRequestData { headers, payload } =
 			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, false)?;
@@ -29,9 +32,12 @@ impl Client {
 
 	pub async fn exec_chat_stream(&self, model: &str, chat_req: ChatRequest) -> Result<ChatStream> {
 		let adapter_kind = AdapterKind::from_model(model)?;
-		let adapter_config = AdapterDispatcher::default_adapter_config(adapter_kind);
 
-		let config_set = ConfigSet::new(self.config(), &adapter_config);
+		let adapter_config = self
+			.custom_adapter_config(adapter_kind)
+			.unwrap_or_else(|| AdapterDispatcher::default_adapter_config(adapter_kind));
+
+		let config_set = ConfigSet::new(self.config(), adapter_config);
 
 		let WebRequestData { headers, payload } =
 			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, true)?;

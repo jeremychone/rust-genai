@@ -8,6 +8,7 @@ use crate::{ConfigSet, Error, Result};
 use futures::StreamExt;
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
+use std::sync::OnceLock;
 
 pub struct CohereAdapter;
 
@@ -15,8 +16,9 @@ const MAX_TOKENS: u32 = 1024;
 const BASE_URL: &str = "https://api.cohere.com/v1/";
 
 impl Adapter for CohereAdapter {
-	fn default_adapter_config(_kind: AdapterKind) -> AdapterConfig {
-		AdapterConfig::default().with_auth_env_name("COHERE_API_KEY")
+	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
+		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
+		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("COHERE_API_KEY"))
 	}
 
 	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {

@@ -17,11 +17,12 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_OLLAMA, ""),
 ];
 
-// NOTE: for now, Client Adapter/Provider mapping rule
+// NOTE: Model to AdapterKind (AI Provider) type mapping rule
 //  - starts_with "gpt"      -> OpenAI
 //  - starts_with "claude"   -> Anthropic
 //  - starts_with "command"  -> Cohere
 //  - For anything else      -> Ollama
+//
 // Refined mapping rules will be added later and extended as provider support grows.
 
 #[tokio::main]
@@ -34,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		ChatMessage::user(question),
 	]);
 
-	let client = Client::new()?;
+	let client = Client::default();
 
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
 		// Skip if does not have the environment name set

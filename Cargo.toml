@@ -33,6 +33,6 @@ serde_with = { version = "3", features = ["macros"] }
 reqwest = {version = "0.12", features = ["json"]}
 reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
+bytes = "1.6"
 # -- Others
-derive_more = { version = "1.0.0-beta", features = ["from"] }
-bytes = "1.6.0"
+derive_more = { version = "1.0.0-beta", features = ["from", "display"] }
