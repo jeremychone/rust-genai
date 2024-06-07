@@ -1,7 +1,7 @@
 use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamItem};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamEvent};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
@@ -85,7 +85,7 @@ impl Adapter for AnthropicAdapter {
 		let stream = anthropic_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {
 				Err(err) => Some(Err(err)),
-				Ok(AnthropicStreamEvent::BlockDelta(content)) => Some(Ok(StreamItem { content: Some(content) })),
+				Ok(AnthropicStreamEvent::BlockDelta(content)) => Some(Ok(StreamEvent { content: Some(content) })),
 				_ => None,
 			}
 		});

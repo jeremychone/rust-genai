@@ -9,13 +9,13 @@ pub struct ChatResponse {
 
 // region:    --- Chat Stream
 
-type StreamType = Pin<Box<dyn Stream<Item = Result<StreamItem>>>>;
+type StreamType = Pin<Box<dyn Stream<Item = Result<StreamEvent>>>>;
 
 pub struct ChatStream {
 	pub stream: StreamType,
 }
 
-pub struct StreamItem {
+pub struct StreamEvent {
 	pub content: Option<String>,
 }
 

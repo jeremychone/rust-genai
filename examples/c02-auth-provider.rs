@@ -1,10 +1,8 @@
-mod support; // For examples support funtions
-use crate::support::print_chat_stream;
-
 use genai::adapter::{AdapterConfig, AdapterKind};
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::client::Client;
 use genai::resolver::{AuthData, AuthResolver};
+use genai::utils::print_chat_stream;
 use genai::ConfigSet;
 
 const MODEL: &str = "gpt-3.5-turbo";
