@@ -3,7 +3,9 @@ use crate::ConfigSet;
 use crate::{Error, Result};
 use std::collections::HashMap;
 
-type SyncFnType = Box<dyn Fn(AdapterKind, &ConfigSet) -> Result<Option<AuthData>>>;
+trait SyncAuthDataProvider {
+	fn provide_auth_data(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>>;
+}
 
 #[derive(Debug)]
 pub struct AuthResolver {
@@ -36,7 +38,7 @@ impl AuthResolver {
 				Ok(Some(AuthData::from_single(key)))
 			}
 			AuthResolverInner::Fixed(auth_data) => Ok(Some(auth_data.clone())),
-			AuthResolverInner::SyncFn(sync_fn) => sync_fn(adapter_kind, config_set),
+			AuthResolverInner::SyncProvider(sync_provider) => sync_provider.provide_auth_data(adapter_kind, config_set),
 		}
 	}
 }
@@ -45,7 +47,7 @@ enum AuthResolverInner {
 	EnvName(String),
 	Fixed(AuthData),
 	#[allow(unused)] // future
-	SyncFn(SyncFnType),
+	SyncProvider(Box<dyn SyncAuthDataProvider>),
 }
 
 // impl debug for AuthResolverInner
@@ -54,7 +56,7 @@ impl std::fmt::Debug for AuthResolverInner {
 		match self {
 			AuthResolverInner::EnvName(env_name) => write!(f, "AuthResolverInner::EnvName({})", env_name),
 			AuthResolverInner::Fixed(auth_data) => write!(f, "AuthResolverInner::Fixed({:?})", auth_data),
-			AuthResolverInner::SyncFn(_) => write!(f, "AuthResolverInner::SyncFn(...)"),
+			AuthResolverInner::SyncProvider(_) => write!(f, "AuthResolverInner::SyncFn(...)"),
 		}
 	}
 }
