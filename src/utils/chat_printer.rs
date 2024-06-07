@@ -1,4 +1,4 @@
-use crate::chat::ChatStream;
+use crate::chat::{ChatStream, StreamChunk, StreamEvent};
 use futures::StreamExt;
 use tokio::io::AsyncWriteExt as _;
 
@@ -10,10 +10,8 @@ pub async fn print_chat_stream(chat_res: ChatStream) -> Result<String, Box<dyn s
 
 	let mut content_capture = String::new();
 
-	while let Some(Ok(stream_item)) = stream.next().await {
-		let Some(content) = stream_item.content else {
-			// TODO: For debug only right now (should not have empty content stream_item)
-			stdout.write_all(b"\nEMPTY RESPONSE - CONTINUE\n").await?;
+	while let Some(Ok(stream_event)) = stream.next().await {
+		let StreamEvent::Chunk(StreamChunk { content }) = stream_event else {
 			continue;
 		};
 

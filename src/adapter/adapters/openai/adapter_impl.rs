@@ -1,7 +1,7 @@
 use crate::adapter::openai::{OpenAIMessagesStream, OpenAIStreamEvent};
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamEvent};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamChunk, StreamEnd, StreamEvent};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Error, Result};
@@ -50,9 +50,12 @@ impl Adapter for OpenAIAdapter {
 		let openai_stream = OpenAIMessagesStream::new(event_source);
 		let stream = openai_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {
-				Ok(OpenAIStreamEvent::Chunck(content)) => Some(Ok(StreamEvent { content: Some(content) })),
+				Ok(OpenAIStreamEvent::Open) => Some(Ok(StreamEvent::Start)),
+				Ok(OpenAIStreamEvent::Chunck(content)) => Some(Ok(StreamChunk { content }.into())),
+				// TODO: Needs to design the strategy to proxy the event to customize StreamEnd payload
+				Ok(OpenAIStreamEvent::Finish(_)) => Some(Ok(StreamEvent::End(StreamEnd::default()))),
+
 				Err(err) => Some(Err(err)),
-				_ => None,
 			}
 		});
 		Ok(ChatStream {

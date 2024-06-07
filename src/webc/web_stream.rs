@@ -10,6 +10,7 @@ use std::task::{Context, Poll};
 /// WebStream is a simple web stream implementation that splits the stream message by a given delimiter.
 /// - It's intended to be a pragmatic solution for services that do not adhere to the `text/event-stream` format and content-type.
 /// - For providers that support the standard `text/event-stream`, `genai` uses the `reqwest-eventsource`/`eventsource-stream` crates.
+/// - This stream item are just `String`
 #[allow(clippy::type_complexity)]
 pub struct WebStream {
 	message_delimiter: &'static str,

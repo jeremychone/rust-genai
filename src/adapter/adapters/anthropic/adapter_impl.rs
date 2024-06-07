@@ -1,7 +1,7 @@
 use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamEvent};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamChunk, StreamEnd, StreamEvent};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
@@ -84,8 +84,12 @@ impl Adapter for AnthropicAdapter {
 		let anthropic_stream = AnthropicMessagesStream::new(event_source);
 		let stream = anthropic_stream.filter_map(|an_stream_event| async move {
 			match an_stream_event {
+				Ok(AnthropicStreamEvent::MessageStart) => Some(Ok(StreamEvent::Start)),
+				Ok(AnthropicStreamEvent::BlockDelta(content)) => Some(Ok(StreamChunk { content }.into())),
+				// TODO: Needs to design the strategy to proxy the event to customize StreamEnd payload
+				Ok(AnthropicStreamEvent::MessageStop) => Some(Ok(StreamEvent::End(StreamEnd::default()))),
+
 				Err(err) => Some(Err(err)),
-				Ok(AnthropicStreamEvent::BlockDelta(content)) => Some(Ok(StreamEvent { content: Some(content) })),
 				_ => None,
 			}
 		});
