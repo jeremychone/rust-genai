@@ -1,5 +1,6 @@
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
+use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
@@ -17,8 +18,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Anthropic => AnthropicAdapter::default_adapter_config(kind),
 			AdapterKind::Cohere => CohereAdapter::default_adapter_config(kind),
 			AdapterKind::Ollama => OllamaAdapter::default_adapter_config(kind),
-			AdapterKind::Gemini => todo!(),
-			AdapterKind::AnthropicBerock => todo!(),
+			AdapterKind::Gemini => GeminiAdapter::default_adapter_config(kind),
 		}
 	}
 
@@ -28,8 +28,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(kind, service_type),
 			AdapterKind::Cohere => CohereAdapter::get_service_url(kind, service_type),
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(kind, service_type),
-			AdapterKind::Gemini => todo!(),
-			AdapterKind::AnthropicBerock => todo!(),
+			AdapterKind::Gemini => GeminiAdapter::get_service_url(kind, service_type),
 		}
 	}
 
@@ -38,15 +37,16 @@ impl Adapter for AdapterDispatcher {
 		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
-		stream: bool,
+		service_type: ServiceType,
 	) -> Result<WebRequestData> {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
-			AdapterKind::Anthropic => AnthropicAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
-			AdapterKind::Cohere => CohereAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
-			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(kind, config_set, model, chat_req, stream),
-			AdapterKind::Gemini => todo!(),
-			AdapterKind::AnthropicBerock => todo!(),
+			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
+			AdapterKind::Anthropic => {
+				AnthropicAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type)
+			}
+			AdapterKind::Cohere => CohereAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
+			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
+			AdapterKind::Gemini => GeminiAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
 		}
 	}
 
@@ -56,8 +56,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(kind, web_response),
 			AdapterKind::Cohere => CohereAdapter::to_chat_response(kind, web_response),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(kind, web_response),
-			AdapterKind::Gemini => todo!(),
-			AdapterKind::AnthropicBerock => todo!(),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_response(kind, web_response),
 		}
 	}
 
@@ -67,8 +66,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(kind, reqwest_builder),
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(kind, reqwest_builder),
 			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(kind, reqwest_builder),
-			AdapterKind::Gemini => todo!(),
-			AdapterKind::AnthropicBerock => todo!(),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(kind, reqwest_builder),
 		}
 	}
 }

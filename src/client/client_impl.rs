@@ -18,10 +18,8 @@ impl Client {
 
 		let config_set = ConfigSet::new(self.config(), adapter_config);
 
-		let WebRequestData { headers, payload } =
-			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, false)?;
-
-		let url = AdapterDispatcher::get_service_url(adapter_kind, ServiceType::Chat);
+		let WebRequestData { headers, payload, url } =
+			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, ServiceType::Chat)?;
 
 		let web_res = self.web_client().do_post(&url, &headers, payload).await?;
 
@@ -39,10 +37,13 @@ impl Client {
 
 		let config_set = ConfigSet::new(self.config(), adapter_config);
 
-		let WebRequestData { headers, payload } =
-			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, true)?;
-
-		let url = AdapterDispatcher::get_service_url(adapter_kind, ServiceType::Chat);
+		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
+			adapter_kind,
+			&config_set,
+			model,
+			chat_req,
+			ServiceType::ChatStream,
+		)?;
 
 		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;
 

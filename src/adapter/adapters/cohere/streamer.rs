@@ -42,13 +42,13 @@ impl futures::Stream for CohereStream {
 
 					match cohere_message {
 						Ok(cohere_message) => {
-							let intermediary_event = match cohere_message.event_type.as_str() {
+							let inter_event = match cohere_message.event_type.as_str() {
 								"stream-start" => InterStreamEvent::Start,
 								"text-generation" => InterStreamEvent::Chunk(cohere_message.text.unwrap_or_default()),
 								"stream-end" => InterStreamEvent::End,
 								_ => continue, // Skip the "Other" event
 							};
-							return Poll::Ready(Some(Ok(intermediary_event)));
+							return Poll::Ready(Some(Ok(inter_event)));
 						}
 						Err(err) => {
 							println!("Cohere Adapter Stream Error: {}", err);

@@ -13,9 +13,9 @@ pub enum AdapterKind {
 	Ollama,
 	Anthropic,
 	Cohere,
-	// -- Not implemented, just to show direction
 	Gemini,
-	AnthropicBerock,
+	// Note: Variants will probalby be suffixed
+	// AnthropicBerock,
 }
 
 impl AdapterKind {
@@ -27,6 +27,8 @@ impl AdapterKind {
 			Ok(AdapterKind::Anthropic)
 		} else if model.starts_with("command") {
 			Ok(AdapterKind::Cohere)
+		} else if model.starts_with("gemini") {
+			Ok(AdapterKind::Gemini)
 		}
 		// for now, fallback on Ollama
 		else {
@@ -53,7 +55,7 @@ pub trait Adapter {
 		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
-		stream: bool,
+		service_type: ServiceType,
 	) -> Result<WebRequestData>;
 
 	/// To be implemented by Adapters
@@ -69,6 +71,7 @@ pub trait Adapter {
 
 // region:    --- ServiceType
 
+#[derive(Debug, Clone, Copy)]
 pub enum ServiceType {
 	Chat,
 	ChatStream,
@@ -81,6 +84,7 @@ pub enum ServiceType {
 // NOTE: This cannot really move to `webc` bcause it has to be public with the adapter and `webc` is private for now.
 
 pub struct WebRequestData {
+	pub url: String,
 	pub headers: Vec<(String, String)>,
 	pub payload: Value,
 }

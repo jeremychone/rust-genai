@@ -29,11 +29,13 @@ impl Adapter for OpenAIAdapter {
 		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
-		stream: bool,
+		service_type: ServiceType,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(kind, config_set)?;
-		OpenAIAdapter::util_to_web_request_data(kind, model, chat_req, stream, &api_key)
+		let url = Self::get_service_url(kind, service_type);
+
+		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, &api_key)
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
@@ -67,12 +69,15 @@ impl OpenAIAdapter {
 
 	pub(in crate::adapter) fn util_to_web_request_data(
 		kind: AdapterKind,
+		url: String,
 		model: &str,
 		chat_req: ChatRequest,
-		stream: bool,
+		service_type: ServiceType,
 		// -- utils args
 		api_key: &str,
 	) -> Result<WebRequestData> {
+		let stream = matches!(service_type, ServiceType::ChatStream);
+
 		let headers = vec![
 			// headers
 			("Authorization".to_string(), format!("Bearer {api_key}")),
@@ -85,7 +90,7 @@ impl OpenAIAdapter {
 			"stream": stream
 		});
 
-		Ok(WebRequestData { headers, payload })
+		Ok(WebRequestData { url, headers, payload })
 	}
 }
 

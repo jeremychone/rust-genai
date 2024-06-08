@@ -33,8 +33,11 @@ impl Adapter for AnthropicAdapter {
 		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
-		stream: bool,
+		service_type: ServiceType,
 	) -> Result<WebRequestData> {
+		let stream = matches!(service_type, ServiceType::ChatStream);
+		let url = Self::get_service_url(kind, service_type);
+
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(kind, config_set)?;
 
@@ -55,7 +58,7 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("system", system)?;
 		}
 
-		Ok(WebRequestData { headers, payload })
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {

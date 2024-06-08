@@ -31,8 +31,12 @@ impl Adapter for CohereAdapter {
 		config_set: &ConfigSet<'_>,
 		model: &str,
 		chat_req: ChatRequest,
-		stream: bool,
+		service_type: ServiceType,
 	) -> Result<WebRequestData> {
+		let stream = matches!(service_type, ServiceType::ChatStream);
+
+		let url = Self::get_service_url(kind, service_type);
+
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(kind, config_set)?;
 
@@ -62,7 +66,7 @@ impl Adapter for CohereAdapter {
 			payload.x_insert("preamble", preamble)?;
 		}
 
-		Ok(WebRequestData { headers, payload })
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
@@ -79,7 +83,7 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
-		let web_stream = WebStream::new(reqwest_builder, "\n");
+		let web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n");
 		let cohere_stream = CohereStream::new(web_stream);
 		let chat_stream = ChatStream::from_inter_stream(cohere_stream);
 
@@ -98,7 +102,7 @@ struct CohereChatRequestParts {
 	chat_history: Vec<Value>,
 }
 
-/// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
+/// Takes the genai ChatMessages and build the System string and json Messages for Cohere.
 /// - pop the last chat user message, and set it as message
 /// - set the eventual `system` as first `preamble`
 /// - add all of the system message in the 'preamble' (this might change when ChatReq will have `.system`)
