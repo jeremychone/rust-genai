@@ -16,6 +16,7 @@ mod dispatcher;
 // (over nesting not needed, adapters/ is just here for code organizational purposed)
 use adapters::*;
 
+pub(crate) mod inter_stream;
 pub(in crate::adapter) mod support;
 
 pub use adapter_config::*;

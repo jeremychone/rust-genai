@@ -1,5 +1,5 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatStream};
+use crate::chat::{ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
 use crate::{ConfigSet, Result};
 
@@ -30,7 +30,7 @@ impl Client {
 		Ok(chat_res)
 	}
 
-	pub async fn exec_chat_stream(&self, model: &str, chat_req: ChatRequest) -> Result<ChatStream> {
+	pub async fn exec_chat_stream(&self, model: &str, chat_req: ChatRequest) -> Result<ChatStreamResponse> {
 		let adapter_kind = AdapterKind::from_model(model)?;
 
 		let adapter_config = self

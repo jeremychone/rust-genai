@@ -1,9 +1,9 @@
-use crate::chat::{ChatStream, StreamChunk, StreamEvent};
+use crate::chat::{ChatStreamResponse, StreamChunk, ChatStreamEvent};
 use futures::StreamExt;
 use tokio::io::AsyncWriteExt as _;
 
 /// Convenient function that print a chat stream and also capture the content and returns it.
-pub async fn print_chat_stream(chat_res: ChatStream) -> Result<String, Box<dyn std::error::Error>> {
+pub async fn print_chat_stream(chat_res: ChatStreamResponse) -> Result<String, Box<dyn std::error::Error>> {
 	let mut stdout = tokio::io::stdout();
 
 	let mut stream = chat_res.stream;
@@ -11,7 +11,7 @@ pub async fn print_chat_stream(chat_res: ChatStream) -> Result<String, Box<dyn s
 	let mut content_capture = String::new();
 
 	while let Some(Ok(stream_event)) = stream.next().await {
-		let StreamEvent::Chunk(StreamChunk { content }) = stream_event else {
+		let ChatStreamEvent::Chunk(StreamChunk { content }) = stream_event else {
 			continue;
 		};
 

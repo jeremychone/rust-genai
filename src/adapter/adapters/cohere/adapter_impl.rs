@@ -1,11 +1,10 @@
-use crate::adapter::cohere::{CohereStream, CohereStreamEvent};
+use crate::adapter::cohere::CohereStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamChunk, StreamEnd, StreamEvent};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
 use crate::{ConfigSet, Error, Result};
-use futures::StreamExt;
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
@@ -79,25 +78,12 @@ impl Adapter for CohereAdapter {
 		Ok(ChatResponse { content })
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
+	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new(reqwest_builder, "\n");
 		let cohere_stream = CohereStream::new(web_stream);
-		let stream = cohere_stream.filter_map(|an_stream_event| async move {
-			match an_stream_event {
-				Ok(CohereStreamEvent::StreamStart) => Some(Ok(StreamEvent::Start)),
-				// NOTE: Cohere Chunk event might have None content (might be a side effect of the typing constrain),
-				//      but will be ignored in that chase.
-				Ok(CohereStreamEvent::Chunk(Some(content))) => Some(Ok(StreamChunk { content }.into())),
-				// TODO: Needs to design the strategy to proxy the event to customize StreamEnd payload
-				Ok(CohereStreamEvent::StreamEnd) => Some(Ok(StreamEvent::End(StreamEnd::default()))),
+		let chat_stream = ChatStream::from_inter_stream(cohere_stream);
 
-				Err(err) => Some(Err(err)),
-				_ => None,
-			}
-		});
-		Ok(ChatStream {
-			stream: Box::pin(stream),
-		})
+		Ok(ChatStreamResponse { stream: chat_stream })
 	}
 }
 

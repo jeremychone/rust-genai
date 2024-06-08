@@ -1,6 +1,6 @@
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::AdapterConfig;
-use crate::chat::{ChatRequest, ChatResponse, ChatStream};
+use crate::chat::{ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use derive_more::Display;
@@ -60,7 +60,7 @@ pub trait Adapter {
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse>;
 
 	/// To be implemented by Adapters
-	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream>;
+	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse>;
 }
 
 // region:    --- AdapterKind

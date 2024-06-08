@@ -1,11 +1,10 @@
-use crate::adapter::anthropic::{AnthropicMessagesStream, AnthropicStreamEvent};
+use crate::adapter::anthropic::AnthropicMessagesStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, StreamChunk, StreamEnd, StreamEvent};
+use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
-use futures::StreamExt;
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -79,23 +78,11 @@ impl Adapter for AnthropicAdapter {
 		Ok(ChatResponse { content })
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
+	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
 		let anthropic_stream = AnthropicMessagesStream::new(event_source);
-		let stream = anthropic_stream.filter_map(|an_stream_event| async move {
-			match an_stream_event {
-				Ok(AnthropicStreamEvent::MessageStart) => Some(Ok(StreamEvent::Start)),
-				Ok(AnthropicStreamEvent::BlockDelta(content)) => Some(Ok(StreamChunk { content }.into())),
-				// TODO: Needs to design the strategy to proxy the event to customize StreamEnd payload
-				Ok(AnthropicStreamEvent::MessageStop) => Some(Ok(StreamEvent::End(StreamEnd::default()))),
-
-				Err(err) => Some(Err(err)),
-				_ => None,
-			}
-		});
-		Ok(ChatStream {
-			stream: Box::pin(stream),
-		})
+		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
+		Ok(ChatStreamResponse { stream: chat_stream })
 	}
 }
 

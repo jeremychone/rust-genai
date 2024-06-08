@@ -3,7 +3,7 @@ use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatStream};
+use crate::chat::{ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
@@ -61,7 +61,7 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStream> {
+	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(kind, reqwest_builder),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(kind, reqwest_builder),

@@ -1,5 +1,6 @@
 //! API DOC: https://platform.openai.com/docs/api-reference/chat
 
+use crate::adapter::inter_stream::InterStreamEvent;
 use crate::utils::x_value::XValue;
 use crate::{Error, Result};
 use reqwest_eventsource::{Event, EventSource};
@@ -20,7 +21,7 @@ impl OpenAIMessagesStream {
 }
 
 impl futures::Stream for OpenAIMessagesStream {
-	type Item = Result<OpenAIStreamEvent>;
+	type Item = Result<InterStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		if self.done {
@@ -28,7 +29,7 @@ impl futures::Stream for OpenAIMessagesStream {
 		}
 		while let Poll::Ready(event) = Pin::new(&mut self.inner).poll_next(cx) {
 			match event {
-				Some(Ok(Event::Open)) => return Poll::Ready(Some(Ok(OpenAIStreamEvent::Open))),
+				Some(Ok(Event::Open)) => return Poll::Ready(Some(Ok(InterStreamEvent::Start))),
 				Some(Ok(Event::Message(message))) => {
 					if message.event == "message" {
 						let mut message_data: Value =
@@ -36,11 +37,11 @@ impl futures::Stream for OpenAIMessagesStream {
 
 						let mut first_choice: Value = message_data.x_take("/choices/0")?;
 
-						if let Some(finish_reason) = first_choice.x_take::<Option<String>>("finish_reason")? {
+						if let Some(_finish_reason) = first_choice.x_take::<Option<String>>("finish_reason")? {
 							self.done = true;
-							return Poll::Ready(Some(Ok(OpenAIStreamEvent::Finish(finish_reason))));
+							return Poll::Ready(Some(Ok(InterStreamEvent::End)));
 						} else if let Some(content) = first_choice.x_take::<Option<String>>("/delta/content")? {
-							return Poll::Ready(Some(Ok(OpenAIStreamEvent::Chunck(content))));
+							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
 						} else {
 							println!("EMPTY CHOICE CONTENT");
 						}
@@ -57,10 +58,4 @@ impl futures::Stream for OpenAIMessagesStream {
 		}
 		Poll::Pending
 	}
-}
-
-pub enum OpenAIStreamEvent {
-	Open,
-	Chunck(String),
-	Finish(String),
 }
