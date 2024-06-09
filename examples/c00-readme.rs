@@ -8,6 +8,7 @@ const MODEL_COHERE: &str = "command-light";
 const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
 const MODEL_OLLAMA: &str = "mixtral";
 
+// NOTE: Those are the default env keys for each AI Provider type.
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- de/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
@@ -32,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
-		ChatMessage::system("Answer in one sentence"),
+		// ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user(question),
 	]);
 

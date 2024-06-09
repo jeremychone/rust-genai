@@ -2,7 +2,7 @@
 //! It can take the following forms:
 //! - Configured with a custom environment name,
 //! - Contain a fixed auth value,
-//! - Contain an `AuthDataProvider` trait object or closure that will be called to return the AuthData.
+//! - Contain an `AuthResolverFnSync` trait object or closure that will be called to return the AuthData.
 //!
 //! Note: AuthData is typically a single value but can be Multi for future adapters (e.g., AWS Berock).
 
@@ -30,47 +30,47 @@ impl AuthResolver {
 		}
 	}
 
-	pub fn from_provider_sync(provider: impl IntoAuthDataProviderSync) -> Self {
+	pub fn from_sync_resolver(resolver_fn: impl IntoSyncAuthResolverFn) -> Self {
 		AuthResolver {
-			inner: AuthResolverInner::SyncProvider(provider.into_provider()),
+			inner: AuthResolverInner::ResolverFnSync(resolver_fn.into_sync_resolver_fn()),
 		}
 	}
 }
 
 // region:    --- AuthDataProvider & IntoAuthDataProvider
 
-pub trait AuthDataProviderSync: Send + Sync {
-	fn provide_auth_data_sync(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>>;
+pub trait SyncAuthResolverFn: Send + Sync {
+	fn exec_sync_resolver_fn(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>>;
 }
 
 // Define a trait for types that can be converted into Arc<dyn AuthDataProviderSync>
-pub trait IntoAuthDataProviderSync {
-	fn into_provider(self) -> Arc<dyn AuthDataProviderSync>;
+pub trait IntoSyncAuthResolverFn {
+	fn into_sync_resolver_fn(self) -> Arc<dyn SyncAuthResolverFn>;
 }
 
 // Implement IntoProvider for Arc<dyn AuthDataProviderSync>
-impl IntoAuthDataProviderSync for Arc<dyn AuthDataProviderSync> {
-	fn into_provider(self) -> Arc<dyn AuthDataProviderSync> {
+impl IntoSyncAuthResolverFn for Arc<dyn SyncAuthResolverFn> {
+	fn into_sync_resolver_fn(self) -> Arc<dyn SyncAuthResolverFn> {
 		self
 	}
 }
 
 // Implement IntoProvider for closures
-impl<F> IntoAuthDataProviderSync for F
+impl<F> IntoSyncAuthResolverFn for F
 where
 	F: Fn(AdapterKind, &ConfigSet) -> Result<Option<AuthData>> + Send + Sync + 'static,
 {
-	fn into_provider(self) -> Arc<dyn AuthDataProviderSync> {
+	fn into_sync_resolver_fn(self) -> Arc<dyn SyncAuthResolverFn> {
 		Arc::new(self)
 	}
 }
 
 // Implement AuthDataProviderSync for closures
-impl<F> AuthDataProviderSync for F
+impl<F> SyncAuthResolverFn for F
 where
 	F: Fn(AdapterKind, &ConfigSet) -> Result<Option<AuthData>> + Send + Sync,
 {
-	fn provide_auth_data_sync(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>> {
+	fn exec_sync_resolver_fn(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>> {
 		self(adapter_kind, config_set)
 	}
 }
@@ -87,8 +87,8 @@ impl AuthResolver {
 				Ok(Some(AuthData::from_single(key)))
 			}
 			AuthResolverInner::Fixed(auth_data) => Ok(Some(auth_data.clone())),
-			AuthResolverInner::SyncProvider(sync_provider) => {
-				sync_provider.provide_auth_data_sync(adapter_kind, config_set)
+			AuthResolverInner::ResolverFnSync(sync_provider) => {
+				sync_provider.exec_sync_resolver_fn(adapter_kind, config_set)
 			}
 		}
 	}
@@ -98,7 +98,7 @@ enum AuthResolverInner {
 	EnvName(String),
 	Fixed(AuthData),
 	#[allow(unused)] // future
-	SyncProvider(Arc<dyn AuthDataProviderSync>),
+	ResolverFnSync(Arc<dyn SyncAuthResolverFn>),
 }
 
 // impl debug for AuthResolverInner
@@ -107,7 +107,7 @@ impl std::fmt::Debug for AuthResolverInner {
 		match self {
 			AuthResolverInner::EnvName(env_name) => write!(f, "AuthResolverInner::EnvName({})", env_name),
 			AuthResolverInner::Fixed(auth_data) => write!(f, "AuthResolverInner::Fixed({:?})", auth_data),
-			AuthResolverInner::SyncProvider(_) => write!(f, "AuthResolverInner::SyncFn(...)"),
+			AuthResolverInner::ResolverFnSync(_) => write!(f, "AuthResolverInner::FnSync(...)"),
 		}
 	}
 }
@@ -117,7 +117,6 @@ impl std::fmt::Debug for AuthResolverInner {
 #[derive(Clone)]
 pub enum AuthData {
 	Single(String),
-	// TODO: Probable needs a HashMap
 	Multi(HashMap<String, String>),
 }
 
