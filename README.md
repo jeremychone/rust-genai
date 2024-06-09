@@ -1,15 +1,11 @@
 # genai - Multiprovider Generative AI Client
 
-Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **Cohere** (more to come)
+Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, **Cohere** (more to come)
 
 <div align="center">
 
-<a href="https://crates.io/crates/genai">
-<img src="https://img.shields.io/crates/v/genai.svg" />
-</a> 
-<a href="https://github.com/jeremychone/rust-genai">
-<img alt="Static Badge" src="https://img.shields.io/badge/GitHub-Repo?color=%23336699">
-</a>
+<a href="https://crates.io/crates/genai"><img src="https://img.shields.io/crates/v/genai.svg" /></a>
+<a href="https://github.com/jeremychone/rust-genai"><img alt="Static Badge" src="https://img.shields.io/badge/GitHub-Repo?color=%23336699"></a>
 
 </div>
 
