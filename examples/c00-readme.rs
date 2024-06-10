@@ -33,13 +33,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
-		// ChatMessage::system("Answer in one sentence"),
+		ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user(question),
 	]);
 
 	let client = Client::default();
 
-	let print_options = PrintChatStreamOptions::from_stream_events(true);
+	let print_options = PrintChatStreamOptions::from_stream_events(false);
 
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
 		// Skip if does not have the environment name set
