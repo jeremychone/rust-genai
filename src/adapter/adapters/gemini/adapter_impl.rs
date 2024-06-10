@@ -1,7 +1,7 @@
 use crate::adapter::gemini::GeminiStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
 use crate::{ConfigSet, Error, Result};
@@ -33,12 +33,15 @@ impl Adapter for GeminiAdapter {
 	fn to_web_request_data(
 		kind: AdapterKind,
 		config_set: &ConfigSet<'_>,
+		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		service_type: ServiceType,
+		_chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		let api_key = get_api_key_resolver(kind, config_set)?;
 
+		// For gemini, the service url returned is just the base url
+		// since model and API key is part of the url (see below)
 		let url = Self::get_service_url(kind, service_type);
 
 		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
@@ -65,6 +68,7 @@ impl Adapter for GeminiAdapter {
 
 		Ok(ChatResponse {
 			content: gemini_response.content,
+			..Default::default()
 		})
 	}
 

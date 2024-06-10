@@ -2,9 +2,12 @@ use crate::chat::ChatStream;
 
 // region:    --- ChatResponse
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ChatResponse {
 	pub content: Option<String>,
+	/// NOT SUPPORTED
+	#[allow(unused)]
+	pub meta_usage: Option<MetaUsage>,
 }
 
 // endregion: --- ChatResponse
@@ -16,3 +19,16 @@ pub struct ChatStreamResponse {
 }
 
 // endregion: --- ChatStreamResponse
+
+// region:    --- MetaUsage
+
+// IMPORTANT: This is NOT used for now. To show the API direction.
+
+#[derive(Debug, Clone)]
+pub struct MetaUsage {
+	pub input_token: Option<i32>,
+	pub output_token: Option<i32>,
+	pub total_token: Option<i32>,
+}
+
+// endregion: --- MetaUsage

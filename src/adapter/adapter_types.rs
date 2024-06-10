@@ -1,6 +1,6 @@
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::AdapterConfig;
-use crate::chat::{ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use derive_more::Display;
@@ -19,7 +19,7 @@ pub enum AdapterKind {
 }
 
 impl AdapterKind {
-	/// Very simplistic getter for now.
+	/// Very simplistic mapper for now.
 	pub fn from_model(model: &str) -> Result<Self> {
 		if model.starts_with("gpt") {
 			Ok(AdapterKind::OpenAI)
@@ -42,6 +42,8 @@ pub trait Adapter {
 	/// Note: Implementation typically using OnceLock
 	fn default_adapter_config(kind: AdapterKind) -> &'static AdapterConfig;
 
+	/// The base service url for this AdapterKind for this given service type.
+	/// NOTE: For some services, the url will be further updated in the to_web_request_data
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String;
 
 	/// Get the api_key, with default implementation.
@@ -53,9 +55,10 @@ pub trait Adapter {
 	fn to_web_request_data(
 		kind: AdapterKind,
 		config_set: &ConfigSet<'_>,
+		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		service_type: ServiceType,
+		chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData>;
 
 	/// To be implemented by Adapters

@@ -1,7 +1,7 @@
 use crate::adapter::openai::OpenAIMessagesStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Error, Result};
@@ -27,9 +27,10 @@ impl Adapter for OpenAIAdapter {
 	fn to_web_request_data(
 		kind: AdapterKind,
 		config_set: &ConfigSet<'_>,
+		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		service_type: ServiceType,
+		_chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(kind, config_set)?;
@@ -42,7 +43,10 @@ impl Adapter for OpenAIAdapter {
 		let WebResponse { mut body, .. } = web_response;
 		let first_choice: Option<Value> = body.x_take("/choices/0")?;
 		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
-		Ok(ChatResponse { content })
+		Ok(ChatResponse {
+			content,
+			..Default::default()
+		})
 	}
 
 	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {

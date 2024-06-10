@@ -1,7 +1,7 @@
 use crate::adapter::cohere::CohereStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
 use crate::{ConfigSet, Error, Result};
@@ -29,9 +29,10 @@ impl Adapter for CohereAdapter {
 	fn to_web_request_data(
 		kind: AdapterKind,
 		config_set: &ConfigSet<'_>,
+		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		service_type: ServiceType,
+		_chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
@@ -79,7 +80,10 @@ impl Adapter for CohereAdapter {
 
 		let content: Option<String> = last_chat_history_item.x_take("message")?;
 
-		Ok(ChatResponse { content })
+		Ok(ChatResponse {
+			content,
+			..Default::default()
+		})
 	}
 
 	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {

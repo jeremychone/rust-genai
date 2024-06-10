@@ -50,11 +50,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("\n--- Question:\n{question}");
 
 		println!("\n--- Answer: (oneshot response)");
-		let chat_res = client.exec_chat(model, chat_req.clone()).await?;
+		let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 		println!("{}", chat_res.content.as_deref().unwrap_or("NO ANSWER"));
 
 		println!("\n--- Answer: (streaming)");
-		let chat_res = client.exec_chat_stream(model, chat_req.clone()).await?;
+		let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
 		print_chat_stream(chat_res).await?;
 
 		println!();

@@ -4,7 +4,7 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
@@ -35,18 +35,27 @@ impl Adapter for AdapterDispatcher {
 	fn to_web_request_data(
 		kind: AdapterKind,
 		config_set: &ConfigSet<'_>,
+		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		service_type: ServiceType,
+		chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
-			AdapterKind::Anthropic => {
-				AnthropicAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type)
+			AdapterKind::OpenAI => {
+				OpenAIAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
 			}
-			AdapterKind::Cohere => CohereAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
-			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
-			AdapterKind::Gemini => GeminiAdapter::to_web_request_data(kind, config_set, model, chat_req, service_type),
+			AdapterKind::Anthropic => {
+				AnthropicAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+			}
+			AdapterKind::Cohere => {
+				CohereAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+			}
+			AdapterKind::Ollama => {
+				OllamaAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+			}
+			AdapterKind::Gemini => {
+				GeminiAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+			}
 		}
 	}
 

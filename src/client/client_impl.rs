@@ -1,5 +1,5 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
 use crate::{ConfigSet, Result};
 
@@ -9,7 +9,13 @@ impl Client {
 		todo!()
 	}
 
-	pub async fn exec_chat(&self, model: &str, chat_req: ChatRequest) -> Result<ChatResponse> {
+	pub async fn exec_chat(
+		&self,
+		model: &str,
+		chat_req: ChatRequest,
+		// options not implemented yet
+		options: Option<&ChatRequestOptions>,
+	) -> Result<ChatResponse> {
 		let adapter_kind = AdapterKind::from_model(model)?;
 
 		let adapter_config = self
@@ -18,8 +24,14 @@ impl Client {
 
 		let config_set = ConfigSet::new(self.config(), adapter_config);
 
-		let WebRequestData { headers, payload, url } =
-			AdapterDispatcher::to_web_request_data(adapter_kind, &config_set, model, chat_req, ServiceType::Chat)?;
+		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
+			adapter_kind,
+			&config_set,
+			ServiceType::Chat,
+			model,
+			chat_req,
+			options,
+		)?;
 
 		let web_res = self.web_client().do_post(&url, &headers, payload).await?;
 
@@ -28,7 +40,12 @@ impl Client {
 		Ok(chat_res)
 	}
 
-	pub async fn exec_chat_stream(&self, model: &str, chat_req: ChatRequest) -> Result<ChatStreamResponse> {
+	pub async fn exec_chat_stream(
+		&self,
+		model: &str,
+		chat_req: ChatRequest, // options not implemented yet
+		options: Option<&ChatRequestOptions>,
+	) -> Result<ChatStreamResponse> {
 		let adapter_kind = AdapterKind::from_model(model)?;
 
 		let adapter_config = self
@@ -40,9 +57,10 @@ impl Client {
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
 			adapter_kind,
 			&config_set,
+			ServiceType::ChatStream,
 			model,
 			chat_req,
-			ServiceType::ChatStream,
+			options,
 		)?;
 
 		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;

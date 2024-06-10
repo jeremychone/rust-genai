@@ -1,4 +1,5 @@
 use crate::adapter::inter_stream::InterStreamEvent;
+use crate::chat::MetaUsage;
 use crate::Result;
 use derive_more::From;
 use futures::Stream;
@@ -67,6 +68,9 @@ pub struct StreamChunk {
 
 #[derive(Debug, Default)]
 pub struct StreamEnd {
+	/// The eventual capture UsageMeta
+	pub meta_usage: Option<MetaUsage>,
+
 	/// The optional captured full content
 	/// NOTE: NOT SUPPORTED YET (always None for now)
 	///       Probably allow to toggle this on at the client_config, adapter_config
