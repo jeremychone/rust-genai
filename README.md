@@ -1,4 +1,4 @@
-# genai - Multi AI Providers Rust Library.
+# genai - Multi-AI Providers Library for Rust.
 
 Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, **Cohere** (more to come)
 
@@ -22,7 +22,7 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 - **IMPORTANT 2** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.0"`. In short, `0.1.x` can be considered "beta releases."
 
-- **IMPORTANT 3** This is **NOT** intended to be a replacement for [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs), but rather to tackle the simpler lowest common denominator of chat generation use cases, where API depth is less a priority than API commonality.
+- **IMPORTANT 3** This is **NOT** intended to be a replacement for [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs), but rather to tackle the simpler lowest common denominator of chat generation use cases, where API depth is less aa priority than API commonality.
 
 ## Library Focus:
 
@@ -112,12 +112,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Examples
+**Examples:**
 
 - [examples/c00-readme.rs](examples/c00-readme.rs) - Quick overview code with multiple providers and streaming.
 - [examples/c01-conv.rs](examples/c01-conv.rs) - Shows how to build a conversation flow.
-- [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom **Auth Resolver** (for api_key) per adapter kind.
-- [examples/c03-kind.rs](examples/c03-kind.rs) - Demonstrates how to provide a custom **AdapterKindResolver** to customize the "model name" to "adapter kind" mapping.
+- [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data (i.e., for api_key) per adapter kind.
+- [examples/c03-kind.rs](examples/c03-kind.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
 
 
 ## Notes on Possible Direction

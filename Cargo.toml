@@ -1,10 +1,10 @@
 [package]
 name = "genai"
-version = "0.0.13"
+version = "0.0.14-alpha.1"
 edition = "2021"
 rust-version = "1.78"
 license = "MIT OR Apache-2.0"
-description = "Multi AI Providers Rust Library. (Ollama, OpenAI, Gemini, Anthropic, Cohere, ...)"
+description = "Multi-AI Providers Library for Rust. (Ollama, OpenAI, Gemini, Anthropic, Cohere, ...)"
 keywords = [
 	"generative-ai",
 	"library",
