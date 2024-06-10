@@ -1,42 +1,22 @@
-#[derive(Debug, Default)]
-pub struct ClientConfig {}
-
-/// Convenient Constructors
-/// Note: Those constructor(s) will call `default()` and sent the given property
-///       They are just for convenience, the builder setter function can be used.
-impl ClientConfig {}
+use crate::resolver::AdapterKindResolver;
 
 #[derive(Debug, Default)]
-pub enum ApiKeyStrategy {
-	#[default]
-	FallBackToDefaultEnv,
-	Another,
+pub struct ClientConfig {
+	adapter_kind_resolver: Option<AdapterKindResolver>,
 }
 
-// region:    --- EndPoint
-
-#[derive(Debug)]
-pub struct EndPoint {
-	pub host: Option<String>,
-	pub port: Option<u16>,
-}
-
-impl From<(String, u16)> for EndPoint {
-	fn from((host, port): (String, u16)) -> Self {
-		Self {
-			host: Some(host),
-			port: Some(port),
-		}
+/// Adapter Related Setters (builder style)
+impl ClientConfig {
+	/// Set the built auth resolver
+	pub fn with_auth_resolver(mut self, auth_resolver: AdapterKindResolver) -> Self {
+		self.adapter_kind_resolver = Some(auth_resolver);
+		self
 	}
 }
 
-impl From<(&str, u16)> for EndPoint {
-	fn from((host, port): (&str, u16)) -> Self {
-		Self {
-			host: Some(host.to_string()),
-			port: Some(port),
-		}
+/// Getters (as ref/deref)
+impl ClientConfig {
+	pub fn adapter_kind_resolver(&self) -> Option<&AdapterKindResolver> {
+		self.adapter_kind_resolver.as_ref()
 	}
 }
-
-// endregion: --- EndPoint

@@ -5,8 +5,10 @@
 
 // region:    --- Modules
 
+mod adapter_kind_resolver;
 mod auth_resolver;
 
+pub use adapter_kind_resolver::*;
 pub use auth_resolver::*;
 
 // endregion: --- Modules

@@ -12,6 +12,12 @@ use std::sync::OnceLock;
 pub struct GeminiAdapter;
 
 const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
+const MODELS: &[&str] = &[
+	"gemini-1.5-pro",
+	"gemini-1.5-flash",
+	"gemini-1.0-pro",
+	"gemini-1.5-flash-latest",
+];
 
 // curl \
 //   -H 'Content-Type: application/json' \
@@ -19,6 +25,11 @@ const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
 //   -X POST 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 
 impl Adapter for GeminiAdapter {
+	/// Note: For now returns the common ones (see above)
+	async fn list_models(_kind: AdapterKind) -> Result<Vec<String>> {
+		Ok(MODELS.iter().map(|s| s.to_string()).collect())
+	}
+
 	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
 		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
 		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("GEMINI_API_KEY"))

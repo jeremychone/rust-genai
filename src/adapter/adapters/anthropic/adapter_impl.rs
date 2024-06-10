@@ -14,9 +14,16 @@ pub struct AnthropicAdapter;
 
 const MAX_TOKENS: u32 = 1024;
 const ANTRHOPIC_VERSION: &str = "2023-06-01";
+const MODELS: &[&str] = &["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"];
+
 const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
 impl Adapter for AnthropicAdapter {
+	/// Note: For now returns the common ones (see above)
+	async fn list_models(_kind: AdapterKind) -> Result<Vec<String>> {
+		Ok(MODELS.iter().map(|s| s.to_string()).collect())
+	}
+
 	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
 		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
 		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY"))

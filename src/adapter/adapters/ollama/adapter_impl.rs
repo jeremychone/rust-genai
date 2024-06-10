@@ -16,6 +16,11 @@ const BASE_URL: &str = "http://localhost:11434/v1/";
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
 ///       Since the base ollama API supports `application/x-ndjson` for streaming whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
+	/// Note: For now returns empty as it should probably do a request to the ollama server
+	async fn list_models(_kind: AdapterKind) -> Result<Vec<String>> {
+		Ok(Vec::new())
+	}
+
 	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
 		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
 		INSTANCE.get_or_init(AdapterConfig::default)

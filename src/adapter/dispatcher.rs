@@ -12,6 +12,16 @@ use reqwest::RequestBuilder;
 pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
+	async fn list_models(kind: AdapterKind) -> Result<Vec<String>> {
+		match kind {
+			AdapterKind::OpenAI => OpenAIAdapter::list_models(kind).await,
+			AdapterKind::Anthropic => AnthropicAdapter::list_models(kind).await,
+			AdapterKind::Cohere => CohereAdapter::list_models(kind).await,
+			AdapterKind::Ollama => OllamaAdapter::list_models(kind).await,
+			AdapterKind::Gemini => GeminiAdapter::list_models(kind).await,
+		}
+	}
+
 	fn default_adapter_config(kind: AdapterKind) -> &'static AdapterConfig {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::default_adapter_config(kind),

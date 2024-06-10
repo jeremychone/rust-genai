@@ -21,6 +21,12 @@ impl Default for WebClient {
 
 // region:    --- Constructors
 
+impl WebClient {
+	pub fn from_reqwest_client(reqwest_client: reqwest::Client) -> Self {
+		WebClient { reqwest_client }
+	}
+}
+
 // endregion: --- Constructors
 
 // region:    --- Web Method Impl

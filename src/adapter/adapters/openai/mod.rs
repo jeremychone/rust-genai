@@ -1,4 +1,5 @@
-//! API DOC: https://platform.openai.com/docs/api-reference/chat
+//!     API DOC: https://platform.openai.com/docs/api-reference/chat
+//! MODEL NAMES: https://platform.openai.com/docs/models
 
 // region:    --- Modules
 

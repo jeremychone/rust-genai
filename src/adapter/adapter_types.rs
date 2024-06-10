@@ -1,4 +1,3 @@
-use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::AdapterConfig;
 use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
@@ -37,7 +36,10 @@ impl AdapterKind {
 	}
 }
 
-pub trait Adapter {
+pub(crate) trait Adapter {
+	// NOTE: Adapter is a crate Trait, so, ok to use async fn here.
+	async fn list_models(kind: AdapterKind) -> Result<Vec<String>>;
+
 	/// The static default AdapterConfig for this AdapterKind
 	/// Note: Implementation typically using OnceLock
 	fn default_adapter_config(kind: AdapterKind) -> &'static AdapterConfig;
@@ -45,11 +47,6 @@ pub trait Adapter {
 	/// The base service url for this AdapterKind for this given service type.
 	/// NOTE: For some services, the url will be further updated in the to_web_request_data
 	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String;
-
-	/// Get the api_key, with default implementation.
-	fn get_api_key(kind: AdapterKind, config_set: &ConfigSet<'_>) -> Result<String> {
-		get_api_key_resolver(kind, config_set)
-	}
 
 	/// To be implemented by Adapters
 	fn to_web_request_data(

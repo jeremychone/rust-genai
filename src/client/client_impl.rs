@@ -5,8 +5,8 @@ use crate::{ConfigSet, Result};
 
 /// Public AI Functions
 impl Client {
-	pub async fn list_models(&self, _adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		todo!()
+	pub async fn list_models(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
+		AdapterDispatcher::list_models(adapter_kind).await
 	}
 
 	pub async fn exec_chat(
@@ -16,7 +16,7 @@ impl Client {
 		// options not implemented yet
 		options: Option<&ChatRequestOptions>,
 	) -> Result<ChatResponse> {
-		let adapter_kind = AdapterKind::from_model(model)?;
+		let adapter_kind = self.resolve_adapter_kind(model)?;
 
 		let adapter_config = self
 			.custom_adapter_config(adapter_kind)
@@ -46,7 +46,7 @@ impl Client {
 		chat_req: ChatRequest, // options not implemented yet
 		options: Option<&ChatRequestOptions>,
 	) -> Result<ChatStreamResponse> {
-		let adapter_kind = AdapterKind::from_model(model)?;
+		let adapter_kind = self.resolve_adapter_kind(model)?;
 
 		let adapter_config = self
 			.custom_adapter_config(adapter_kind)
@@ -66,5 +66,17 @@ impl Client {
 		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;
 
 		AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder)
+	}
+}
+
+/// Private implementations
+
+impl Client {
+	fn resolve_adapter_kind(&self, model: &str) -> Result<AdapterKind> {
+		if let Some(auth_resolver) = self.config().adapter_kind_resolver() {
+			auth_resolver.resolve(model)
+		} else {
+			AdapterKind::from_model(model)
+		}
 	}
 }

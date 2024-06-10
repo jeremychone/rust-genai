@@ -13,8 +13,14 @@ use std::sync::OnceLock;
 pub struct OpenAIAdapter;
 
 const BASE_URL: &str = "https://api.openai.com/v1/";
+const MODELS: &[&str] = &["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
 
 impl Adapter for OpenAIAdapter {
+	/// Note: For now returns the common ones (see above)
+	async fn list_models(_kind: AdapterKind) -> Result<Vec<String>> {
+		Ok(MODELS.iter().map(|s| s.to_string()).collect())
+	}
+
 	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
 		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
 		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("OPENAI_API_KEY"))

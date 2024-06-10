@@ -59,8 +59,8 @@ pub struct ClientBuilder {
 
 /// Builder methods
 impl ClientBuilder {
-	pub fn with_web_client(mut self, web_client: WebClient) -> Self {
-		self.web_client = Some(web_client);
+	pub fn with_reqwest(mut self, reqwest_client: reqwest::Client) -> Self {
+		self.web_client = Some(WebClient::from_reqwest_client(reqwest_client));
 		self
 	}
 
