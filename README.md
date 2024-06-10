@@ -11,7 +11,7 @@ Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, 
 
 ```toml
 # cargo.toml
-genai = {version: '=0.0.12'}
+genai = {version: '=0.0.13'}
 ```
 
 <br />
@@ -41,12 +41,12 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 ## Example
 
-[`examples/c00-readme.rs`](examples/c00-readme.rs)
+[examples/c00-readme.rs](examples/c00-readme.rs)
 
 ```rust
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::client::Client;
-use genai::utils::print_chat_stream;
+use genai::utils::{print_chat_stream, PrintChatStreamOptions};
 
 const MODEL_OPENAI: &str = "gpt-3.5-turbo";
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
@@ -85,6 +85,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let client = Client::default();
 
+	let print_options = PrintChatStreamOptions::from_stream_events(true);
+
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
 		// Skip if does not have the environment name set
 		if !env_name.is_empty() && std::env::var(env_name).is_err() {
@@ -96,12 +98,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("\n--- Question:\n{question}");
 
 		println!("\n--- Answer: (oneshot response)");
-		let chat_res = client.exec_chat(model, chat_req.clone()).await?;
+		let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 		println!("{}", chat_res.content.as_deref().unwrap_or("NO ANSWER"));
 
 		println!("\n--- Answer: (streaming)");
-		let chat_res = client.exec_chat_stream(model, chat_req.clone()).await?;
-		print_chat_stream(chat_res).await?;
+		let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
+		print_chat_stream(chat_res, Some(&print_options)).await?;
 
 		println!();
 	}
@@ -110,21 +112,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+Examples
+
+- [examples/c00-readme.rs](examples/c00-readme.rs) - Quick overview code with multiple providers and streaming.
+- [examples/c01-conv.rs](examples/c01-conv.rs) - Shows how to build a conversation flow.
+- [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom **Auth Resolver** (for api_key) per adapter kind.
+- [examples/c03-kind.rs](examples/c03-kind.rs) - Demonstrates how to provide a custom **AdapterKindResolver** to customize the "model name" to "adapter kind" mapping.
+
 
 ## Notes on Possible Direction
 
 - Will add more data on ChatResponse and ChatStream, especially metadata about usage.
-
-- Add vision/image support to the chat messages and responses
-
-- Add function calling support to the chat messages and responses
-
-- Add Google Gemini (note: Seems that gemini endpoints is diffferent than the google vertex AI as only the later seems to support Function & Instruction.)
-
-- Add the AWS Berock variants (e.g., Mistral, and Anthropic). Most of the work will be on "interesting" token signature scheme (without having to drag big SDKs, might be below feature)
+- Add vision/image support to chat messages and responses.
+- Add function calling support to chat messages and responses.
+- Add the AWS Bedrock variants (e.g., Mistral, and Anthropic). Most of the work will be on "interesting" token signature scheme (without having to drag big SDKs, might be below feature).
+- Add the Google VertexAI variants.
+- (might) add the Azure OpenAI variant (not sure yet).
 
 
 ## Links
 
 - crates.io: [crates.io/crates/genai](https://crates.io/crates/genai)
 - GitHub: [github.com/jeremychone/rust-genai](https://github.com/jeremychone/rust-genai)
+- Sponsored by [BriteSnow](https://britesnow.com) (Jeremy Chones's consulting company)
