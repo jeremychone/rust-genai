@@ -40,7 +40,7 @@ impl Adapter for OllamaAdapter {
 	) -> Result<WebRequestData> {
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, "ollama")
+		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, "ollama", true)
 	}
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {

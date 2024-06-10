@@ -7,9 +7,9 @@ license = "MIT OR Apache-2.0"
 description = "Multi-AI Providers Library for Rust. (Ollama, OpenAI, Gemini, Anthropic, Cohere, ...)"
 keywords = [
 	"generative-ai",
-	"library",
 	"openai",
-	"Ollama",
+	"chatgpt",
+	"gemini",
 	"ollama"
 ]
 homepage = "https://github.com/jeremychone/rust-genai"
@@ -17,18 +17,16 @@ repository = "https://github.com/jeremychone/rust-genai"
 
 [lints.rust]
 unsafe_code = "forbid"
-unused = { level = "allow", priority = -1 } # For exploratory dev.
+# unused = { level = "allow", priority = -1 } # For exploratory dev.
 
 [dependencies]
 # -- Async
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
-async-trait = "0.1"
 tokio-stream = "0.1"
 # -- Json
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_with = { version = "3", features = ["macros"] }
 # -- Web
 reqwest = {version = "0.12", features = ["json"]}
 reqwest-eventsource = "0.6"

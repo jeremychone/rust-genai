@@ -42,7 +42,7 @@ impl Adapter for OpenAIAdapter {
 		let api_key = get_api_key_resolver(kind, config_set)?;
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, &api_key)
+		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, &api_key, false)
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
@@ -85,6 +85,7 @@ impl OpenAIAdapter {
 		service_type: ServiceType,
 		// -- utils args
 		api_key: &str,
+		ollama_variant: bool,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
@@ -93,7 +94,7 @@ impl OpenAIAdapter {
 			("Authorization".to_string(), format!("Bearer {api_key}")),
 		];
 
-		let OpenAIRequestParts { messages } = into_openai_messages(kind, chat_req)?;
+		let OpenAIRequestParts { messages } = into_openai_messages(kind, chat_req, ollama_variant)?;
 		let payload = json!({
 			"model": model,
 			"messages": messages,
@@ -113,19 +114,37 @@ struct OpenAIRequestParts {
 /// Takes the genai ChatMessages and build the OpenAIChatRequestParts
 /// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
 /// - All messages get added with the corresponding roles (does not support tools for now)
-/// -
-fn into_openai_messages(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
+/// NOTE: here, the last `true` is for the ollama variant
+///       It seems the Ollama compaitiblity layer does not work well with multiple System message.
+///       So, when `true`, it will concatenate the system message as a single on at the beginning
+fn into_openai_messages(
+	adapter_kind: AdapterKind,
+	chat_req: ChatRequest,
+	ollama_variant: bool,
+) -> Result<OpenAIRequestParts> {
+	let mut system_messages: Vec<String> = Vec::new();
 	let mut messages: Vec<Value> = Vec::new();
 
 	if let Some(system_msg) = chat_req.system {
-		messages.push(json!({"role": "system", "content": system_msg}));
+		if ollama_variant {
+			system_messages.push(system_msg)
+		} else {
+			messages.push(json!({"role": "system", "content": system_msg}));
+		}
 	}
 
 	for chat_msg in chat_req.messages {
 		let content = chat_msg.content;
 		match chat_msg.role {
 			// for now, system and tool goes to system
-			ChatRole::System => messages.push(json!({"role": "system", "content": content})),
+			ChatRole::System => {
+				// see note in the funtion comment
+				if ollama_variant {
+					system_messages.push(content);
+				} else {
+					messages.push(json!({"role": "system", "content": content}))
+				}
+			}
 			ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
 			ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
 			ChatRole::Tool => {
@@ -135,6 +154,11 @@ fn into_openai_messages(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Res
 				})
 			}
 		}
+	}
+
+	if !system_messages.is_empty() {
+		let system_message = system_messages.join("\n");
+		messages.insert(0, json!({"role": "system", "content": system_message}));
 	}
 
 	Ok(OpenAIRequestParts { messages })
