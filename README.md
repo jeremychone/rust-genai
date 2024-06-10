@@ -1,4 +1,4 @@
-# genai - Multiprovider Generative AI Client
+# genai - Multi AI Providers Rust Library.
 
 Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, **Cohere** (more to come)
 

@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		let chat_res = client.exec_chat_stream(MODEL, chat_req.clone(), None).await?;
 
 		println!("\n--- Answer: (streaming)");
-		let assistant_answer = print_chat_stream(chat_res).await?;
+		let assistant_answer = print_chat_stream(chat_res, None).await?;
 
 		chat_req = chat_req.append_message(ChatMessage::assistant(assistant_answer));
 	}

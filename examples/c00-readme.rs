@@ -1,6 +1,6 @@
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::client::Client;
-use genai::utils::print_chat_stream;
+use genai::utils::{print_chat_stream, PrintChatStreamOptions};
 
 const MODEL_OPENAI: &str = "gpt-3.5-turbo";
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
@@ -39,6 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let client = Client::default();
 
+	let print_options = PrintChatStreamOptions::from_stream_events(true);
+
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
 		// Skip if does not have the environment name set
 		if !env_name.is_empty() && std::env::var(env_name).is_err() {
@@ -55,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 		println!("\n--- Answer: (streaming)");
 		let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
-		print_chat_stream(chat_res).await?;
+		print_chat_stream(chat_res, Some(&print_options)).await?;
 
 		println!();
 	}
