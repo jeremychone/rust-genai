@@ -1,6 +1,6 @@
 use crate::chat::{ChatStreamEvent, ChatStreamResponse, StreamChunk};
 use futures::StreamExt;
-use tokio::io::AsyncWriteExt as _;
+use tokio::io::{AsyncWriteExt as _, Stdout};
 
 // region:    --- PrintChatOptions
 
@@ -26,7 +26,17 @@ pub async fn print_chat_stream(
 	options: Option<&PrintChatStreamOptions>,
 ) -> Result<String, Box<dyn std::error::Error>> {
 	let mut stdout = tokio::io::stdout();
+	let res = print_chat_stream_inner(&mut stdout, chat_res, options).await;
+	// make sure tokio stdout flush get called, regardless of success or not.
+	stdout.flush().await?;
+	res
+}
 
+async fn print_chat_stream_inner(
+	stdout: &mut Stdout,
+	chat_res: ChatStreamResponse,
+	options: Option<&PrintChatStreamOptions>,
+) -> Result<String, Box<dyn std::error::Error>> {
 	let mut stream = chat_res.stream;
 
 	let mut content_capture = String::new();
@@ -58,6 +68,7 @@ pub async fn print_chat_stream(
 						(None, Some(content))
 					}
 				}
+
 				ChatStreamEvent::End(end_event) => {
 					if print_events {
 						// TODO: Might do a pretty json format
@@ -82,7 +93,6 @@ pub async fn print_chat_stream(
 	}
 
 	stdout.write_all(b"\n").await?;
-	stdout.flush().await?;
 
 	Ok(content_capture)
 }
