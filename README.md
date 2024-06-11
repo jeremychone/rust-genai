@@ -11,18 +11,16 @@ Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, 
 
 ```toml
 # cargo.toml
-genai = {version: '=0.0.13'}
+genai = "=0.1.0" # Version lock for `0.1.x`
 ```
 
 <br />
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI Providers, such as OpenAI, Anthropic, Cohere, Ollama.
 
-- **IMPORTANT 1** `0.0.x` is still in heavy development. Cherry-pick code, don't depend on it. (It's starting to work pretty well though)
+- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.0"`. In short, `0.1.x` can be considered "beta releases."
 
-- **IMPORTANT 2** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.0"`. In short, `0.1.x` can be considered "beta releases."
-
-- **IMPORTANT 3** This is **NOT** intended to be a replacement for [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs), but rather to tackle the simpler lowest common denominator of chat generation use cases, where API depth is less aa priority than API commonality.
+- **IMPORTANT 2** This is **NOT** intended to be a replacement for [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs), but rather to tackle the simpler lowest common denominator of chat generation use cases, where API depth is less aa priority than API commonality.
 
 ## Library Focus:
 
@@ -125,6 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Will add more data on ChatResponse and ChatStream, especially metadata about usage.
 - Add vision/image support to chat messages and responses.
 - Add function calling support to chat messages and responses.
+- Add `embbed` and `embbed_batch`
 - Add the AWS Bedrock variants (e.g., Mistral, and Anthropic). Most of the work will be on "interesting" token signature scheme (without having to drag big SDKs, might be below feature).
 - Add the Google VertexAI variants.
 - (might) add the Azure OpenAI variant (not sure yet).

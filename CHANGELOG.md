@@ -1,6 +1,10 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 
+## 2024-06-11 - `0.1.0` !!!
+
+- `.` print_chat_stream - minor refactor to ensure flush
+
 ## 2024-06-10 - `0.0.14`
 
 - `-` ollama - improve Ollama Adapter to support multi system messages
