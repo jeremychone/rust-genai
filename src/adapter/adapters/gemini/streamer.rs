@@ -42,7 +42,7 @@ impl futures::Stream for GeminiStream {
 								match serde_json::from_str::<Value>(block_string).map_err(Error::StreamParse) {
 									Ok(json_block) => json_block,
 									Err(err) => {
-										println!("Cohere Adapter Stream Error: {}", err);
+										println!("Gemini Adapter Stream Error: {}", err);
 										return Poll::Ready(Some(Err(err)));
 									}
 								};
