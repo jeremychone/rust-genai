@@ -175,50 +175,53 @@ fn new_with_pretty_json_array(
 ) -> Result<BuffResponse, crate::Error> {
 	let buff_str = buff_string.trim();
 
-	// -- If it is the starting of the stream with `[{...}`
-	if let Some(buff_rest) = buff_str.strip_prefix('[') {
-		// NOTE: Here we assume the buff_rest is the full json block
-		Ok(BuffResponse {
-			first_message: Some('['.to_string()),
-			next_messages: Some(vec![buff_rest.trim().to_string()]),
-			candidate_message: None,
-		})
+	let mut messages: Vec<String> = Vec::new();
+
+	// -- Capther the array start/end and each eventual sub object (assuming only one sub objecct)
+	let (array_start, rest_str) = match buff_str.strip_prefix('[') {
+		Some(rest) => (Some("["), rest.trim()),
+		None => (None, buff_str),
+	};
+
+	// remove the eventual ',' prefix and suffix.
+	let rest_str = rest_str.strip_prefix(',').unwrap_or(rest_str);
+	let rest_str = rest_str.strip_suffix(',').unwrap_or(rest_str);
+
+	let (rest_str, array_end) = match rest_str.strip_suffix(']') {
+		Some(rest) => (rest.trim(), Some("]")),
+		None => (rest_str, None),
+	};
+
+	// -- Prep the BuffResponse
+	if let Some(array_start) = array_start {
+		messages.push(array_start.to_string());
 	}
-	// -- If it is the content after (comma separated)
-	else if let Some(buff_rest) = buff_str.strip_prefix(',') {
-		Ok(BuffResponse {
-			first_message: Some(buff_rest.trim().to_string()),
-			next_messages: None,
-			candidate_message: None,
-		})
+	if !rest_str.is_empty() {
+		messages.push(rest_str.to_string());
 	}
-	// -- If it is the last json block ending with `]`
-	//    Note: Gemini seems to send the last `]` in its own buffer, but just in case
-	else if let Some(buff_rest) = buff_str.strip_suffix(']') {
-		let buff_rest = buff_rest.trim();
-		if buff_rest.is_empty() {
-			Ok(BuffResponse {
-				first_message: Some(']'.to_string()),
-				next_messages: None,
-				candidate_message: None,
-			})
-		} else {
-			Ok(BuffResponse {
-				first_message: Some(buff_rest.to_string()),
-				next_messages: Some(vec![']'.to_string()]),
-				candidate_message: None,
-			})
-		}
+	// we ignore the comma
+	if let Some(array_end) = array_end {
+		messages.push(array_end.to_string());
 	}
-	// -- Otherwise, return a emapty response
-	//    (might want to log something here when we have tracing)
-	else {
-		Ok(BuffResponse {
-			first_message: Some(buff_str.to_string()),
-			next_messages: None,
-			candidate_message: None,
-		})
-	}
+
+	// -- Return the buf response
+	let first_message = if !messages.is_empty() {
+		Some(messages[0].to_string())
+	} else {
+		None
+	};
+
+	let next_messages = if messages.len() > 1 {
+		Some(messages[1..].to_vec())
+	} else {
+		None
+	};
+
+	Ok(BuffResponse {
+		first_message,
+		next_messages,
+		candidate_message: None,
+	})
 }
 
 /// Process a string buffer for the delimited mode (e.g., Cohere)

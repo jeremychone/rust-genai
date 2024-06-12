@@ -45,6 +45,8 @@ pub enum Error {
 
 	// -- Stream
 	StreamParse(serde_json::Error),
+	// A StreamEvent Error json payload
+	StreamEventError(serde_json::Value),
 	ReqwestEventSource(reqwest_eventsource::Error),
 	// TODO: need to add more context
 	WebStream,

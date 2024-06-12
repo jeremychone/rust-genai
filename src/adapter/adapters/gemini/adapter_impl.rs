@@ -114,6 +114,11 @@ pub struct GeminiChatResponse {
 }
 
 pub fn body_to_gemini_chat_response(mut body: Value) -> Result<GeminiChatResponse> {
+	// if the body has a `error` propertyn, then, it is assumed to be an error
+	if body.get("error").is_some() {
+		return Err(Error::StreamEventError(body));
+	}
+
 	let content = body.x_take::<Value>("/candidates/0/content/parts/0/text")?;
 
 	Ok(GeminiChatResponse {

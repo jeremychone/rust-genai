@@ -42,11 +42,17 @@ impl futures::Stream for GeminiStream {
 								match serde_json::from_str::<Value>(block_string).map_err(Error::StreamParse) {
 									Ok(json_block) => json_block,
 									Err(err) => {
-										println!("Gemini Adapter Stream Error: {}", err);
+										eprintln!("Gemini Adapter Stream Error: {}", err);
 										return Poll::Ready(Some(Err(err)));
 									}
 								};
-							let gemini_response = body_to_gemini_chat_response(json_block)?;
+							let gemini_response = match body_to_gemini_chat_response(json_block) {
+								Ok(gemini_response) => gemini_response,
+								Err(err) => {
+									eprintln!("Gemini Adapter Stream Error: {}", err);
+									return Poll::Ready(Some(Err(err)));
+								}
+							};
 							if let Some(text) = gemini_response.content {
 								InterStreamEvent::Chunk(text)
 							} else {
