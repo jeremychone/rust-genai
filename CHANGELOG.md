@@ -1,5 +1,8 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2024-06-12 - `0.1.1`
+
+- `-` gemini - proper stream message error handling
 
 ## 2024-06-11 - `0.1.0` !!!
 

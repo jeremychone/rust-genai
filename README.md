@@ -11,7 +11,7 @@ Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, 
 
 ```toml
 # cargo.toml
-genai = "=0.1.0" # Version lock for `0.1.x`
+genai = "=0.1.1" # Version lock for `0.1.x`
 ```
 
 <br />
