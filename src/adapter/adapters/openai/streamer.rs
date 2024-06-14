@@ -1,5 +1,3 @@
-//! API DOC: https://platform.openai.com/docs/api-reference/chat
-
 use crate::adapter::inter_stream::InterStreamEvent;
 use crate::utils::x_value::XValue;
 use crate::{Error, Result};

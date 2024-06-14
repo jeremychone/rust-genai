@@ -32,7 +32,7 @@ impl AuthResolver {
 
 	pub fn from_sync_resolver(resolver_fn: impl IntoSyncAuthResolverFn) -> Self {
 		AuthResolver {
-			inner: AuthResolverInner::ResolverFnSync(resolver_fn.into_sync_resolver_fn()),
+			inner: AuthResolverInner::SyncResolverFn(resolver_fn.into_sync_resolver_fn()),
 		}
 	}
 }
@@ -87,7 +87,7 @@ impl AuthResolver {
 				Ok(Some(AuthData::from_single(key)))
 			}
 			AuthResolverInner::Fixed(auth_data) => Ok(Some(auth_data.clone())),
-			AuthResolverInner::ResolverFnSync(sync_provider) => {
+			AuthResolverInner::SyncResolverFn(sync_provider) => {
 				sync_provider.exec_sync_resolver_fn(adapter_kind, config_set)
 			}
 		}
@@ -97,8 +97,7 @@ impl AuthResolver {
 enum AuthResolverInner {
 	EnvName(String),
 	Fixed(AuthData),
-	#[allow(unused)] // future
-	ResolverFnSync(Arc<dyn SyncAuthResolverFn>),
+	SyncResolverFn(Arc<dyn SyncAuthResolverFn>),
 }
 
 // impl debug for AuthResolverInner
@@ -107,7 +106,7 @@ impl std::fmt::Debug for AuthResolverInner {
 		match self {
 			AuthResolverInner::EnvName(env_name) => write!(f, "AuthResolverInner::EnvName({})", env_name),
 			AuthResolverInner::Fixed(auth_data) => write!(f, "AuthResolverInner::Fixed({:?})", auth_data),
-			AuthResolverInner::ResolverFnSync(_) => write!(f, "AuthResolverInner::FnSync(...)"),
+			AuthResolverInner::SyncResolverFn(_) => write!(f, "AuthResolverInner::FnSync(...)"),
 		}
 	}
 }

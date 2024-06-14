@@ -7,9 +7,6 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, From)]
 pub enum Error {
-	#[from]
-	Custom(String),
-
 	ApiKeyEnvNotFound {
 		env_name: String,
 	},
@@ -62,22 +59,6 @@ pub enum Error {
 	#[from]
 	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
 }
-
-// region:    --- Custom
-
-impl Error {
-	pub fn custom(val: impl std::fmt::Display) -> Self {
-		Self::Custom(val.to_string())
-	}
-}
-
-impl From<&str> for Error {
-	fn from(val: &str) -> Self {
-		Self::Custom(val.to_string())
-	}
-}
-
-// endregion: --- Custom
 
 // region:    --- Error Boilerplate
 
