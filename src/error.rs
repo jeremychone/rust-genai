@@ -39,6 +39,9 @@ pub enum Error {
 	AdapterAuthResolverNoAuthData {
 		adapter_kind: AdapterKind,
 	},
+	AdapterInvalidOptions {
+		adapter_kind: AdapterKind,
+	},
 
 	// -- Stream
 	StreamParse(serde_json::Error),

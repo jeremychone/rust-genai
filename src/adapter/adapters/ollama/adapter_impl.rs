@@ -36,11 +36,20 @@ impl Adapter for OllamaAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		_chat_req_options: Option<&ChatRequestOptions>,
+		chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, "ollama", true)
+		OpenAIAdapter::util_to_web_request_data(
+			kind,
+			url,
+			model,
+			chat_req,
+			service_type,
+			"ollama",
+			true,
+			chat_req_options,
+		)
 	}
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {

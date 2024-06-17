@@ -1,7 +1,9 @@
 use crate::adapter::openai::OpenAIMessagesStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{
+	ChatRequest, ChatRequestOptions, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ProviderOptions,
+};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Error, Result};
@@ -36,13 +38,22 @@ impl Adapter for OpenAIAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		_chat_req_options: Option<&ChatRequestOptions>,
+		chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(kind, config_set)?;
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, &api_key, false)
+		OpenAIAdapter::util_to_web_request_data(
+			kind,
+			url,
+			model,
+			chat_req,
+			service_type,
+			&api_key,
+			false,
+			chat_req_options,
+		)
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
@@ -77,6 +88,7 @@ impl OpenAIAdapter {
 		}
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	pub(in crate::adapter) fn util_to_web_request_data(
 		kind: AdapterKind,
 		url: String,
@@ -86,6 +98,7 @@ impl OpenAIAdapter {
 		// -- utils args
 		api_key: &str,
 		ollama_variant: bool,
+		chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
@@ -95,11 +108,21 @@ impl OpenAIAdapter {
 		];
 
 		let OpenAIRequestParts { messages } = into_openai_messages(kind, chat_req, ollama_variant)?;
-		let payload = json!({
+		let mut payload = json!({
 			"model": model,
 			"messages": messages,
 			"stream": stream
 		});
+
+		if let Some(options) = chat_req_options {
+			if let Some(ProviderOptions::OpenAI(openai_options)) = &options.provider_options {
+				let chat_req_options_json = serde_json::to_value(openai_options).unwrap();
+				payload
+					.as_object_mut()
+					.ok_or(Error::AdapterInvalidOptions { adapter_kind: kind })?
+					.extend(chat_req_options_json.as_object().unwrap().clone());
+			}
+		}
 
 		Ok(WebRequestData { url, headers, payload })
 	}
