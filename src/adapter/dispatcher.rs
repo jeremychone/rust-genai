@@ -9,6 +9,8 @@ use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
 
+use super::groq::GroqAdapter;
+
 pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
@@ -19,6 +21,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::list_models(kind).await,
 			AdapterKind::Ollama => OllamaAdapter::list_models(kind).await,
 			AdapterKind::Gemini => GeminiAdapter::list_models(kind).await,
+			AdapterKind::Groq => GroqAdapter::list_models(kind).await,
 		}
 	}
 
@@ -29,6 +32,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::default_adapter_config(kind),
 			AdapterKind::Ollama => OllamaAdapter::default_adapter_config(kind),
 			AdapterKind::Gemini => GeminiAdapter::default_adapter_config(kind),
+			AdapterKind::Groq => GroqAdapter::default_adapter_config(kind),
 		}
 	}
 
@@ -39,6 +43,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::get_service_url(kind, service_type),
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(kind, service_type),
 			AdapterKind::Gemini => GeminiAdapter::get_service_url(kind, service_type),
+			AdapterKind::Groq => GroqAdapter::get_service_url(kind, service_type),
 		}
 	}
 
@@ -66,6 +71,9 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Gemini => {
 				GeminiAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
 			}
+			AdapterKind::Groq => {
+				GroqAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+			}
 		}
 	}
 
@@ -76,6 +84,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_response(kind, web_response),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(kind, web_response),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_response(kind, web_response),
+			AdapterKind::Groq => GroqAdapter::to_chat_response(kind, web_response),
 		}
 	}
 
@@ -86,6 +95,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(kind, reqwest_builder),
 			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(kind, reqwest_builder),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(kind, reqwest_builder),
+			AdapterKind::Groq => GroqAdapter::to_chat_stream(kind, reqwest_builder),
 		}
 	}
 }

@@ -13,7 +13,7 @@ pub struct CohereAdapter;
 
 const MAX_TOKENS: u32 = 1024;
 const BASE_URL: &str = "https://api.cohere.com/v1/";
-const MODELS: &[&str] = &[
+pub(crate) const MODELS: &[&str] = &[
 	"command-r-plus",
 	"command-r",
 	"command",

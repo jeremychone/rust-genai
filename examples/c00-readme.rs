@@ -6,6 +6,7 @@ const MODEL_OPENAI: &str = "gpt-3.5-turbo";
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 const MODEL_COHERE: &str = "command-light";
 const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
+const MODEL_GROQ: &str = "llama3-8b-8192";
 const MODEL_OLLAMA: &str = "mixtral";
 
 // NOTE: Those are the default env keys for each AI Provider type.
@@ -15,15 +16,17 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
 	(MODEL_COHERE, "COHERE_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
+	(MODEL_GROQ, "GROQ_API_KEY"),
 	(MODEL_OLLAMA, ""),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
-//  - starts_with "gpt"      -> OpenAI
-//  - starts_with "claude"   -> Anthropic
-//  - starts_with "command"  -> Cohere
-//  - starts_with "gemini"   -> Gemini
-//  - For anything else      -> Ollama
+// - If the model is in the OpenAI models, then the AdapterKind is OpenAI
+// - If the model is in the Anthropic models, then the AdapterKind is Anthropic
+// - If the model is in the Cohere models, then the AdapterKind is Cohere
+// - If the model is in the Gemini models, then the AdapterKind is Gemini
+// - If the model is in the Groq models, then the AdapterKind is Groq
+// - Otherwise, the AdapterKind is Ollama
 //
 // Refined mapping rules will be added later and extended as provider support grows.
 
@@ -44,6 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
 		// Skip if does not have the environment name set
 		if !env_name.is_empty() && std::env::var(env_name).is_err() {
+			println!("Skipping model: {model} (env var not set: {env_name})");
 			continue;
 		}
 
