@@ -21,12 +21,12 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
-// - If the model is in the OpenAI models, then the AdapterKind is OpenAI
-// - If the model is in the Anthropic models, then the AdapterKind is Anthropic
-// - If the model is in the Cohere models, then the AdapterKind is Cohere
-// - If the model is in the Gemini models, then the AdapterKind is Gemini
-// - If the model is in the Groq models, then the AdapterKind is Groq
-// - Otherwise, the AdapterKind is Ollama
+//  - starts_with "gpt"      -> OpenAI
+//  - starts_with "claude"   -> Anthropic
+//  - starts_with "command"  -> Cohere
+//  - starts_with "gemini"   -> Gemini
+//  - model in Groq models   -> Groq
+//  - For anything else      -> Ollama
 //
 // Refined mapping rules will be added later and extended as provider support grows.
 

@@ -14,7 +14,7 @@ pub struct AnthropicAdapter;
 
 const MAX_TOKENS: u32 = 1024;
 const ANTRHOPIC_VERSION: &str = "2023-06-01";
-pub(crate) const MODELS: &[&str] = &["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"];
+const MODELS: &[&str] = &["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"];
 
 const BASE_URL: &str = "https://api.anthropic.com/v1/";
 

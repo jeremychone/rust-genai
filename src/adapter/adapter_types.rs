@@ -6,11 +6,7 @@ use derive_more::Display;
 use reqwest::RequestBuilder;
 use serde_json::Value;
 
-use super::anthropic::MODELS as ANTHROPIC_MODELS;
-use super::cohere::MODELS as COHERE_MODELS;
-use super::gemini::MODELS as GEMINI_MODELS;
 use super::groq::MODELS as GROQ_MODELS;
-use super::openai::MODELS as OPENAI_MODELS;
 
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash)]
 pub enum AdapterKind {
@@ -27,18 +23,20 @@ pub enum AdapterKind {
 impl AdapterKind {
 	/// Very simplistic mapper for now.
 	pub fn from_model(model: &str) -> Result<Self> {
-		if OPENAI_MODELS.contains(&model) {
-			return Ok(AdapterKind::OpenAI);
-		} else if ANTHROPIC_MODELS.contains(&model) {
-			return Ok(AdapterKind::Anthropic);
-		} else if COHERE_MODELS.contains(&model) {
-			return Ok(AdapterKind::Cohere);
-		} else if GEMINI_MODELS.contains(&model) {
-			return Ok(AdapterKind::Gemini);
+		if model.starts_with("gpt") {
+			Ok(AdapterKind::OpenAI)
+		} else if model.starts_with("claude") {
+			Ok(AdapterKind::Anthropic)
+		} else if model.starts_with("command") {
+			Ok(AdapterKind::Cohere)
+		} else if model.starts_with("gemini") {
+			Ok(AdapterKind::Gemini)
 		} else if GROQ_MODELS.contains(&model) {
 			return Ok(AdapterKind::Groq);
-		} else {
-			return Ok(AdapterKind::Ollama);
+		}
+		// for now, fallback on Ollama
+		else {
+			Ok(Self::Ollama)
 		}
 	}
 }
