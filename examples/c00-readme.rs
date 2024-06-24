@@ -51,7 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			continue;
 		}
 
-		println!("\n===== MODEL: {model} =====");
+		let adapter_kind = client.resolve_adapter_kind(model)?;
+
+		println!("\n===== MODEL: {model} ({adapter_kind}) =====");
 
 		println!("\n--- Question:\n{question}");
 

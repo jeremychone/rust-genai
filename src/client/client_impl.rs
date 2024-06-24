@@ -9,6 +9,15 @@ impl Client {
 		AdapterDispatcher::list_models(adapter_kind).await
 	}
 
+	/// Resolve the adapter kind for a given model name.
+	pub fn resolve_adapter_kind(&self, model: &str) -> Result<AdapterKind> {
+		if let Some(auth_resolver) = self.config().adapter_kind_resolver() {
+			auth_resolver.resolve(model)
+		} else {
+			AdapterKind::from_model(model)
+		}
+	}
+
 	pub async fn exec_chat(
 		&self,
 		model: &str,
@@ -66,17 +75,5 @@ impl Client {
 		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;
 
 		AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder)
-	}
-}
-
-/// Private implementations
-
-impl Client {
-	fn resolve_adapter_kind(&self, model: &str) -> Result<AdapterKind> {
-		if let Some(auth_resolver) = self.config().adapter_kind_resolver() {
-			auth_resolver.resolve(model)
-		} else {
-			AdapterKind::from_model(model)
-		}
 	}
 }
