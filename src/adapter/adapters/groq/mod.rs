@@ -1,4 +1,5 @@
 //! API DOC: https://console.groq.com/docs/api-reference#chat
+//! PRICING: https://wow.groq.com/
 
 // region:    --- Modules
 

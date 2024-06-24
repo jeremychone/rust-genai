@@ -12,7 +12,7 @@ use crate::{ConfigSet, Result};
 pub struct GroqAdapter;
 
 const BASE_URL: &str = "https://api.groq.com/openai/v1/";
-pub(crate) const MODELS: &[&str] = &[
+pub(in crate::adapter) const MODELS: &[&str] = &[
 	"llama3-8b-8192",
 	"llama3-70b-8192",
 	"mixtral-8x7b-32768",

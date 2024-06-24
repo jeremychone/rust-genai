@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
 		// Skip if does not have the environment name set
 		if !env_name.is_empty() && std::env::var(env_name).is_err() {
-			println!("Skipping model: {model} (env var not set: {env_name})");
+			println!("===== Skipping model: {model} (env var not set: {env_name})");
 			continue;
 		}
 
