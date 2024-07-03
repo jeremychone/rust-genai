@@ -36,13 +36,22 @@ impl Adapter for OpenAIAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		_chat_req_options: Option<&ChatRequestOptions>,
+		chat_req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(kind, config_set)?;
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, &api_key, false)
+		OpenAIAdapter::util_to_web_request_data(
+			kind,
+			url,
+			model,
+			chat_req,
+			service_type,
+			chat_req_options,
+			&api_key,
+			false,
+		)
 	}
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
@@ -77,29 +86,43 @@ impl OpenAIAdapter {
 		}
 	}
 
+	#[allow(clippy::too_many_arguments)] // ok because internal only
 	pub(in crate::adapter) fn util_to_web_request_data(
 		kind: AdapterKind,
 		url: String,
 		model: &str,
 		chat_req: ChatRequest,
 		service_type: ServiceType,
+		options: Option<&ChatRequestOptions>,
 		// -- utils args
 		api_key: &str,
 		ollama_variant: bool,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
+		// -- Build the header
 		let headers = vec![
 			// headers
 			("Authorization".to_string(), format!("Bearer {api_key}")),
 		];
 
+		// -- Build the basic payload
 		let OpenAIRequestParts { messages } = into_openai_messages(kind, chat_req, ollama_variant)?;
-		let payload = json!({
+		let mut payload = json!({
 			"model": model,
 			"messages": messages,
 			"stream": stream
 		});
+
+		// -- Add supported RequestChatOptions
+		if let Some(options) = options {
+			if let Some(temperature) = options.temperature {
+				payload.x_insert("temperature", temperature)?;
+			}
+			if let Some(max_tokens) = options.max_tokens {
+				payload.x_insert("max_tokens", max_tokens)?;
+			}
+		}
 
 		Ok(WebRequestData { url, headers, payload })
 	}

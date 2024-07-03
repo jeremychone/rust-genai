@@ -41,12 +41,12 @@ impl Adapter for GroqAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		_chat_req_options: Option<&ChatRequestOptions>,
+		req_options: Option<&ChatRequestOptions>,
 	) -> Result<WebRequestData> {
 		let api_key = get_api_key_resolver(kind, config_set)?;
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, &api_key, false)
+		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, req_options, &api_key, false)
 	}
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {

@@ -1,4 +1,5 @@
 use crate::adapter::{AdapterConfig, AdapterKind};
+use crate::chat::ChatRequestOptions;
 use crate::client::ClientConfig;
 use crate::webc::WebClient;
 use std::collections::HashMap;
@@ -73,6 +74,11 @@ impl ClientBuilder {
 		self.apapter_config_by_kind
 			.get_or_insert_with(HashMap::new)
 			.insert(kind, adapter_config);
+		self
+	}
+
+	pub fn with_default_chat_request_options(mut self, default_chat_request_options: ChatRequestOptions) -> Self {
+		self.config = Some(ClientConfig::default().with_default_chat_request_options(default_chat_request_options));
 		self
 	}
 
