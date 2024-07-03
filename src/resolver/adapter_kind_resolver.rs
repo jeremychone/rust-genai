@@ -22,14 +22,14 @@ impl AdapterKindResolver {
 		}
 	}
 
-	pub fn resolve(&self, model: &str) -> Result<AdapterKind> {
+	pub fn resolve(&self, model: &str) -> Result<Option<AdapterKind>> {
 		self.inner.exec_sync_resolver_fn(model)
 	}
 }
 
 // Define a trait for the SyncAdapterKindResolverFn
 pub trait SyncAdapterKindResolverFn: Send + Sync {
-	fn exec_sync_resolver_fn(&self, model: &str) -> Result<AdapterKind>;
+	fn exec_sync_resolver_fn(&self, model: &str) -> Result<Option<AdapterKind>>;
 }
 
 // Define a trait for types that can be converted into Arc<dyn SyncAdapterKindResolverFn>
@@ -47,7 +47,7 @@ impl IntoSyncAdapterKindResolverFn for Arc<dyn SyncAdapterKindResolverFn> {
 // Implement IntoSyncAdapterKindResolverFn for closures
 impl<F> IntoSyncAdapterKindResolverFn for F
 where
-	F: Fn(&str) -> Result<AdapterKind> + Send + Sync + 'static,
+	F: Fn(&str) -> Result<Option<AdapterKind>> + Send + Sync + 'static,
 {
 	fn into_sync_resolver_fn(self) -> Arc<dyn SyncAdapterKindResolverFn> {
 		Arc::new(self)
@@ -57,9 +57,9 @@ where
 // Implement SyncAdapterKindResolverFn for closures
 impl<F> SyncAdapterKindResolverFn for F
 where
-	F: Fn(&str) -> Result<AdapterKind> + Send + Sync,
+	F: Fn(&str) -> Result<Option<AdapterKind>> + Send + Sync,
 {
-	fn exec_sync_resolver_fn(&self, model: &str) -> Result<AdapterKind> {
+	fn exec_sync_resolver_fn(&self, model: &str) -> Result<Option<AdapterKind>> {
 		self(model)
 	}
 }

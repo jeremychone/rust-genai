@@ -19,11 +19,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	// -- Build a auth_resolver and the AdapterConfig
-	let auth_resolver = AdapterKindResolver::from_sync_resolver(|model: &str| -> genai::Result<AdapterKind> {
+	let auth_resolver = AdapterKindResolver::from_sync_resolver(|model: &str| -> genai::Result<Option<AdapterKind>> {
 		// Still use the default mapping to not break anything.
 		let adapter_kind = AdapterKind::from_model(model)?;
 		println!("\n>> Custom adapter kind resolver for model: {model} (AdapterKind {adapter_kind}) <<");
-		Ok(adapter_kind)
+		Ok(Some(adapter_kind))
 	});
 
 	let client_config = ClientConfig::default().with_auth_resolver(auth_resolver);
@@ -39,7 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("\n--- Question:\n{question}");
 		let chat_res = client.exec_chat_stream(MODEL, chat_req.clone(), None).await?;
 
-		println!("\n--- Answer: (streaming)");
+		let adapter_kind = client.resolve_adapter_kind(MODEL)?;
+		println!("\n--- Answer: ({adapter_kind})");
 		let assistant_answer = print_chat_stream(chat_res, None).await?;
 
 		chat_req = chat_req.append_message(ChatMessage::assistant(assistant_answer));

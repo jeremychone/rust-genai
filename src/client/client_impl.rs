@@ -11,10 +11,16 @@ impl Client {
 
 	/// Resolve the adapter kind for a given model name.
 	pub fn resolve_adapter_kind(&self, model: &str) -> Result<AdapterKind> {
-		if let Some(auth_resolver) = self.config().adapter_kind_resolver() {
-			auth_resolver.resolve(model)
-		} else {
-			AdapterKind::from_model(model)
+		let adapter_kind_from_resolver = self
+			.config()
+			.adapter_kind_resolver()
+			.map(|r| r.resolve(model))
+			.transpose()?
+			.flatten();
+
+		match adapter_kind_from_resolver {
+			Some(adapter_kind) => Ok(adapter_kind),
+			None => AdapterKind::from_model(model),
 		}
 	}
 
