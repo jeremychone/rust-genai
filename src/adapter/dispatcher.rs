@@ -4,7 +4,7 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
@@ -53,26 +53,26 @@ impl Adapter for AdapterDispatcher {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		chat_req_options: Option<&ChatRequestOptions>,
+		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		match kind {
 			AdapterKind::OpenAI => {
-				OpenAIAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+				OpenAIAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, options_set)
 			}
 			AdapterKind::Anthropic => {
-				AnthropicAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+				AnthropicAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, options_set)
 			}
 			AdapterKind::Cohere => {
-				CohereAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+				CohereAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, options_set)
 			}
 			AdapterKind::Ollama => {
-				OllamaAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+				OllamaAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, options_set)
 			}
 			AdapterKind::Gemini => {
-				GeminiAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+				GeminiAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, options_set)
 			}
 			AdapterKind::Groq => {
-				GroqAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, chat_req_options)
+				GroqAdapter::to_web_request_data(kind, config_set, service_type, model, chat_req, options_set)
 			}
 		}
 	}

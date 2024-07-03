@@ -5,7 +5,7 @@ use reqwest::RequestBuilder;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 
@@ -41,12 +41,12 @@ impl Adapter for GroqAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		req_options: Option<&ChatRequestOptions>,
+		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let api_key = get_api_key_resolver(kind, config_set)?;
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, req_options, &api_key, false)
+		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, options_set, &api_key, false)
 	}
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {

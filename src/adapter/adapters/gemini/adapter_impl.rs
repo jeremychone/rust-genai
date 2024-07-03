@@ -1,7 +1,7 @@
 use crate::adapter::gemini::GeminiStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
 use crate::{ConfigSet, Error, Result};
@@ -47,7 +47,7 @@ impl Adapter for GeminiAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		_chat_req_options: Option<&ChatRequestOptions>,
+		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let api_key = get_api_key_resolver(kind, config_set)?;
 
@@ -79,6 +79,17 @@ impl Adapter for GeminiAdapter {
 					"parts": [ { "text": system }]
 				}),
 			)?;
+		}
+
+		// -- Add supported ChatRequestOptions
+		if let Some(temperature) = options_set.temperature() {
+			payload.x_deep_insert("/generationConfig/temperature", temperature)?;
+		}
+		if let Some(max_tokens) = options_set.max_tokens() {
+			payload.x_deep_insert("/generationConfig/maxOutputTokens", max_tokens)?;
+		}
+		if let Some(top_p) = options_set.top_p() {
+			payload.x_deep_insert("/generationConfig/topP", top_p)?;
 		}
 
 		Ok(WebRequestData { url, headers, payload })

@@ -1,7 +1,7 @@
 use crate::adapter::anthropic::AnthropicMessagesStream;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
@@ -46,7 +46,7 @@ impl Adapter for AnthropicAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		_chat_req_options: Option<&ChatRequestOptions>,
+		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 		let url = Self::get_service_url(kind, service_type);
@@ -61,14 +61,27 @@ impl Adapter for AnthropicAdapter {
 		];
 
 		let AnthropicsRequestParts { system, messages } = into_anthropic_request_parts(chat_req)?;
+
+		// -- Build the basic payload
 		let mut payload = json!({
 			"model": model,
-			"max_tokens": MAX_TOKENS,
 			"messages": messages,
 			"stream": stream
 		});
 		if let Some(system) = system {
 			payload.x_insert("system", system)?;
+		}
+
+		// -- Add supported ChatRequestOptions
+		if let Some(temperature) = options_set.temperature() {
+			payload.x_insert("temperature", temperature)?;
+		}
+
+		let max_tokens = options_set.max_tokens().unwrap_or(MAX_TOKENS);
+		payload.x_insert("max_tokens", max_tokens)?; // required for anyhropic
+
+		if let Some(top_p) = options_set.top_p() {
+			payload.x_insert("top_p", top_p)?;
 		}
 
 		Ok(WebRequestData { url, headers, payload })

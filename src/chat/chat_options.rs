@@ -7,15 +7,16 @@
 #[derive(Debug, Clone, Default)]
 pub struct ChatRequestOptions {
 	// -- Adapter/Provider request property
-	//
 	/// Will be set for this request if Adapter/providers supports it.
-	pub temperature: Option<f32>,
+	pub temperature: Option<f64>,
 
 	/// Will be set of this request if Adaptper/provider supports it.
 	pub max_tokens: Option<u32>,
 
+	/// Will be set of this request if Adaptper/provider supports it.
+	pub top_p: Option<f64>,
+
 	// -- `genai` request runtime options
-	//
 	/// - In the `ChatResponse` for `exec_chat`
 	/// - In the `StreamEnd` of `StreamEvent::End(StreamEnd)` for `exec_chat_stream`
 	/// > Note: Will capture the `MetaUsage`
@@ -31,7 +32,7 @@ pub struct ChatRequestOptions {
 /// Setters (builder styles)
 impl ChatRequestOptions {
 	/// Set the `temperature` for this request.
-	pub fn with_temperature(mut self, value: f32) -> Self {
+	pub fn with_temperature(mut self, value: f64) -> Self {
 		self.temperature = Some(value);
 		self
 	}
@@ -39,6 +40,12 @@ impl ChatRequestOptions {
 	/// Set the `max_tokens` for this request.
 	pub fn with_max_tokens(mut self, value: u32) -> Self {
 		self.max_tokens = Some(value);
+		self
+	}
+
+	/// Set the `top_p` for this request.
+	pub fn with_top_p(mut self, value: f64) -> Self {
+		self.top_p = Some(value);
 		self
 	}
 
@@ -54,3 +61,44 @@ impl ChatRequestOptions {
 		self
 	}
 }
+
+// region:    --- ChatRequestOptionsSet
+
+#[derive(Default)]
+pub(crate) struct ChatRequestOptionsSet<'a, 'b> {
+	client: Option<&'a ChatRequestOptions>,
+	chat: Option<&'b ChatRequestOptions>,
+}
+
+impl<'a, 'b> ChatRequestOptionsSet<'a, 'b> {
+	pub fn with_client_options(mut self, options: Option<&'a ChatRequestOptions>) -> Self {
+		self.client = options;
+		self
+	}
+	pub fn with_chat_options(mut self, options: Option<&'b ChatRequestOptions>) -> Self {
+		self.chat = options;
+		self
+	}
+}
+
+impl ChatRequestOptionsSet<'_, '_> {
+	pub fn temperature(&self) -> Option<f64> {
+		self.chat
+			.and_then(|chat| chat.temperature)
+			.or_else(|| self.client.and_then(|client| client.temperature))
+	}
+
+	pub fn max_tokens(&self) -> Option<u32> {
+		self.chat
+			.and_then(|chat| chat.max_tokens)
+			.or_else(|| self.client.and_then(|client| client.max_tokens))
+	}
+
+	pub fn top_p(&self) -> Option<f64> {
+		self.chat
+			.and_then(|chat| chat.top_p)
+			.or_else(|| self.client.and_then(|client| client.top_p))
+	}
+}
+
+// endregion: --- ChatRequestOptionsSet

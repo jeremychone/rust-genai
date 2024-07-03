@@ -118,6 +118,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c03-kind.rs](examples/c03-kind.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
 
 
+## ChatRequestOptions
+
+| Property    | OpenAI      | Ollama      | Grok        | Anthropic                 | Gemini                           | Cohere      |
+|-------------|-------------|-------------|-------------|---------------------------|----------------------------------|-------------|
+| temperature | temperature | temperature | temperature | temperature               | generationConfig.temperature     | temperature |
+| max_tokens  | max_tokens  | max_tokens  | max_tokens  | max_tokens (default 1024) | generationConfig.maxOutputTokens | max_tokens  |
+| top_p       | top_p       | top_p       | top_p       | top_p                     | generationConfig.topP            | p           |
+
+
+
 ## Notes on Possible Direction
 
 - Will add more data on ChatResponse and ChatStream, especially metadata about usage.

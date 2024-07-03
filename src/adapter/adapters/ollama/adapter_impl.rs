@@ -2,7 +2,7 @@
 
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptions, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
@@ -36,11 +36,11 @@ impl Adapter for OllamaAdapter {
 		service_type: ServiceType,
 		model: &str,
 		chat_req: ChatRequest,
-		req_options: Option<&ChatRequestOptions>,
+		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let url = Self::get_service_url(kind, service_type);
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, req_options, "ollama", true)
+		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, options_set, "ollama", true)
 	}
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {

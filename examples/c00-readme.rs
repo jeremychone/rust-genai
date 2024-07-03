@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 		println!("\n--- Question:\n{question}");
 
-		println!("\n--- Answer: (oneshot response)");
+		println!("\n--- Answer:");
 		let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 		println!("{}", chat_res.content.as_deref().unwrap_or("NO ANSWER"));
 

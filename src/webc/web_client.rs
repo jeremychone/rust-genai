@@ -62,6 +62,7 @@ impl WebClient {
 
 #[derive(Debug)]
 pub struct WebResponse {
+	#[allow(unused)]
 	pub status: StatusCode,
 	pub body: Value,
 }

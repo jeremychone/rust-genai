@@ -65,6 +65,7 @@ impl ClientBuilder {
 		self
 	}
 
+	/// With a client config.
 	pub fn with_config(mut self, config: ClientConfig) -> Self {
 		self.config = Some(config);
 		self
@@ -77,6 +78,9 @@ impl ClientBuilder {
 		self
 	}
 
+	/// Set ChatRequestOptions that will be used when executing each request.
+	/// Each property (e.g., `temperature`, `max_tokens`) will be used if defined.
+	/// The per-request ChatRequestOptions properties will take precedence if set.
 	pub fn with_default_chat_request_options(mut self, default_chat_request_options: ChatRequestOptions) -> Self {
 		self.config = Some(ClientConfig::default().with_default_chat_request_options(default_chat_request_options));
 		self
