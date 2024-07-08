@@ -2,7 +2,7 @@
 
 ## 2024-07-08 - `0.1.2`
 
-- `+` `ChatRequestOptions` - added `temperature`, `max_tokens`, `top_k` for all adapters (see readme for property mapping). 
+- `+` `ChatRequestOptions` - added `temperature`, `max_tokens`, `top_p` for all adapters (see readme for property mapping). 
 - `!` `SyncAdapterKindResolverFn` - Change signature to return Result<Option<AdapterKind>> (rather than Result<AdapterKind>)
 - `.` made public `client.resolve_adapter_kind(model)`
 - `+` implement groq completions

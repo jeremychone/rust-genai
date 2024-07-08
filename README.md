@@ -22,7 +22,7 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
 
-[Examples](#examples) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | [ChatRequestOptions Provider Mapping](#chatrequestoptions)
+[Examples](#examples) | [Thanks](#thanks) [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | [ChatRequestOptions Provider Mapping](#chatrequestoptions)
 
 ## Examples
 
@@ -104,6 +104,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data (i.e., for api_key) per adapter kind.
 - [examples/c03-kind.rs](examples/c03-kind.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
 - [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per request level.
+
+## Thanks
+
+- Thanks to [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement groq completions
+
 
 ## Library Focus:
 
