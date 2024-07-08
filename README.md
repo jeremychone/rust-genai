@@ -11,14 +11,14 @@ Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, 
 
 ```toml
 # cargo.toml
-genai = "=0.1.1" # Version lock for `0.1.x`
+genai = "=0.1.2" # Version lock for `0.1.x`
 ```
 
 <br />
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI Providers, such as OpenAI, Anthropic, Cohere, Ollama.
 
-- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.0"`. In short, `0.1.x` can be considered "beta releases."
+- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.2"`. In short, `0.1.x` can be considered "beta releases."
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
 
