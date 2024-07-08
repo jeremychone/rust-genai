@@ -22,7 +22,7 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
 
-[Examples](#examples) | [Thanks](#thanks) [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | [ChatRequestOptions Provider Mapping](#chatrequestoptions)
+[Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | [ChatRequestOptions Provider Mapping](#chatrequestoptions)
 
 ## Examples
 
