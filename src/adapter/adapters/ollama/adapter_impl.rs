@@ -3,14 +3,18 @@
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
 use reqwest::RequestBuilder;
+use serde_json::Value;
 use std::sync::OnceLock;
 
 pub struct OllamaAdapter;
 
+// The OpenAI Compatibility base URL
 const BASE_URL: &str = "http://localhost:11434/v1/";
+const OLLAMA_BASE_URL: &str = "http://localhost:11434/api/";
 
 /// Note: For now, it uses the openai compatibility layer
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
@@ -18,7 +22,25 @@ const BASE_URL: &str = "http://localhost:11434/v1/";
 impl Adapter for OllamaAdapter {
 	/// Note: For now returns empty as it should probably do a request to the ollama server
 	async fn list_models(_kind: AdapterKind) -> Result<Vec<String>> {
-		Ok(Vec::new())
+		let url = format!("{OLLAMA_BASE_URL}tags");
+
+		// TODO: need to get the WebClient from the client.
+		let web_c = crate::webc::WebClient::default();
+		let mut res = web_c.do_get(&url, &[]).await?;
+
+		let mut models: Vec<String> = Vec::new();
+
+		if let Value::Array(models_value) = res.body.x_take("models")? {
+			for mut model in models_value {
+				let model_name: String = model.x_take("model")?;
+				models.push(model_name);
+			}
+		} else {
+			// TODO: need to add tracing
+			// error!("OllamaAdapter::list_models did not have any models {res:?}");
+		}
+
+		Ok(models)
 	}
 
 	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
