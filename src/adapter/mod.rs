@@ -18,9 +18,9 @@ use adapters::*;
 
 pub(crate) mod inter_stream;
 pub(in crate::adapter) mod support;
+pub(crate) use dispatcher::*;
 
 pub use adapter_config::*;
 pub use adapter_types::*;
-pub use dispatcher::*;
 
 // endregion: --- Modules
