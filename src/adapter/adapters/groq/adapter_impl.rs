@@ -22,7 +22,7 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 
 // The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
 impl Adapter for GroqAdapter {
-	async fn list_models(_kind: AdapterKind) -> Result<Vec<String>> {
+	async fn list_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 

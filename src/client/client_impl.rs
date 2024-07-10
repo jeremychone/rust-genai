@@ -5,8 +5,8 @@ use crate::{ConfigSet, Result};
 
 /// Public AI Functions
 impl Client {
-	pub async fn list_models(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		AdapterDispatcher::list_models(adapter_kind).await
+	pub async fn list_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
+		AdapterDispatcher::list_model_names(adapter_kind).await
 	}
 
 	/// Resolve the adapter kind for a given model name.

@@ -25,7 +25,7 @@ const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
 impl Adapter for AnthropicAdapter {
 	/// Note: For now returns the common ones (see above)
-	async fn list_models(_kind: AdapterKind) -> Result<Vec<String>> {
+	async fn list_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 

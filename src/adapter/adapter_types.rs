@@ -43,7 +43,14 @@ impl AdapterKind {
 
 pub(crate) trait Adapter {
 	// NOTE: Adapter is a crate Trait, so, ok to use async fn here.
-	async fn list_models(kind: AdapterKind) -> Result<Vec<String>>;
+	async fn list_model_names(kind: AdapterKind) -> Result<Vec<String>>;
+
+	// NOTE: Adapter is a crate Trait, so, ok to use async fn here.
+	#[deprecated(note = "Use list_model_names(..) (this function will be removed)")]
+	#[allow(unused)]
+	async fn list_models(kind: AdapterKind) -> Result<Vec<String>> {
+		Self::list_model_names(kind).await
+	}
 
 	/// The static default AdapterConfig for this AdapterKind
 	/// Note: Implementation typically using OnceLock

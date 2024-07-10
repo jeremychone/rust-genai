@@ -15,13 +15,17 @@ pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
 	async fn list_models(kind: AdapterKind) -> Result<Vec<String>> {
+		Self::list_model_names(kind).await
+	}
+
+	async fn list_model_names(kind: AdapterKind) -> Result<Vec<String>> {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::list_models(kind).await,
-			AdapterKind::Anthropic => AnthropicAdapter::list_models(kind).await,
-			AdapterKind::Cohere => CohereAdapter::list_models(kind).await,
-			AdapterKind::Ollama => OllamaAdapter::list_models(kind).await,
-			AdapterKind::Gemini => GeminiAdapter::list_models(kind).await,
-			AdapterKind::Groq => GroqAdapter::list_models(kind).await,
+			AdapterKind::OpenAI => OpenAIAdapter::list_model_names(kind).await,
+			AdapterKind::Anthropic => AnthropicAdapter::list_model_names(kind).await,
+			AdapterKind::Cohere => CohereAdapter::list_model_names(kind).await,
+			AdapterKind::Ollama => OllamaAdapter::list_model_names(kind).await,
+			AdapterKind::Gemini => GeminiAdapter::list_model_names(kind).await,
+			AdapterKind::Groq => GroqAdapter::list_model_names(kind).await,
 		}
 	}
 

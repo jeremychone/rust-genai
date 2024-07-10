@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	for &kind in KINDS {
 		println!("\n--- Models for {kind}");
-		let models = client.list_models(kind).await?;
+		let models = client.list_model_names(kind).await?;
 		println!("{models:?}");
 	}
 
