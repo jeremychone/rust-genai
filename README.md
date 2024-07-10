@@ -30,8 +30,8 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 ```rust
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::client::Client;
 use genai::utils::{print_chat_stream, PrintChatStreamOptions};
+use genai::Client;
 
 const MODEL_OPENAI: &str = "gpt-3.5-turbo";
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";

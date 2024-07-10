@@ -2,7 +2,7 @@
 //! Note: For now, only Ollama makes a dynamic query. Other adapters have a static list of models.
 
 use genai::adapter::AdapterKind;
-use genai::client::Client;
+use genai::Client;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,8 +1,8 @@
 use genai::adapter::AdapterKind;
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::client::{Client, ClientConfig};
 use genai::resolver::AdapterKindResolver;
 use genai::utils::print_chat_stream;
+use genai::{Client, ClientConfig};
 
 const MODEL: &str = "gpt-3.5-turbo";
 

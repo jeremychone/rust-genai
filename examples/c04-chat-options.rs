@@ -1,6 +1,6 @@
 use genai::chat::{ChatMessage, ChatRequest, ChatRequestOptions};
-use genai::client::{Client, ClientConfig};
 use genai::utils::print_chat_stream;
+use genai::{Client, ClientConfig};
 
 // const MODEL: &str = "gpt-3.5-turbo";
 // const MODEL: &str = "command-light";
