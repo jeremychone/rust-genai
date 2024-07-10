@@ -63,6 +63,10 @@
 		"gemma-7b-it": {
 			"input_mtok_dollars": 0.07,
 			"output_mtok_dollars": 0.07
+		},
+		"gemma2-9b-it": {
+			"input_mtok_dollars": 0.2,
+			"output_mtok_dollars": 0.2
 		}
 	}	
 }
