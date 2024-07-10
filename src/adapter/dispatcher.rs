@@ -14,18 +14,14 @@ use super::groq::GroqAdapter;
 pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
-	async fn list_models(kind: AdapterKind) -> Result<Vec<String>> {
-		Self::list_model_names(kind).await
-	}
-
-	async fn list_model_names(kind: AdapterKind) -> Result<Vec<String>> {
+	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::list_model_names(kind).await,
-			AdapterKind::Anthropic => AnthropicAdapter::list_model_names(kind).await,
-			AdapterKind::Cohere => CohereAdapter::list_model_names(kind).await,
-			AdapterKind::Ollama => OllamaAdapter::list_model_names(kind).await,
-			AdapterKind::Gemini => GeminiAdapter::list_model_names(kind).await,
-			AdapterKind::Groq => GroqAdapter::list_model_names(kind).await,
+			AdapterKind::OpenAI => OpenAIAdapter::all_model_names(kind).await,
+			AdapterKind::Anthropic => AnthropicAdapter::all_model_names(kind).await,
+			AdapterKind::Cohere => CohereAdapter::all_model_names(kind).await,
+			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
+			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind).await,
+			AdapterKind::Groq => GroqAdapter::all_model_names(kind).await,
 		}
 	}
 

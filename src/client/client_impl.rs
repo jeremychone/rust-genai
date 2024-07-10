@@ -5,11 +5,23 @@ use crate::{ConfigSet, Result};
 
 /// Public AI Functions
 impl Client {
-	pub async fn list_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		AdapterDispatcher::list_model_names(adapter_kind).await
+	/// Returns all the model names for a given adapter_kind
+	/// Notes:
+	/// - Since genai only supports Chat for now, the adapter implementation should try to remove the non-chat models
+	/// - Later, as genai adds more capabilities, we will have a `model_names(adapter_kind, Option<&[Skill]>)`
+	///   that will take a list of skills like (`ChatText`, `ChatImage`, `ChatFunction`, `TextToSpeech`, ...)
+	pub async fn all_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
+		AdapterDispatcher::all_model_names(adapter_kind).await
 	}
 
 	/// Resolve the adapter kind for a given model name.
+	/// Note: This does not use the `all_model_names` function to find a match, but instead relies on hardcoded matching rules.
+	///       This strategy makes the library more flexible as it does not require updates
+	///       when the AI Provider adds new models (assuming they follow a consistent naming pattern).
+	///
+	/// See [AdapterKind::from_model]
+	///
+	/// [AdapterKind::from_model]: crate::adapter::AdapterKind::from_model
 	pub fn resolve_adapter_kind(&self, model: &str) -> Result<AdapterKind> {
 		let adapter_kind_from_resolver = self
 			.config()
@@ -24,6 +36,7 @@ impl Client {
 		}
 	}
 
+	/// Execute a chat
 	pub async fn exec_chat(
 		&self,
 		model: &str,

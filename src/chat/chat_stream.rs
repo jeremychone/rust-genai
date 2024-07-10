@@ -74,7 +74,7 @@ pub struct StreamEnd {
 	/// The optional captured full content
 	/// NOTE: NOT SUPPORTED YET (always None for now)
 	///       Probably allow to toggle this on at the client_config, adapter_config
-	///       Also, in the chat API, might be nice ot have a Option<RequestOptions> with this flag
+	///       Also, in the chat API, might be nice ot have a `Option<RequestOptions>` with this flag
 	pub captured_content: Option<String>,
 }
 

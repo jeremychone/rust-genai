@@ -21,7 +21,7 @@ const OLLAMA_BASE_URL: &str = "http://localhost:11434/api/";
 ///       Since the base ollama API supports `application/x-ndjson` for streaming whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
 	/// Note: For now returns empty as it should probably do a request to the ollama server
-	async fn list_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		let url = format!("{OLLAMA_BASE_URL}tags");
 
 		// TODO: need to get the WebClient from the client.

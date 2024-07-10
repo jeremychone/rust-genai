@@ -17,12 +17,13 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"llama3-70b-8192",
 	"mixtral-8x7b-32768",
 	"gemma-7b-it",
+	"gemma2-9b-it",
 	// "whisper-large-v3", // This is not a chat completion model
 ];
 
 // The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
 impl Adapter for GroqAdapter {
-	async fn list_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
