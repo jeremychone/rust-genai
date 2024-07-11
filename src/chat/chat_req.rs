@@ -26,6 +26,46 @@ impl ChatRequest {
 	}
 }
 
+/// Getters
+impl ChatRequest {
+	/// Iterate through all of the system content, starting with the eventual
+	/// ChatRequest.system and then the ChatMessage of role System
+	pub fn iter_systems(&self) -> impl Iterator<Item = &str> {
+		self.system
+			.iter()
+			.map(|s| s.as_str())
+			.chain(self.messages.iter().filter_map(|message| match message.role {
+				ChatRole::System => Some(message.content.as_str()),
+				_ => None,
+			}))
+	}
+
+	/// Combine the eventual ChatRequest `.system` and system messages into one string.
+	/// - It will start with the evnetual `chat_request.system`
+	/// - Then concatenate the eventual `ChatRequestMessage` of Role `System`
+	/// - This will attempt to add an empty line between system content. So, it will add
+	///   - Two `\n` when the prev content does not end with `\n`
+	///   - and one `\n` if the prev content ends with `\n`
+	pub fn combine_systems(&self) -> Option<String> {
+		let mut systems: Option<String> = None;
+
+		for system in self.iter_systems() {
+			let systems_content = systems.get_or_insert_with(|| "".to_string());
+
+			// add eventual separator
+			if systems_content.ends_with('\n') {
+				systems_content.push('\n');
+			} else if !systems_content.is_empty() {
+				systems_content.push_str("\n\n");
+			} // do not add any empyt line if prev content is empty
+
+			systems_content.push_str(system);
+		}
+
+		systems
+	}
+}
+
 // endregion: --- ChatRequest
 
 // region:    --- ChatMessage
@@ -37,7 +77,7 @@ pub struct ChatMessage {
 	pub extra: Option<MessageExtra>,
 }
 
-/// Convenient constructors
+/// Constructors
 impl ChatMessage {
 	pub fn system(content: impl Into<String>) -> Self {
 		Self {
