@@ -15,14 +15,17 @@ mod adapter_types;
 mod adapters;
 mod dispatcher;
 
-// flatten the adapters sub module
+// -- flatten the adapters sub module
 // (over nesting not needed, adapters/ is just here for code organizational purposed)
-use adapters::*;
+
+pub(in crate::adapter) mod support;
+pub(in crate::adapter) use adapters::*;
 
 pub(crate) mod inter_stream;
-pub(in crate::adapter) mod support;
 pub(crate) use adapter_types::*;
 pub(crate) use dispatcher::*;
+
+// -- Public constructs
 
 pub use adapter_config::*;
 pub use adapter_kind::*;
