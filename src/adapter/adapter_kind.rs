@@ -14,6 +14,32 @@ pub enum AdapterKind {
 	// AnthropicBerock,
 }
 
+/// Serialization impls
+impl AdapterKind {
+	pub fn as_str(&self) -> &'static str {
+		match self {
+			AdapterKind::OpenAI => "OpenAI",
+			AdapterKind::Ollama => "Ollama",
+			AdapterKind::Anthropic => "Anthropic",
+			AdapterKind::Cohere => "Cohere",
+			AdapterKind::Gemini => "Gemini",
+			AdapterKind::Groq => "Groq",
+		}
+	}
+
+	pub fn as_lower_str(&self) -> &'static str {
+		match self {
+			AdapterKind::OpenAI => "openai",
+			AdapterKind::Ollama => "ollama",
+			AdapterKind::Anthropic => "anthropic",
+			AdapterKind::Cohere => "cohere",
+			AdapterKind::Gemini => "gemini",
+			AdapterKind::Groq => "groq",
+		}
+	}
+}
+
+/// From Model impls
 impl AdapterKind {
 	/// Very simplistic mapper for now.
 	///  - starts_with "gpt"      -> OpenAI
