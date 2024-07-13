@@ -6,6 +6,7 @@ Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, 
 
 <a href="https://crates.io/crates/genai"><img src="https://img.shields.io/crates/v/genai.svg" /></a>
 <a href="https://github.com/jeremychone/rust-genai"><img alt="Static Badge" src="https://img.shields.io/badge/GitHub-Repo?color=%23336699"></a>
+<a href="https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube_genai_Intro-Video?style=flat&logo=youtube&color=%23ff0000"></a>
 
 </div>
 
