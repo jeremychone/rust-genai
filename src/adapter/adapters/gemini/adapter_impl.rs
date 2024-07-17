@@ -106,7 +106,11 @@ impl Adapter for GeminiAdapter {
 		})
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
+	fn to_chat_stream(
+		_kind: AdapterKind,
+		reqwest_builder: RequestBuilder,
+		_options_set: ChatRequestOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_pretty_json_array(reqwest_builder);
 
 		let gemini_stream = GeminiStream::new(web_stream);

@@ -96,11 +96,11 @@ impl Client {
 			ServiceType::ChatStream,
 			model,
 			chat_req,
-			options_set,
+			options_set.clone(),
 		)?;
 
 		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;
 
-		AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder)
+		AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder, options_set)
 	}
 }

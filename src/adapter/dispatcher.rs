@@ -88,14 +88,18 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
+	fn to_chat_stream(
+		kind: AdapterKind,
+		reqwest_builder: RequestBuilder,
+		options_set: ChatRequestOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse> {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(kind, reqwest_builder),
-			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(kind, reqwest_builder),
-			AdapterKind::Cohere => CohereAdapter::to_chat_stream(kind, reqwest_builder),
-			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(kind, reqwest_builder),
-			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(kind, reqwest_builder),
-			AdapterKind::Groq => GroqAdapter::to_chat_stream(kind, reqwest_builder),
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(kind, reqwest_builder, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(kind, reqwest_builder, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_chat_stream(kind, reqwest_builder, options_set),
+			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(kind, reqwest_builder, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(kind, reqwest_builder, options_set),
+			AdapterKind::Groq => GroqAdapter::to_chat_stream(kind, reqwest_builder, options_set),
 		}
 	}
 }

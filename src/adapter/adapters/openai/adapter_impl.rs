@@ -56,6 +56,7 @@ impl Adapter for OpenAIAdapter {
 
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
+
 		let first_choice: Option<Value> = body.x_take("/choices/0")?;
 		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
 		Ok(ChatResponse {
@@ -64,9 +65,13 @@ impl Adapter for OpenAIAdapter {
 		})
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
+	fn to_chat_stream(
+		_kind: AdapterKind,
+		reqwest_builder: RequestBuilder,
+		options_sets: ChatRequestOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let openai_stream = OpenAIMessagesStream::new(event_source);
+		let openai_stream = OpenAIMessagesStream::new(event_source, options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })
@@ -114,9 +119,14 @@ impl OpenAIAdapter {
 			"stream": stream
 		});
 
+		// --
+		if stream & options_set.capture_usage().unwrap_or(false) {
+			payload.x_insert("stream_options", json!({"include_usage": true}))?;
+		}
+
 		// -- Add supported ChatRequestOptions
 		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("temperature", temperature)?;
+			payload.x_insert("tdsemperature", temperature)?;
 		}
 		if let Some(max_tokens) = options_set.max_tokens() {
 			payload.x_insert("max_tokens", max_tokens)?;

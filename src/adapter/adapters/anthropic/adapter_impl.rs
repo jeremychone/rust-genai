@@ -110,9 +110,13 @@ impl Adapter for AnthropicAdapter {
 		})
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
+	fn to_chat_stream(
+		_kind: AdapterKind,
+		reqwest_builder: RequestBuilder,
+		options_set: ChatRequestOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let anthropic_stream = AnthropicMessagesStream::new(event_source);
+		let anthropic_stream = AnthropicMessagesStream::new(event_source, options_set);
 		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
 		Ok(ChatStreamResponse { stream: chat_stream })
 	}

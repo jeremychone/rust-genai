@@ -135,11 +135,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## ChatRequestOptions
 
-| Property    | OpenAI      | Ollama      | Grok        | Anthropic                 | Gemini                           | Cohere      |
-|-------------|-------------|-------------|-------------|---------------------------|----------------------------------|-------------|
-| temperature | temperature | temperature | temperature | temperature               | generationConfig.temperature     | temperature |
-| max_tokens  | max_tokens  | max_tokens  | max_tokens  | max_tokens (default 1024) | generationConfig.maxOutputTokens | max_tokens  |
-| top_p       | top_p       | top_p       | top_p       | top_p                     | generationConfig.topP            | p           |
+| Property    | OpenAI      | Anthropic                 | Ollama      | Groq        | Gemini                           | Cohere      |
+|-------------|-------------|---------------------------|-------------|-------------|----------------------------------|-------------|
+| temperature | temperature | temperature               | temperature | temperature | generationConfig.temperature     | temperature |
+| max_tokens  | max_tokens  | max_tokens (default 1024) | max_tokens  | max_tokens  | generationConfig.maxOutputTokens | max_tokens  |
+| top_p       | top_p       | top_p                     | top_p       | top_p       | generationConfig.topP            | p           |
+
+## MetaUsage
+
+_NoImpl_ - Not Implemented Yet
+
+| Property        | OpenAI                    | Ollama   | Groq                             | Anthropic                 | Gemini   | Cohere   |
+|-----------------|---------------------------|----------|----------------------------------|---------------------------|----------|----------|
+| `input_tokens`  | `usage.prompt_tokens`     | _noImpl_ | `x_groq.usage.prompt_tokens`     | `input_tokens` (added)    | _noImpl_ | _noImpl_ |
+| `output_tokens` | `usage.completion_tokens` | _NoImpl_ | `x_groq.usage.completion_tokens` | `output_tokens` (added)   | _noImpl_ | _noImpl_ |
+| `total_tokens`  | `usage.total_tokens`      | _NoImpl_ | `x_groq.usage.completion_tokens` | `total_tokens` (computed) | _noImpl_ | _noImpl_ |
 
 
 

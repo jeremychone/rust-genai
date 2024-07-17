@@ -1,6 +1,6 @@
-//!     API DOC: https://docs.cohere.com/reference/chat
+//! API DOC:     https://docs.cohere.com/reference/chat
 //! MODEL NAMES: https://docs.cohere.com/docs/models
-//!     PRICING: https://cohere.com/pricing
+//! PRICING:     https://cohere.com/pricing
 
 // region:    --- Modules
 

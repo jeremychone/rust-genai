@@ -108,7 +108,11 @@ impl Adapter for CohereAdapter {
 		})
 	}
 
-	fn to_chat_stream(_kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
+	fn to_chat_stream(
+		_kind: AdapterKind,
+		reqwest_builder: RequestBuilder,
+		_options_set: ChatRequestOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n");
 		let cohere_stream = CohereStream::new(web_stream);
 		let chat_stream = ChatStream::from_inter_stream(cohere_stream);

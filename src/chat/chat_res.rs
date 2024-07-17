@@ -23,11 +23,11 @@ pub struct ChatStreamResponse {
 // region:    --- MetaUsage
 
 /// IMPORTANT: This is **NOT SUPPORTED** for now. To show the API direction.
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct MetaUsage {
-	pub input_token: Option<i32>,
-	pub output_token: Option<i32>,
-	pub total_token: Option<i32>,
+	pub input_tokens: Option<i32>,
+	pub output_tokens: Option<i32>,
+	pub total_tokens: Option<i32>,
 }
 
 // endregion: --- MetaUsage

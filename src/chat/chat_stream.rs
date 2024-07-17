@@ -1,4 +1,4 @@
-use crate::adapter::inter_stream::InterStreamEvent;
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::MetaUsage;
 use crate::Result;
 use derive_more::From;
@@ -39,7 +39,7 @@ impl Stream for ChatStream {
 				let chat_event = match event {
 					InterStreamEvent::Start => ChatStreamEvent::Start,
 					InterStreamEvent::Chunk(content) => ChatStreamEvent::Chunk(StreamChunk { content }),
-					InterStreamEvent::End => ChatStreamEvent::End(StreamEnd::default()),
+					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 				};
 				Poll::Ready(Some(Ok(chat_event)))
 			}
@@ -69,13 +69,19 @@ pub struct StreamChunk {
 #[derive(Debug, Default)]
 pub struct StreamEnd {
 	/// The eventual capture UsageMeta
-	pub meta_usage: Option<MetaUsage>,
+	pub captured_usage: Option<MetaUsage>,
 
 	/// The optional captured full content
-	/// NOTE: NOT SUPPORTED YET (always None for now)
-	///       Probably allow to toggle this on at the client_config, adapter_config
-	///       Also, in the chat API, might be nice ot have a `Option<RequestOptions>` with this flag
 	pub captured_content: Option<String>,
+}
+
+impl From<InterStreamEnd> for StreamEnd {
+	fn from(inter_end: InterStreamEnd) -> Self {
+		StreamEnd {
+			captured_usage: inter_end.captured_usage,
+			captured_content: inter_end.captured_content,
+		}
+	}
 }
 
 // endregion: --- ChatStreamEvent

@@ -1,5 +1,5 @@
 use crate::adapter::gemini::body_to_gemini_chat_response;
-use crate::adapter::inter_stream::InterStreamEvent;
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::webc::WebStream;
 use crate::{Error, Result};
 use serde_json::Value;
@@ -36,7 +36,7 @@ impl futures::Stream for GeminiStream {
 					// - `]` document
 					let inter_event = match raw_message.as_str() {
 						"[" => InterStreamEvent::Start,
-						"]" => InterStreamEvent::End,
+						"]" => InterStreamEvent::End(InterStreamEnd::default()),
 						block_string => {
 							let json_block =
 								match serde_json::from_str::<Value>(block_string).map_err(Error::StreamParse) {

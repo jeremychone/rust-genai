@@ -1,4 +1,4 @@
-use crate::adapter::inter_stream::InterStreamEvent;
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::webc::WebStream;
 use crate::{Error, Result};
 use serde::Deserialize;
@@ -45,7 +45,7 @@ impl futures::Stream for CohereStream {
 							let inter_event = match cohere_message.event_type.as_str() {
 								"stream-start" => InterStreamEvent::Start,
 								"text-generation" => InterStreamEvent::Chunk(cohere_message.text.unwrap_or_default()),
-								"stream-end" => InterStreamEvent::End,
+								"stream-end" => InterStreamEvent::End(InterStreamEnd::default()),
 								_ => continue, // Skip the "Other" event
 							};
 							return Poll::Ready(Some(Ok(inter_event)));

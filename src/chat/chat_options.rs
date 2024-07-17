@@ -23,7 +23,6 @@ pub struct ChatRequestOptions {
 	pub capture_usage: Option<bool>,
 
 	// -- For Stream only (for now, we flat them out)
-	//
 	/// Tell the chat stream executor to capture and concatenate all of the text chunk
 	/// to the last `StreamEvent::End(StreamEnd)` event as `StreamEnd.captured_content` (so, will be `Some(concatenated_chunks)`)
 	pub capture_content: Option<bool>,
@@ -64,7 +63,7 @@ impl ChatRequestOptions {
 
 // region:    --- ChatRequestOptionsSet
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct ChatRequestOptionsSet<'a, 'b> {
 	client: Option<&'a ChatRequestOptions>,
 	chat: Option<&'b ChatRequestOptions>,
@@ -98,6 +97,19 @@ impl ChatRequestOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.top_p)
 			.or_else(|| self.client.and_then(|client| client.top_p))
+	}
+
+	pub fn capture_usage(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.capture_usage)
+			.or_else(|| self.client.and_then(|client| client.capture_usage))
+	}
+
+	#[allow(unused)] // for now, until implemented
+	pub fn capture_content(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.capture_content)
+			.or_else(|| self.client.and_then(|client| client.capture_content))
 	}
 }
 

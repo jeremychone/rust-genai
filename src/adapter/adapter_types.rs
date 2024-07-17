@@ -31,7 +31,11 @@ pub trait Adapter {
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse>;
 
 	/// To be implemented by Adapters
-	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse>;
+	fn to_chat_stream(
+		kind: AdapterKind,
+		reqwest_builder: RequestBuilder,
+		options_set: ChatRequestOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse>;
 }
 
 // region:    --- AdapterKind

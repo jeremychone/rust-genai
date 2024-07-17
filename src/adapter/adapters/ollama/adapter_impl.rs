@@ -69,7 +69,11 @@ impl Adapter for OllamaAdapter {
 		OpenAIAdapter::to_chat_response(kind, web_response)
 	}
 
-	fn to_chat_stream(kind: AdapterKind, reqwest_builder: RequestBuilder) -> Result<ChatStreamResponse> {
-		OpenAIAdapter::to_chat_stream(kind, reqwest_builder)
+	fn to_chat_stream(
+		kind: AdapterKind,
+		reqwest_builder: RequestBuilder,
+		options_set: ChatRequestOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse> {
+		OpenAIAdapter::to_chat_stream(kind, reqwest_builder, options_set)
 	}
 }
