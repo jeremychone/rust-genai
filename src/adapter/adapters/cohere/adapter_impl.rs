@@ -1,4 +1,4 @@
-use crate::adapter::cohere::CohereStream;
+use crate::adapter::cohere::CohereStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
@@ -114,7 +114,7 @@ impl Adapter for CohereAdapter {
 		_options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n");
-		let cohere_stream = CohereStream::new(web_stream);
+		let cohere_stream = CohereStreamer::new(web_stream);
 		let chat_stream = ChatStream::from_inter_stream(cohere_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })

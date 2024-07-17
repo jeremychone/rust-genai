@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-pub struct OpenAIMessagesStream {
+pub struct OpenAIStreamer {
 	inner: EventSource,
 	options: OpenAiStreamOptions,
 
@@ -20,10 +20,10 @@ pub struct OpenAIMessagesStream {
 	captured_content: Option<String>,
 }
 
-impl OpenAIMessagesStream {
+impl OpenAIStreamer {
 	// TODO: Problen need the ChatRequestOptions `.capture_content` `.capture_usage`
 	pub fn new(inner: EventSource, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
-		OpenAIMessagesStream {
+		OpenAIStreamer {
 			inner,
 			options: options_set.into(),
 			done: false,
@@ -33,7 +33,7 @@ impl OpenAIMessagesStream {
 	}
 }
 
-impl futures::Stream for OpenAIMessagesStream {
+impl futures::Stream for OpenAIStreamer {
 	type Item = Result<InterStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

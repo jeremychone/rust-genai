@@ -6,20 +6,20 @@ use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-pub struct GeminiStream {
+pub struct GeminiStreamer {
 	inner: WebStream,
 	/// Flag to not poll the EventSource after a MessageStop event
 	done: bool,
 }
 
-impl GeminiStream {
+impl GeminiStreamer {
 	pub fn new(inner: WebStream) -> Self {
-		GeminiStream { inner, done: false }
+		GeminiStreamer { inner, done: false }
 	}
 }
 
 // Implement futures::Stream for InterStream<GeminiStream>
-impl futures::Stream for GeminiStream {
+impl futures::Stream for GeminiStreamer {
 	type Item = Result<InterStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

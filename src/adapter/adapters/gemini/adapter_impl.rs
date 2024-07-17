@@ -1,4 +1,4 @@
-use crate::adapter::gemini::GeminiStream;
+use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
@@ -113,7 +113,7 @@ impl Adapter for GeminiAdapter {
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_pretty_json_array(reqwest_builder);
 
-		let gemini_stream = GeminiStream::new(web_stream);
+		let gemini_stream = GeminiStreamer::new(web_stream);
 		let chat_stream = ChatStream::from_inter_stream(gemini_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })

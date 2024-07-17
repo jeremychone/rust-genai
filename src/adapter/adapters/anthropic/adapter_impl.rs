@@ -1,4 +1,4 @@
-use crate::adapter::anthropic::AnthropicMessagesStream;
+use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
@@ -116,7 +116,7 @@ impl Adapter for AnthropicAdapter {
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let anthropic_stream = AnthropicMessagesStream::new(event_source, options_set);
+		let anthropic_stream = AnthropicStreamer::new(event_source, options_set);
 		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
 		Ok(ChatStreamResponse { stream: chat_stream })
 	}

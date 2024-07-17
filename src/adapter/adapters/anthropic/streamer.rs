@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-pub struct AnthropicMessagesStream {
+pub struct AnthropicStreamer {
 	inner: EventSource,
 	options: AnthropicStreamOptions,
 
@@ -18,9 +18,9 @@ pub struct AnthropicMessagesStream {
 	captured_content: Option<String>,
 }
 
-impl AnthropicMessagesStream {
+impl AnthropicStreamer {
 	pub fn new(inner: EventSource, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
-		AnthropicMessagesStream {
+		AnthropicStreamer {
 			inner,
 			done: false,
 			options: options_set.into(),
@@ -30,7 +30,7 @@ impl AnthropicMessagesStream {
 	}
 }
 
-impl futures::Stream for AnthropicMessagesStream {
+impl futures::Stream for AnthropicStreamer {
 	type Item = Result<InterStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -117,7 +117,7 @@ impl futures::Stream for AnthropicMessagesStream {
 }
 
 // Support
-impl AnthropicMessagesStream {
+impl AnthropicStreamer {
 	fn capture_usage(&mut self, message_type: &str, message_data: &str) -> Result<()> {
 		if self.options.capture_usage {
 			let data = parse_message_data(message_data)?;

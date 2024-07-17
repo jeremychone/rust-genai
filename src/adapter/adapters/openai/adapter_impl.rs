@@ -1,4 +1,4 @@
-use crate::adapter::openai::OpenAIMessagesStream;
+use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
@@ -71,7 +71,7 @@ impl Adapter for OpenAIAdapter {
 		options_sets: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let openai_stream = OpenAIMessagesStream::new(event_source, options_sets);
+		let openai_stream = OpenAIStreamer::new(event_source, options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })

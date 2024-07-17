@@ -5,15 +5,15 @@ use serde::Deserialize;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-pub struct CohereStream {
+pub struct CohereStreamer {
 	inner: WebStream,
 	/// Flag to not poll the EventSource after a MessageStop event
 	done: bool,
 }
 
-impl CohereStream {
+impl CohereStreamer {
 	pub fn new(inner: WebStream) -> Self {
-		CohereStream { inner, done: false }
+		CohereStreamer { inner, done: false }
 	}
 }
 
@@ -26,7 +26,7 @@ struct CohereStreamMessage {
 }
 
 // Implement futures::Stream for InterStream<CohereStream>
-impl futures::Stream for CohereStream {
+impl futures::Stream for CohereStreamer {
 	type Item = Result<InterStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
