@@ -68,7 +68,7 @@ pub struct StreamChunk {
 
 #[derive(Debug, Default)]
 pub struct StreamEnd {
-	/// The eventual capture UsageMeta
+	/// The eventual captured UsageMeta
 	pub captured_usage: Option<MetaUsage>,
 
 	/// The optional captured full content

@@ -7,7 +7,7 @@ pub struct ChatResponse {
 	pub content: Option<String>,
 	/// NOT SUPPORTED
 	#[allow(unused)]
-	pub meta_usage: Option<MetaUsage>,
+	pub usage: Option<MetaUsage>,
 }
 
 // endregion: --- ChatResponse
