@@ -16,7 +16,7 @@ impl ClientConfig {
 	}
 
 	/// Default chat request options
-	pub fn with_default_chat_request_options(mut self, default_chat_request_options: ChatRequestOptions) -> Self {
+	pub fn with_chat_request_options(mut self, default_chat_request_options: ChatRequestOptions) -> Self {
 		self.default_chat_request_options = Some(default_chat_request_options);
 		self
 	}
@@ -28,7 +28,7 @@ impl ClientConfig {
 		self.adapter_kind_resolver.as_ref()
 	}
 
-	pub fn default_chat_request_options(&self) -> Option<&ChatRequestOptions> {
+	pub fn chat_request_options(&self) -> Option<&ChatRequestOptions> {
 		self.default_chat_request_options.as_ref()
 	}
 }

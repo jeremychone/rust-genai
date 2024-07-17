@@ -54,7 +54,7 @@ impl Client {
 
 		let options_set = ChatRequestOptionsSet::default()
 			.with_chat_options(options)
-			.with_client_options(self.config().default_chat_request_options());
+			.with_client_options(self.config().chat_request_options());
 
 		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
 			adapter_kind,
@@ -88,7 +88,7 @@ impl Client {
 
 		let options_set = ChatRequestOptionsSet::default()
 			.with_chat_options(options)
-			.with_client_options(self.config().default_chat_request_options());
+			.with_client_options(self.config().chat_request_options());
 
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
 			adapter_kind,

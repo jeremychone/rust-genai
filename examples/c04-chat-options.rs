@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Note: The ChatRequestOptions properties set at the client config level will be
 	//       the fallback value if not provided at the chat exec level.
 	let client_config = ClientConfig::default()
-		.with_default_chat_request_options(ChatRequestOptions::default().with_temperature(0.0).with_top_p(0.99));
+		.with_chat_request_options(ChatRequestOptions::default().with_temperature(0.0).with_top_p(0.99));
 
 	// -- Build the new client with this client_config
 	let client = Client::builder().with_config(client_config).build();

@@ -38,7 +38,7 @@ async fn test_chat_stream_simple_ok() -> Result<()> {
 #[tokio::test]
 async fn test_chat_stream_with_captures_ok() -> Result<()> {
 	// -- Setup & Fixtures
-	let config = ClientConfig::default().with_default_chat_request_options(
+	let config = ClientConfig::default().with_chat_request_options(
 		ChatRequestOptions::default()
 			.with_capture_usage(true)
 			.with_capture_content(true),
