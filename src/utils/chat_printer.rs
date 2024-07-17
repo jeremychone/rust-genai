@@ -11,7 +11,7 @@ pub struct PrintChatStreamOptions {
 
 /// constructors
 impl PrintChatStreamOptions {
-	pub fn from_stream_events(print_events: bool) -> Self {
+	pub fn from_print_events(print_events: bool) -> Self {
 		PrintChatStreamOptions {
 			print_events: Some(print_events),
 		}
