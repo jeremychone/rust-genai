@@ -19,8 +19,6 @@ pub struct OpenAIStreamer {
 	// -- Set by the poll_next
 	/// Flag to not poll the EventSource after a MessageStop event
 	done: bool,
-	// The eventual captured usage json value
-	// `{prompt_tokens: number, complete_tokens: number, total_tokens: number}`
 	captured_data: StreamerCapturedData,
 }
 

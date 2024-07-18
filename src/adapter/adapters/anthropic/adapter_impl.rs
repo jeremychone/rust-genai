@@ -95,7 +95,7 @@ impl Adapter for AnthropicAdapter {
 
 		let mut content: Vec<String> = Vec::new();
 
-		let usage = body.x_take("usage").map(AnthropicAdapter::into_usage).unwrap_or_default();
+		let usage = body.x_take("usage").map(Self::into_usage).unwrap_or_default();
 
 		for mut item in json_content_items {
 			let item_text: String = item.x_take("text")?;

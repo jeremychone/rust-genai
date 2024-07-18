@@ -79,6 +79,7 @@ impl futures::Stream for AnthropicStreamer {
 							//       but then, on next poll, it will be stopped.
 							self.done = true;
 
+							// capture the usage
 							let captured_usage = if self.options.capture_usage {
 								self.captured_usage.take().map(|mut usage| {
 									// compute the total if anh of input/output are not null
