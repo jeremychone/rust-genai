@@ -1,3 +1,4 @@
+use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatRequestOptionsSet, MetaUsage};
 use crate::utils::x_value::XValue;
@@ -9,23 +10,21 @@ use std::task::{Context, Poll};
 
 pub struct AnthropicStreamer {
 	inner: EventSource,
-	options: AnthropicStreamOptions,
+	options: StreamerOptions,
 
 	// -- Set by the poll_next
 	/// Flag to not poll the EventSource after a MessageStop event
 	done: bool,
-	captured_usage: Option<MetaUsage>,
-	captured_content: Option<String>,
+	captured_data: StreamerCapturedData,
 }
 
 impl AnthropicStreamer {
 	pub fn new(inner: EventSource, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
-		AnthropicStreamer {
+		Self {
 			inner,
 			done: false,
 			options: options_set.into(),
-			captured_usage: None,
-			captured_content: None,
+			captured_data: Default::default(),
 		}
 	}
 }
@@ -37,6 +36,7 @@ impl futures::Stream for AnthropicStreamer {
 		if self.done {
 			return Poll::Ready(None);
 		}
+
 		while let Poll::Ready(event) = Pin::new(&mut self.inner).poll_next(cx) {
 			// NOTE: At this point we capture more events than needed for genai::StreamItem, but it serves as documentation.
 			match event {
@@ -60,10 +60,11 @@ impl futures::Stream for AnthropicStreamer {
 							let mut data: Value = serde_json::from_str(&message.data).map_err(Error::StreamParse)?;
 							let content: String = data.x_take("/delta/text")?;
 
+							// add to the captured_content if chat options say so
 							if self.options.capture_content {
-								match self.captured_content {
+								match self.captured_data.content {
 									Some(ref mut c) => c.push_str(&content),
-									None => self.captured_content = Some(content.clone()),
+									None => self.captured_data.content = Some(content.clone()),
 								}
 							}
 
@@ -81,7 +82,7 @@ impl futures::Stream for AnthropicStreamer {
 
 							// capture the usage
 							let captured_usage = if self.options.capture_usage {
-								self.captured_usage.take().map(|mut usage| {
+								self.captured_data.usage.take().map(|mut usage| {
 									// compute the total if anh of input/output are not null
 									if usage.input_tokens.is_some() || usage.output_tokens.is_some() {
 										usage.total_tokens =
@@ -95,7 +96,7 @@ impl futures::Stream for AnthropicStreamer {
 
 							let inter_stream_end = InterStreamEnd {
 								captured_usage,
-								captured_content: self.captured_content.take(),
+								captured_content: self.captured_data.content.take(),
 							};
 
 							// TODO: Need to capture the data as needed
@@ -140,7 +141,8 @@ impl AnthropicStreamer {
 			// NOTE: Permissive on this one, if error, as inexistent (for now)
 			if let Ok(input_tokens) = data.x_get::<i32>(input_path) {
 				let val = self
-					.captured_usage
+					.captured_data
+					.usage
 					.get_or_insert(MetaUsage::default())
 					.input_tokens
 					.get_or_insert(0);
@@ -149,7 +151,8 @@ impl AnthropicStreamer {
 
 			if let Ok(output_tokens) = data.x_get::<i32>(output_path) {
 				let val = self
-					.captured_usage
+					.captured_data
+					.usage
 					.get_or_insert(MetaUsage::default())
 					.output_tokens
 					.get_or_insert(0);
@@ -160,25 +163,6 @@ impl AnthropicStreamer {
 		Ok(())
 	}
 }
-
-// region:    --- AnthropicStreamOptions
-
-#[derive(Debug, Default)]
-pub struct AnthropicStreamOptions {
-	capture_content: bool,
-	capture_usage: bool,
-}
-
-impl From<ChatRequestOptionsSet<'_, '_>> for AnthropicStreamOptions {
-	fn from(options_set: ChatRequestOptionsSet) -> Self {
-		AnthropicStreamOptions {
-			capture_content: options_set.capture_content().unwrap_or(false),
-			capture_usage: options_set.capture_usage().unwrap_or(false),
-		}
-	}
-}
-
-// endregion: --- AnthropicStreamOptions
 
 // region:    --- Support functions
 

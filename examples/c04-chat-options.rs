@@ -7,7 +7,7 @@ use genai::{Client, ClientConfig};
 // const MODEL: &str = "claude-3-haiku-20240307";
 // const MODEL: &str = "gemini-1.5-flash-latest";
 // const MODEL: &str = "llama3-8b-8192";
-const MODEL: &str = "mixtral";
+const MODEL: &str = "gemma:2b";
 
 /// This example shows how to use a custom AdapterKindResolver to have some custom
 /// mapping from a model name to a AdapterKind.

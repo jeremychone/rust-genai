@@ -20,7 +20,7 @@ pub struct GeminiStreamer {
 
 impl GeminiStreamer {
 	pub fn new(inner: WebStream, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
-		GeminiStreamer {
+		Self {
 			inner,
 			done: false,
 			options: options_set.into(),

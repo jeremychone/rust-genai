@@ -29,7 +29,7 @@ impl OpenAIStreamer {
 		target_adapter_kind: AdapterKind,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Self {
-		OpenAIStreamer {
+		Self {
 			inner,
 			done: false,
 			target_adapter_kind,

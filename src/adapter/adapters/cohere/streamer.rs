@@ -22,7 +22,7 @@ pub struct CohereStreamer {
 
 impl CohereStreamer {
 	pub fn new(inner: WebStream, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
-		CohereStreamer {
+		Self {
 			inner,
 			done: false,
 			options: options_set.into(),
