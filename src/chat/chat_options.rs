@@ -28,7 +28,7 @@ pub struct ChatRequestOptions {
 	pub capture_content: Option<bool>,
 }
 
-/// Setters (builder styles)
+/// Chainable Setters
 impl ChatRequestOptions {
 	/// Set the `temperature` for this request.
 	pub fn with_temperature(mut self, value: f64) -> Self {

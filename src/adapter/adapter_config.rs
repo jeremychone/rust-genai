@@ -5,7 +5,7 @@ pub struct AdapterConfig {
 	auth_resolver: Option<AuthResolver>,
 }
 
-/// Auth Related Setters (builder style)
+/// Auth Related Chainable Setters
 impl AdapterConfig {
 	/// Set the built auth resolver
 	pub fn with_auth_resolver(mut self, auth_resolver: AuthResolver) -> Self {

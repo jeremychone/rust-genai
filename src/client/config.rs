@@ -9,7 +9,7 @@ pub struct ClientConfig {
 	pub(in crate::client) chat_request_options: Option<ChatRequestOptions>,
 }
 
-/// Adapter Related Setters (builder style)
+/// Adapter Related Chainable Setters
 impl ClientConfig {
 	/// Set the built auth resolver
 	pub fn with_auth_resolver(mut self, auth_resolver: AdapterKindResolver) -> Self {

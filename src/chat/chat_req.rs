@@ -13,9 +13,17 @@ impl ChatRequest {
 	pub fn new(messages: Vec<ChatMessage>) -> Self {
 		Self { messages, system: None }
 	}
+
+	/// From `.system` property content.
+	pub fn from_system(content: impl Into<String>) -> Self {
+		Self {
+			system: Some(content.into()),
+			messages: Vec::new(),
+		}
+	}
 }
 
-/// Setters (builder style)
+/// Chainable Setters
 impl ChatRequest {
 	pub fn with_system(mut self, system: impl Into<String>) -> Self {
 		self.system = Some(system.into());
