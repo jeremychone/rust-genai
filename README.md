@@ -1,6 +1,6 @@
 # genai - Multi-AI Providers Library for Rust.
 
-Currently supports natively: **Ollama**, **OpenAI**, **Gemini**, **Anthropic**, **Cohere** (more to come)
+Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **Gemini**,  **Cohere** (more to come)
 
 <div align="center">
 
