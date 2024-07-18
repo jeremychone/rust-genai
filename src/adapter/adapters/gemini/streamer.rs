@@ -1,9 +1,9 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::gemini::{GeminiAdapter, GeminiChatResponse};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
+use crate::adapter::{Error, Result};
 use crate::chat::ChatRequestOptionsSet;
 use crate::webc::WebStream;
-use crate::{Error, Result};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};

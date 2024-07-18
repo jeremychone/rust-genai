@@ -1,8 +1,8 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
+use crate::adapter::{Error, Result};
 use crate::chat::{ChatRequestOptionsSet, MetaUsage};
 use crate::utils::x_value::XValue;
-use crate::{Error, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;

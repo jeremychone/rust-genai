@@ -1,11 +1,12 @@
 //! API DOC: https://github.com/ollama/ollama/blob/main/docs/openai.md
 
 use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
-use crate::{ConfigSet, Result};
+use crate::ConfigSet;
 use reqwest::RequestBuilder;
 use serde_json::Value;
 use std::sync::OnceLock;

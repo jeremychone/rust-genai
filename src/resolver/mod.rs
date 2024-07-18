@@ -7,7 +7,9 @@
 
 mod adapter_kind_resolver;
 mod auth_resolver;
+mod error;
 
+pub use self::error::{Error, Result};
 pub use adapter_kind_resolver::*;
 pub use auth_resolver::*;
 

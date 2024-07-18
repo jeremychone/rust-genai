@@ -1,12 +1,13 @@
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::support::get_api_key_resolver;
+use crate::adapter::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
 };
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
-use crate::{ConfigSet, Result};
+use crate::ConfigSet;
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};

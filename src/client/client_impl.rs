@@ -11,7 +11,8 @@ impl Client {
 	/// - Later, as genai adds more capabilities, we will have a `model_names(adapter_kind, Option<&[Skill]>)`
 	///   that will take a list of skills like (`ChatText`, `ChatImage`, `ChatFunction`, `TextToSpeech`, ...)
 	pub async fn all_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		AdapterDispatcher::all_model_names(adapter_kind).await
+		let models = AdapterDispatcher::all_model_names(adapter_kind).await?;
+		Ok(models)
 	}
 
 	/// Resolve the adapter kind for a given model name.
@@ -101,6 +102,8 @@ impl Client {
 
 		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;
 
-		AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder, options_set)
+		let res = AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder, options_set)?;
+
+		Ok(res)
 	}
 }

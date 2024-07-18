@@ -1,12 +1,13 @@
 use crate::adapter::cohere::CohereStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::{Error, Result};
 use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
 };
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
-use crate::{ConfigSet, Error, Result};
+use crate::ConfigSet;
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
@@ -101,10 +102,8 @@ impl Adapter for CohereAdapter {
 		let usage = body.x_take("/meta/tokens").map(Self::into_usage).unwrap_or_default();
 
 		// -- Get response
-		let mut last_chat_history_item = body
-			.x_take::<Vec<Value>>("chat_history")?
-			.pop()
-			.ok_or(Error::AdapterNoChatResponse)?;
+		let mut last_chat_history_item =
+			body.x_take::<Vec<Value>>("chat_history")?.pop().ok_or(Error::NoChatResponse)?;
 
 		let content: Option<String> = last_chat_history_item.x_take("message")?;
 
@@ -169,9 +168,9 @@ impl CohereAdapter {
 		}
 
 		// -- Build extract the last user message
-		let last_chat_msg = chat_req.messages.pop().ok_or(Error::AdapterChatReqHasNoMessages)?;
+		let last_chat_msg = chat_req.messages.pop().ok_or(Error::ChatReqHasNoMessages)?;
 		if !matches!(last_chat_msg.role, ChatRole::User) {
-			return Err(Error::AdapterLastChatMessageIsNoUser {
+			return Err(Error::LastChatMessageIsNoUser {
 				actual_role: last_chat_msg.role,
 			});
 		}
@@ -186,7 +185,7 @@ impl CohereAdapter {
 				ChatRole::User => chat_history.push(json! ({"role": "USER", "content": content})),
 				ChatRole::Assistant => chat_history.push(json! ({"role": "CHATBOT", "content": content})),
 				ChatRole::Tool => {
-					return Err(Error::AdapterMessageRoleNotSupport {
+					return Err(Error::MessageRoleNotSupport {
 						adapter_kind,
 						role: ChatRole::Tool,
 					})

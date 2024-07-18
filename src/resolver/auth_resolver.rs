@@ -7,8 +7,8 @@
 //! Note: AuthData is typically a single value but can be Multi for future adapters (e.g., AWS Berock).
 
 use crate::adapter::AdapterKind;
+use crate::resolver::{Error, Result};
 use crate::ConfigSet;
-use crate::{Error, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 

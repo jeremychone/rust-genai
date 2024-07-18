@@ -1,13 +1,12 @@
-use std::sync::OnceLock;
-
-use reqwest::RequestBuilder;
-
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::support::get_api_key_resolver;
+use crate::adapter::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
-use crate::{ConfigSet, Result};
+use crate::ConfigSet;
+use reqwest::RequestBuilder;
+use std::sync::OnceLock;
 
 pub struct GroqAdapter;
 

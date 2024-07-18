@@ -17,9 +17,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// -- Build a auth_resolver and the AdapterConfig
 	let auth_resolver = AuthResolver::from_sync_resolver(
-		|kind: AdapterKind, _config_set: &ConfigSet<'_>| -> Result<Option<AuthData>, genai::Error> {
+		|kind: AdapterKind, _config_set: &ConfigSet<'_>| -> Result<Option<AuthData>, genai::resolver::Error> {
 			println!("\n>> Custom auth provider for {kind} <<");
-			let key = std::env::var("OPENAI_API_KEY").map_err(|_| genai::Error::ApiKeyEnvNotFound {
+			let key = std::env::var("OPENAI_API_KEY").map_err(|_| genai::resolver::Error::ApiKeyEnvNotFound {
 				env_name: "OPENAI_API_KEY".to_string(),
 			})?;
 			Ok(Some(AuthData::from_single(key)))
