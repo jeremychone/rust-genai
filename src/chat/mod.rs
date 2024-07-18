@@ -1,6 +1,3 @@
-//! Note: In this module, the sub-modules are
-//!       for code organization and all constructs are flatten out.
-
 // region:    --- Modules
 
 mod chat_options;
