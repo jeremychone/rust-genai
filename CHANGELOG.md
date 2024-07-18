@@ -1,5 +1,25 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+> **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.3"`.
+> - Version `0.2.x` will follow semver more strictly.
+> - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-07-18 - `0.1.3`
+
+- `!` **error refactor** - added `genai::adapter::Error` and `genai::resolver::Error`, and updated `genai::Error` with appropriate `Froms`
+- `+` **Added token usage** for ALL adapters/providers - `ChatResponse.usage` and `ChatRequestOption` `.capture_usage`/`.capture_content` (for streaming) support for all Adapters (see note in Readme for Ollama for streaming)
+- `!` **API CHANGE**: `ClientConfig::with_chat_request_options` (was `with_default_chat_request_options`)
+- `!` **API CHANGE**: `PrintChatStreamOptions::from_print_events` (was `from_stream_events`)
+- `^` `AdapterKind` - added `as_str` and `as_lower_str`
+- `^` `ChatRequest` - added `.iter_systems()` and `.combine_systems()` (includes eventual `chat_req.system` as part of the system messages)
+- `!` **API CHANGE**: `Client::all_model_names(..)` (was `Client::list_models(..)`) 
+- `^` **groq** - add gemma2-9b-it to the list of Groq models
+- `!` **API CHANGE**: `genai::Client` (was `genai::client::Client`, same for `ClientBuilder` `ClientConfig`)
+- `-` **groq** - remove groq whisper model from list_models as it is not a chat completion model
+- `^` **ollama** - implement live list_models for ollama
+- `!` Makes AdapterDispatcher crate only (should be internal only)
+
 ## 2024-07-08 - `0.1.2`
 
 - `+` `ChatRequestOptions` - added `temperature`, `max_tokens`, `top_p` for all adapters (see readme for property mapping). 

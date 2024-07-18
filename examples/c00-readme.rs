@@ -9,7 +9,8 @@ const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
 const MODEL_GROQ: &str = "gemma-7b-it";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 
-// NOTE: Those are the default env keys for each AI Provider type.
+// NOTE: Those are the default environment keys for each AI Adapter Type.
+//       Can be customized, see `examples/c02-auth.rs`
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- de/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
@@ -28,7 +29,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - model in Groq models   -> Groq
 //  - For anything else      -> Ollama
 //
-// Refined mapping rules will be added later and extended as provider support grows.
+// Can be customized, see `examples/c03-kind.rs`
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

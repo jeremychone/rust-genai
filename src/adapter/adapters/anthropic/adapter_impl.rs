@@ -62,7 +62,7 @@ impl Adapter for AnthropicAdapter {
 			("anthropic-version".to_string(), ANTRHOPIC_VERSION.to_string()),
 		];
 
-		let AnthropicsRequestParts { system, messages } = Self::into_anthropic_request_parts(chat_req)?;
+		let AnthropicRequestParts { system, messages } = Self::into_anthropic_request_parts(chat_req)?;
 
 		// -- Build the basic payload
 		let mut payload = json!({
@@ -146,7 +146,7 @@ impl AnthropicAdapter {
 
 	/// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
 	/// - Will push the `ChatRequest.system` and systems message to `AnthropicsRequestParts.system`
-	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicsRequestParts> {
+	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -170,11 +170,11 @@ impl AnthropicAdapter {
 			None
 		};
 
-		Ok(AnthropicsRequestParts { system, messages })
+		Ok(AnthropicRequestParts { system, messages })
 	}
 }
 
-struct AnthropicsRequestParts {
+struct AnthropicRequestParts {
 	system: Option<String>,
 	messages: Vec<Value>,
 	// TODO: need to add tools
