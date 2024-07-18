@@ -1,8 +1,8 @@
 mod support;
 
-pub(crate) mod anthropic;
-pub(crate) mod cohere;
-pub(crate) mod gemini;
-pub(crate) mod groq;
-pub(crate) mod ollama;
-pub(crate) mod openai;
+pub(super) mod anthropic;
+pub(super) mod cohere;
+pub(super) mod gemini;
+pub(super) mod groq;
+pub(super) mod ollama;
+pub(super) mod openai;

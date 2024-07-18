@@ -3,8 +3,7 @@
 mod client;
 mod common;
 mod error;
-
-pub(crate) mod webc;
+mod webc;
 
 pub use client::*;
 pub use common::*;

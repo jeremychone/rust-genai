@@ -39,10 +39,6 @@ pub trait Adapter {
 	) -> Result<ChatStreamResponse>;
 }
 
-// region:    --- AdapterKind
-
-// endregion: --- AdapterKind
-
 // region:    --- ServiceType
 
 #[derive(Debug, Clone, Copy)]

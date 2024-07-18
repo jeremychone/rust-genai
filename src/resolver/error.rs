@@ -4,14 +4,8 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, From)]
 pub enum Error {
-	ApiKeyEnvNotFound {
-		env_name: String,
-	},
+	ApiKeyEnvNotFound { env_name: String },
 	ResolverAuthDataNotSingleValue,
-
-	// -- Externals
-	#[from]
-	Io(std::io::Error), // as example
 }
 
 // region:    --- Error Boilerplate

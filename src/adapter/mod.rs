@@ -17,19 +17,17 @@ mod dispatcher;
 mod error;
 mod support;
 
-// -- module/crate flatten
-// (over nesting not needed, adapters/ is just here for code organizational purposed)
+// -- Flatten (private, crate, public)
 use adapters::*;
 
-pub(crate) mod inter_stream;
-
-// -- crate flatten
 pub(crate) use adapter_types::*;
 pub(crate) use dispatcher::*;
 
-// -- public flatten
 pub use self::error::{Error, Result};
 pub use adapter_config::*;
 pub use adapter_kind::*;
+
+// -- Crate modules
+pub(crate) mod inter_stream;
 
 // endregion: --- Modules

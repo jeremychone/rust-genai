@@ -145,11 +145,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 _NoImpl_ - Not Implemented Yet
 
-| Property        | OpenAI `usage.`     | Ollama `usage.`         | Groq `x_groq.usage.` | Anthropic                 | Gemini `usageMetadata.`    | Cohere   |
-|-----------------|---------------------|-------------------------|----------------------|---------------------------|----------------------------|----------|
-| `input_tokens`  | `prompt_tokens`     | `prompt_tokens` (1)     | `prompt_tokens`      | `input_tokens` (added)    | `promptTokenCount` (2)     | _noImpl_ |
-| `output_tokens` | `completion_tokens` | `completion_tokens` (1) | `completion_tokens`  | `output_tokens` (added)   | `candidatesTokenCount` (2) | _noImpl_ |
-| `total_tokens`  | `total_tokens`      | `total_tokens` (1)      | `completion_tokens`  | `total_tokens` (computed) | `totalTokenCount`  (2)     | _noImpl_ |
+| Property        | OpenAI `usage.`     | Ollama `usage.`         | Groq `x_groq.usage.` | Anthropic               | Gemini `usageMetadata.`    | Cohere `meta.tokens.` |
+|-----------------|---------------------|-------------------------|----------------------|-------------------------|----------------------------|-----------------------|
+| `input_tokens`  | `prompt_tokens`     | `prompt_tokens` (1)     | `prompt_tokens`      | `input_tokens` (added)  | `promptTokenCount` (2)     | `input_tokens`        |
+| `output_tokens` | `completion_tokens` | `completion_tokens` (1) | `completion_tokens`  | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
+| `total_tokens`  | `total_tokens`      | `total_tokens` (1)      | `completion_tokens`  | (computed)              | `totalTokenCount`  (2)     | (computed)            |
 
 > **Note (1)**: At this point, `Ollama` does not emit input/output tokens when streaming due to the Ollama OpenAI compatibility layer limitation. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
 

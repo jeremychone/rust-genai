@@ -34,7 +34,6 @@ impl Client {
 		&self.inner.web_client
 	}
 
-	#[allow(unused)]
 	pub(crate) fn config(&self) -> &ClientConfig {
 		&self.inner.config
 	}

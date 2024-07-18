@@ -15,6 +15,7 @@ use std::sync::OnceLock;
 
 pub struct AnthropicAdapter;
 
+const BASE_URL: &str = "https://api.anthropic.com/v1/";
 const MAX_TOKENS: u32 = 1024;
 const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
@@ -23,8 +24,6 @@ const MODELS: &[&str] = &[
 	"claude-3-sonnet-20240229",
 	"claude-3-haiku-20240307",
 ];
-
-const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
 impl Adapter for AnthropicAdapter {
 	/// Note: For now returns the common ones (see above)
@@ -130,6 +129,8 @@ impl AnthropicAdapter {
 	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
 		let input_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
 		let output_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
+
+		// Compute total_tokens
 		let total_tokens = if input_tokens.is_some() || output_tokens.is_some() {
 			Some(input_tokens.unwrap_or(0) + output_tokens.unwrap_or(0))
 		} else {

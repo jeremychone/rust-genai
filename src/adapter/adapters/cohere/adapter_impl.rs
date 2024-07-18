@@ -137,6 +137,8 @@ impl CohereAdapter {
 	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
 		let input_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
 		let output_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
+
+		// Compute total tokens
 		let total_tokens = if input_tokens.is_some() || output_tokens.is_some() {
 			Some(input_tokens.unwrap_or(0) + output_tokens.unwrap_or(0))
 		} else {
