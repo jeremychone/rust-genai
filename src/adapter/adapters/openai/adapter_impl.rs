@@ -17,7 +17,7 @@ use std::sync::OnceLock;
 pub struct OpenAIAdapter;
 
 const BASE_URL: &str = "https://api.openai.com/v1/";
-const MODELS: &[&str] = &["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
+const MODELS: &[&str] = &["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
 
 impl Adapter for OpenAIAdapter {
 	/// Note: For now returns the common ones (see above)

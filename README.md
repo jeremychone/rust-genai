@@ -34,7 +34,7 @@ use genai::chat::{ChatMessage, ChatRequest};
 use genai::utils::{print_chat_stream, PrintChatStreamOptions};
 use genai::Client;
 
-const MODEL_OPENAI: &str = "gpt-3.5-turbo";
+const MODEL_OPENAI: &str = "gpt-4o-mini";
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 const MODEL_COHERE: &str = "command-light";
 const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";

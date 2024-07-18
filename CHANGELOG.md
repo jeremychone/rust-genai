@@ -7,6 +7,7 @@
 
 ## 2024-07-18 - `0.1.3`
 
+- `^` **openai** - added `gpt-4o-mini` and switched all openai examples/tests to it
 - `!` **API CHANGE** - New `MessageContent` type for `ChatMessage.content`, `ChatResponse.content`, and `StreamEnd.captured_content` (only ::Text variant for now).
   - This is in preparation for multi-part message (i.e. multi-modal)
 - `!` **API CHANGE** - (should be minor, as `Into` implemented) - `ChatMessage` now takes `MessageContent` with only `::Text(String)` variant for now.
