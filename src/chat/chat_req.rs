@@ -1,6 +1,6 @@
-// region:    --- ChatRequest
-
 use crate::chat::MessageContent;
+
+// region:    --- ChatRequest
 
 #[derive(Debug, Clone, Default)]
 pub struct ChatRequest {
