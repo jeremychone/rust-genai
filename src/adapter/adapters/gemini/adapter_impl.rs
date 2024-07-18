@@ -1,7 +1,9 @@
 use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{
+	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
+};
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
 use crate::{ConfigSet, Error, Result};
@@ -63,7 +65,7 @@ impl Adapter for GeminiAdapter {
 
 		let headers = vec![];
 
-		let GeminiChatRequestParts { system, contents } = into_gemini_request_parts(kind, chat_req)?;
+		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(kind, chat_req)?;
 
 		let mut payload = json!({
 			"contents": contents,
@@ -98,22 +100,20 @@ impl Adapter for GeminiAdapter {
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { body, .. } = web_response;
 
-		let gemini_response = body_to_gemini_chat_response(body)?;
+		let gemini_response = Self::body_to_gemini_chat_response(body)?;
+		let GeminiChatResponse { content, usage } = gemini_response;
 
-		Ok(ChatResponse {
-			content: gemini_response.content,
-			..Default::default()
-		})
+		Ok(ChatResponse { content, usage })
 	}
 
 	fn to_chat_stream(
 		_kind: AdapterKind,
 		reqwest_builder: RequestBuilder,
-		_options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_pretty_json_array(reqwest_builder);
 
-		let gemini_stream = GeminiStreamer::new(web_stream);
+		let gemini_stream = GeminiStreamer::new(web_stream, options_set);
 		let chat_stream = ChatStream::from_inter_stream(gemini_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })
@@ -122,68 +122,85 @@ impl Adapter for GeminiAdapter {
 
 // region:    --- Support
 
-// stuct Gemini
+/// Suppot GeminiAdapter functions
+impl GeminiAdapter {
+	pub(super) fn body_to_gemini_chat_response(mut body: Value) -> Result<GeminiChatResponse> {
+		// if the body has a `error` propertyn, then, it is assumed to be an error
+		if body.get("error").is_some() {
+			return Err(Error::StreamEventError(body));
+		}
 
-pub struct GeminiChatResponse {
-	pub content: Option<String>,
-}
+		let content = body.x_take::<Value>("/candidates/0/content/parts/0/text")?;
+		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
 
-pub fn body_to_gemini_chat_response(mut body: Value) -> Result<GeminiChatResponse> {
-	// if the body has a `error` propertyn, then, it is assumed to be an error
-	if body.get("error").is_some() {
-		return Err(Error::StreamEventError(body));
+		Ok(GeminiChatResponse {
+			content: content.as_str().map(String::from),
+			usage,
+		})
 	}
 
-	let content = body.x_take::<Value>("/candidates/0/content/parts/0/text")?;
+	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
+		let input_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
+		let output_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
+		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
+		MetaUsage {
+			input_tokens,
+			output_tokens,
+			total_tokens,
+		}
+	}
 
-	Ok(GeminiChatResponse {
-		content: content.as_str().map(String::from),
-	})
+	/// Takes the genai ChatMessages and build the System string and json Messages for gemini.
+	/// - Role mapping `ChatRole:User -> role: "user"`, `ChatRole::Assistant -> role: "model"`
+	/// - `ChatRole::System` get concatenated (empty line) into a single `system` for the system instruction.
+	///   - This adapter use the v1beta, which supports`systemInstruction`
+	/// - the eventual `chat_req.system` get pushed first in the "systemInstruction"
+	fn into_gemini_request_parts(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
+		let mut contents: Vec<Value> = Vec::new();
+		let mut systems: Vec<String> = Vec::new();
+
+		if let Some(system) = chat_req.system {
+			systems.push(system);
+		}
+
+		// -- Build
+		for msg in chat_req.messages {
+			let content = msg.content;
+			match msg.role {
+				// for now, system go as "user" (later, we might have adapter_config.system_to_user_tmpl)
+				ChatRole::System => systems.push(content),
+				ChatRole::User => contents.push(json! ({"role": "user", "parts": [{"text": content}]})),
+				ChatRole::Assistant => contents.push(json! ({"role": "model", "parts": [{"text": content}]})),
+				ChatRole::Tool => {
+					return Err(Error::AdapterMessageRoleNotSupport {
+						adapter_kind,
+						role: ChatRole::Tool,
+					})
+				}
+			}
+		}
+
+		let system = if !systems.is_empty() {
+			Some(systems.join("\n"))
+		} else {
+			None
+		};
+
+		Ok(GeminiChatRequestParts { system, contents })
+	}
+}
+
+// stuct Gemini
+
+pub(super) struct GeminiChatResponse {
+	pub content: Option<String>,
+	pub usage: MetaUsage,
 }
 
 struct GeminiChatRequestParts {
 	system: Option<String>,
 	/// The chat history (user and assistant, except last user message which is message)
 	contents: Vec<Value>,
-}
-
-/// Takes the genai ChatMessages and build the System string and json Messages for gemini.
-/// - Role mapping `ChatRole:User -> role: "user"`, `ChatRole::Assistant -> role: "model"`
-/// - `ChatRole::System` get concatenated (empty line) into a single `system` for the system instruction.
-///   - This adapter use the v1beta, which supports`systemInstruction`
-/// - the eventual `chat_req.system` get pushed first in the "systemInstruction"
-fn into_gemini_request_parts(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
-	let mut contents: Vec<Value> = Vec::new();
-	let mut systems: Vec<String> = Vec::new();
-
-	if let Some(system) = chat_req.system {
-		systems.push(system);
-	}
-
-	// -- Build
-	for msg in chat_req.messages {
-		let content = msg.content;
-		match msg.role {
-			// for now, system go as "user" (later, we might have adapter_config.system_to_user_tmpl)
-			ChatRole::System => systems.push(content),
-			ChatRole::User => contents.push(json! ({"role": "user", "parts": [{"text": content}]})),
-			ChatRole::Assistant => contents.push(json! ({"role": "model", "parts": [{"text": content}]})),
-			ChatRole::Tool => {
-				return Err(Error::AdapterMessageRoleNotSupport {
-					adapter_kind,
-					role: ChatRole::Tool,
-				})
-			}
-		}
-	}
-
-	let system = if !systems.is_empty() {
-		Some(systems.join("\n"))
-	} else {
-		None
-	};
-
-	Ok(GeminiChatRequestParts { system, contents })
 }
 
 // endregion: --- Support

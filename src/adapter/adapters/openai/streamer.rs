@@ -1,5 +1,8 @@
+use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatRequestOptionsSet, MetaUsage};
+use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::AdapterKind;
+use crate::chat::ChatRequestOptionsSet;
 use crate::utils::x_value::XValue;
 use crate::{Error, Result};
 use reqwest_eventsource::{Event, EventSource};
@@ -9,26 +12,31 @@ use std::task::{Context, Poll};
 
 pub struct OpenAIStreamer {
 	inner: EventSource,
-	options: OpenAiStreamOptions,
+	options: StreamerOptions,
+	// Because the OpenAI Adapter/Streamer can be used by multiple adapter kind and have some variant
+	target_adapter_kind: AdapterKind,
 
 	// -- Set by the poll_next
 	/// Flag to not poll the EventSource after a MessageStop event
 	done: bool,
 	// The eventual captured usage json value
 	// `{prompt_tokens: number, complete_tokens: number, total_tokens: number}`
-	captured_usage: Option<Value>,
-	captured_content: Option<String>,
+	captured_data: StreamerCapturedData,
 }
 
 impl OpenAIStreamer {
 	// TODO: Problen need the ChatRequestOptions `.capture_content` `.capture_usage`
-	pub fn new(inner: EventSource, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+	pub fn new(
+		inner: EventSource,
+		target_adapter_kind: AdapterKind,
+		options_set: ChatRequestOptionsSet<'_, '_>,
+	) -> Self {
 		OpenAIStreamer {
 			inner,
-			options: options_set.into(),
 			done: false,
-			captured_usage: None,
-			captured_content: None,
+			target_adapter_kind,
+			options: options_set.into(),
+			captured_data: Default::default(),
 		}
 	}
 }
@@ -53,24 +61,14 @@ impl futures::Stream for OpenAIStreamer {
 
 						// -- Build the usage and captured_content
 						let captured_usage = if self.options.capture_usage {
-							self.captured_usage.take().map(|mut usage_value| {
-								// Note: Here we do not want to fail
-								let input_tokens: Option<i32> = usage_value.x_take("prompt_tokens").ok();
-								let output_tokens: Option<i32> = usage_value.x_take("completion_tokens").ok();
-								let total_tokens: Option<i32> = usage_value.x_take("total_tokens").ok();
-								MetaUsage {
-									input_tokens,
-									output_tokens,
-									total_tokens,
-								}
-							})
+							self.captured_data.usage.take()
 						} else {
 							None
 						};
 
 						let inter_stream_end = InterStreamEnd {
 							captured_usage,
-							captured_content: self.captured_content.take(),
+							captured_content: self.captured_data.content.take(),
 						};
 
 						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
@@ -88,8 +86,12 @@ impl futures::Stream for OpenAIStreamer {
 						// there might be other message, and the end one is with data: `[DONE]`
 						if let Some(_finish_reason) = first_choice.x_take::<Option<String>>("finish_reason")? {
 							// NOTE: For Groq, the usage is captured in the when finish_reason stop, and in the `/x_groq/usage`
-							if self.options.capture_usage {
-								self.captured_usage = message_data.x_take("/x_groq/usage").ok(); // premissive for now
+							if matches!(self.target_adapter_kind, AdapterKind::Groq) && self.options.capture_usage {
+								let usage = message_data
+									.x_take("/x_groq/usage")
+									.map(OpenAIAdapter::into_usage)
+									.unwrap_or_default(); // premissive for now
+								self.captured_data.usage = Some(usage)
 							}
 							continue;
 						}
@@ -97,9 +99,9 @@ impl futures::Stream for OpenAIStreamer {
 						else if let Some(content) = first_choice.x_take::<Option<String>>("/delta/content")? {
 							// add to the captured_content if chat options say so
 							if self.options.capture_content {
-								match self.captured_content {
+								match self.captured_data.content {
 									Some(ref mut c) => c.push_str(&content),
-									None => self.captured_content = Some(content.clone()),
+									None => self.captured_data.content = Some(content.clone()),
 								}
 							}
 
@@ -114,11 +116,14 @@ impl futures::Stream for OpenAIStreamer {
 					}
 					// -- Usage message
 					else {
-						// Note: With OpenAI the usage in the last message when there is no choices anymore.
-						//       Here we make sure we do not override the potential groq usage captured above.
-						//       Later, the OpenAIStreamer might take the AdapterKind to do those branching
-						if self.captured_usage.is_none() && self.options.capture_usage {
-							self.captured_usage = message_data.x_take("/usage").ok(); // premissive for now
+						// If not Groq, then the usage is at the end when choices is empty/null
+
+						if !matches!(self.target_adapter_kind, AdapterKind::Groq)
+							&& self.captured_data.usage.is_none()
+							&& self.options.capture_usage
+						{
+							let usage = message_data.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default(); // premissive for now
+							self.captured_data.usage = Some(usage); // premissive for now
 						}
 					}
 				}
@@ -134,22 +139,3 @@ impl futures::Stream for OpenAIStreamer {
 		Poll::Pending
 	}
 }
-
-// region:    --- OpenAiStreamOptions
-
-#[derive(Debug, Default)]
-pub struct OpenAiStreamOptions {
-	capture_content: bool,
-	capture_usage: bool,
-}
-
-impl From<ChatRequestOptionsSet<'_, '_>> for OpenAiStreamOptions {
-	fn from(options_set: ChatRequestOptionsSet) -> Self {
-		OpenAiStreamOptions {
-			capture_content: options_set.capture_content().unwrap_or(false),
-			capture_usage: options_set.capture_usage().unwrap_or(false),
-		}
-	}
-}
-
-// endregion: --- OpenAiStreamOptions

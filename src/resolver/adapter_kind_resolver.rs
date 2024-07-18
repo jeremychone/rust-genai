@@ -5,6 +5,7 @@ use crate::adapter::AdapterKind;
 use crate::Result;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct AdapterKindResolver {
 	inner: Arc<dyn SyncAdapterKindResolverFn>,
 }

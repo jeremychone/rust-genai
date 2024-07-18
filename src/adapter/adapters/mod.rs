@@ -1,3 +1,5 @@
+mod support;
+
 pub(crate) mod anthropic;
 pub(crate) mod cohere;
 pub(crate) mod gemini;

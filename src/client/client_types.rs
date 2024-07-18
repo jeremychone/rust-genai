@@ -1,6 +1,7 @@
 use crate::adapter::{AdapterConfig, AdapterKind};
 use crate::chat::ChatRequestOptions;
 use crate::client::ClientConfig;
+use crate::resolver::AdapterKindResolver;
 use crate::webc::WebClient;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -54,7 +55,6 @@ pub struct ClientBuilder {
 
 	web_client: Option<WebClient>,
 
-	#[allow(unused)] // for now, we do not use it
 	config: Option<ClientConfig>,
 }
 
@@ -85,7 +85,32 @@ impl ClientBuilder {
 		self.config = Some(ClientConfig::default().with_chat_request_options(default_chat_request_options));
 		self
 	}
+}
 
+/// Builder ClientConfig passthrough convenient setters
+/// The goal of those functions is to set nested value such as ClientConfig.
+impl ClientBuilder {
+	/// Set the ChatRequestOptions for the ClientConfig of this ClientBuilder.
+	/// Will create the ClientConfig if not present.
+	/// Otherwise, will just set the `client_config.chat_request_options`
+	pub fn with_chat_request_options(mut self, options: ChatRequestOptions) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.chat_request_options = Some(options);
+		self
+	}
+
+	/// Set the AdapterKindResolver for the ClientConfig of this ClientBuilder.
+	/// Will create the ClientConfig if not present.
+	/// Otherwise, will just set the `client_config.adapter_kind_resolver`
+	pub fn with_adapter_kind_resolver(mut self, resolver: AdapterKindResolver) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.adapter_kind_resolver = Some(resolver);
+		self
+	}
+}
+
+/// Build() methods()
+impl ClientBuilder {
 	pub fn build(self) -> Client {
 		let inner = ClientInner {
 			web_client: self.web_client.unwrap_or_default(),

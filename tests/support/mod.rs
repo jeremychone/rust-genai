@@ -1,9 +1,10 @@
 #![allow(unused)] // For test support
-
 //! Some support utilities for the tests
 //! Note: Must be imported in each test files
 
-use genai::chat::{ChatStream, ChatStreamEvent, StreamEnd};
+pub mod common_tests;
+
+use genai::chat::{ChatMessage, ChatRequest, ChatStream, ChatStreamEvent, StreamEnd};
 use tokio_stream::StreamExt;
 
 pub type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
@@ -43,3 +44,15 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> Result<StreamEnd
 
 	stream_end.ok_or("Should have a StreamEnd event".into())
 }
+
+// region:    --- Seeder
+
+pub fn seed_chat_req_simple() -> ChatRequest {
+	ChatRequest::new(vec![
+		// -- Messages (de/activate to see the differences)
+		ChatMessage::system("Answer in one sentence"),
+		ChatMessage::user("Why is sky blue?"),
+	])
+}
+
+// endregion: --- Seeder

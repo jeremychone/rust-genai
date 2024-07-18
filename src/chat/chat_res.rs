@@ -5,9 +5,7 @@ use crate::chat::ChatStream;
 #[derive(Debug, Clone, Default)]
 pub struct ChatResponse {
 	pub content: Option<String>,
-	/// NOT SUPPORTED
-	#[allow(unused)]
-	pub usage: Option<MetaUsage>,
+	pub usage: MetaUsage,
 }
 
 // endregion: --- ChatResponse

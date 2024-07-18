@@ -1,10 +1,12 @@
 use crate::chat::ChatRequestOptions;
 use crate::resolver::AdapterKindResolver;
 
-#[derive(Debug, Default)]
+// Note: Here the properties are `(in crate::client)` to allow the Client builder to set those values
+//       with passthrough setters.
+#[derive(Debug, Default, Clone)]
 pub struct ClientConfig {
-	adapter_kind_resolver: Option<AdapterKindResolver>,
-	default_chat_request_options: Option<ChatRequestOptions>,
+	pub(in crate::client) adapter_kind_resolver: Option<AdapterKindResolver>,
+	pub(in crate::client) chat_request_options: Option<ChatRequestOptions>,
 }
 
 /// Adapter Related Setters (builder style)
@@ -17,7 +19,7 @@ impl ClientConfig {
 
 	/// Default chat request options
 	pub fn with_chat_request_options(mut self, default_chat_request_options: ChatRequestOptions) -> Self {
-		self.default_chat_request_options = Some(default_chat_request_options);
+		self.chat_request_options = Some(default_chat_request_options);
 		self
 	}
 }
@@ -29,6 +31,6 @@ impl ClientConfig {
 	}
 
 	pub fn chat_request_options(&self) -> Option<&ChatRequestOptions> {
-		self.default_chat_request_options.as_ref()
+		self.chat_request_options.as_ref()
 	}
 }

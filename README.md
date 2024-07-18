@@ -145,12 +145,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 _NoImpl_ - Not Implemented Yet
 
-| Property        | OpenAI                    | Ollama   | Groq                             | Anthropic                 | Gemini   | Cohere   |
-|-----------------|---------------------------|----------|----------------------------------|---------------------------|----------|----------|
-| `input_tokens`  | `usage.prompt_tokens`     | _noImpl_ | `x_groq.usage.prompt_tokens`     | `input_tokens` (added)    | _noImpl_ | _noImpl_ |
-| `output_tokens` | `usage.completion_tokens` | _NoImpl_ | `x_groq.usage.completion_tokens` | `output_tokens` (added)   | _noImpl_ | _noImpl_ |
-| `total_tokens`  | `usage.total_tokens`      | _NoImpl_ | `x_groq.usage.completion_tokens` | `total_tokens` (computed) | _noImpl_ | _noImpl_ |
+| Property        | OpenAI `usage.`     | Ollama `usage.`         | Groq `x_groq.usage.` | Anthropic                 | Gemini `usageMetadata.`    | Cohere   |
+|-----------------|---------------------|-------------------------|----------------------|---------------------------|----------------------------|----------|
+| `input_tokens`  | `prompt_tokens`     | `prompt_tokens` (1)     | `prompt_tokens`      | `input_tokens` (added)    | `promptTokenCount` (2)     | _noImpl_ |
+| `output_tokens` | `completion_tokens` | `completion_tokens` (1) | `completion_tokens`  | `output_tokens` (added)   | `candidatesTokenCount` (2) | _noImpl_ |
+| `total_tokens`  | `total_tokens`      | `total_tokens` (1)      | `completion_tokens`  | `total_tokens` (computed) | `totalTokenCount`  (2)     | _noImpl_ |
 
+> **Note (1)**: At this point, `Ollama` does not emit input/output tokens when streaming due to the Ollama OpenAI compatibility layer limitation. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
+
+> **Note (2)** Right now, with [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not really clear if the usage for each event is cumulative or needs to be added. Currently, it appears to be cumulative (i.e., the last message has the total amount of input, output, and total tokens), so that will be the assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info. 
 
 
 ## Notes on Possible Direction

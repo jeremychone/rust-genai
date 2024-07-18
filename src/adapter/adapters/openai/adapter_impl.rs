@@ -1,7 +1,9 @@
 use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{
+	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
+};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Error, Result};
@@ -57,21 +59,20 @@ impl Adapter for OpenAIAdapter {
 	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
+		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
+
 		let first_choice: Option<Value> = body.x_take("/choices/0")?;
 		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
-		Ok(ChatResponse {
-			content,
-			..Default::default()
-		})
+		Ok(ChatResponse { content, usage })
 	}
 
 	fn to_chat_stream(
-		_kind: AdapterKind,
+		kind: AdapterKind,
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let openai_stream = OpenAIStreamer::new(event_source, options_sets);
+		let openai_stream = OpenAIStreamer::new(event_source, kind, options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })
@@ -112,7 +113,7 @@ impl OpenAIAdapter {
 		];
 
 		// -- Build the basic payload
-		let OpenAIRequestParts { messages } = into_openai_messages(kind, chat_req, ollama_variant)?;
+		let OpenAIRequestParts { messages } = Self::into_openai_messages(kind, chat_req, ollama_variant)?;
 		let mut payload = json!({
 			"model": model,
 			"messages": messages,
@@ -137,65 +138,77 @@ impl OpenAIAdapter {
 
 		Ok(WebRequestData { url, headers, payload })
 	}
+
+	/// Note: needs to be called from super::streamer as well
+	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
+		let input_tokens: Option<i32> = usage_value.x_take("prompt_tokens").ok();
+		let output_tokens: Option<i32> = usage_value.x_take("completion_tokens").ok();
+		let total_tokens: Option<i32> = usage_value.x_take("total_tokens").ok();
+		MetaUsage {
+			input_tokens,
+			output_tokens,
+			total_tokens,
+		}
+	}
+
+	/// Takes the genai ChatMessages and build the OpenAIChatRequestParts
+	/// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
+	/// - All messages get added with the corresponding roles (does not support tools for now)
+	/// NOTE: here, the last `true` is for the ollama variant
+	///       It seems the Ollama compaitiblity layer does not work well with multiple System message.
+	///       So, when `true`, it will concatenate the system message as a single on at the beginning
+	fn into_openai_messages(
+		adapter_kind: AdapterKind,
+		chat_req: ChatRequest,
+		ollama_variant: bool,
+	) -> Result<OpenAIRequestParts> {
+		let mut system_messages: Vec<String> = Vec::new();
+		let mut messages: Vec<Value> = Vec::new();
+
+		if let Some(system_msg) = chat_req.system {
+			if ollama_variant {
+				system_messages.push(system_msg)
+			} else {
+				messages.push(json!({"role": "system", "content": system_msg}));
+			}
+		}
+
+		for chat_msg in chat_req.messages {
+			let content = chat_msg.content;
+			match chat_msg.role {
+				// for now, system and tool goes to system
+				ChatRole::System => {
+					// see note in the funtion comment
+					if ollama_variant {
+						system_messages.push(content);
+					} else {
+						messages.push(json!({"role": "system", "content": content}))
+					}
+				}
+				ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
+				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
+				ChatRole::Tool => {
+					return Err(Error::AdapterMessageRoleNotSupport {
+						adapter_kind,
+						role: ChatRole::Tool,
+					})
+				}
+			}
+		}
+
+		if !system_messages.is_empty() {
+			let system_message = system_messages.join("\n");
+			messages.insert(0, json!({"role": "system", "content": system_message}));
+		}
+
+		Ok(OpenAIRequestParts { messages })
+	}
 }
 
 // region:    --- Support
 
 struct OpenAIRequestParts {
 	messages: Vec<Value>,
-}
-
-/// Takes the genai ChatMessages and build the OpenAIChatRequestParts
-/// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
-/// - All messages get added with the corresponding roles (does not support tools for now)
-/// NOTE: here, the last `true` is for the ollama variant
-///       It seems the Ollama compaitiblity layer does not work well with multiple System message.
-///       So, when `true`, it will concatenate the system message as a single on at the beginning
-fn into_openai_messages(
-	adapter_kind: AdapterKind,
-	chat_req: ChatRequest,
-	ollama_variant: bool,
-) -> Result<OpenAIRequestParts> {
-	let mut system_messages: Vec<String> = Vec::new();
-	let mut messages: Vec<Value> = Vec::new();
-
-	if let Some(system_msg) = chat_req.system {
-		if ollama_variant {
-			system_messages.push(system_msg)
-		} else {
-			messages.push(json!({"role": "system", "content": system_msg}));
-		}
-	}
-
-	for chat_msg in chat_req.messages {
-		let content = chat_msg.content;
-		match chat_msg.role {
-			// for now, system and tool goes to system
-			ChatRole::System => {
-				// see note in the funtion comment
-				if ollama_variant {
-					system_messages.push(content);
-				} else {
-					messages.push(json!({"role": "system", "content": content}))
-				}
-			}
-			ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
-			ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
-			ChatRole::Tool => {
-				return Err(Error::AdapterMessageRoleNotSupport {
-					adapter_kind,
-					role: ChatRole::Tool,
-				})
-			}
-		}
-	}
-
-	if !system_messages.is_empty() {
-		let system_message = system_messages.join("\n");
-		messages.insert(0, json!({"role": "system", "content": system_message}));
-	}
-
-	Ok(OpenAIRequestParts { messages })
 }
 
 // endregion: --- Support

@@ -1,7 +1,9 @@
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse};
+use crate::chat::{
+	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
+};
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, Result};
@@ -60,7 +62,7 @@ impl Adapter for AnthropicAdapter {
 			("anthropic-version".to_string(), ANTRHOPIC_VERSION.to_string()),
 		];
 
-		let AnthropicsRequestParts { system, messages } = into_anthropic_request_parts(chat_req)?;
+		let AnthropicsRequestParts { system, messages } = Self::into_anthropic_request_parts(chat_req)?;
 
 		// -- Build the basic payload
 		let mut payload = json!({
@@ -93,6 +95,8 @@ impl Adapter for AnthropicAdapter {
 
 		let mut content: Vec<String> = Vec::new();
 
+		let usage = body.x_take("usage").map(AnthropicAdapter::into_usage).unwrap_or_default();
+
 		for mut item in json_content_items {
 			let item_text: String = item.x_take("text")?;
 			content.push(item_text);
@@ -104,10 +108,7 @@ impl Adapter for AnthropicAdapter {
 			Some(content.join(""))
 		};
 
-		Ok(ChatResponse {
-			content,
-			..Default::default()
-		})
+		Ok(ChatResponse { content, usage })
 	}
 
 	fn to_chat_stream(
@@ -124,39 +125,57 @@ impl Adapter for AnthropicAdapter {
 
 // region:    --- Support
 
+impl AnthropicAdapter {
+	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
+		let input_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
+		let output_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
+		let total_tokens = if input_tokens.is_some() || output_tokens.is_some() {
+			Some(input_tokens.unwrap_or(0) + output_tokens.unwrap_or(0))
+		} else {
+			None
+		};
+
+		MetaUsage {
+			input_tokens,
+			output_tokens,
+			total_tokens,
+		}
+	}
+
+	/// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
+	/// - Will push the `ChatRequest.system` and systems message to `AnthropicsRequestParts.system`
+	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicsRequestParts> {
+		let mut messages: Vec<Value> = Vec::new();
+		let mut systems: Vec<String> = Vec::new();
+
+		if let Some(system) = chat_req.system {
+			systems.push(system);
+		}
+
+		for msg in chat_req.messages {
+			let content = msg.content;
+			match msg.role {
+				// for now, system and tool goes to system
+				ChatRole::System | ChatRole::Tool => systems.push(content),
+				ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
+				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
+			}
+		}
+
+		let system = if !systems.is_empty() {
+			Some(systems.join("\n"))
+		} else {
+			None
+		};
+
+		Ok(AnthropicsRequestParts { system, messages })
+	}
+}
+
 struct AnthropicsRequestParts {
 	system: Option<String>,
 	messages: Vec<Value>,
 	// TODO: need to add tools
-}
-
-/// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
-/// - Will push the `ChatRequest.system` and systems message to `AnthropicsRequestParts.system`
-fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicsRequestParts> {
-	let mut messages: Vec<Value> = Vec::new();
-	let mut systems: Vec<String> = Vec::new();
-
-	if let Some(system) = chat_req.system {
-		systems.push(system);
-	}
-
-	for msg in chat_req.messages {
-		let content = msg.content;
-		match msg.role {
-			// for now, system and tool goes to system
-			ChatRole::System | ChatRole::Tool => systems.push(content),
-			ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
-			ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
-		}
-	}
-
-	let system = if !systems.is_empty() {
-		Some(systems.join("\n"))
-	} else {
-		None
-	};
-
-	Ok(AnthropicsRequestParts { system, messages })
 }
 
 // endregion: --- Support
