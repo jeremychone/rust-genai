@@ -1,5 +1,7 @@
 // region:    --- ChatRequest
 
+use crate::chat::MessageContent;
+
 #[derive(Debug, Clone, Default)]
 pub struct ChatRequest {
 	pub system: Option<String>,
@@ -35,7 +37,9 @@ impl ChatRequest {
 			.iter()
 			.map(|s| s.as_str())
 			.chain(self.messages.iter().filter_map(|message| match message.role {
-				ChatRole::System => Some(message.content.as_str()),
+				ChatRole::System => match message.content {
+					MessageContent::Text(ref content) => Some(content.as_str()),
+				},
 				_ => None,
 			}))
 	}
@@ -73,13 +77,13 @@ impl ChatRequest {
 #[derive(Debug, Clone)]
 pub struct ChatMessage {
 	pub role: ChatRole,
-	pub content: String,
+	pub content: MessageContent,
 	pub extra: Option<MessageExtra>,
 }
 
 /// Constructors
 impl ChatMessage {
-	pub fn system(content: impl Into<String>) -> Self {
+	pub fn system(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::System,
 			content: content.into(),
@@ -87,7 +91,7 @@ impl ChatMessage {
 		}
 	}
 
-	pub fn assistant(content: impl Into<String>) -> Self {
+	pub fn assistant(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::Assistant,
 			content: content.into(),
@@ -95,7 +99,7 @@ impl ChatMessage {
 		}
 	}
 
-	pub fn user(content: impl Into<String>) -> Self {
+	pub fn user(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::User,
 			content: content.into(),

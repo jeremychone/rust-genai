@@ -3,7 +3,8 @@ use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::adapter::{Error, Result};
 use crate::chat::{
-	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
+	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
+	MetaUsage,
 };
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
@@ -103,6 +104,7 @@ impl Adapter for GeminiAdapter {
 
 		let gemini_response = Self::body_to_gemini_chat_response(body)?;
 		let GeminiChatResponse { content, usage } = gemini_response;
+		let content = content.map(MessageContent::from);
 
 		Ok(ChatResponse { content, usage })
 	}
@@ -166,7 +168,9 @@ impl GeminiAdapter {
 
 		// -- Build
 		for msg in chat_req.messages {
-			let content = msg.content;
+			// Note: Will handle more types later
+			let MessageContent::Text(content) = msg.content;
+
 			match msg.role {
 				// for now, system go as "user" (later, we might have adapter_config.system_to_user_tmpl)
 				ChatRole::System => systems.push(content),

@@ -3,7 +3,8 @@ use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
+	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
+	MetaUsage,
 };
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
@@ -107,6 +108,7 @@ impl Adapter for AnthropicAdapter {
 		} else {
 			Some(content.join(""))
 		};
+		let content = content.map(MessageContent::from);
 
 		Ok(ChatResponse { content, usage })
 	}
@@ -155,7 +157,9 @@ impl AnthropicAdapter {
 		}
 
 		for msg in chat_req.messages {
-			let content = msg.content;
+			// Note: Will handle more types later
+			let MessageContent::Text(content) = msg.content;
+
 			match msg.role {
 				// for now, system and tool goes to system
 				ChatRole::System | ChatRole::Tool => systems.push(content),

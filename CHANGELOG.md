@@ -7,13 +7,16 @@
 
 ## 2024-07-18 - `0.1.3`
 
-- `!` **error refactor** - added `genai::adapter::Error` and `genai::resolver::Error`, and updated `genai::Error` with appropriate `Froms`
+- `!` **API CHANGE** - New `MessageContent` type for `ChatMessage.content`, `ChatResponse.content`, and `StreamEnd.captured_content` (only ::Text variant for now).
+  - This is in preparation for multi-part message (i.e. multi-modal)
+- `!` **API CHANGE** - (should be minor, as `Into` implemented) - `ChatMessage` now takes `MessageContent` with only `::Text(String)` variant for now.
+- `!` **API CHANGE** - Error refactor - added `genai::adapter::Error` and `genai::resolver::Error`, and updated `genai::Error` with appropriate `Froms`
 - `+` **Added token usage** for ALL adapters/providers - `ChatResponse.usage` and `ChatRequestOption` `.capture_usage`/`.capture_content` (for streaming) support for all Adapters (see note in Readme for Ollama for streaming)
 - `!` **API CHANGE**: `ClientConfig::with_chat_request_options` (was `with_default_chat_request_options`)
 - `!` **API CHANGE**: `PrintChatStreamOptions::from_print_events` (was `from_stream_events`)
 - `^` `AdapterKind` - added `as_str` and `as_lower_str`
 - `^` `ChatRequest` - added `.iter_systems()` and `.combine_systems()` (includes eventual `chat_req.system` as part of the system messages)
-- `!` **API CHANGE**: `Client::all_model_names(..)` (was `Client::list_models(..)`) 
+- `!` **API CHANGE**: `Client::all_model_names(..)` (was `Client::list_models(..)`)
 - `^` **groq** - add gemma2-9b-it to the list of Groq models
 - `!` **API CHANGE**: `genai::Client` (was `genai::client::Client`, same for `ClientBuilder` `ClientConfig`)
 - `-` **groq** - remove groq whisper model from list_models as it is not a chat completion model

@@ -3,7 +3,8 @@ use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::adapter::{Error, Result};
 use crate::chat::{
-	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
+	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
+	MetaUsage,
 };
 use crate::utils::x_value::XValue;
 use crate::webc::{WebResponse, WebStream};
@@ -105,7 +106,9 @@ impl Adapter for CohereAdapter {
 		let mut last_chat_history_item =
 			body.x_take::<Vec<Value>>("chat_history")?.pop().ok_or(Error::NoChatResponse)?;
 
-		let content: Option<String> = last_chat_history_item.x_take("message")?;
+		let content: Option<MessageContent> = last_chat_history_item
+			.x_take::<Option<String>>("message")?
+			.map(MessageContent::from);
 
 		Ok(ChatResponse { content, usage })
 	}
@@ -176,11 +179,14 @@ impl CohereAdapter {
 				actual_role: last_chat_msg.role,
 			});
 		}
-		let message = last_chat_msg.content;
+		// will handle more type later
+		let MessageContent::Text(message) = last_chat_msg.content;
 
 		// -- Build
 		for msg in chat_req.messages {
-			let content = msg.content;
+			// Note: Will handle more types later
+			let MessageContent::Text(content) = msg.content;
+
 			match msg.role {
 				// for now, system and tool goes to system
 				ChatRole::System => systems.push(content),

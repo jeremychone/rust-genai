@@ -3,7 +3,8 @@ use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::adapter::{Error, Result};
 use crate::chat::{
-	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MetaUsage,
+	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
+	MetaUsage,
 };
 use crate::utils::x_value::XValue;
 use crate::webc::WebResponse;
@@ -64,6 +65,8 @@ impl Adapter for OpenAIAdapter {
 
 		let first_choice: Option<Value> = body.x_take("/choices/0")?;
 		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
+		let content = content.map(MessageContent::from);
+
 		Ok(ChatResponse { content, usage })
 	}
 
@@ -174,9 +177,11 @@ impl OpenAIAdapter {
 			}
 		}
 
-		for chat_msg in chat_req.messages {
-			let content = chat_msg.content;
-			match chat_msg.role {
+		for msg in chat_req.messages {
+			// Note: Will handle more types later
+			let MessageContent::Text(content) = msg.content;
+
+			match msg.role {
 				// for now, system and tool goes to system
 				ChatRole::System => {
 					// see note in the funtion comment

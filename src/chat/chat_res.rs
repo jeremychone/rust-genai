@@ -1,11 +1,25 @@
-use crate::chat::ChatStream;
+use crate::chat::{ChatStream, MessageContent};
 
 // region:    --- ChatResponse
 
 #[derive(Debug, Clone, Default)]
 pub struct ChatResponse {
-	pub content: Option<String>,
+	pub content: Option<MessageContent>,
 	pub usage: MetaUsage,
+}
+
+impl ChatResponse {
+	/// Returns the eventual content as `&str` if it is of type `MessageContent::Text`
+	/// Ohterwise, return None
+	pub fn content_text_as_str(&self) -> Option<&str> {
+		self.content.as_ref().and_then(MessageContent::text_as_str)
+	}
+
+	/// Consume the ChatResponse and returns the eventual String content of the `MessageContent::Text`
+	/// Ohterwise, return None
+	pub fn content_text_into_string(self) -> Option<String> {
+		self.content.and_then(MessageContent::text_into_string)
+	}
 }
 
 // endregion: --- ChatResponse

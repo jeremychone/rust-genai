@@ -1,5 +1,5 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::MetaUsage;
+use crate::chat::{MessageContent, MetaUsage};
 use derive_more::From;
 use futures::Stream;
 use std::pin::Pin;
@@ -71,14 +71,14 @@ pub struct StreamEnd {
 	pub captured_usage: Option<MetaUsage>,
 
 	/// The optional captured full content
-	pub captured_content: Option<String>,
+	pub captured_content: Option<MessageContent>,
 }
 
 impl From<InterStreamEnd> for StreamEnd {
 	fn from(inter_end: InterStreamEnd) -> Self {
 		StreamEnd {
 			captured_usage: inter_end.captured_usage,
-			captured_content: inter_end.captured_content,
+			captured_content: inter_end.captured_content.map(MessageContent::from),
 		}
 	}
 }
