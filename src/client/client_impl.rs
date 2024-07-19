@@ -1,7 +1,7 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptions, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
-use crate::{ConfigSet, Result};
+use crate::{ConfigSet, Error, Result};
 
 /// Public AI Functions
 impl Client {
@@ -66,7 +66,14 @@ impl Client {
 			options_set,
 		)?;
 
-		let web_res = self.web_client().do_post(&url, &headers, payload).await?;
+		let web_res =
+			self.web_client()
+				.do_post(&url, &headers, payload)
+				.await
+				.map_err(|webc_error| Error::WebCall {
+					adapter_kind,
+					webc_error,
+				})?;
 
 		let chat_res = AdapterDispatcher::to_chat_response(adapter_kind, web_res)?;
 
@@ -100,7 +107,13 @@ impl Client {
 			options_set.clone(),
 		)?;
 
-		let reqwest_builder = self.web_client().new_req_builder(&url, &headers, payload)?;
+		let reqwest_builder = self
+			.web_client()
+			.new_req_builder(&url, &headers, payload)
+			.map_err(|webc_error| Error::WebCall {
+				adapter_kind,
+				webc_error,
+			})?;
 
 		let res = AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder, options_set)?;
 

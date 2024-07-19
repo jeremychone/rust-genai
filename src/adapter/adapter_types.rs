@@ -1,8 +1,8 @@
-use crate::adapter::Result;
 use crate::adapter::{AdapterConfig, AdapterKind};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::ConfigSet;
+use crate::Result;
 use reqwest::RequestBuilder;
 use serde_json::Value;
 

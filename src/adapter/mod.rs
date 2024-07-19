@@ -14,7 +14,6 @@ mod adapter_kind;
 mod adapter_types;
 mod adapters;
 mod dispatcher;
-mod error;
 mod support;
 
 // -- Flatten (private, crate, public)
@@ -23,7 +22,6 @@ use adapters::*;
 pub(crate) use adapter_types::*;
 pub(crate) use dispatcher::*;
 
-pub use self::error::{Error, Result};
 pub use adapter_config::*;
 pub use adapter_kind::*;
 

@@ -1,6 +1,6 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::adapter::{Error, Result};
+use crate::{Error, Result};
 use crate::chat::{ChatRequestOptionsSet, MetaUsage};
 use crate::support::value_ext::ValueExt;
 use reqwest_eventsource::{Event, EventSource};

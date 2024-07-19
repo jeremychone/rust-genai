@@ -1,7 +1,6 @@
 use crate::adapter::cohere::CohereStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::adapter::{Error, Result};
 use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
 	MetaUsage,
@@ -9,6 +8,7 @@ use crate::chat::{
 use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
 use crate::ConfigSet;
+use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
@@ -96,15 +96,17 @@ impl Adapter for CohereAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(adapter_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
 		// -- Get usage
 		let usage = body.x_take("/meta/tokens").map(Self::into_usage).unwrap_or_default();
 
 		// -- Get response
-		let mut last_chat_history_item =
-			body.x_take::<Vec<Value>>("chat_history")?.pop().ok_or(Error::NoChatResponse)?;
+		let mut last_chat_history_item = body
+			.x_take::<Vec<Value>>("chat_history")?
+			.pop()
+			.ok_or(Error::NoChatResponse { adapter_kind })?;
 
 		let content: Option<MessageContent> = last_chat_history_item
 			.x_take::<Option<String>>("message")?
@@ -173,7 +175,7 @@ impl CohereAdapter {
 		}
 
 		// -- Build extract the last user message
-		let last_chat_msg = chat_req.messages.pop().ok_or(Error::ChatReqHasNoMessages)?;
+		let last_chat_msg = chat_req.messages.pop().ok_or(Error::ChatReqHasNoMessages { adapter_kind })?;
 		if !matches!(last_chat_msg.role, ChatRole::User) {
 			return Err(Error::LastChatMessageIsNoUser {
 				actual_role: last_chat_msg.role,
@@ -193,7 +195,7 @@ impl CohereAdapter {
 				ChatRole::User => chat_history.push(json! ({"role": "USER", "content": content})),
 				ChatRole::Assistant => chat_history.push(json! ({"role": "CHATBOT", "content": content})),
 				ChatRole::Tool => {
-					return Err(Error::MessageRoleNotSupport {
+					return Err(Error::MessageRoleNotSupported {
 						adapter_kind,
 						role: ChatRole::Tool,
 					})

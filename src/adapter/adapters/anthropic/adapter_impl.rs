@@ -1,6 +1,6 @@
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::Result;
+use crate::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,

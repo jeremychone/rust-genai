@@ -1,7 +1,6 @@
 use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::adapter::{Error, Result};
 use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
 	MetaUsage,
@@ -9,6 +8,7 @@ use crate::chat::{
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::ConfigSet;
+use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -194,7 +194,7 @@ impl OpenAIAdapter {
 				ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
 				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
 				ChatRole::Tool => {
-					return Err(Error::MessageRoleNotSupport {
+					return Err(Error::MessageRoleNotSupported {
 						adapter_kind,
 						role: ChatRole::Tool,
 					})

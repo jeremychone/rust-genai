@@ -1,9 +1,10 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::gemini::{GeminiAdapter, GeminiChatResponse};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::adapter::{Error, Result};
+use crate::adapter::AdapterKind;
 use crate::chat::ChatRequestOptionsSet;
 use crate::webc::WebStream;
+use crate::{Error, Result};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -106,7 +107,10 @@ impl futures::Stream for GeminiStreamer {
 				}
 				Some(Err(err)) => {
 					println!("Gemini Adapter Stream Error: {}", err);
-					return Poll::Ready(Some(Err(Error::WebStream)));
+					return Poll::Ready(Some(Err(Error::WebStream {
+						adapter_kind: AdapterKind::Gemini,
+						cause: err.to_string(),
+					})));
 				}
 				None => {
 					self.done = true;

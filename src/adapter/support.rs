@@ -1,6 +1,6 @@
 use crate::adapter::AdapterKind;
-use crate::adapter::{Error, Result};
 use crate::ConfigSet;
+use crate::{Error, Result};
 
 /// Returns the `api_key` value from the config_set auth_resolver
 /// This function should be called if the adapter must have a api_key

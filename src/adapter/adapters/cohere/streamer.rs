@@ -1,10 +1,11 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::adapter::{Error, Result};
+use crate::adapter::AdapterKind;
 use crate::chat::ChatRequestOptionsSet;
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebStream;
+use crate::{Error, Result};
 use serde::Deserialize;
 use serde_json::Value;
 use std::pin::Pin;
@@ -118,7 +119,10 @@ impl futures::Stream for CohereStreamer {
 				}
 				Some(Err(err)) => {
 					println!("Cohere Adapter Stream Error: {}", err);
-					return Poll::Ready(Some(Err(Error::WebStream)));
+					return Poll::Ready(Some(Err(Error::WebStream {
+						adapter_kind: AdapterKind::Cohere,
+						cause: err.to_string(),
+					})));
 				}
 				None => {
 					self.done = true;

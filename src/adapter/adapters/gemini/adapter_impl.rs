@@ -1,7 +1,6 @@
 use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::adapter::{Error, Result};
 use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
 	MetaUsage,
@@ -9,6 +8,7 @@ use crate::chat::{
 use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
 use crate::ConfigSet;
+use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use std::sync::OnceLock;
@@ -177,7 +177,7 @@ impl GeminiAdapter {
 				ChatRole::User => contents.push(json! ({"role": "user", "parts": [{"text": content}]})),
 				ChatRole::Assistant => contents.push(json! ({"role": "model", "parts": [{"text": content}]})),
 				ChatRole::Tool => {
-					return Err(Error::MessageRoleNotSupport {
+					return Err(Error::MessageRoleNotSupported {
 						adapter_kind,
 						role: ChatRole::Tool,
 					})

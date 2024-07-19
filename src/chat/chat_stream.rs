@@ -5,7 +5,7 @@ use futures::Stream;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-type InterStreamType = Pin<Box<dyn Stream<Item = crate::adapter::Result<InterStreamEvent>>>>;
+type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>>>>;
 
 pub struct ChatStream {
 	inter_stream: InterStreamType,
@@ -18,7 +18,7 @@ impl ChatStream {
 
 	pub fn from_inter_stream<T>(inter_stream: T) -> Self
 	where
-		T: Stream<Item = crate::adapter::Result<InterStreamEvent>> + Unpin + 'static,
+		T: Stream<Item = crate::Result<InterStreamEvent>> + Unpin + 'static,
 	{
 		let boxed_stream: InterStreamType = Box::pin(inter_stream);
 		ChatStream::new(boxed_stream)
@@ -28,7 +28,7 @@ impl ChatStream {
 // region:    --- Stream Impl
 
 impl Stream for ChatStream {
-	type Item = crate::adapter::Result<ChatStreamEvent>;
+	type Item = crate::Result<ChatStreamEvent>;
 
 	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		let this = self.get_mut();
