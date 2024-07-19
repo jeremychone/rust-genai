@@ -4,7 +4,7 @@ use genai::resolver::AdapterKindResolver;
 use genai::utils::print_chat_stream;
 use genai::{Client, ClientConfig};
 
-const MODEL: &str = "gpt-3.5-turbo";
+const MODEL: &str = "gpt-4o-mini";
 
 /// This example shows how to use a custom AdapterKindResolver to have some custom
 /// mapping from a model name to a AdapterKind.

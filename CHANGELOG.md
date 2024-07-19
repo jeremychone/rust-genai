@@ -7,7 +7,7 @@
 
 ## ... - `0.1.4`
 
-- `-` Fix naming `ClientConfig::with_adapter_kind_resolver`
+- `-` Fix naming `ClientConfig::with_adapter_kind_resolver` (was wrongly `...auth_resolver`)
 
 ## 2024-07-18 - `0.1.3`
 

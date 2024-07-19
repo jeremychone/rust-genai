@@ -4,7 +4,7 @@ use crate::support::common_tests;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-const MODEL: &str = "gpt-3.5-turbo";
+const MODEL: &str = "gpt-4o-mini";
 
 // region:    --- Chat
 

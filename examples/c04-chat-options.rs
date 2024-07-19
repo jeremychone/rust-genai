@@ -2,7 +2,7 @@ use genai::chat::{ChatMessage, ChatRequest, ChatRequestOptions};
 use genai::utils::print_chat_stream;
 use genai::{Client, ClientConfig};
 
-// const MODEL: &str = "gpt-3.5-turbo";
+// const MODEL: &str = "gpt-4o-mini";
 // const MODEL: &str = "command-light";
 // const MODEL: &str = "claude-3-haiku-20240307";
 // const MODEL: &str = "gemini-1.5-flash-latest";
