@@ -6,7 +6,7 @@ use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
 	MetaUsage,
 };
-use crate::utils::x_value::XValue;
+use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
 use crate::ConfigSet;
 use reqwest::RequestBuilder;
@@ -87,13 +87,13 @@ impl Adapter for GeminiAdapter {
 
 		// -- Add supported ChatRequestOptions
 		if let Some(temperature) = options_set.temperature() {
-			payload.x_deep_insert("/generationConfig/temperature", temperature)?;
+			payload.x_insert("/generationConfig/temperature", temperature)?;
 		}
 		if let Some(max_tokens) = options_set.max_tokens() {
-			payload.x_deep_insert("/generationConfig/maxOutputTokens", max_tokens)?;
+			payload.x_insert("/generationConfig/maxOutputTokens", max_tokens)?;
 		}
 		if let Some(top_p) = options_set.top_p() {
-			payload.x_deep_insert("/generationConfig/topP", top_p)?;
+			payload.x_insert("/generationConfig/topP", top_p)?;
 		}
 
 		Ok(WebRequestData { url, headers, payload })

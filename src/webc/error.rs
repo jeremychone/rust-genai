@@ -1,4 +1,3 @@
-use crate::utils;
 use derive_more::From;
 use reqwest::StatusCode;
 
@@ -17,7 +16,7 @@ pub enum Error {
 
 	// -- Utils
 	#[from]
-	XValue(utils::x_value::Error),
+	XValue(crate::support::value_ext::Error),
 
 	// -- Externals
 	#[from]

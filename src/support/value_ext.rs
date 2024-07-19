@@ -3,15 +3,25 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 #[allow(unused)]
-pub trait XValue {
+pub trait ValueExt {
+	/// Will return the value T for a given name/pointer path.
+	/// - `name` - can be the direct name, or pointer path if starts with '/'
 	fn x_get<T: DeserializeOwned>(&self, name: &str) -> Result<T>;
+
+	/// Take the value at the name or pointer path, and replaces it with Null.
+	/// - `name` - can be the direct name, or pointer path if starts with '/'
 	fn x_take<T: DeserializeOwned>(&mut self, name: &str) -> Result<T>;
-	fn x_deep_insert<T: Serialize>(&mut self, name: &str, value: T) -> Result<()>;
+
+	/// Insert a new Value of type T at the specified name or pointer path.
+	/// This method will create missing Value::Object as needed.
+	/// - `name` - can be the direct name, or pointer path if starts with '/'
 	fn x_insert<T: Serialize>(&mut self, name: &str, value: T) -> Result<()>;
+
+	/// Return the pretty_print string for this json value
 	fn x_pretty(&self) -> Result<String>;
 }
 
-impl XValue for Value {
+impl ValueExt for Value {
 	fn x_get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
 		let value = if path.starts_with('/') {
 			self.pointer(path).ok_or_else(|| Error::PropertyNotFound(path.to_string()))?
@@ -38,7 +48,7 @@ impl XValue for Value {
 		Ok(value)
 	}
 
-	fn x_deep_insert<T: Serialize>(&mut self, name: &str, value: T) -> Result<()> {
+	fn x_insert<T: Serialize>(&mut self, name: &str, value: T) -> Result<()> {
 		let new_value = serde_json::to_value(value)?;
 
 		if !name.starts_with('/') {
@@ -78,30 +88,6 @@ impl XValue for Value {
 		}
 	}
 
-	fn x_insert<T: Serialize>(&mut self, path: &str, value: T) -> Result<()> {
-		let value = serde_json::to_value(value)?;
-		let (name, container) = if path.starts_with('/') {
-			let name = path
-				.rsplitn(2, '/')
-				.last()
-				.ok_or_else(|| Error::custom("json pointer not valid"))?;
-			let container = self
-				.pointer_mut(path)
-				.ok_or_else(|| Error::custom("json value not found at pointer"))?;
-			(name, container)
-		} else {
-			(path, self)
-		};
-
-		let container = container
-			.as_object_mut()
-			.ok_or_else(|| Error::custom("value is not a object"))?;
-
-		container.insert(name.to_string(), value);
-
-		Ok(())
-	}
-
 	fn x_pretty(&self) -> Result<String> {
 		let content = serde_json::to_string_pretty(self)?;
 		Ok(content)
@@ -116,6 +102,7 @@ pub enum Error {
 	Custom(String),
 
 	PropertyNotFound(String),
+
 	#[from]
 	SerdeJson(serde_json::Error),
 }

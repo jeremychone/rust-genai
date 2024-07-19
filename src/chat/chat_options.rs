@@ -6,7 +6,6 @@
 
 #[derive(Debug, Clone, Default)]
 pub struct ChatRequestOptions {
-	// -- Adapter/Provider request property
 	/// Will be set for this request if Adapter/providers supports it.
 	pub temperature: Option<f64>,
 
@@ -16,15 +15,13 @@ pub struct ChatRequestOptions {
 	/// Will be set of this request if Adaptper/provider supports it.
 	pub top_p: Option<f64>,
 
-	// -- `genai` request runtime options
-	/// - In the `ChatResponse` for `exec_chat`
-	/// - In the `StreamEnd` of `StreamEvent::End(StreamEnd)` for `exec_chat_stream`
+	/// (for steam only) Capture the meta usage when in stream mode
+	/// `StreamEnd` event payload will contain `captured_usage`
 	/// > Note: Will capture the `MetaUsage`
 	pub capture_usage: Option<bool>,
 
-	// -- For Stream only (for now, we flat them out)
-	/// Tell the chat stream executor to capture and concatenate all of the text chunk
-	/// to the last `StreamEvent::End(StreamEnd)` event as `StreamEnd.captured_content` (so, will be `Some(concatenated_chunks)`)
+	/// (for stream only) Capture/concatenate the full message content from all content chunk
+	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_content`
 	pub capture_content: Option<bool>,
 }
 

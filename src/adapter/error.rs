@@ -45,7 +45,7 @@ pub enum Error {
 
 	// -- Utils
 	#[from]
-	XValue(crate::utils::x_value::Error),
+	XValue(crate::support::value_ext::Error),
 
 	// -- Externals
 	#[from]

@@ -4,7 +4,7 @@ use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
-use crate::utils::x_value::XValue;
+use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::ConfigSet;
 use reqwest::RequestBuilder;

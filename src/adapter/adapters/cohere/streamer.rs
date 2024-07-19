@@ -3,7 +3,7 @@ use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::{Error, Result};
 use crate::chat::ChatRequestOptionsSet;
-use crate::utils::x_value::XValue;
+use crate::support::value_ext::ValueExt;
 use crate::webc::WebStream;
 use serde::Deserialize;
 use serde_json::Value;

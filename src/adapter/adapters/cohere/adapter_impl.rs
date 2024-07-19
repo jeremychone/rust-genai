@@ -6,7 +6,7 @@ use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
 	MetaUsage,
 };
-use crate::utils::x_value::XValue;
+use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
 use crate::ConfigSet;
 use reqwest::RequestBuilder;

@@ -4,7 +4,7 @@ use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::AdapterKind;
 use crate::adapter::{Error, Result};
 use crate::chat::ChatRequestOptionsSet;
-use crate::utils::x_value::XValue;
+use crate::support::value_ext::ValueExt;
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;

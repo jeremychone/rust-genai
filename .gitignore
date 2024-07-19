@@ -2,6 +2,10 @@
 .*
 !.gitignore
 
+_*
+# '_' in src dir, ok.
+!**/src/**/_*
+
 *.lock
 *.lockb
 *.log
@@ -16,6 +20,7 @@ dist/
 out/
 
 # Data Files
+*.db3
 *.parquet
 *.map
 *.zip
@@ -49,10 +54,6 @@ __pycache__/
 
 
 # -- others
-_*
-# '_' in src dir, ok.
-!**/src/**/_*
-
 # Allows .env (make sure only dev info) 
 # !.env # Commented by default
 

@@ -8,6 +8,7 @@ pub struct ChatResponse {
 	pub usage: MetaUsage,
 }
 
+// Getters
 impl ChatResponse {
 	/// Returns the eventual content as `&str` if it is of type `MessageContent::Text`
 	/// Ohterwise, return None
