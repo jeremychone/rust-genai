@@ -30,8 +30,8 @@ impl Adapter for OpenAIAdapter {
 		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("OPENAI_API_KEY"))
 	}
 
-	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String {
-		Self::util_get_service_url(kind, service_type, BASE_URL)
+	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
+		Self::util_get_service_url(model_info, service_type, BASE_URL)
 	}
 
 	fn to_web_request_data(
@@ -45,7 +45,7 @@ impl Adapter for OpenAIAdapter {
 
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
-		let url = Self::get_service_url(adapter_kind, service_type);
+		let url = Self::get_service_url(model_info.clone(), service_type);
 
 		OpenAIAdapter::util_to_web_request_data(
 			model_info,
@@ -58,7 +58,7 @@ impl Adapter for OpenAIAdapter {
 		)
 	}
 
-	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
 		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
@@ -71,12 +71,12 @@ impl Adapter for OpenAIAdapter {
 	}
 
 	fn to_chat_stream(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let openai_stream = OpenAIStreamer::new(event_source, kind, options_sets);
+		let openai_stream = OpenAIStreamer::new(event_source, model_info, options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })
@@ -86,7 +86,7 @@ impl Adapter for OpenAIAdapter {
 /// Support function for other Adapter that share OpenAI APIs
 impl OpenAIAdapter {
 	pub(in crate::adapter) fn util_get_service_url(
-		_kind: AdapterKind,
+		_model_info: ModelInfo,
 		service_type: ServiceType,
 		// -- util args
 		base_url: &str,

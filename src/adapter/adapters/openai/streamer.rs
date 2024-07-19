@@ -4,7 +4,7 @@ use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::AdapterKind;
 use crate::chat::ChatRequestOptionsSet;
 use crate::support::value_ext::ValueExt;
-use crate::{Error, Result};
+use crate::{Error, ModelInfo, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
@@ -13,8 +13,8 @@ use std::task::{Context, Poll};
 pub struct OpenAIStreamer {
 	inner: EventSource,
 	options: StreamerOptions,
-	// Because the OpenAI Adapter/Streamer can be used by multiple adapter kind and have some variant
-	target_adapter_kind: AdapterKind,
+	// Because the OpenAI Adapter/Streamer, the model_info.adapter_kind might be different than OpenAI
+	model_info: ModelInfo,
 
 	// -- Set by the poll_next
 	/// Flag to not poll the EventSource after a MessageStop event
@@ -24,15 +24,11 @@ pub struct OpenAIStreamer {
 
 impl OpenAIStreamer {
 	// TODO: Problen need the ChatRequestOptions `.capture_content` `.capture_usage`
-	pub fn new(
-		inner: EventSource,
-		target_adapter_kind: AdapterKind,
-		options_set: ChatRequestOptionsSet<'_, '_>,
-	) -> Self {
+	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
-			target_adapter_kind,
+			model_info,
 			options: options_set.into(),
 			captured_data: Default::default(),
 		}
@@ -73,6 +69,7 @@ impl futures::Stream for OpenAIStreamer {
 					}
 
 					// -- Other Content Messages
+					let adapter_kind = self.model_info.adapter_kind;
 					// parse to get the choice
 					let mut message_data: Value = serde_json::from_str(&message.data).map_err(Error::StreamParse)?;
 					let first_choice: Option<Value> = message_data.x_take("/choices/0").ok();
@@ -84,7 +81,7 @@ impl futures::Stream for OpenAIStreamer {
 						// there might be other message, and the end one is with data: `[DONE]`
 						if let Some(_finish_reason) = first_choice.x_take::<Option<String>>("finish_reason")? {
 							// NOTE: For Groq, the usage is captured in the when finish_reason stop, and in the `/x_groq/usage`
-							if matches!(self.target_adapter_kind, AdapterKind::Groq) && self.options.capture_usage {
+							if matches!(adapter_kind, AdapterKind::Groq) && self.options.capture_usage {
 								let usage = message_data
 									.x_take("/x_groq/usage")
 									.map(OpenAIAdapter::into_usage)
@@ -116,7 +113,7 @@ impl futures::Stream for OpenAIStreamer {
 					else {
 						// If not Groq, then the usage is at the end when choices is empty/null
 
-						if !matches!(self.target_adapter_kind, AdapterKind::Groq)
+						if !matches!(adapter_kind, AdapterKind::Groq)
 							&& self.captured_data.usage.is_none()
 							&& self.options.capture_usage
 						{

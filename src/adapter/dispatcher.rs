@@ -37,14 +37,14 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String {
-		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(kind, service_type),
-			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(kind, service_type),
-			AdapterKind::Cohere => CohereAdapter::get_service_url(kind, service_type),
-			AdapterKind::Ollama => OllamaAdapter::get_service_url(kind, service_type),
-			AdapterKind::Gemini => GeminiAdapter::get_service_url(kind, service_type),
-			AdapterKind::Groq => GroqAdapter::get_service_url(kind, service_type),
+	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
+		match model_info.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model_info, service_type),
+			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(model_info, service_type),
+			AdapterKind::Cohere => CohereAdapter::get_service_url(model_info, service_type),
+			AdapterKind::Ollama => OllamaAdapter::get_service_url(model_info, service_type),
+			AdapterKind::Gemini => GeminiAdapter::get_service_url(model_info, service_type),
+			AdapterKind::Groq => GroqAdapter::get_service_url(model_info, service_type),
 		}
 	}
 
@@ -77,29 +77,29 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
-		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(kind, web_response),
-			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(kind, web_response),
-			AdapterKind::Cohere => CohereAdapter::to_chat_response(kind, web_response),
-			AdapterKind::Ollama => OllamaAdapter::to_chat_response(kind, web_response),
-			AdapterKind::Gemini => GeminiAdapter::to_chat_response(kind, web_response),
-			AdapterKind::Groq => GroqAdapter::to_chat_response(kind, web_response),
+	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+		match model_info.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_info, web_response),
+			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_info, web_response),
+			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_info, web_response),
+			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_info, web_response),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_info, web_response),
+			AdapterKind::Groq => GroqAdapter::to_chat_response(model_info, web_response),
 		}
 	}
 
 	fn to_chat_stream(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(kind, reqwest_builder, options_set),
-			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(kind, reqwest_builder, options_set),
-			AdapterKind::Cohere => CohereAdapter::to_chat_stream(kind, reqwest_builder, options_set),
-			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(kind, reqwest_builder, options_set),
-			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(kind, reqwest_builder, options_set),
-			AdapterKind::Groq => GroqAdapter::to_chat_stream(kind, reqwest_builder, options_set),
+		match model_info.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
+			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
+			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
 		}
 	}
 }

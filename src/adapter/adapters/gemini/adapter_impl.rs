@@ -39,7 +39,7 @@ impl Adapter for GeminiAdapter {
 		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("GEMINI_API_KEY"))
 	}
 
-	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {
+	fn get_service_url(_model_info: ModelInfo, service_type: ServiceType) -> String {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => BASE_URL.to_string(),
 		}
@@ -55,13 +55,13 @@ impl Adapter for GeminiAdapter {
 		let ModelInfo {
 			adapter_kind,
 			model_name,
-		} = model_info;
+		} = model_info.clone();
 
 		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
 
 		// For gemini, the service url returned is just the base url
 		// since model and API key is part of the url (see below)
-		let url = Self::get_service_url(adapter_kind, service_type);
+		let url = Self::get_service_url(model_info, service_type);
 
 		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 		let url = match service_type {
@@ -103,7 +103,7 @@ impl Adapter for GeminiAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { body, .. } = web_response;
 
 		let gemini_response = Self::body_to_gemini_chat_response(body)?;
@@ -114,7 +114,7 @@ impl Adapter for GeminiAdapter {
 	}
 
 	fn to_chat_stream(
-		_kind: AdapterKind,
+		_model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {

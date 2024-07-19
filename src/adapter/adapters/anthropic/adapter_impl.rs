@@ -37,7 +37,7 @@ impl Adapter for AnthropicAdapter {
 		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY"))
 	}
 
-	fn get_service_url(_kind: AdapterKind, service_type: ServiceType) -> String {
+	fn get_service_url(_model_info: ModelInfo, service_type: ServiceType) -> String {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}messages"),
 		}
@@ -53,10 +53,10 @@ impl Adapter for AnthropicAdapter {
 		let ModelInfo {
 			adapter_kind,
 			model_name,
-		} = model_info;
+		} = model_info.clone();
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
-		let url = Self::get_service_url(adapter_kind, service_type);
+		let url = Self::get_service_url(model_info, service_type);
 
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
@@ -94,7 +94,7 @@ impl Adapter for AnthropicAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(_kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 		let json_content_items: Vec<Value> = body.x_take("content")?;
 
@@ -118,7 +118,7 @@ impl Adapter for AnthropicAdapter {
 	}
 
 	fn to_chat_stream(
-		_kind: AdapterKind,
+		_model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {

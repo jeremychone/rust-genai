@@ -52,8 +52,8 @@ impl Adapter for OllamaAdapter {
 		INSTANCE.get_or_init(AdapterConfig::default)
 	}
 
-	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String {
-		OpenAIAdapter::util_get_service_url(kind, service_type, BASE_URL)
+	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
+		OpenAIAdapter::util_get_service_url(model_info, service_type, BASE_URL)
 	}
 
 	fn to_web_request_data(
@@ -63,22 +63,20 @@ impl Adapter for OllamaAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let adapter_kind = model_info.adapter_kind;
-
-		let url = Self::get_service_url(adapter_kind, service_type);
+		let url = Self::get_service_url(model_info.clone(), service_type);
 
 		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, "ollama", true)
 	}
 
-	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {
-		OpenAIAdapter::to_chat_response(kind, web_response)
+	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+		OpenAIAdapter::to_chat_response(model_info, web_response)
 	}
 
 	fn to_chat_stream(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		OpenAIAdapter::to_chat_stream(kind, reqwest_builder, options_set)
+		OpenAIAdapter::to_chat_stream(model_info, reqwest_builder, options_set)
 	}
 }

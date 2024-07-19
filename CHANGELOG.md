@@ -5,6 +5,10 @@
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
+## ... - `0.1.4`
+
+- `-` Fix naming `ClientConfig::with_adapter_kind_resolver`
+
 ## 2024-07-18 - `0.1.3`
 
 - `^` **openai** - added `gpt-4o-mini` and switched all openai examples/tests to it

@@ -61,8 +61,13 @@ impl Client {
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_request_options());
 
-		let WebRequestData { headers, payload, url } =
-			AdapterDispatcher::to_web_request_data(model_info, &config_set, ServiceType::Chat, chat_req, options_set)?;
+		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
+			model_info.clone(),
+			&config_set,
+			ServiceType::Chat,
+			chat_req,
+			options_set,
+		)?;
 
 		let web_res =
 			self.web_client()
@@ -73,7 +78,7 @@ impl Client {
 					webc_error,
 				})?;
 
-		let chat_res = AdapterDispatcher::to_chat_response(adapter_kind, web_res)?;
+		let chat_res = AdapterDispatcher::to_chat_response(model_info, web_res)?;
 
 		Ok(chat_res)
 	}
@@ -98,7 +103,7 @@ impl Client {
 			.with_client_options(self.config().chat_request_options());
 
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
-			model_info,
+			model_info.clone(),
 			&config_set,
 			ServiceType::ChatStream,
 			chat_req,
@@ -113,7 +118,7 @@ impl Client {
 				webc_error,
 			})?;
 
-		let res = AdapterDispatcher::to_chat_stream(adapter_kind, reqwest_builder, options_set)?;
+		let res = AdapterDispatcher::to_chat_stream(model_info, reqwest_builder, options_set)?;
 
 		Ok(res)
 	}

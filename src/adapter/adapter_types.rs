@@ -16,7 +16,7 @@ pub trait Adapter {
 
 	/// The base service url for this AdapterKind for this given service type.
 	/// NOTE: For some services, the url will be further updated in the to_web_request_data
-	fn get_service_url(kind: AdapterKind, service_type: ServiceType) -> String;
+	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String;
 
 	/// To be implemented by Adapters
 	fn to_web_request_data(
@@ -28,11 +28,11 @@ pub trait Adapter {
 	) -> Result<WebRequestData>;
 
 	/// To be implemented by Adapters
-	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse>;
+	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse>;
 
 	/// To be implemented by Adapters
 	fn to_chat_stream(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse>;

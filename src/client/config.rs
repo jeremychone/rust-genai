@@ -12,7 +12,7 @@ pub struct ClientConfig {
 /// Adapter Related Chainable Setters
 impl ClientConfig {
 	/// Set the built auth resolver
-	pub fn with_auth_resolver(mut self, auth_resolver: AdapterKindResolver) -> Self {
+	pub fn with_adapter_kind_resolver(mut self, auth_resolver: AdapterKindResolver) -> Self {
 		self.adapter_kind_resolver = Some(auth_resolver);
 		self
 	}
