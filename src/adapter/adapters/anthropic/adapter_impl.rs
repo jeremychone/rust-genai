@@ -1,6 +1,5 @@
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::support::get_api_key_resolver;
-use crate::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
@@ -8,7 +7,8 @@ use crate::chat::{
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
-use crate::ConfigSet;
+use crate::Result;
+use crate::{ConfigSet, ModelInfo};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -44,18 +44,22 @@ impl Adapter for AnthropicAdapter {
 	}
 
 	fn to_web_request_data(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
-		model: &str,
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
+		let ModelInfo {
+			adapter_kind,
+			model_name,
+		} = model_info;
+
 		let stream = matches!(service_type, ServiceType::ChatStream);
-		let url = Self::get_service_url(kind, service_type);
+		let url = Self::get_service_url(adapter_kind, service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(kind, config_set)?;
+		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
 
 		let headers = vec![
 			// headers
@@ -67,7 +71,7 @@ impl Adapter for AnthropicAdapter {
 
 		// -- Build the basic payload
 		let mut payload = json!({
-			"model": model,
+			"model": model_name.to_string(),
 			"messages": messages,
 			"stream": stream
 		});

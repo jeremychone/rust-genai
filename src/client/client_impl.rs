@@ -1,7 +1,7 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptions, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
-use crate::{ConfigSet, Error, Result};
+use crate::{ConfigSet, Error, ModelInfo, Result};
 
 /// Public AI Functions
 impl Client {
@@ -23,7 +23,7 @@ impl Client {
 	/// See [AdapterKind::from_model]
 	///
 	/// [AdapterKind::from_model]: crate::adapter::AdapterKind::from_model
-	pub fn resolve_adapter_kind(&self, model: &str) -> Result<AdapterKind> {
+	pub fn resolve_model_info(&self, model: &str) -> Result<ModelInfo> {
 		let adapter_kind_from_resolver = self
 			.config()
 			.adapter_kind_resolver()
@@ -31,10 +31,12 @@ impl Client {
 			.transpose()?
 			.flatten();
 
-		match adapter_kind_from_resolver {
-			Some(adapter_kind) => Ok(adapter_kind),
-			None => AdapterKind::from_model(model),
-		}
+		let adapter_kind = match adapter_kind_from_resolver {
+			Some(adapter_kind) => adapter_kind,
+			None => AdapterKind::from_model(model)?,
+		};
+
+		Ok(ModelInfo::new(adapter_kind, model))
 	}
 
 	/// Execute a chat
@@ -45,7 +47,9 @@ impl Client {
 		// options not implemented yet
 		options: Option<&ChatRequestOptions>,
 	) -> Result<ChatResponse> {
-		let adapter_kind = self.resolve_adapter_kind(model)?;
+		let model_info = self.resolve_model_info(model)?;
+
+		let adapter_kind = model_info.adapter_kind;
 
 		let adapter_config = self
 			.custom_adapter_config(adapter_kind)
@@ -57,14 +61,8 @@ impl Client {
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_request_options());
 
-		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
-			adapter_kind,
-			&config_set,
-			ServiceType::Chat,
-			model,
-			chat_req,
-			options_set,
-		)?;
+		let WebRequestData { headers, payload, url } =
+			AdapterDispatcher::to_web_request_data(model_info, &config_set, ServiceType::Chat, chat_req, options_set)?;
 
 		let web_res =
 			self.web_client()
@@ -86,7 +84,8 @@ impl Client {
 		chat_req: ChatRequest, // options not implemented yet
 		options: Option<&ChatRequestOptions>,
 	) -> Result<ChatStreamResponse> {
-		let adapter_kind = self.resolve_adapter_kind(model)?;
+		let model_info = self.resolve_model_info(model)?;
+		let adapter_kind = model_info.adapter_kind;
 
 		let adapter_config = self
 			.custom_adapter_config(adapter_kind)
@@ -99,10 +98,9 @@ impl Client {
 			.with_client_options(self.config().chat_request_options());
 
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
-			adapter_kind,
+			model_info,
 			&config_set,
 			ServiceType::ChatStream,
-			model,
 			chat_req,
 			options_set.clone(),
 		)?;

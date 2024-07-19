@@ -7,7 +7,7 @@ use crate::chat::{
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
-use crate::ConfigSet;
+use crate::{ConfigSet, ModelInfo};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -35,21 +35,21 @@ impl Adapter for OpenAIAdapter {
 	}
 
 	fn to_web_request_data(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
-		model: &str,
 		chat_req: ChatRequest,
 		chat_req_options: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
+		let adapter_kind = model_info.adapter_kind;
+
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(kind, config_set)?;
-		let url = Self::get_service_url(kind, service_type);
+		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
+		let url = Self::get_service_url(adapter_kind, service_type);
 
 		OpenAIAdapter::util_to_web_request_data(
-			kind,
+			model_info,
 			url,
-			model,
 			chat_req,
 			service_type,
 			chat_req_options,
@@ -98,9 +98,8 @@ impl OpenAIAdapter {
 
 	#[allow(clippy::too_many_arguments)] // ok because internal only
 	pub(in crate::adapter) fn util_to_web_request_data(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		url: String,
-		model: &str,
 		chat_req: ChatRequest,
 		service_type: ServiceType,
 		options_set: ChatRequestOptionsSet<'_, '_>,
@@ -108,6 +107,11 @@ impl OpenAIAdapter {
 		api_key: &str,
 		ollama_variant: bool,
 	) -> Result<WebRequestData> {
+		let ModelInfo {
+			adapter_kind,
+			model_name,
+		} = model_info;
+
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
 		// -- Build the header
@@ -117,9 +121,9 @@ impl OpenAIAdapter {
 		];
 
 		// -- Build the basic payload
-		let OpenAIRequestParts { messages } = Self::into_openai_messages(kind, chat_req, ollama_variant)?;
+		let OpenAIRequestParts { messages } = Self::into_openai_messages(adapter_kind, chat_req, ollama_variant)?;
 		let mut payload = json!({
-			"model": model,
+			"model": model_name.to_string(),
 			"messages": messages,
 			"stream": stream
 		});

@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("\n--- Question:\n{question}");
 		let chat_res = client.exec_chat_stream(MODEL, chat_req.clone(), None).await?;
 
-		let adapter_kind = client.resolve_adapter_kind(MODEL)?;
+		let adapter_kind = client.resolve_model_info(MODEL)?.adapter_kind;
 		println!("\n--- Answer: ({MODEL} - {adapter_kind})");
 		let assistant_answer = print_chat_stream(chat_res, None).await?;
 

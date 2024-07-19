@@ -7,7 +7,7 @@ use crate::chat::{
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
-use crate::ConfigSet;
+use crate::{ConfigSet, ModelInfo};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
@@ -43,19 +43,23 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn to_web_request_data(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
-		model: &str,
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
+		let ModelInfo {
+			adapter_kind,
+			model_name,
+		} = model_info;
+
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
-		let url = Self::get_service_url(kind, service_type);
+		let url = Self::get_service_url(adapter_kind, service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(kind, config_set)?;
+		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
 
 		let headers = vec![
 			// headers
@@ -66,11 +70,11 @@ impl Adapter for CohereAdapter {
 			preamble,
 			message,
 			chat_history,
-		} = Self::into_cohere_request_parts(kind, chat_req)?;
+		} = Self::into_cohere_request_parts(adapter_kind, chat_req)?;
 
 		// -- Build the basic payload
 		let mut payload = json!({
-			"model": model,
+			"model": model_name.to_string(),
 			"message": message,
 			"stream": stream
 		});

@@ -1,11 +1,13 @@
 // region:    --- Modules
 
 mod client;
+mod common;
 mod error;
 mod support;
 mod webc;
 
 pub use client::*;
+pub use common::*;
 pub use error::{Error, Result};
 
 pub mod adapter;

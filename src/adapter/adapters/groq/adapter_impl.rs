@@ -1,10 +1,10 @@
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::support::get_api_key_resolver;
-use crate::Result;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
-use crate::ConfigSet;
+use crate::Result;
+use crate::{ConfigSet, ModelInfo};
 use reqwest::RequestBuilder;
 use std::sync::OnceLock;
 
@@ -36,17 +36,18 @@ impl Adapter for GroqAdapter {
 	}
 
 	fn to_web_request_data(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
-		model: &str,
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key_resolver(kind, config_set)?;
-		let url = Self::get_service_url(kind, service_type);
+		let adapter_kind = model_info.adapter_kind;
 
-		OpenAIAdapter::util_to_web_request_data(kind, url, model, chat_req, service_type, options_set, &api_key, false)
+		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
+		let url = Self::get_service_url(adapter_kind, service_type);
+
+		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, &api_key, false)
 	}
 
 	fn to_chat_response(kind: AdapterKind, web_response: WebResponse) -> Result<ChatResponse> {

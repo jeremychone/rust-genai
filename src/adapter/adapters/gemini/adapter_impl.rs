@@ -7,7 +7,7 @@ use crate::chat::{
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
-use crate::ConfigSet;
+use crate::{ConfigSet, ModelInfo};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
@@ -46,28 +46,32 @@ impl Adapter for GeminiAdapter {
 	}
 
 	fn to_web_request_data(
-		kind: AdapterKind,
+		model_info: ModelInfo,
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
-		model: &str,
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key_resolver(kind, config_set)?;
+		let ModelInfo {
+			adapter_kind,
+			model_name,
+		} = model_info;
+
+		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
 
 		// For gemini, the service url returned is just the base url
 		// since model and API key is part of the url (see below)
-		let url = Self::get_service_url(kind, service_type);
+		let url = Self::get_service_url(adapter_kind, service_type);
 
 		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 		let url = match service_type {
-			ServiceType::Chat => format!("{url}models/{model}:generateContent?key={api_key}"),
-			ServiceType::ChatStream => format!("{url}models/{model}:streamGenerateContent?key={api_key}"),
+			ServiceType::Chat => format!("{url}models/{model_name}:generateContent?key={api_key}"),
+			ServiceType::ChatStream => format!("{url}models/{model_name}:streamGenerateContent?key={api_key}"),
 		};
 
 		let headers = vec![];
 
-		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(kind, chat_req)?;
+		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(adapter_kind, chat_req)?;
 
 		let mut payload = json!({
 			"contents": contents,
