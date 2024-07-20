@@ -1,13 +1,22 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.3"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.4"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
-## ... - `0.1.4`
+## 2024-07-19 - `0.1.4`
 
+- `!` **API CHANGE** - refactor Error 
+  - With new `ModelInfo` 
+  - Back to `genai::Error` (`adapter::Error` was wrongly exposing internal responsibility)
+- `.` update tests and examples from 'gpt-3.5-turbo' to 'gpt-4o-mini'
 - `-` Fix naming `ClientConfig::with_adapter_kind_resolver` (was wrongly `...auth_resolver`)
+- `*` refactor code layout, internal Adapter calls to use ModelInfo 
+- `+` Add ModelName and ModelInfo types for better efficient request/error context 
+- `!` **API CHANGE** - now `Client::resolve_model_info(model)` (was `Client::resolve_adapter_kind(mode)`)
+- `^` `ChatRequest` - add `ChatRequest::from_system`
+- `.` updated provider supported list
 
 ## 2024-07-18 - `0.1.3`
 

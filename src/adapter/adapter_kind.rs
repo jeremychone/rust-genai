@@ -50,15 +50,15 @@ impl AdapterKind {
 	///  - For anything else      -> Ollama
 	pub fn from_model(model: &str) -> Result<Self> {
 		if model.starts_with("gpt") {
-			Ok(AdapterKind::OpenAI)
+			Ok(Self::OpenAI)
 		} else if model.starts_with("claude") {
-			Ok(AdapterKind::Anthropic)
+			Ok(Self::Anthropic)
 		} else if model.starts_with("command") {
-			Ok(AdapterKind::Cohere)
+			Ok(Self::Cohere)
 		} else if model.starts_with("gemini") {
-			Ok(AdapterKind::Gemini)
+			Ok(Self::Gemini)
 		} else if GROQ_MODELS.contains(&model) {
-			return Ok(AdapterKind::Groq);
+			return Ok(Self::Groq);
 		}
 		// for now, fallback on Ollama
 		else {
