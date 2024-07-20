@@ -1,10 +1,11 @@
 // region:    --- Modules
 
+mod support;
+mod webc;
+
 mod client;
 mod common;
 mod error;
-mod support;
-mod webc;
 
 // -- Flatten
 pub use client::*;

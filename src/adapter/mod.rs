@@ -9,12 +9,13 @@
 
 // region:    --- Modules
 
+mod support;
+
 mod adapter_config;
 mod adapter_kind;
 mod adapter_types;
 mod adapters;
 mod dispatcher;
-mod support;
 
 // -- Flatten (private, crate, public)
 use adapters::*;
