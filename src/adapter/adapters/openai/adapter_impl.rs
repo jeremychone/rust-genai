@@ -83,7 +83,7 @@ impl Adapter for OpenAIAdapter {
 
 /// Support function for other Adapter that share OpenAI APIs
 impl OpenAIAdapter {
-	pub(in crate::adapter) fn util_get_service_url(
+	pub(in crate::adapter::adapters) fn util_get_service_url(
 		_model_info: ModelInfo,
 		service_type: ServiceType,
 		// -- util args
@@ -94,8 +94,7 @@ impl OpenAIAdapter {
 		}
 	}
 
-	#[allow(clippy::too_many_arguments)] // ok because internal only
-	pub(in crate::adapter) fn util_to_web_request_data(
+	pub(in crate::adapter::adapters) fn util_to_web_request_data(
 		model_info: ModelInfo,
 		url: String,
 		chat_req: ChatRequest,

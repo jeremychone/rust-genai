@@ -62,7 +62,6 @@ pub enum Error {
 	},
 
 	// -- Modules
-	#[from]
 	Resolver {
 		model_info: ModelInfo,
 		resolver_error: resolver::Error,
