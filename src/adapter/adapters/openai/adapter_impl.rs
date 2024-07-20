@@ -41,10 +41,8 @@ impl Adapter for OpenAIAdapter {
 		chat_req: ChatRequest,
 		chat_req_options: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let adapter_kind = model_info.adapter_kind;
-
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
+		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
 		OpenAIAdapter::util_to_web_request_data(
@@ -107,11 +105,6 @@ impl OpenAIAdapter {
 		api_key: &str,
 		ollama_variant: bool,
 	) -> Result<WebRequestData> {
-		let ModelInfo {
-			adapter_kind,
-			model_name,
-		} = model_info;
-
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
 		// -- Build the header
@@ -121,9 +114,10 @@ impl OpenAIAdapter {
 		];
 
 		// -- Build the basic payload
-		let OpenAIRequestParts { messages } = Self::into_openai_messages(adapter_kind, chat_req, ollama_variant)?;
+		let model_name = model_info.model_name.to_string();
+		let OpenAIRequestParts { messages } = Self::into_openai_messages(model_info, chat_req, ollama_variant)?;
 		let mut payload = json!({
-			"model": model_name.to_string(),
+			"model": model_name,
 			"messages": messages,
 			"stream": stream
 		});
@@ -166,7 +160,7 @@ impl OpenAIAdapter {
 	///       It seems the Ollama compaitiblity layer does not work well with multiple System message.
 	///       So, when `true`, it will concatenate the system message as a single on at the beginning
 	fn into_openai_messages(
-		adapter_kind: AdapterKind,
+		model_info: ModelInfo,
 		chat_req: ChatRequest,
 		ollama_variant: bool,
 	) -> Result<OpenAIRequestParts> {
@@ -199,7 +193,7 @@ impl OpenAIAdapter {
 				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
-						adapter_kind,
+						model_info,
 						role: ChatRole::Tool,
 					})
 				}

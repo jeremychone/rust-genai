@@ -2,20 +2,23 @@
 //! It should be private to the `crate::adapter::adapters` module.
 
 use crate::chat::{ChatRequestOptionsSet, MetaUsage};
+use crate::ModelInfo;
 
 // region:    --- StreamerChatOptions
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct StreamerOptions {
 	pub capture_content: bool,
 	pub capture_usage: bool,
+	pub model_info: ModelInfo,
 }
 
-impl From<ChatRequestOptionsSet<'_, '_>> for StreamerOptions {
-	fn from(options_set: ChatRequestOptionsSet) -> Self {
-		StreamerOptions {
+impl StreamerOptions {
+	pub fn new(model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+		Self {
 			capture_content: options_set.capture_content().unwrap_or(false),
 			capture_usage: options_set.capture_usage().unwrap_or(false),
+			model_info,
 		}
 	}
 }

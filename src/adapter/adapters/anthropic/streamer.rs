@@ -1,8 +1,8 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::{Error, Result};
 use crate::chat::{ChatRequestOptionsSet, MetaUsage};
 use crate::support::value_ext::ValueExt;
+use crate::{Error, ModelInfo, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
@@ -19,11 +19,11 @@ pub struct AnthropicStreamer {
 }
 
 impl AnthropicStreamer {
-	pub fn new(inner: EventSource, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
-			options: options_set.into(),
+			options: StreamerOptions::new(model_info, options_set),
 			captured_data: Default::default(),
 		}
 	}
@@ -57,7 +57,11 @@ impl futures::Stream for AnthropicStreamer {
 							continue;
 						}
 						"content_block_delta" => {
-							let mut data: Value = serde_json::from_str(&message.data).map_err(Error::StreamParse)?;
+							let mut data: Value =
+								serde_json::from_str(&message.data).map_err(|serde_error| Error::StreamParse {
+									model_info: self.options.model_info.clone(),
+									serde_error,
+								})?;
 							let content: String = data.x_take("/delta/text")?;
 
 							// add to the captured_content if chat options say so
@@ -122,7 +126,7 @@ impl futures::Stream for AnthropicStreamer {
 impl AnthropicStreamer {
 	fn capture_usage(&mut self, message_type: &str, message_data: &str) -> Result<()> {
 		if self.options.capture_usage {
-			let data = parse_message_data(message_data)?;
+			let data = self.parse_message_data(message_data)?;
 			// TODO: Might want to exist early if usage is not found
 
 			let (input_path, output_path) = if message_type == "message_start" {
@@ -162,14 +166,13 @@ impl AnthropicStreamer {
 
 		Ok(())
 	}
+
+	/// Simple wrapper for now, with the corresponding map_err
+	/// Might have more logic later
+	fn parse_message_data(&self, payload: &str) -> Result<Value> {
+		serde_json::from_str(payload).map_err(|serde_error| Error::StreamParse {
+			model_info: self.options.model_info.clone(),
+			serde_error,
+		})
+	}
 }
-
-// region:    --- Support functions
-
-/// Simple wrapper for now, with the corresponding map_err
-/// Might have more logic later
-fn parse_message_data(payload: &str) -> Result<Value> {
-	serde_json::from_str(payload).map_err(Error::StreamParse)
-}
-
-// endregion: --- Support functions

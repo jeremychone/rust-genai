@@ -52,18 +52,14 @@ impl Adapter for GeminiAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let ModelInfo {
-			adapter_kind,
-			model_name,
-		} = model_info.clone();
-
-		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
+		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 
 		// For gemini, the service url returned is just the base url
 		// since model and API key is part of the url (see below)
-		let url = Self::get_service_url(model_info, service_type);
+		let url = Self::get_service_url(model_info.clone(), service_type);
 
 		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
+		let model_name = &*model_info.model_name;
 		let url = match service_type {
 			ServiceType::Chat => format!("{url}models/{model_name}:generateContent?key={api_key}"),
 			ServiceType::ChatStream => format!("{url}models/{model_name}:streamGenerateContent?key={api_key}"),
@@ -71,7 +67,7 @@ impl Adapter for GeminiAdapter {
 
 		let headers = vec![];
 
-		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(adapter_kind, chat_req)?;
+		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(model_info, chat_req)?;
 
 		let mut payload = json!({
 			"contents": contents,
@@ -103,10 +99,10 @@ impl Adapter for GeminiAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { body, .. } = web_response;
 
-		let gemini_response = Self::body_to_gemini_chat_response(body)?;
+		let gemini_response = Self::body_to_gemini_chat_response(&model_info, body)?;
 		let GeminiChatResponse { content, usage } = gemini_response;
 		let content = content.map(MessageContent::from);
 
@@ -114,13 +110,13 @@ impl Adapter for GeminiAdapter {
 	}
 
 	fn to_chat_stream(
-		_model_info: ModelInfo,
+		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_pretty_json_array(reqwest_builder);
 
-		let gemini_stream = GeminiStreamer::new(web_stream, options_set);
+		let gemini_stream = GeminiStreamer::new(web_stream, model_info, options_set);
 		let chat_stream = ChatStream::from_inter_stream(gemini_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })
@@ -131,10 +127,13 @@ impl Adapter for GeminiAdapter {
 
 /// Suppot GeminiAdapter functions
 impl GeminiAdapter {
-	pub(super) fn body_to_gemini_chat_response(mut body: Value) -> Result<GeminiChatResponse> {
-		// if the body has a `error` propertyn, then, it is assumed to be an error
+	pub(super) fn body_to_gemini_chat_response(model_info: &ModelInfo, mut body: Value) -> Result<GeminiChatResponse> {
+		// if the body has a `error` property, then, it is assumed to be an error
 		if body.get("error").is_some() {
-			return Err(Error::StreamEventError(body));
+			return Err(Error::StreamEventError {
+				model_info: model_info.clone(),
+				body,
+			});
 		}
 
 		let content = body.x_take::<Value>("/candidates/0/content/parts/0/text")?;
@@ -162,7 +161,7 @@ impl GeminiAdapter {
 	/// - `ChatRole::System` get concatenated (empty line) into a single `system` for the system instruction.
 	///   - This adapter use the v1beta, which supports`systemInstruction`
 	/// - the eventual `chat_req.system` get pushed first in the "systemInstruction"
-	fn into_gemini_request_parts(adapter_kind: AdapterKind, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
+	fn into_gemini_request_parts(model_info: ModelInfo, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
 		let mut contents: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -182,7 +181,7 @@ impl GeminiAdapter {
 				ChatRole::Assistant => contents.push(json! ({"role": "model", "parts": [{"text": content}]})),
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
-						adapter_kind,
+						model_info,
 						role: ChatRole::Tool,
 					})
 				}

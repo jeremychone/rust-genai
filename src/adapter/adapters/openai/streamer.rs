@@ -13,8 +13,6 @@ use std::task::{Context, Poll};
 pub struct OpenAIStreamer {
 	inner: EventSource,
 	options: StreamerOptions,
-	// Because the OpenAI Adapter/Streamer, the model_info.adapter_kind might be different than OpenAI
-	model_info: ModelInfo,
 
 	// -- Set by the poll_next
 	/// Flag to not poll the EventSource after a MessageStop event
@@ -28,8 +26,7 @@ impl OpenAIStreamer {
 		Self {
 			inner,
 			done: false,
-			model_info,
-			options: options_set.into(),
+			options: StreamerOptions::new(model_info, options_set),
 			captured_data: Default::default(),
 		}
 	}
@@ -69,9 +66,13 @@ impl futures::Stream for OpenAIStreamer {
 					}
 
 					// -- Other Content Messages
-					let adapter_kind = self.model_info.adapter_kind;
+					let adapter_kind = self.options.model_info.adapter_kind;
 					// parse to get the choice
-					let mut message_data: Value = serde_json::from_str(&message.data).map_err(Error::StreamParse)?;
+					let mut message_data: Value =
+						serde_json::from_str(&message.data).map_err(|serde_error| Error::StreamParse {
+							model_info: self.options.model_info.clone(),
+							serde_error,
+						})?;
 					let first_choice: Option<Value> = message_data.x_take("/choices/0").ok();
 
 					// if we have a first choice, then, normal message

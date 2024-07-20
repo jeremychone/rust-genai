@@ -50,16 +50,13 @@ impl Adapter for AnthropicAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let ModelInfo {
-			adapter_kind,
-			model_name,
-		} = model_info.clone();
+		let model_name = model_info.model_name.clone();
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
-		let url = Self::get_service_url(model_info, service_type);
+		let url = Self::get_service_url(model_info.clone(), service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
+		let api_key = get_api_key_resolver(model_info, config_set)?;
 
 		let headers = vec![
 			// headers
@@ -118,12 +115,12 @@ impl Adapter for AnthropicAdapter {
 	}
 
 	fn to_chat_stream(
-		_model_info: ModelInfo,
+		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let anthropic_stream = AnthropicStreamer::new(event_source, options_set);
+		let anthropic_stream = AnthropicStreamer::new(event_source, model_info, options_set);
 		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
 		Ok(ChatStreamResponse { stream: chat_stream })
 	}

@@ -1,10 +1,9 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::gemini::{GeminiAdapter, GeminiChatResponse};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::adapter::AdapterKind;
 use crate::chat::ChatRequestOptionsSet;
 use crate::webc::WebStream;
-use crate::{Error, Result};
+use crate::{Error, ModelInfo, Result};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -20,11 +19,11 @@ pub struct GeminiStreamer {
 }
 
 impl GeminiStreamer {
-	pub fn new(inner: WebStream, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: WebStream, model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
-			options: options_set.into(),
+			options: StreamerOptions::new(model_info, options_set),
 			captured_data: Default::default(),
 		}
 	}
@@ -58,23 +57,29 @@ impl futures::Stream for GeminiStreamer {
 						}
 						block_string => {
 							// -- Parse the block to json
-							let json_block =
-								match serde_json::from_str::<Value>(block_string).map_err(Error::StreamParse) {
-									Ok(json_block) => json_block,
-									Err(err) => {
-										eprintln!("Gemini Adapter Stream Error: {}", err);
-										return Poll::Ready(Some(Err(err)));
-									}
-								};
-
-							// -- Extract the Gemini Response
-							let gemini_response = match GeminiAdapter::body_to_gemini_chat_response(json_block) {
-								Ok(gemini_response) => gemini_response,
+							let json_block = match serde_json::from_str::<Value>(block_string).map_err(|serde_error| {
+								Error::StreamParse {
+									model_info: self.options.model_info.clone(),
+									serde_error,
+								}
+							}) {
+								Ok(json_block) => json_block,
 								Err(err) => {
 									eprintln!("Gemini Adapter Stream Error: {}", err);
 									return Poll::Ready(Some(Err(err)));
 								}
 							};
+
+							// -- Extract the Gemini Response
+							let gemini_response =
+								match GeminiAdapter::body_to_gemini_chat_response(&self.options.model_info, json_block)
+								{
+									Ok(gemini_response) => gemini_response,
+									Err(err) => {
+										eprintln!("Gemini Adapter Stream Error: {}", err);
+										return Poll::Ready(Some(Err(err)));
+									}
+								};
 
 							let GeminiChatResponse { content, usage } = gemini_response;
 
@@ -108,7 +113,7 @@ impl futures::Stream for GeminiStreamer {
 				Some(Err(err)) => {
 					println!("Gemini Adapter Stream Error: {}", err);
 					return Poll::Ready(Some(Err(Error::WebStream {
-						adapter_kind: AdapterKind::Gemini,
+						model_info: self.options.model_info.clone(),
 						cause: err.to_string(),
 					})));
 				}

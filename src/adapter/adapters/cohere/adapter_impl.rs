@@ -49,17 +49,14 @@ impl Adapter for CohereAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let ModelInfo {
-			adapter_kind,
-			model_name,
-		} = model_info.clone();
+		let model_name = model_info.model_name.clone();
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
-		let url = Self::get_service_url(model_info, service_type);
+		let url = Self::get_service_url(model_info.clone(), service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(adapter_kind, config_set)?;
+		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 
 		let headers = vec![
 			// headers
@@ -70,7 +67,7 @@ impl Adapter for CohereAdapter {
 			preamble,
 			message,
 			chat_history,
-		} = Self::into_cohere_request_parts(adapter_kind, chat_req)?;
+		} = Self::into_cohere_request_parts(model_info, chat_req)?;
 
 		// -- Build the basic payload
 		let mut payload = json!({
@@ -101,8 +98,6 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
-		let adapter_kind = model_info.adapter_kind;
-
 		let WebResponse { mut body, .. } = web_response;
 
 		// -- Get usage
@@ -112,7 +107,7 @@ impl Adapter for CohereAdapter {
 		let mut last_chat_history_item = body
 			.x_take::<Vec<Value>>("chat_history")?
 			.pop()
-			.ok_or(Error::NoChatResponse { adapter_kind })?;
+			.ok_or(Error::NoChatResponse { model_info })?;
 
 		let content: Option<MessageContent> = last_chat_history_item
 			.x_take::<Option<String>>("message")?
@@ -122,12 +117,12 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn to_chat_stream(
-		_model_info: ModelInfo,
+		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatRequestOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n");
-		let cohere_stream = CohereStreamer::new(web_stream, options_set);
+		let cohere_stream = CohereStreamer::new(web_stream, model_info, options_set);
 		let chat_stream = ChatStream::from_inter_stream(cohere_stream);
 
 		Ok(ChatStreamResponse { stream: chat_stream })
@@ -168,10 +163,7 @@ impl CohereAdapter {
 	/// - set the eventual `system` as first `preamble`
 	/// - add all of the system message in the 'preamble' (this might change when ChatReq will have `.system`)
 	/// - build the chat_history with the rest
-	fn into_cohere_request_parts(
-		adapter_kind: AdapterKind,
-		mut chat_req: ChatRequest,
-	) -> Result<CohereChatRequestParts> {
+	fn into_cohere_request_parts(model_info: ModelInfo, mut chat_req: ChatRequest) -> Result<CohereChatRequestParts> {
 		let mut chat_history: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -181,9 +173,12 @@ impl CohereAdapter {
 		}
 
 		// -- Build extract the last user message
-		let last_chat_msg = chat_req.messages.pop().ok_or(Error::ChatReqHasNoMessages { adapter_kind })?;
+		let last_chat_msg = chat_req.messages.pop().ok_or_else(|| Error::ChatReqHasNoMessages {
+			model_info: model_info.clone(),
+		})?;
 		if !matches!(last_chat_msg.role, ChatRole::User) {
 			return Err(Error::LastChatMessageIsNoUser {
+				model_info: model_info.clone(),
 				actual_role: last_chat_msg.role,
 			});
 		}
@@ -202,7 +197,7 @@ impl CohereAdapter {
 				ChatRole::Assistant => chat_history.push(json! ({"role": "CHATBOT", "content": content})),
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
-						adapter_kind,
+						model_info,
 						role: ChatRole::Tool,
 					})
 				}

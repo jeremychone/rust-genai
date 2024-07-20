@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 /// Hold the adapter_kind and model_name in a efficient clonable way
 /// Note: For now,
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ModelInfo {
 	pub adapter_kind: AdapterKind,
 	pub model_name: ModelName,
@@ -37,7 +37,7 @@ where
 
 // region:    --- ModelName
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ModelName(Arc<str>);
 
 impl std::fmt::Display for ModelName {

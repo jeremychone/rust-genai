@@ -73,8 +73,8 @@ impl Client {
 			self.web_client()
 				.do_post(&url, &headers, payload)
 				.await
-				.map_err(|webc_error| Error::WebCall {
-					adapter_kind,
+				.map_err(|webc_error| Error::WebModelCall {
+					model_info: model_info.clone(),
 					webc_error,
 				})?;
 
@@ -113,8 +113,8 @@ impl Client {
 		let reqwest_builder = self
 			.web_client()
 			.new_req_builder(&url, &headers, payload)
-			.map_err(|webc_error| Error::WebCall {
-				adapter_kind,
+			.map_err(|webc_error| Error::WebModelCall {
+				model_info: model_info.clone(),
 				webc_error,
 			})?;
 
