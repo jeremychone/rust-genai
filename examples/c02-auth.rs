@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// -- Build the new client with this adapter_config
 	let client = Client::builder()
-		.with_adapter_config(AdapterKind::OpenAI, adapter_config)
+		.insert_adapter_config(AdapterKind::OpenAI, adapter_config)
 		.build();
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");

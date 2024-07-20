@@ -28,7 +28,7 @@ impl ClientBuilder {
 		self
 	}
 
-	pub fn with_adapter_config(mut self, kind: AdapterKind, adapter_config: AdapterConfig) -> Self {
+	pub fn insert_adapter_config(mut self, kind: AdapterKind, adapter_config: AdapterConfig) -> Self {
 		self.apapter_config_by_kind
 			.get_or_insert_with(HashMap::new)
 			.insert(kind, adapter_config);
