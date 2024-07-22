@@ -1,9 +1,14 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.4"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.5"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-07-21 - `0.1.5`
+
+- `!` - **API CHANGE** now ClientBuilder::insert_adapter_config (was with_adapter_config)
+- `.` - code clean
 
 ## 2024-07-19 - `0.1.4`
 

@@ -12,14 +12,14 @@ Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **
 
 ```toml
 # cargo.toml
-genai = "=0.1.4" # Version lock for `0.1.x`
+genai = "=0.1.5" # Version lock for `0.1.x`
 ```
 
 <br />
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI Providers, such as OpenAI, Anthropic, Cohere, Ollama.
 
-- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.4"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
+- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.5"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
 
@@ -44,13 +44,13 @@ const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 // NOTE: Those are the default environment keys for each AI Adapter Type.
 //       Can be customized, see `examples/c02-auth.rs`
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
-	// -- de/activate models/providers
-	(MODEL_OPENAI, "OPENAI_API_KEY"),
-	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
-	(MODEL_COHERE, "COHERE_API_KEY"),
-	(MODEL_GEMINI, "GEMINI_API_KEY"),
-	(MODEL_GROQ, "GROQ_API_KEY"),
-	(MODEL_OLLAMA, ""),
+    // -- de/activate models/providers
+    (MODEL_OPENAI, "OPENAI_API_KEY"),
+    (MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
+    (MODEL_COHERE, "COHERE_API_KEY"),
+    (MODEL_GEMINI, "GEMINI_API_KEY"),
+    (MODEL_GROQ, "GROQ_API_KEY"),
+    (MODEL_OLLAMA, ""),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
@@ -65,43 +65,43 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	let question = "Why is the sky red?";
+    let question = "Why is the sky red?";
 
-	let chat_req = ChatRequest::new(vec![
-		// -- Messages (de/activate to see the differences)
-		ChatMessage::system("Answer in one sentence"),
-		ChatMessage::user(question),
-	]);
+    let chat_req = ChatRequest::new(vec![
+        // -- Messages (de/activate to see the differences)
+        ChatMessage::system("Answer in one sentence"),
+        ChatMessage::user(question),
+    ]);
 
-	let client = Client::default();
+    let client = Client::default();
 
-	let print_options = PrintChatStreamOptions::from_print_events(false);
+    let print_options = PrintChatStreamOptions::from_print_events(false);
 
-	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
-		// Skip if does not have the environment name set
-		if !env_name.is_empty() && std::env::var(env_name).is_err() {
-			println!("===== Skipping model: {model} (env var not set: {env_name})");
-			continue;
-		}
+    for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
+        // Skip if does not have the environment name set
+        if !env_name.is_empty() && std::env::var(env_name).is_err() {
+            println!("===== Skipping model: {model} (env var not set: {env_name})");
+            continue;
+        }
 
-		let adapter_kind = client.resolve_model_info(model)?.adapter_kind;
+        let adapter_kind = client.resolve_model_info(model)?.adapter_kind;
 
-		println!("\n===== MODEL: {model} ({adapter_kind}) =====");
+        println!("\n===== MODEL: {model} ({adapter_kind}) =====");
 
-		println!("\n--- Question:\n{question}");
+        println!("\n--- Question:\n{question}");
 
-		println!("\n--- Answer:");
-		let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
-		println!("{}", chat_res.content_text_as_str().unwrap_or("NO ANSWER"));
+        println!("\n--- Answer:");
+        let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+        println!("{}", chat_res.content_text_as_str().unwrap_or("NO ANSWER"));
 
-		println!("\n--- Answer: (streaming)");
-		let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
-		print_chat_stream(chat_res, Some(&print_options)).await?;
+        println!("\n--- Answer: (streaming)");
+        let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
+        print_chat_stream(chat_res, Some(&print_options)).await?;
 
-		println!();
-	}
+        println!();
+    }
 
-	Ok(())
+    Ok(())
 }
 ```
 
@@ -136,11 +136,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## ChatRequestOptions
 
-| Property    | OpenAI      | Anthropic                 | Ollama      | Groq        | Gemini                           | Cohere      |
-|-------------|-------------|---------------------------|-------------|-------------|----------------------------------|-------------|
-| temperature | temperature | temperature               | temperature | temperature | generationConfig.temperature     | temperature |
-| max_tokens  | max_tokens  | max_tokens (default 1024) | max_tokens  | max_tokens  | generationConfig.maxOutputTokens | max_tokens  |
-| top_p       | top_p       | top_p                     | top_p       | top_p       | generationConfig.topP            | p           |
+| Property      | OpenAI        | Anthropic                   | Ollama        | Groq          | Gemini `generationConfig.` | Cohere        |
+|---------------|---------------|-----------------------------|---------------|---------------|----------------------------|---------------|
+| `temperature` | `temperature` | `temperature`               | `temperature` | `temperature` | `temperature`              | `temperature` |
+| `max_tokens`  | `max_tokens`  | `max_tokens` (default 1024) | `max_tokens`  | `max_tokens`  | `maxOutputTokens`          | `max_tokens`  |
+| `top_p`       | `top_p`       | `top_p`                     | `top_p`       | `top_p`       | `topP`                     | `p`           |
 
 ## MetaUsage
 
