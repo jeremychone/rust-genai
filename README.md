@@ -114,6 +114,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per request level.
 - [examples/c05-model-names.rs](examples/c05-model-names.rs) - Show how to get model names per AdapterKind.
 
+### Videos 
+
+- <a href="https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> - genai introduction (v0.1.0)]
+
+- **genai code design**
+    - <a href="https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> (part 1/3) Module, Error, constructors/builders
+    - ..coming soon..
+
 ## Thanks
 
 - Thanks to [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement groq completions
