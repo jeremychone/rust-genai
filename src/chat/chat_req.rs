@@ -1,3 +1,5 @@
+//! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
+
 use crate::chat::MessageContent;
 
 // region:    --- ChatRequest

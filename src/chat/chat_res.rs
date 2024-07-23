@@ -1,3 +1,5 @@
+//! This module contains all the types related to a Chat Reponse (except ChatStream which has it file).
+
 use crate::chat::{ChatStream, MessageContent};
 
 // region:    --- ChatResponse

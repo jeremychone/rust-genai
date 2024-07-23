@@ -1,7 +1,7 @@
 use genai::adapter::AdapterKind;
+use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::AdapterKindResolver;
-use genai::utils::print_chat_stream;
 use genai::{Client, ClientConfig};
 
 const MODEL: &str = "gpt-4o-mini";

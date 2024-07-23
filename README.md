@@ -31,7 +31,7 @@ The goal of this library is to provide a common and ergonomic single API to many
 
 ```rust
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::utils::{print_chat_stream, PrintChatStreamOptions};
+use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::Client;
 
 const MODEL_OPENAI: &str = "gpt-4o-mini";

@@ -7,6 +7,7 @@ use std::task::{Context, Poll};
 
 type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>>>>;
 
+/// ChatStream is a Rust Future Stream that iterates through the events of a chat stream request.
 pub struct ChatStream {
 	inter_stream: InterStreamType,
 }

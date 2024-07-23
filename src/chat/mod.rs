@@ -15,4 +15,6 @@ pub use chat_stream::*;
 pub use message_content::*;
 pub use tool::*;
 
+pub mod printer;
+
 // endregion: --- Modules

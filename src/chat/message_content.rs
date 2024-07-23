@@ -1,5 +1,3 @@
-// region:    --- MessageContent
-
 /// For now, supports only Text,
 /// But the goal is to support multi-part message content (see below)
 #[derive(Debug, Clone)]
@@ -84,5 +82,3 @@ where
 // 	Base64(String)
 // }
 // ```
-
-// endregion: --- MessageContent

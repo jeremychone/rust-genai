@@ -1,5 +1,5 @@
+use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::utils::{print_chat_stream, PrintChatStreamOptions};
 use genai::Client;
 
 const MODEL_OPENAI: &str = "gpt-4o-mini";
