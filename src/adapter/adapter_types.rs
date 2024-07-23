@@ -1,5 +1,5 @@
 use crate::adapter::{AdapterConfig, AdapterKind};
-use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::Result;
 use crate::{ConfigSet, ModelInfo};
@@ -24,7 +24,7 @@ pub trait Adapter {
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData>;
 
 	/// To be implemented by Adapters
@@ -34,7 +34,7 @@ pub trait Adapter {
 	fn to_chat_stream(
 		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse>;
 }
 

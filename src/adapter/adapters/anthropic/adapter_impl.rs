@@ -2,7 +2,7 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
+	ChatRequest, ChatOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
 	MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
@@ -48,7 +48,7 @@ impl Adapter for AnthropicAdapter {
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let model_name = model_info.model_name.clone();
 
@@ -76,7 +76,7 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("system", system)?;
 		}
 
-		// -- Add supported ChatRequestOptions
+		// -- Add supported ChatOptions
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("temperature", temperature)?;
 		}
@@ -117,7 +117,7 @@ impl Adapter for AnthropicAdapter {
 	fn to_chat_stream(
 		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
 		let anthropic_stream = AnthropicStreamer::new(event_source, model_info, options_set);

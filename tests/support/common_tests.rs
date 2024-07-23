@@ -1,6 +1,6 @@
 use crate::get_option_value;
 use crate::support::{extract_stream_end, seed_chat_req_simple, Result};
-use genai::chat::ChatRequestOptions;
+use genai::chat::ChatOptions;
 use genai::Client;
 
 // region:    --- Chat
@@ -60,7 +60,7 @@ pub async fn common_test_chat_stream_simple_ok(model: &str) -> Result<()> {
 pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::builder()
-		.with_chat_request_options(ChatRequestOptions::default().with_capture_content(true))
+		.with_chat_options(ChatOptions::default().with_capture_content(true))
 		.build();
 	let chat_req = seed_chat_req_simple();
 
@@ -84,11 +84,7 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<(
 pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::builder()
-		.with_chat_request_options(
-			ChatRequestOptions::default()
-				.with_capture_usage(true)
-				.with_capture_content(true),
-		)
+		.with_chat_options(ChatOptions::default().with_capture_usage(true).with_capture_content(true))
 		.build();
 	let chat_req = seed_chat_req_simple();
 

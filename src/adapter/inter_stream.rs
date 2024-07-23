@@ -9,10 +9,10 @@ use crate::chat::MetaUsage;
 
 #[derive(Debug, Default)]
 pub struct InterStreamEnd {
-	// When `ChatRequestOptions..capture_usage == true`
+	// When `ChatOptions..capture_usage == true`
 	pub captured_usage: Option<MetaUsage>,
 
-	// When  `ChatRequestOptions..capture_content == true`
+	// When  `ChatOptions..capture_content == true`
 	pub captured_content: Option<String>,
 }
 

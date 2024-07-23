@@ -1,6 +1,6 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatRequestOptionsSet, MetaUsage};
+use crate::chat::{ChatOptionsSet, MetaUsage};
 use crate::support::value_ext::ValueExt;
 use crate::{Error, ModelInfo, Result};
 use reqwest_eventsource::{Event, EventSource};
@@ -19,7 +19,7 @@ pub struct AnthropicStreamer {
 }
 
 impl AnthropicStreamer {
-	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,

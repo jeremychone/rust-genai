@@ -2,8 +2,7 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
-	MetaUsage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
@@ -39,21 +38,13 @@ impl Adapter for OpenAIAdapter {
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
-		chat_req_options: ChatRequestOptionsSet<'_, '_>,
+		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		// -- api_key (this Adapter requires it)
 		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(
-			model_info,
-			url,
-			chat_req,
-			service_type,
-			chat_req_options,
-			&api_key,
-			false,
-		)
+		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, chat_options, &api_key, false)
 	}
 
 	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
@@ -71,7 +62,7 @@ impl Adapter for OpenAIAdapter {
 	fn to_chat_stream(
 		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
-		options_sets: ChatRequestOptionsSet<'_, '_>,
+		options_sets: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
 		let openai_stream = OpenAIStreamer::new(event_source, model_info, options_sets);
@@ -99,7 +90,7 @@ impl OpenAIAdapter {
 		url: String,
 		chat_req: ChatRequest,
 		service_type: ServiceType,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 		// -- utils args
 		api_key: &str,
 		ollama_variant: bool,
@@ -126,7 +117,7 @@ impl OpenAIAdapter {
 			payload.x_insert("stream_options", json!({"include_usage": true}))?;
 		}
 
-		// -- Add supported ChatRequestOptions
+		// -- Add supported ChatOptions
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("tdsemperature", temperature)?;
 		}

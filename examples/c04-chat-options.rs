@@ -1,4 +1,4 @@
-use genai::chat::{ChatMessage, ChatRequest, ChatRequestOptions};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
 use genai::utils::print_chat_stream;
 use genai::{Client, ClientConfig};
 
@@ -17,11 +17,11 @@ const MODEL: &str = "gemma:2b";
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let question = "Why is the sky red?";
 
-	// -- Global ChatRequestOptions
-	// Note: The ChatRequestOptions properties set at the client config level will be
+	// -- Global ChatOptions
+	// Note: The ChatOptions properties set at the client config level will be
 	//       the fallback value if not provided at the chat exec level.
-	let client_config = ClientConfig::default()
-		.with_chat_request_options(ChatRequestOptions::default().with_temperature(0.0).with_top_p(0.99));
+	let client_config =
+		ClientConfig::default().with_chat_options(ChatOptions::default().with_temperature(0.0).with_top_p(0.99));
 
 	// -- Build the new client with this client_config
 	let client = Client::builder().with_config(client_config).build();
@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);
 
 	// -- Build the chat request options (used per exec chat)
-	let options = ChatRequestOptions::default().with_max_tokens(1000);
+	let options = ChatOptions::default().with_max_tokens(1000);
 
 	// -- Exec and print
 	println!("\n--- Question:\n{question}");

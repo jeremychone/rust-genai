@@ -1,7 +1,7 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::ChatRequestOptionsSet;
+use crate::chat::ChatOptionsSet;
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebStream;
 use crate::{Error, ModelInfo, Result};
@@ -21,7 +21,7 @@ pub struct CohereStreamer {
 }
 
 impl CohereStreamer {
-	pub fn new(inner: WebStream, model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: WebStream, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,

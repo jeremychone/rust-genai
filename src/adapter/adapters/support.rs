@@ -1,7 +1,7 @@
 //! This support model is for common constructs and utilities for all of the adapter implementations.
 //! It should be private to the `crate::adapter::adapters` module.
 
-use crate::chat::{ChatRequestOptionsSet, MetaUsage};
+use crate::chat::{ChatOptionsSet, MetaUsage};
 use crate::ModelInfo;
 
 // region:    --- StreamerChatOptions
@@ -14,7 +14,7 @@ pub struct StreamerOptions {
 }
 
 impl StreamerOptions {
-	pub fn new(model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+	pub fn new(model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			capture_content: options_set.capture_content().unwrap_or(false),
 			capture_usage: options_set.capture_usage().unwrap_or(false),

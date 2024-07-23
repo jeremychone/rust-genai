@@ -4,7 +4,7 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::Result;
 use crate::{ConfigSet, ModelInfo};
@@ -53,7 +53,7 @@ impl Adapter for AdapterDispatcher {
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		match model_info.adapter_kind {
 			AdapterKind::OpenAI => {
@@ -91,7 +91,7 @@ impl Adapter for AdapterDispatcher {
 	fn to_chat_stream(
 		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		match model_info.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(model_info, reqwest_builder, options_set),

@@ -2,8 +2,7 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatRequest, ChatRequestOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
-	MetaUsage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
@@ -50,7 +49,7 @@ impl Adapter for GeminiAdapter {
 		config_set: &ConfigSet<'_>,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 
@@ -85,7 +84,7 @@ impl Adapter for GeminiAdapter {
 			)?;
 		}
 
-		// -- Add supported ChatRequestOptions
+		// -- Add supported ChatOptions
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("/generationConfig/temperature", temperature)?;
 		}
@@ -112,7 +111,7 @@ impl Adapter for GeminiAdapter {
 	fn to_chat_stream(
 		model_info: ModelInfo,
 		reqwest_builder: RequestBuilder,
-		options_set: ChatRequestOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_pretty_json_array(reqwest_builder);
 

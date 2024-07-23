@@ -1,11 +1,11 @@
-//! ChatRequestOptions is a struct that can be passed into the `client::exec_chat...` as the last argument
-//! to customize the request behavior per call.
-//! Note: Splitting it out of the `ChatRequest` object allows for better reusability of each component.
+//! ChatOptions allows to customize a chat request.
+//! - It can be given at the `client::exec_chat(..)` level as argument,
+//! - or set in the client config `client_config.with_chat_options(..)` to be taken as default by all requests
 //!
-//! IMPORTANT: These are not implemented yet, but here to show some of the directions and start having them part of the client APIs.
-
+//! Note 1: Later, we will probably allow to set the client
+//! Note 2: Splitting it out of the `ChatRequest` object allows for better reusability of each component.
 #[derive(Debug, Clone, Default)]
-pub struct ChatRequestOptions {
+pub struct ChatOptions {
 	/// Will be set for this request if Adapter/providers supports it.
 	pub temperature: Option<f64>,
 
@@ -26,7 +26,7 @@ pub struct ChatRequestOptions {
 }
 
 /// Chainable Setters
-impl ChatRequestOptions {
+impl ChatOptions {
 	/// Set the `temperature` for this request.
 	pub fn with_temperature(mut self, value: f64) -> Self {
 		self.temperature = Some(value);
@@ -58,26 +58,29 @@ impl ChatRequestOptions {
 	}
 }
 
-// region:    --- ChatRequestOptionsSet
+// region:    --- ChatOptionsSet
 
+/// This is an internal crate struct to resolve the ChatOptions value in a cascading manner.
+/// First, try to get the value at the chat level. (ChatOptions from the exec_chat...(...) argument)
+/// If value for the property not found, look at the client default one.
 #[derive(Default, Clone)]
-pub(crate) struct ChatRequestOptionsSet<'a, 'b> {
-	client: Option<&'a ChatRequestOptions>,
-	chat: Option<&'b ChatRequestOptions>,
+pub(crate) struct ChatOptionsSet<'a, 'b> {
+	client: Option<&'a ChatOptions>,
+	chat: Option<&'b ChatOptions>,
 }
 
-impl<'a, 'b> ChatRequestOptionsSet<'a, 'b> {
-	pub fn with_client_options(mut self, options: Option<&'a ChatRequestOptions>) -> Self {
+impl<'a, 'b> ChatOptionsSet<'a, 'b> {
+	pub fn with_client_options(mut self, options: Option<&'a ChatOptions>) -> Self {
 		self.client = options;
 		self
 	}
-	pub fn with_chat_options(mut self, options: Option<&'b ChatRequestOptions>) -> Self {
+	pub fn with_chat_options(mut self, options: Option<&'b ChatOptions>) -> Self {
 		self.chat = options;
 		self
 	}
 }
 
-impl ChatRequestOptionsSet<'_, '_> {
+impl ChatOptionsSet<'_, '_> {
 	pub fn temperature(&self) -> Option<f64> {
 		self.chat
 			.and_then(|chat| chat.temperature)
@@ -110,4 +113,4 @@ impl ChatRequestOptionsSet<'_, '_> {
 	}
 }
 
-// endregion: --- ChatRequestOptionsSet
+// endregion: --- ChatOptionsSet

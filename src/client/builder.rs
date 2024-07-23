@@ -1,5 +1,5 @@
 use crate::adapter::{AdapterConfig, AdapterKind};
-use crate::chat::ChatRequestOptions;
+use crate::chat::ChatOptions;
 use crate::resolver::AdapterKindResolver;
 use crate::webc::WebClient;
 use crate::{Client, ClientConfig};
@@ -34,25 +34,17 @@ impl ClientBuilder {
 			.insert(kind, adapter_config);
 		self
 	}
-
-	/// Set ChatRequestOptions that will be used when executing each request.
-	/// Each property (e.g., `temperature`, `max_tokens`) will be used if defined.
-	/// The per-request ChatRequestOptions properties will take precedence if set.
-	pub fn with_default_chat_request_options(mut self, default_chat_request_options: ChatRequestOptions) -> Self {
-		self.config = Some(ClientConfig::default().with_chat_request_options(default_chat_request_options));
-		self
-	}
 }
 
 /// Builder ClientConfig passthrough convenient setters
 /// The goal of those functions is to set nested value such as ClientConfig.
 impl ClientBuilder {
-	/// Set the ChatRequestOptions for the ClientConfig of this ClientBuilder.
+	/// Set the ChatOptions for the ClientConfig of this ClientBuilder.
 	/// Will create the ClientConfig if not present.
-	/// Otherwise, will just set the `client_config.chat_request_options`
-	pub fn with_chat_request_options(mut self, options: ChatRequestOptions) -> Self {
+	/// Otherwise, will just set the `client_config.chat_options`
+	pub fn with_chat_options(mut self, options: ChatOptions) -> Self {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
-		client_config.chat_request_options = Some(options);
+		client_config.chat_options = Some(options);
 		self
 	}
 

@@ -2,7 +2,7 @@ use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::AdapterKind;
-use crate::chat::ChatRequestOptionsSet;
+use crate::chat::ChatOptionsSet;
 use crate::support::value_ext::ValueExt;
 use crate::{Error, ModelInfo, Result};
 use reqwest_eventsource::{Event, EventSource};
@@ -21,8 +21,8 @@ pub struct OpenAIStreamer {
 }
 
 impl OpenAIStreamer {
-	// TODO: Problen need the ChatRequestOptions `.capture_content` `.capture_usage`
-	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatRequestOptionsSet<'_, '_>) -> Self {
+	// TODO: Problen need the ChatOptions `.capture_content` `.capture_usage`
+	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,

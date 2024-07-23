@@ -1,5 +1,5 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatRequestOptions, ChatRequestOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptions, ChatRequest, ChatOptionsSet, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
 use crate::{ConfigSet, Error, ModelInfo, Result};
 
@@ -45,7 +45,7 @@ impl Client {
 		model: &str,
 		chat_req: ChatRequest,
 		// options not implemented yet
-		options: Option<&ChatRequestOptions>,
+		options: Option<&ChatOptions>,
 	) -> Result<ChatResponse> {
 		let model_info = self.resolve_model_info(model)?;
 
@@ -57,9 +57,9 @@ impl Client {
 
 		let config_set = ConfigSet::new(self.config(), adapter_config);
 
-		let options_set = ChatRequestOptionsSet::default()
+		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
-			.with_client_options(self.config().chat_request_options());
+			.with_client_options(self.config().chat_options());
 
 		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
 			model_info.clone(),
@@ -87,7 +87,7 @@ impl Client {
 		&self,
 		model: &str,
 		chat_req: ChatRequest, // options not implemented yet
-		options: Option<&ChatRequestOptions>,
+		options: Option<&ChatOptions>,
 	) -> Result<ChatStreamResponse> {
 		let model_info = self.resolve_model_info(model)?;
 		let adapter_kind = model_info.adapter_kind;
@@ -98,9 +98,9 @@ impl Client {
 
 		let config_set = ConfigSet::new(self.config(), adapter_config);
 
-		let options_set = ChatRequestOptionsSet::default()
+		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
-			.with_client_options(self.config().chat_request_options());
+			.with_client_options(self.config().chat_options());
 
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
 			model_info.clone(),
