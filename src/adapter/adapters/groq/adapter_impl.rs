@@ -1,7 +1,7 @@
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::support::get_api_key_resolver;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::Result;
 use crate::{ConfigSet, ModelInfo};
@@ -12,11 +12,16 @@ pub struct GroqAdapter;
 
 const BASE_URL: &str = "https://api.groq.com/openai/v1/";
 pub(in crate::adapter) const MODELS: &[&str] = &[
-	"llama3-8b-8192",
-	"llama3-70b-8192",
+	"llama-3.1-405b-reasoning",
+	"llama-3.1-70b-versatile",
+	"llama-3.1-8b-instant",
 	"mixtral-8x7b-32768",
 	"gemma-7b-it",
 	"gemma2-9b-it",
+	"llama3-groq-70b-8192-tool-use-preview",
+	"llama3-groq-8b-8192-tool-use-preview",
+	"llama3-8b-8192",
+	"llama3-70b-8192",
 	// "whisper-large-v3", // This is not a chat completion model
 ];
 
