@@ -19,7 +19,6 @@ pub enum Error {
 		model_info: ModelInfo,
 		role: ChatRole,
 	},
-	JsonModeWithoutInstruction,
 
 	// -- Chat Output
 	NoChatResponse {

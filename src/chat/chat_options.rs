@@ -24,7 +24,12 @@ pub struct ChatOptions {
 	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_content`
 	pub capture_content: Option<bool>,
 
-	/// Enable JSON mode for supported models
+	/// Enable JSON mode for supported models (OpenAI and Groq)
+	///
+	/// IMPORTANT: When using JSON mode, you must also instruct the model to produce JSON via a
+	/// system or user message. Without this instruction, the model may generate an unending
+	/// stream of whitespace until the generation reaches the token limit, resulting in a
+	/// long-running and seemingly "stuck" request.
 	pub json_mode: Option<bool>,
 }
 
