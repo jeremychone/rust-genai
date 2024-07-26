@@ -50,7 +50,7 @@ impl Adapter for GroqAdapter {
 		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, &api_key, false)
+		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, &api_key)
 	}
 
 	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
