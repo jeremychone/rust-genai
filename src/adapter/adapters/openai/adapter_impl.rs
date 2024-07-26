@@ -146,6 +146,7 @@ impl OpenAIAdapter {
 	/// Takes the genai ChatMessages and build the OpenAIChatRequestParts
 	/// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
 	/// - All messages get added with the corresponding roles (does not support tools for now)
+	///
 	/// NOTE: here, the last `true` is for the ollama variant
 	///       It seems the Ollama compaitiblity layer does not work well with multiple System message.
 	///       So, when `true`, it will concatenate the system message as a single on at the beginning
