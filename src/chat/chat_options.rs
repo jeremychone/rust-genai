@@ -23,6 +23,9 @@ pub struct ChatOptions {
 	/// (for stream only) Capture/concatenate the full message content from all content chunk
 	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_content`
 	pub capture_content: Option<bool>,
+
+	/// Enable JSON mode for supported models
+	pub json_mode: Option<bool>,
 }
 
 /// Chainable Setters
@@ -54,6 +57,12 @@ impl ChatOptions {
 	/// Set the `capture_content` for this request.
 	pub fn with_capture_content(mut self, value: bool) -> Self {
 		self.capture_content = Some(value);
+		self
+	}
+
+	/// Set the `json_mode` for this request.
+	pub fn with_json_mode(mut self, value: bool) -> Self {
+		self.json_mode = Some(value);
 		self
 	}
 }
@@ -110,6 +119,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.capture_content)
 			.or_else(|| self.client.and_then(|client| client.capture_content))
+	}
+
+	pub fn json_mode(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.json_mode)
+			.or_else(|| self.client.and_then(|client| client.json_mode))
 	}
 }
 

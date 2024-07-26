@@ -1,7 +1,6 @@
 use crate::adapter::AdapterKind;
 use crate::chat::ChatRole;
-use crate::ModelInfo;
-use crate::{resolver, webc};
+use crate::{resolver, webc, ModelInfo};
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -20,6 +19,7 @@ pub enum Error {
 		model_info: ModelInfo,
 		role: ChatRole,
 	},
+	JsonModeWithoutInstruction,
 
 	// -- Chat Output
 	NoChatResponse {
