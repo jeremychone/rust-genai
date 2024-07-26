@@ -116,9 +116,11 @@ impl OpenAIAdapter {
 			payload["response_format"] = json!({"type": "json_object"});
 
 			// Check if "JSON" appears in the context
-			let json_in_context = messages
-				.iter()
-				.any(|msg| msg["content"].as_str().map_or(false, |content| content.contains("JSON")));
+			let json_in_context = messages.iter().any(|msg| {
+				msg["content"]
+					.as_str()
+					.map_or(false, |content| content.to_lowercase().contains("json"))
+			});
 
 			if !json_in_context {
 				return Err(Error::JsonModeWithoutInstruction);
