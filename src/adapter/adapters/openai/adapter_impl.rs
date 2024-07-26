@@ -6,8 +6,7 @@ use crate::chat::{
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
-use crate::{ConfigSet, ModelInfo};
-use crate::{Error, Result};
+use crate::{ConfigSet, Error, ModelInfo, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -111,6 +110,20 @@ impl OpenAIAdapter {
 			"messages": messages,
 			"stream": stream
 		});
+
+		// -- Add options
+		if let Some(true) = options_set.json_mode() {
+			payload["response_format"] = json!({"type": "json_object"});
+
+			// Check if "JSON" appears in the context
+			let json_in_context = messages
+				.iter()
+				.any(|msg| msg["content"].as_str().map_or(false, |content| content.contains("JSON")));
+
+			if !json_in_context {
+				return Err(Error::JsonModeWithoutInstruction);
+			}
+		}
 
 		// --
 		if stream & options_set.capture_usage().unwrap_or(false) {
