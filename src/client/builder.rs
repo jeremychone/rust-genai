@@ -29,6 +29,7 @@ impl ClientBuilder {
 	}
 
 	pub fn insert_adapter_config(mut self, kind: AdapterKind, adapter_config: AdapterConfig) -> Self {
+		let adapter_config = adapter_config.with_pass_through_auth();
 		self.apapter_config_by_kind
 			.get_or_insert_with(HashMap::new)
 			.insert(kind, adapter_config);
@@ -54,6 +55,24 @@ impl ClientBuilder {
 	pub fn with_adapter_kind_resolver(mut self, resolver: AdapterKindResolver) -> Self {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
 		client_config.adapter_kind_resolver = Some(resolver);
+		self
+	}
+
+	/// Set the default model for the ClientConfig of this ClientBuilder.
+	/// Will create the ClientConfig if not present.
+	/// Otherwise, will just set the `client_config.default_model`
+	pub fn with_default_model(mut self, model: impl Into<String>) -> Self {
+		let config = self.config.get_or_insert_with(ClientConfig::default);
+		config.default_model = Some(model.into());
+		self
+	}
+
+	/// Set the default API key for the ClientConfig of this ClientBuilder.
+	/// Will create the ClientConfig if not present.
+	/// Otherwise, will just set the `client_config.default_api_key`
+	pub fn with_default_api_key(mut self, api_key: impl Into<String>) -> Self {
+		let config = self.config.get_or_insert_with(ClientConfig::default);
+		config.default_api_key = Some(api_key.into());
 		self
 	}
 }

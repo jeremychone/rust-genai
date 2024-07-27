@@ -1,9 +1,8 @@
 use genai::adapter::{AdapterConfig, AdapterKind};
+use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::{AuthData, AuthResolver};
-use genai::chat::printer::print_chat_stream;
-use genai::Client;
-use genai::ConfigSet;
+use genai::{Client, ConfigSet};
 
 const MODEL: &str = "gpt-4o-mini";
 
@@ -38,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		chat_req = chat_req.append_message(ChatMessage::user(question));
 
 		println!("\n--- Question:\n{question}");
-		let chat_res = client.exec_chat_stream(MODEL, chat_req.clone(), None).await?;
+		let chat_res = client.exec_chat_stream(Some(MODEL), chat_req.clone(), None).await?;
 
 		println!("\n--- Answer: (streaming)");
 		let assistant_answer = print_chat_stream(chat_res, None).await?;

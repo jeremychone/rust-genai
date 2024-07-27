@@ -1,5 +1,5 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatOptions, ChatRequest, ChatOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
 use crate::{ConfigSet, Error, ModelInfo, Result};
 
@@ -42,11 +42,12 @@ impl Client {
 	/// Execute a chat
 	pub async fn exec_chat(
 		&self,
-		model: &str,
+		model: Option<&str>,
 		chat_req: ChatRequest,
 		// options not implemented yet
 		options: Option<&ChatOptions>,
 	) -> Result<ChatResponse> {
+		let model = model.or(self.default_model()).ok_or(Error::NoModelProvided)?;
 		let model_info = self.resolve_model_info(model)?;
 
 		let adapter_kind = model_info.adapter_kind;
@@ -85,10 +86,11 @@ impl Client {
 
 	pub async fn exec_chat_stream(
 		&self,
-		model: &str,
+		model: Option<&str>,
 		chat_req: ChatRequest, // options not implemented yet
 		options: Option<&ChatOptions>,
 	) -> Result<ChatStreamResponse> {
+		let model = model.or(self.default_model()).ok_or(Error::NoModelProvided)?;
 		let model_info = self.resolve_model_info(model)?;
 		let adapter_kind = model_info.adapter_kind;
 

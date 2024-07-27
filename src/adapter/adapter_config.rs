@@ -19,6 +19,12 @@ impl AdapterConfig {
 		self.auth_resolver = Some(AuthResolver::from_env_name(auth_env_name));
 		self
 	}
+
+	/// Convenient setter to set a pass through AuthResolver
+	pub fn with_pass_through_auth(mut self) -> Self {
+		self.auth_resolver = Some(AuthResolver::pass_through());
+		self
+	}
 }
 
 /// Getters (as ref/deref)

@@ -35,6 +35,12 @@ impl AuthResolver {
 			inner: AuthResolverInner::SyncResolverFn(resolver_fn.into_sync_resolver_fn()),
 		}
 	}
+
+	pub fn pass_through() -> Self {
+		AuthResolver {
+			inner: AuthResolverInner::PassThrough,
+		}
+	}
 }
 
 // region:    --- AuthDataProvider & IntoAuthDataProvider
@@ -90,6 +96,7 @@ impl AuthResolver {
 			AuthResolverInner::SyncResolverFn(sync_provider) => {
 				sync_provider.exec_sync_resolver_fn(adapter_kind, config_set)
 			}
+			AuthResolverInner::PassThrough => Ok(None),
 		}
 	}
 }
@@ -98,6 +105,7 @@ enum AuthResolverInner {
 	EnvName(String),
 	Fixed(AuthData),
 	SyncResolverFn(Arc<dyn SyncAuthResolverFn>),
+	PassThrough,
 }
 
 // impl debug for AuthResolverInner
@@ -107,6 +115,7 @@ impl std::fmt::Debug for AuthResolverInner {
 			AuthResolverInner::EnvName(env_name) => write!(f, "AuthResolverInner::EnvName({})", env_name),
 			AuthResolverInner::Fixed(auth_data) => write!(f, "AuthResolverInner::Fixed({:?})", auth_data),
 			AuthResolverInner::SyncResolverFn(_) => write!(f, "AuthResolverInner::FnSync(...)"),
+			AuthResolverInner::PassThrough => write!(f, "AuthResolverInner::PassThrough"),
 		}
 	}
 }

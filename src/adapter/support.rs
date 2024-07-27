@@ -1,5 +1,4 @@
-use crate::{ConfigSet, ModelInfo};
-use crate::{Error, Result};
+use crate::{ConfigSet, Error, ModelInfo, Result};
 
 /// Returns the `api_key` value from the config_set auth_resolver
 /// This function should be called if the adapter must have a api_key
@@ -17,18 +16,21 @@ pub(crate) fn get_api_key_resolver(model_info: ModelInfo, config_set: &ConfigSet
 		.map_err(|resolver_error| Error::Resolver {
 			model_info: model_info.clone(),
 			resolver_error,
-		})?
-		.ok_or_else(|| Error::AuthResolverNoAuthData {
-			model_info: model_info.clone(),
 		})?;
 
-	let key = auth_data
-		.single_value()
-		.map_err(|resolver_error| Error::Resolver {
-			model_info,
-			resolver_error,
-		})?
-		.to_string();
-
-	Ok(key)
+	// If auth_data is None, try to use the default API key from the client config
+	match auth_data {
+		Some(auth_data) => auth_data
+			.single_value()
+			.map_err(|resolver_error| Error::Resolver {
+				model_info,
+				resolver_error,
+			})
+			.map(|s| s.to_string()),
+		None => config_set
+			.client_config()
+			.default_api_key()
+			.map(|s| s.to_string())
+			.ok_or_else(|| Error::AuthResolverNoAuthData { model_info }),
+	}
 }

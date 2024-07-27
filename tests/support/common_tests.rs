@@ -11,7 +11,7 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
-	let chat_res = client.exec_chat(model, chat_req, None).await?;
+	let chat_res = client.exec_chat(Some(model), chat_req, None).await?;
 
 	// -- Check
 	assert!(
@@ -42,7 +42,7 @@ pub async fn common_test_chat_stream_simple_ok(model: &str) -> Result<()> {
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
-	let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
+	let chat_res = client.exec_chat_stream(Some(model), chat_req.clone(), None).await?;
 
 	// -- Check StreamEnd
 	let stream_end = extract_stream_end(chat_res.stream).await?;
@@ -65,7 +65,7 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<(
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
-	let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
+	let chat_res = client.exec_chat_stream(Some(model), chat_req.clone(), None).await?;
 
 	// -- Check StreamEnd
 	let stream_end = extract_stream_end(chat_res.stream).await?;
@@ -89,7 +89,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
-	let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
+	let chat_res = client.exec_chat_stream(Some(model), chat_req.clone(), None).await?;
 
 	// -- Check StreamEnd
 	let stream_end = extract_stream_end(chat_res.stream).await?;

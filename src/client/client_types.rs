@@ -41,6 +41,10 @@ impl Client {
 	pub(crate) fn custom_adapter_config(&self, adapter_kind: AdapterKind) -> Option<&AdapterConfig> {
 		self.inner.apapter_config_by_kind.as_ref()?.get(&adapter_kind)
 	}
+
+	pub(crate) fn default_model(&self) -> Option<&str> {
+		self.inner.config.default_model()
+	}
 }
 
 // endregion: --- Client Getters
