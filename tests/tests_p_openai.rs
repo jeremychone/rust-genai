@@ -13,6 +13,11 @@ async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL).await
 }
 
+#[tokio::test]
+async fn test_chat_json_ok() -> Result<()> {
+	common_tests::common_test_chat_json_ok(MODEL, true).await
+}
+
 // endregion: --- Chat
 
 // region:    --- Chat Stream Tests
