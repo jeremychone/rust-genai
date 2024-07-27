@@ -20,6 +20,7 @@ pub enum Error {
 		role: ChatRole,
 	},
 	NoModelProvided,
+	JsonModeWithoutInstruction,
 
 	// -- Chat Output
 	NoChatResponse {

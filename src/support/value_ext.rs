@@ -2,7 +2,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
 
-#[allow(unused)]
 pub trait ValueExt {
 	/// Will return the value T for a given name/pointer path.
 	/// - `name` - can be the direct name, or pointer path if starts with '/'
@@ -18,6 +17,7 @@ pub trait ValueExt {
 	fn x_insert<T: Serialize>(&mut self, name: &str, value: T) -> Result<()>;
 
 	/// Return the pretty_print string for this json value
+	#[allow(unused)]
 	fn x_pretty(&self) -> Result<String>;
 }
 

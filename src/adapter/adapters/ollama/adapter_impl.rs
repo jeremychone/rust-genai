@@ -2,7 +2,7 @@
 
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatRequest, ChatOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::{ConfigSet, ModelInfo};
@@ -65,7 +65,7 @@ impl Adapter for OllamaAdapter {
 	) -> Result<WebRequestData> {
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, "ollama", true)
+		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, "ollama")
 	}
 
 	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {

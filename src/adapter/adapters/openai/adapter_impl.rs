@@ -44,7 +44,7 @@ impl Adapter for OpenAIAdapter {
 		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, chat_options, &api_key, false)
+		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, chat_options, &api_key)
 	}
 
 	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
@@ -93,7 +93,6 @@ impl OpenAIAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 		// -- utils args
 		api_key: &str,
-		ollama_variant: bool,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
@@ -105,12 +104,17 @@ impl OpenAIAdapter {
 
 		// -- Build the basic payload
 		let model_name = model_info.model_name.to_string();
-		let OpenAIRequestParts { messages } = Self::into_openai_messages(model_info, chat_req, ollama_variant)?;
+		let OpenAIRequestParts { messages } = Self::into_openai_request_parts(model_info, chat_req)?;
 		let mut payload = json!({
 			"model": model_name,
 			"messages": messages,
 			"stream": stream
 		});
+
+		// -- Add options
+		if let Some(true) = options_set.json_mode() {
+			payload["response_format"] = json!({"type": "json_object"});
+		}
 
 		// --
 		if stream & options_set.capture_usage().unwrap_or(false) {
@@ -146,16 +150,15 @@ impl OpenAIAdapter {
 	/// Takes the genai ChatMessages and build the OpenAIChatRequestParts
 	/// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
 	/// - All messages get added with the corresponding roles (does not support tools for now)
+	///
 	/// NOTE: here, the last `true` is for the ollama variant
 	///       It seems the Ollama compaitiblity layer does not work well with multiple System message.
 	///       So, when `true`, it will concatenate the system message as a single on at the beginning
-	fn into_openai_messages(
-		model_info: ModelInfo,
-		chat_req: ChatRequest,
-		ollama_variant: bool,
-	) -> Result<OpenAIRequestParts> {
+	fn into_openai_request_parts(model_info: ModelInfo, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut system_messages: Vec<String> = Vec::new();
 		let mut messages: Vec<Value> = Vec::new();
+
+		let ollama_variant = matches!(model_info.adapter_kind, AdapterKind::Ollama);
 
 		if let Some(system_msg) = chat_req.system {
 			if ollama_variant {
