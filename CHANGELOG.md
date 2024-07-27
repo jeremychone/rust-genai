@@ -1,9 +1,17 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.5"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.6"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-07-26 - `0.1.6`
+
+- `+` ChatOption Add json mode for openai type models
+- `.` groq - added the Llama 3.1 previews, and grog-..-tool-use.. to the groq model list names
+- `!` now `chat::printer::print_chat_stream` (was `utils::print_chat_stream`)
+- `!` Now `ChatOptions` (was `ChatRequestOptions`) ! Remove `client_builder.with_default_chat_request_options` (available with `client_builder.with_chat_options`)
+- `.` readme - add youtube videos doc
 
 ## 2024-07-21 - `0.1.5`
 
