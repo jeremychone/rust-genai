@@ -50,7 +50,7 @@ pub async fn common_test_chat_json_ok(model: &str, test_token: bool) -> Result<(
 	let chat_options = ChatOptions::default().with_json_mode(true);
 
 	// -- Exec
-	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
+	let chat_res = client.exec_chat(Some(model), chat_req, Some(&chat_options)).await?;
 
 	// -- Check
 	// Make sure tokens still get counted
