@@ -126,3 +126,31 @@ impl std::error::Error for Error {}
 // endregion: --- Error Boilerplate
 
 // endregion: --- Error
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	type Error = Box<dyn std::error::Error>;
+	type Result<T> = core::result::Result<T, Error>; // For tests.
+
+	use super::*;
+
+	#[tokio::test]
+	async fn test_value_insert_ok() -> Result<()> {
+		// -- Setup & Fixtures
+		let mut value = json!({"tokens": 3});
+		let fx_node_value = "hello";
+
+		// -- Exec
+		value.x_insert("/happy/word", fx_node_value)?;
+
+		// -- Check
+		let actual_value: String = value.x_get("/happy/word")?;
+		assert_eq!(actual_value.as_str(), fx_node_value);
+
+		Ok(())
+	}
+}
+
+// endregion: --- Tests
