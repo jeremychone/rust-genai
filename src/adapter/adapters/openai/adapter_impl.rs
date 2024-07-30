@@ -123,7 +123,7 @@ impl OpenAIAdapter {
 
 		// -- Add supported ChatOptions
 		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("tdsemperature", temperature)?;
+			payload.x_insert("temperature", temperature)?;
 		}
 		if let Some(max_tokens) = options_set.max_tokens() {
 			payload.x_insert("max_tokens", max_tokens)?;
