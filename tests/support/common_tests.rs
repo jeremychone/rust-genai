@@ -71,6 +71,24 @@ pub async fn common_test_chat_json_ok(model: &str, test_token: bool) -> Result<(
 	Ok(())
 }
 
+pub async fn common_test_chat_temperature_ok(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = seed_chat_req_simple();
+	let chat_options = ChatOptions::default().with_temperature(0.);
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
+
+	// -- Check
+	assert!(
+		!chat_res.content_text_as_str().unwrap_or("").is_empty(),
+		"Content should not be empty"
+	);
+
+	Ok(())
+}
+
 // endregion: --- Chat
 
 // region:    --- Chat Stream Tests
