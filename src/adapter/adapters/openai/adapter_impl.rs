@@ -152,7 +152,7 @@ impl OpenAIAdapter {
 	/// - All messages get added with the corresponding roles (does not support tools for now)
 	///
 	/// NOTE: here, the last `true` is for the ollama variant
-	///       It seems the Ollama compaitiblity layer does not work well with multiple System message.
+	///       It seems the Ollama compatibility layer does not work well with multiple System message.
 	///       So, when `true`, it will concatenate the system message as a single on at the beginning
 	fn into_openai_request_parts(model_info: ModelInfo, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut system_messages: Vec<String> = Vec::new();
@@ -175,7 +175,7 @@ impl OpenAIAdapter {
 			match msg.role {
 				// for now, system and tool goes to system
 				ChatRole::System => {
-					// see note in the funtion comment
+					// see note in the function comment
 					if ollama_variant {
 						system_messages.push(content);
 					} else {

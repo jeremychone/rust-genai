@@ -21,7 +21,7 @@ pub struct OpenAIStreamer {
 }
 
 impl OpenAIStreamer {
-	// TODO: Problen need the ChatOptions `.capture_content` `.capture_usage`
+	// TODO: Problem need the ChatOptions `.capture_content` `.capture_usage`
 	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
@@ -119,7 +119,7 @@ impl futures::Stream for OpenAIStreamer {
 							&& self.options.capture_usage
 						{
 							let usage = message_data.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default(); // premissive for now
-							self.captured_data.usage = Some(usage); // premissive for now
+							self.captured_data.usage = Some(usage); // permissive for now
 						}
 					}
 				}

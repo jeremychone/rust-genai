@@ -10,7 +10,7 @@ pub struct Client {
 	pub(super) inner: Arc<ClientInner>,
 }
 
-// region:    --- Client Construstors
+// region:    --- Client C'o'n's't'r'u'c't'o'r's
 
 impl Default for Client {
 	fn default() -> Self {
@@ -24,7 +24,7 @@ impl Client {
 	}
 }
 
-// endregion: --- Client Construstors
+// endregion: --- Client Constructors
 
 // region:    --- Client Getters
 
@@ -39,7 +39,7 @@ impl Client {
 
 	/// Returns the eventual custom AdapterConfig that has been set for this client (in the builder phase)
 	pub(crate) fn custom_adapter_config(&self, adapter_kind: AdapterKind) -> Option<&AdapterConfig> {
-		self.inner.apapter_config_by_kind.as_ref()?.get(&adapter_kind)
+		self.inner.adapter_config_by_kind.as_ref()?.get(&adapter_kind)
 	}
 }
 
@@ -50,7 +50,7 @@ impl Client {
 #[derive(Debug)]
 pub(super) struct ClientInner {
 	#[allow(unused)]
-	pub(super) apapter_config_by_kind: Option<HashMap<AdapterKind, AdapterConfig>>,
+	pub(super) adapter_config_by_kind: Option<HashMap<AdapterKind, AdapterConfig>>,
 
 	pub(super) web_client: WebClient,
 

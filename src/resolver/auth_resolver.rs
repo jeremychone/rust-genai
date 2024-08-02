@@ -4,7 +4,7 @@
 //! - Contain a fixed auth value,
 //! - Contain an `AuthResolverFnSync` trait object or closure that will be called to return the AuthData.
 //!
-//! Note: AuthData is typically a single value but can be Multi for future adapters (e.g., AWS Berock).
+//! Note: AuthData is typically a single value but can be Multi for future adapters (e.g., AWS Bedrock).
 
 use crate::adapter::AdapterKind;
 use crate::resolver::{Error, Result};

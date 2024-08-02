@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::default();
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
-	// Similar to put a first System Chat Message(s) (will be cummulative with sytem chat messages)
+	// Similar to putting a first System Chat Message(s) (will be cumulative with system chat messages)
 
 	for &question in questions {
 		chat_req = chat_req.append_message(ChatMessage::user(question));

@@ -124,7 +124,7 @@ impl Adapter for GeminiAdapter {
 
 // region:    --- Support
 
-/// Suppot GeminiAdapter functions
+/// Support GeminiAdapter functions
 impl GeminiAdapter {
 	pub(super) fn body_to_gemini_chat_response(model_info: &ModelInfo, mut body: Value) -> Result<GeminiChatResponse> {
 		// if the body has a `error` property, then, it is assumed to be an error
@@ -174,7 +174,7 @@ impl GeminiAdapter {
 			let MessageContent::Text(content) = msg.content;
 
 			match msg.role {
-				// for now, system go as "user" (later, we might have adapter_config.system_to_user_tmpl)
+				// for now, system go as "user" (later, we might have adapter_config.system_to_user_impl)
 				ChatRole::System => systems.push(content),
 				ChatRole::User => contents.push(json! ({"role": "user", "parts": [{"text": content}]})),
 				ChatRole::Assistant => contents.push(json! ({"role": "model", "parts": [{"text": content}]})),
@@ -197,7 +197,7 @@ impl GeminiAdapter {
 	}
 }
 
-// stuct Gemini
+// struct Gemini
 
 pub(super) struct GeminiChatResponse {
 	pub content: Option<String>,

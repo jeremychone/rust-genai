@@ -10,8 +10,8 @@ pub enum AdapterKind {
 	Cohere,
 	Gemini,
 	Groq,
-	// Note: Variants will probalby be suffixed
-	// AnthropicBerock,
+	// Note: Variants will probably be suffixed
+	// AnthropicBedrock,
 }
 
 /// Serialization impls

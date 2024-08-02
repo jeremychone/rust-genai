@@ -50,7 +50,7 @@ pub enum ServiceType {
 
 // region:    --- WebRequestData
 
-// NOTE: This cannot really move to `webc` bcause it has to be public with the adapter and `webc` is private for now.
+// NOTE: This cannot really move to `webc` because it has to be public with the adapter and `webc` is private for now.
 
 pub struct WebRequestData {
 	pub url: String,

@@ -9,10 +9,10 @@ pub struct ChatOptions {
 	/// Will be set for this request if Adapter/providers supports it.
 	pub temperature: Option<f64>,
 
-	/// Will be set of this request if Adaptper/provider supports it.
+	/// Will be set of this request if Adapter/provider supports it.
 	pub max_tokens: Option<u32>,
 
-	/// Will be set of this request if Adaptper/provider supports it.
+	/// Will be set of this request if Adapter/provider supports it.
 	pub top_p: Option<f64>,
 
 	/// (for steam only) Capture the meta usage when in stream mode

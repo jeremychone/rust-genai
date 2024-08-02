@@ -1,4 +1,4 @@
-//! This module contains all the types related to a Chat Reponse (except ChatStream which has it file).
+//! This module contains all the types related to a Chat Response (except ChatStream which has it file).
 
 use crate::chat::{ChatStream, MessageContent};
 
@@ -13,13 +13,13 @@ pub struct ChatResponse {
 // Getters
 impl ChatResponse {
 	/// Returns the eventual content as `&str` if it is of type `MessageContent::Text`
-	/// Ohterwise, return None
+	/// Otherwise, return None
 	pub fn content_text_as_str(&self) -> Option<&str> {
 		self.content.as_ref().and_then(MessageContent::text_as_str)
 	}
 
 	/// Consume the ChatResponse and returns the eventual String content of the `MessageContent::Text`
-	/// Ohterwise, return None
+	/// Otherwise, return None
 	pub fn content_text_into_string(self) -> Option<String> {
 		self.content.and_then(MessageContent::text_into_string)
 	}

@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Default)]
 pub struct ClientBuilder {
-	apapter_config_by_kind: Option<HashMap<AdapterKind, AdapterConfig>>,
+	adapter_config_by_kind: Option<HashMap<AdapterKind, AdapterConfig>>,
 
 	web_client: Option<WebClient>,
 
@@ -29,7 +29,7 @@ impl ClientBuilder {
 	}
 
 	pub fn insert_adapter_config(mut self, kind: AdapterKind, adapter_config: AdapterConfig) -> Self {
-		self.apapter_config_by_kind
+		self.adapter_config_by_kind
 			.get_or_insert_with(HashMap::new)
 			.insert(kind, adapter_config);
 		self
@@ -64,7 +64,7 @@ impl ClientBuilder {
 		let inner = super::ClientInner {
 			web_client: self.web_client.unwrap_or_default(),
 			config: self.config.unwrap_or_default(),
-			apapter_config_by_kind: self.apapter_config_by_kind,
+			adapter_config_by_kind: self.adapter_config_by_kind,
 		};
 		Client { inner: Arc::new(inner) }
 	}

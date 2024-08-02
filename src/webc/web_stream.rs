@@ -124,7 +124,7 @@ impl Stream for WebStream {
 							this.partial_message = Some(candidate_message);
 						}
 
-						// -- If we have a furst message, we nave to send it.
+						// -- If we have a first message, we have to send it.
 						if let Some(first_message) = first_message.take() {
 							return Poll::Ready(Some(Ok(first_message)));
 						} else {
@@ -170,7 +170,7 @@ struct BuffResponse {
 ///
 /// IMPORTANT: Right now, it assumes each buff_string will contain the full main json object
 ///            for each array item (Which seems to be the case with Gemini)
-///            This probaby need to be made more robust later
+///            This probably need to be made more robust later
 fn new_with_pretty_json_array(
 	buff_string: String,
 	_partial_message: &mut Option<String>,
@@ -179,7 +179,7 @@ fn new_with_pretty_json_array(
 
 	let mut messages: Vec<String> = Vec::new();
 
-	// -- Capther the array start/end and each eventual sub object (assuming only one sub objecct)
+	// -- Capture the array start/end and each eventual sub object (assuming only one sub object)
 	let (array_start, rest_str) = match buff_str.strip_prefix('[') {
 		Some(rest) => (Some("["), rest.trim()),
 		None => (None, buff_str),
@@ -240,10 +240,10 @@ fn process_buff_string_delimited(
 
 	for part in parts {
 		// if we already have a candidate, the candidate become the message
-		if let Some(canditate_message) = candidate_message.take() {
-			// if canditate is empty, we skip
-			if !canditate_message.is_empty() {
-				let message = canditate_message.to_string();
+		if let Some(candidate_message) = candidate_message.take() {
+			// if candidate is empty, we skip
+			if !candidate_message.is_empty() {
+				let message = candidate_message.to_string();
 				if first_message.is_none() {
 					first_message = Some(message);
 				} else {
