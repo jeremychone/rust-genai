@@ -11,7 +11,6 @@
 
 mod support;
 
-mod adapter_config;
 mod adapter_kind;
 mod adapter_types;
 mod adapters;
@@ -23,7 +22,6 @@ use adapters::*;
 pub(crate) use adapter_types::*;
 pub(crate) use dispatcher::*;
 
-pub use adapter_config::*;
 pub use adapter_kind::*;
 
 // -- Crate modules

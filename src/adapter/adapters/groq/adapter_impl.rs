@@ -1,12 +1,10 @@
 use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::Result;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelInfo};
 use reqwest::RequestBuilder;
-use std::sync::OnceLock;
 
 pub struct GroqAdapter;
 
@@ -27,13 +25,12 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 
 // The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
 impl Adapter for GroqAdapter {
-	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
-		Ok(MODELS.iter().map(|s| s.to_string()).collect())
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("GROQ_API_KEY")
 	}
 
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("GROQ_API_KEY"))
+	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
+		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
 	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
@@ -42,15 +39,14 @@ impl Adapter for GroqAdapter {
 
 	fn to_web_request_data(
 		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, &api_key)
+		OpenAIAdapter::util_to_web_request_data(model_info, client_config, chat_req, service_type, options_set, url)
 	}
 
 	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {

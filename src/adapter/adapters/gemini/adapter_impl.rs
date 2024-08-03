@@ -1,16 +1,15 @@
 use crate::adapter::gemini::GeminiStreamer;
-use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key;
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelInfo};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
 
 pub struct GeminiAdapter;
 
@@ -28,14 +27,13 @@ const MODELS: &[&str] = &[
 //   -X POST 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 
 impl Adapter for GeminiAdapter {
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("GEMINI_API_KEY")
+	}
+
 	/// Note: For now returns the common ones (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
-	}
-
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("GEMINI_API_KEY"))
 	}
 
 	fn get_service_url(_model_info: ModelInfo, service_type: ServiceType) -> String {
@@ -46,12 +44,12 @@ impl Adapter for GeminiAdapter {
 
 	fn to_web_request_data(
 		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
+		let api_key = get_api_key(model_info.clone(), client_config)?;
 
 		// For gemini, the service url returned is just the base url
 		// since model and API key is part of the url (see below)
