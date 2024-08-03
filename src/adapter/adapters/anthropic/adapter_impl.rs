@@ -1,18 +1,16 @@
 use crate::adapter::anthropic::AnthropicStreamer;
-use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key;
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatRequest, ChatOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
-	MetaUsage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::Result;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelInfo};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
 
 pub struct AnthropicAdapter;
 
@@ -27,14 +25,13 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for AnthropicAdapter {
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("ANTHROPIC_API_KEY")
+	}
+
 	/// Note: For now returns the common ones (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
-	}
-
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY"))
 	}
 
 	fn get_service_url(_model_info: ModelInfo, service_type: ServiceType) -> String {
@@ -45,7 +42,7 @@ impl Adapter for AnthropicAdapter {
 
 	fn to_web_request_data(
 		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
@@ -56,7 +53,7 @@ impl Adapter for AnthropicAdapter {
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(model_info, config_set)?;
+		let api_key = get_api_key(model_info, client_config)?;
 
 		let headers = vec![
 			// headers

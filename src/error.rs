@@ -33,7 +33,7 @@ pub enum Error {
 	NoAuthResolver {
 		model_info: ModelInfo,
 	},
-	AuthResolverNoAuthData {
+	NoAuthData {
 		model_info: ModelInfo,
 	},
 

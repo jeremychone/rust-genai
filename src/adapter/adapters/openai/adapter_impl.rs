@@ -1,17 +1,16 @@
 use crate::adapter::openai::OpenAIStreamer;
-use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key;
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelInfo};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
 
 pub struct OpenAIAdapter;
 
@@ -19,14 +18,13 @@ const BASE_URL: &str = "https://api.openai.com/v1/";
 const MODELS: &[&str] = &["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
 
 impl Adapter for OpenAIAdapter {
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("OPENAI_API_KEY")
+	}
+
 	/// Note: For now returns the common ones (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
-	}
-
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("OPENAI_API_KEY"))
 	}
 
 	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
@@ -35,16 +33,14 @@ impl Adapter for OpenAIAdapter {
 
 	fn to_web_request_data(
 		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, chat_options, &api_key)
+		OpenAIAdapter::util_to_web_request_data(model_info, client_config, chat_req, service_type, chat_options, url)
 	}
 
 	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
@@ -87,14 +83,16 @@ impl OpenAIAdapter {
 
 	pub(in crate::adapter::adapters) fn util_to_web_request_data(
 		model_info: ModelInfo,
-		url: String,
+		client_config: &ClientConfig,
 		chat_req: ChatRequest,
 		service_type: ServiceType,
 		options_set: ChatOptionsSet<'_, '_>,
-		// -- utils args
-		api_key: &str,
+		base_url: String,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
+
+		// -- Get the key
+		let api_key = get_api_key(model_info.clone(), client_config)?;
 
 		// -- Build the header
 		let headers = vec![
@@ -132,7 +130,11 @@ impl OpenAIAdapter {
 			payload.x_insert("top_p", top_p)?;
 		}
 
-		Ok(WebRequestData { url, headers, payload })
+		Ok(WebRequestData {
+			url: base_url,
+			headers,
+			payload,
+		})
 	}
 
 	/// Note: needs to be called from super::streamer as well

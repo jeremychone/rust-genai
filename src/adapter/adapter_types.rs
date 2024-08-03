@@ -1,18 +1,16 @@
-use crate::adapter::{AdapterConfig, AdapterKind};
+use crate::adapter::AdapterKind;
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::Result;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelInfo};
 use reqwest::RequestBuilder;
 use serde_json::Value;
 
 pub trait Adapter {
+	fn default_key_env_name(kind: AdapterKind) -> Option<&'static str>;
+
 	// NOTE: Adapter is a crate Trait, so, ok to use async fn here.
 	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>>;
-
-	/// The static default AdapterConfig for this AdapterKind
-	/// Note: Implementation typically using OnceLock
-	fn default_adapter_config(kind: AdapterKind) -> &'static AdapterConfig;
 
 	/// The base service url for this AdapterKind for this given service type.
 	/// NOTE: For some services, the url will be further updated in the to_web_request_data
@@ -21,7 +19,7 @@ pub trait Adapter {
 	/// To be implemented by Adapters
 	fn to_web_request_data(
 		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		config_set: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,

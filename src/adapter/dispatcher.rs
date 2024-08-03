@@ -3,11 +3,11 @@ use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::Result;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelInfo};
 use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
@@ -15,6 +15,17 @@ use super::groq::GroqAdapter;
 pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
+	fn default_key_env_name(kind: AdapterKind) -> Option<&'static str> {
+		match kind {
+			AdapterKind::OpenAI => OpenAIAdapter::default_key_env_name(kind),
+			AdapterKind::Anthropic => AnthropicAdapter::default_key_env_name(kind),
+			AdapterKind::Cohere => CohereAdapter::default_key_env_name(kind),
+			AdapterKind::Ollama => OllamaAdapter::default_key_env_name(kind),
+			AdapterKind::Gemini => GeminiAdapter::default_key_env_name(kind),
+			AdapterKind::Groq => GroqAdapter::default_key_env_name(kind),
+		}
+	}
+
 	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::all_model_names(kind).await,
@@ -23,17 +34,6 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
 			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind).await,
 			AdapterKind::Groq => GroqAdapter::all_model_names(kind).await,
-		}
-	}
-
-	fn default_adapter_config(kind: AdapterKind) -> &'static AdapterConfig {
-		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::default_adapter_config(kind),
-			AdapterKind::Anthropic => AnthropicAdapter::default_adapter_config(kind),
-			AdapterKind::Cohere => CohereAdapter::default_adapter_config(kind),
-			AdapterKind::Ollama => OllamaAdapter::default_adapter_config(kind),
-			AdapterKind::Gemini => GeminiAdapter::default_adapter_config(kind),
-			AdapterKind::Groq => GroqAdapter::default_adapter_config(kind),
 		}
 	}
 
@@ -50,29 +50,29 @@ impl Adapter for AdapterDispatcher {
 
 	fn to_web_request_data(
 		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		match model_info.adapter_kind {
 			AdapterKind::OpenAI => {
-				OpenAIAdapter::to_web_request_data(model_info, config_set, service_type, chat_req, options_set)
+				OpenAIAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Anthropic => {
-				AnthropicAdapter::to_web_request_data(model_info, config_set, service_type, chat_req, options_set)
+				AnthropicAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Cohere => {
-				CohereAdapter::to_web_request_data(model_info, config_set, service_type, chat_req, options_set)
+				CohereAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Ollama => {
-				OllamaAdapter::to_web_request_data(model_info, config_set, service_type, chat_req, options_set)
+				OllamaAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Gemini => {
-				GeminiAdapter::to_web_request_data(model_info, config_set, service_type, chat_req, options_set)
+				GeminiAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Groq => {
-				GroqAdapter::to_web_request_data(model_info, config_set, service_type, chat_req, options_set)
+				GroqAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
 			}
 		}
 	}

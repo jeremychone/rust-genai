@@ -1,15 +1,14 @@
 //! API DOC: https://github.com/ollama/ollama/blob/main/docs/openai.md
 
 use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelInfo};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::Value;
-use std::sync::OnceLock;
 
 pub struct OllamaAdapter;
 
@@ -21,6 +20,10 @@ const OLLAMA_BASE_URL: &str = "http://localhost:11434/api/";
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
 ///       Since the base ollama API supports `application/x-ndjson` for streaming whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		None
+	}
+
 	/// Note: For now returns empty as it should probably do a request to the ollama server
 	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
 		let url = format!("{OLLAMA_BASE_URL}tags");
@@ -47,25 +50,20 @@ impl Adapter for OllamaAdapter {
 		Ok(models)
 	}
 
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(AdapterConfig::default)
-	}
-
 	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
 		OpenAIAdapter::util_get_service_url(model_info, service_type, BASE_URL)
 	}
 
 	fn to_web_request_data(
 		model_info: ModelInfo,
-		_config_set: &ConfigSet<'_>,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let url = Self::get_service_url(model_info.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, options_set, "ollama")
+		OpenAIAdapter::util_to_web_request_data(model_info, client_config, chat_req, service_type, options_set, url)
 	}
 
 	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {

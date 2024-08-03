@@ -1,7 +1,7 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatOptions, ChatRequest, ChatOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
-use crate::{ConfigSet, Error, ModelInfo, Result};
+use crate::{Error, ModelInfo, Result};
 
 /// Public AI Functions
 impl Client {
@@ -49,21 +49,13 @@ impl Client {
 	) -> Result<ChatResponse> {
 		let model_info = self.resolve_model_info(model)?;
 
-		let adapter_kind = model_info.adapter_kind;
-
-		let adapter_config = self
-			.custom_adapter_config(adapter_kind)
-			.unwrap_or_else(|| AdapterDispatcher::default_adapter_config(adapter_kind));
-
-		let config_set = ConfigSet::new(self.config(), adapter_config);
-
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_options());
 
 		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
 			model_info.clone(),
-			&config_set,
+			self.config(),
 			ServiceType::Chat,
 			chat_req,
 			options_set,
@@ -90,13 +82,6 @@ impl Client {
 		options: Option<&ChatOptions>,
 	) -> Result<ChatStreamResponse> {
 		let model_info = self.resolve_model_info(model)?;
-		let adapter_kind = model_info.adapter_kind;
-
-		let adapter_config = self
-			.custom_adapter_config(adapter_kind)
-			.unwrap_or_else(|| AdapterDispatcher::default_adapter_config(adapter_kind));
-
-		let config_set = ConfigSet::new(self.config(), adapter_config);
 
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
@@ -104,7 +89,7 @@ impl Client {
 
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
 			model_info.clone(),
-			&config_set,
+			self.config(),
 			ServiceType::ChatStream,
 			chat_req,
 			options_set.clone(),

@@ -1,6 +1,7 @@
 mod support;
 
 use crate::support::common_tests;
+use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
@@ -45,3 +46,12 @@ async fn test_chat_stream_capture_content_ok() -> Result<()> {
 // }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- Resolver Tests
+
+#[tokio::test]
+async fn test_resolver_auth_ok() -> Result<()> {
+	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_single("ollama")).await
+}
+
+// endregion: --- Resolver Tests
