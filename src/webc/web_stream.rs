@@ -17,8 +17,8 @@ use std::task::{Context, Poll};
 pub struct WebStream {
 	stream_mode: StreamMode,
 	reqwest_builder: Option<RequestBuilder>,
-	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>>>>>,
-	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>>>>>,
+	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>> + Send>>>,
+	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>> + Send>>>,
 	// If a poll was a partial message, so we kept the previous part
 	partial_message: Option<String>,
 	// If a poll retrieved multiple messages, we keep to be sent in next poll
