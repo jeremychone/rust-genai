@@ -1,13 +1,15 @@
 //! This module contains all the types related to a Chat Response (except ChatStream which has it file).
 
 use crate::chat::{ChatStream, MessageContent};
+use crate::ModelIden;
 
 // region:    --- ChatResponse
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ChatResponse {
 	pub content: Option<MessageContent>,
 	pub usage: MetaUsage,
+	pub model_iden: ModelIden,
 }
 
 // Getters
@@ -31,6 +33,7 @@ impl ChatResponse {
 
 pub struct ChatStreamResponse {
 	pub stream: ChatStream,
+	pub model_iden: ModelIden,
 }
 
 // endregion: --- ChatStreamResponse

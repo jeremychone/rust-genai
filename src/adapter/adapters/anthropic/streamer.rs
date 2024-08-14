@@ -2,7 +2,7 @@ use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, MetaUsage};
 use crate::support::value_ext::ValueExt;
-use crate::{Error, ModelInfo, Result};
+use crate::{Error, ModelIden, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
@@ -19,11 +19,11 @@ pub struct AnthropicStreamer {
 }
 
 impl AnthropicStreamer {
-	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSource, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
-			options: StreamerOptions::new(model_info, options_set),
+			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 		}
 	}
@@ -59,7 +59,7 @@ impl futures::Stream for AnthropicStreamer {
 						"content_block_delta" => {
 							let mut data: Value =
 								serde_json::from_str(&message.data).map_err(|serde_error| Error::StreamParse {
-									model_info: self.options.model_info.clone(),
+									model_iden: self.options.model_iden.clone(),
 									serde_error,
 								})?;
 							let content: String = data.x_take("/delta/text")?;
@@ -171,7 +171,7 @@ impl AnthropicStreamer {
 	/// Might have more logic later
 	fn parse_message_data(&self, payload: &str) -> Result<Value> {
 		serde_json::from_str(payload).map_err(|serde_error| Error::StreamParse {
-			model_info: self.options.model_info.clone(),
+			model_iden: self.options.model_iden.clone(),
 			serde_error,
 		})
 	}

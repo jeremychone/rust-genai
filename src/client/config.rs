@@ -1,12 +1,12 @@
 use crate::chat::ChatOptions;
-use crate::resolver::{AdapterKindResolver, AuthResolver};
+use crate::resolver::{AuthResolver, ModelMapper};
 
 // Note: Here the properties are `(in crate::client)` to allow the Client builder to set those values
 //       with passthrough setters.
 #[derive(Debug, Default, Clone)]
 pub struct ClientConfig {
 	pub(in crate::client) auth_resolver: Option<AuthResolver>,
-	pub(in crate::client) adapter_kind_resolver: Option<AdapterKindResolver>,
+	pub(in crate::client) model_mapper: Option<ModelMapper>,
 	pub(in crate::client) chat_options: Option<ChatOptions>,
 }
 
@@ -17,9 +17,8 @@ impl ClientConfig {
 		self
 	}
 
-	/// Set the built auth resolver
-	pub fn with_adapter_kind_resolver(mut self, auth_resolver: AdapterKindResolver) -> Self {
-		self.adapter_kind_resolver = Some(auth_resolver);
+	pub fn with_model_mapper(mut self, model_mapper: ModelMapper) -> Self {
+		self.model_mapper = Some(model_mapper);
 		self
 	}
 
@@ -36,8 +35,8 @@ impl ClientConfig {
 		self.auth_resolver.as_ref()
 	}
 
-	pub fn adapter_kind_resolver(&self) -> Option<&AdapterKindResolver> {
-		self.adapter_kind_resolver.as_ref()
+	pub fn model_mapper(&self) -> Option<&ModelMapper> {
+		self.model_mapper.as_ref()
 	}
 
 	pub fn chat_options(&self) -> Option<&ChatOptions> {

@@ -5,12 +5,12 @@
 
 // region:    --- Modules
 
-mod adapter_kind_resolver;
 mod auth_resolver;
 mod error;
+mod model_mapper;
 
-pub use adapter_kind_resolver::*;
 pub use auth_resolver::*;
 pub use error::{Error, Result};
+pub use model_mapper::*;
 
 // endregion: --- Modules

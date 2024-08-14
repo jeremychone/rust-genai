@@ -1,14 +1,14 @@
 use genai::adapter::AdapterKind;
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::resolver::AdapterKindResolver;
-use genai::{Client, ClientConfig};
+use genai::resolver::ModelMapper;
+use genai::{Client, ModelIden};
 
-const MODEL: &str = "gpt-4o-mini";
+// NOTE: This will be overriden below to `gpt-4o-mini`
+const MODEL: &str = "gpt-4o";
 
-/// This example shows how to use a custom AdapterKindResolver to have some custom
-/// mapping from a model name to a AdapterKind.
-/// This allows to map missing models to their Adapter implementations.
+/// This example demonstrates how to use the ModelMapper to map a ModelIden (model identifier) to
+/// a potentially different one, using the model mapper.
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,17 +19,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	// -- Build a auth_resolver and the AdapterConfig
-	let adapter_kind = AdapterKindResolver::from_sync_resolver(|model: &str| -> genai::Result<Option<AdapterKind>> {
-		// Still use the default mapping to not break anything.
-		let adapter_kind = AdapterKind::from_model(model)?;
-		println!("\n>> Custom adapter kind resolver for model: {model} (AdapterKind {adapter_kind}) <<");
-		Ok(Some(adapter_kind))
+	let model_mapper = ModelMapper::from_mapper_fn(|model_iden: ModelIden| {
+		// let's be cheap, and map all gpt to "gpt-4o-mini"
+		if model_iden.model_name.starts_with("gpt-") {
+			Ok(ModelIden::new(AdapterKind::OpenAI, "gpt-4o-mini"))
+		} else {
+			Ok(model_iden)
+		}
 	});
 
-	let client_config = ClientConfig::default().with_adapter_kind_resolver(adapter_kind);
-
 	// -- Build the new client with this client_config
-	let client = Client::builder().with_config(client_config).build();
+	let client = Client::builder().with_model_mapper(model_mapper).build();
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 
@@ -39,7 +39,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("\n--- Question:\n{question}");
 		let chat_res = client.exec_chat_stream(MODEL, chat_req.clone(), None).await?;
 
-		println!("\n--- Answer: ({MODEL})");
+		println!(
+			"\n--- Answer: ({} - {})",
+			chat_res.model_iden.adapter_kind, chat_res.model_iden.model_name
+		);
 		let assistant_answer = print_chat_stream(chat_res, None).await?;
 
 		chat_req = chat_req.append_message(ChatMessage::assistant(assistant_answer));

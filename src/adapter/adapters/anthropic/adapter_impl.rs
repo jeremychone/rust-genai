@@ -7,7 +7,7 @@ use crate::chat::{
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::Result;
-use crate::{ClientConfig, ModelInfo};
+use crate::{ClientConfig, ModelIden};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -34,26 +34,26 @@ impl Adapter for AnthropicAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(_model_info: ModelInfo, service_type: ServiceType) -> String {
+	fn get_service_url(_model_iden: ModelIden, service_type: ServiceType) -> String {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}messages"),
 		}
 	}
 
 	fn to_web_request_data(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let model_name = model_info.model_name.clone();
+		let model_name = model_iden.model_name.clone();
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
-		let url = Self::get_service_url(model_info.clone(), service_type);
+		let url = Self::get_service_url(model_iden.clone(), service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key(model_info, client_config)?;
+		let api_key = get_api_key(model_iden, client_config)?;
 
 		let headers = vec![
 			// headers
@@ -88,7 +88,7 @@ impl Adapter for AnthropicAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 		let json_content_items: Vec<Value> = body.x_take("content")?;
 
@@ -108,18 +108,25 @@ impl Adapter for AnthropicAdapter {
 		};
 		let content = content.map(MessageContent::from);
 
-		Ok(ChatResponse { content, usage })
+		Ok(ChatResponse {
+			model_iden,
+			content,
+			usage,
+		})
 	}
 
 	fn to_chat_stream(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let anthropic_stream = AnthropicStreamer::new(event_source, model_info, options_set);
+		let anthropic_stream = AnthropicStreamer::new(event_source, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
-		Ok(ChatStreamResponse { stream: chat_stream })
+		Ok(ChatStreamResponse {
+			model_iden,
+			stream: chat_stream,
+		})
 	}
 }
 

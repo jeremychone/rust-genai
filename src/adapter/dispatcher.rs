@@ -7,7 +7,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
 use crate::Result;
-use crate::{ClientConfig, ModelInfo};
+use crate::{ClientConfig, ModelIden};
 use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
@@ -37,69 +37,69 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
-		match model_info.adapter_kind {
-			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model_info, service_type),
-			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(model_info, service_type),
-			AdapterKind::Cohere => CohereAdapter::get_service_url(model_info, service_type),
-			AdapterKind::Ollama => OllamaAdapter::get_service_url(model_info, service_type),
-			AdapterKind::Gemini => GeminiAdapter::get_service_url(model_info, service_type),
-			AdapterKind::Groq => GroqAdapter::get_service_url(model_info, service_type),
+	fn get_service_url(model_iden: ModelIden, service_type: ServiceType) -> String {
+		match model_iden.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model_iden, service_type),
+			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(model_iden, service_type),
+			AdapterKind::Cohere => CohereAdapter::get_service_url(model_iden, service_type),
+			AdapterKind::Ollama => OllamaAdapter::get_service_url(model_iden, service_type),
+			AdapterKind::Gemini => GeminiAdapter::get_service_url(model_iden, service_type),
+			AdapterKind::Groq => GroqAdapter::get_service_url(model_iden, service_type),
 		}
 	}
 
 	fn to_web_request_data(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		match model_info.adapter_kind {
+		match model_iden.adapter_kind {
 			AdapterKind::OpenAI => {
-				OpenAIAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
+				OpenAIAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Anthropic => {
-				AnthropicAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
+				AnthropicAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Cohere => {
-				CohereAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
+				CohereAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Ollama => {
-				OllamaAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
+				OllamaAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Gemini => {
-				GeminiAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
+				GeminiAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Groq => {
-				GroqAdapter::to_web_request_data(model_info, client_config, service_type, chat_req, options_set)
+				GroqAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
 			}
 		}
 	}
 
-	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
-		match model_info.adapter_kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_info, web_response),
-			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_info, web_response),
-			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_info, web_response),
-			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_info, web_response),
-			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_info, web_response),
-			AdapterKind::Groq => GroqAdapter::to_chat_response(model_info, web_response),
+	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
+		match model_iden.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response),
 		}
 	}
 
 	fn to_chat_stream(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		match model_info.adapter_kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
-			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
-			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
-			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
-			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
-			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_info, reqwest_builder, options_set),
+		match model_iden.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
 	}
 }
