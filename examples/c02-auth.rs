@@ -1,10 +1,12 @@
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::{AuthData, AuthResolver};
-use genai::ClientConfig;
-use genai::{Client, ModelInfo};
+use genai::{Client, ModelIden};
 
 const MODEL: &str = "gpt-4o-mini";
+
+/// This example demonstrates how to use a custom authentication function to override the default AuthData resolution
+/// for any specific adapter (which is based on environment variables).
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,12 +18,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// -- Build a auth_resolver and the AdapterConfig
 	let auth_resolver = AuthResolver::from_resolver_fn(
-		|model_info: ModelInfo, _client_config: &ClientConfig| -> Result<Option<AuthData>, genai::resolver::Error> {
-			let ModelInfo {
+		|model_iden: ModelIden| -> Result<Option<AuthData>, genai::resolver::Error> {
+			let ModelIden {
 				adapter_kind,
 				model_name,
-			} = model_info;
+			} = model_iden;
 			println!("\n>> Custom auth provider for {adapter_kind} (model: {model_name}) <<");
+
+			// This will cause it to fail if any model is not an OPEN_API_KEY
 			let key = std::env::var("OPENAI_API_KEY").map_err(|_| genai::resolver::Error::ApiKeyEnvNotFound {
 				env_name: "OPENAI_API_KEY".to_string(),
 			})?;

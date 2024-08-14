@@ -6,7 +6,7 @@ use crate::chat::{
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelInfo};
+use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -27,23 +27,23 @@ impl Adapter for OpenAIAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
-		Self::util_get_service_url(model_info, service_type, BASE_URL)
+	fn get_service_url(model_iden: ModelIden, service_type: ServiceType) -> String {
+		Self::util_get_service_url(model_iden, service_type, BASE_URL)
 	}
 
 	fn to_web_request_data(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let url = Self::get_service_url(model_info.clone(), service_type);
+		let url = Self::get_service_url(model_iden.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, client_config, chat_req, service_type, chat_options, url)
+		OpenAIAdapter::util_to_web_request_data(model_iden, client_config, chat_req, service_type, chat_options, url)
 	}
 
-	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
 		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
@@ -52,26 +52,33 @@ impl Adapter for OpenAIAdapter {
 		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
 		let content = content.map(MessageContent::from);
 
-		Ok(ChatResponse { content, usage })
+		Ok(ChatResponse {
+			model_iden,
+			content,
+			usage,
+		})
 	}
 
 	fn to_chat_stream(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let openai_stream = OpenAIStreamer::new(event_source, model_info, options_sets);
+		let openai_stream = OpenAIStreamer::new(event_source, model_iden.clone(), options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
-		Ok(ChatStreamResponse { stream: chat_stream })
+		Ok(ChatStreamResponse {
+			model_iden,
+			stream: chat_stream,
+		})
 	}
 }
 
 /// Support function for other Adapter that share OpenAI APIs
 impl OpenAIAdapter {
 	pub(in crate::adapter::adapters) fn util_get_service_url(
-		_model_info: ModelInfo,
+		_model_iden: ModelIden,
 		service_type: ServiceType,
 		// -- util args
 		base_url: &str,
@@ -82,7 +89,7 @@ impl OpenAIAdapter {
 	}
 
 	pub(in crate::adapter::adapters) fn util_to_web_request_data(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		client_config: &ClientConfig,
 		chat_req: ChatRequest,
 		service_type: ServiceType,
@@ -92,7 +99,7 @@ impl OpenAIAdapter {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
 		// -- Get the key
-		let api_key = get_api_key(model_info.clone(), client_config)?;
+		let api_key = get_api_key(model_iden.clone(), client_config)?;
 
 		// -- Build the header
 		let headers = vec![
@@ -101,8 +108,8 @@ impl OpenAIAdapter {
 		];
 
 		// -- Build the basic payload
-		let model_name = model_info.model_name.to_string();
-		let OpenAIRequestParts { messages } = Self::into_openai_request_parts(model_info, chat_req)?;
+		let model_name = model_iden.model_name.to_string();
+		let OpenAIRequestParts { messages } = Self::into_openai_request_parts(model_iden, chat_req)?;
 		let mut payload = json!({
 			"model": model_name,
 			"messages": messages,
@@ -156,11 +163,11 @@ impl OpenAIAdapter {
 	/// NOTE: here, the last `true` is for the ollama variant
 	///       It seems the Ollama compatibility layer does not work well with multiple System message.
 	///       So, when `true`, it will concatenate the system message as a single on at the beginning
-	fn into_openai_request_parts(model_info: ModelInfo, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
+	fn into_openai_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut system_messages: Vec<String> = Vec::new();
 		let mut messages: Vec<Value> = Vec::new();
 
-		let ollama_variant = matches!(model_info.adapter_kind, AdapterKind::Ollama);
+		let ollama_variant = matches!(model_iden.adapter_kind, AdapterKind::Ollama);
 
 		if let Some(system_msg) = chat_req.system {
 			if ollama_variant {
@@ -188,7 +195,7 @@ impl OpenAIAdapter {
 				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
-						model_info,
+						model_iden,
 						role: ChatRole::Tool,
 					})
 				}

@@ -1,41 +1,5 @@
-use crate::adapter::AdapterKind;
 use std::ops::Deref;
 use std::sync::Arc;
-
-// region:    --- ModelInfo
-
-/// Hold the adapter_kind and model_name in a efficient clonable way
-/// Note: For now,
-#[derive(Clone, Debug)]
-pub struct ModelInfo {
-	pub adapter_kind: AdapterKind,
-	pub model_name: ModelName,
-}
-
-impl ModelInfo {
-	pub fn new(adapter_kind: AdapterKind, model_name: impl Into<ModelName>) -> Self {
-		Self {
-			adapter_kind,
-			model_name: model_name.into(),
-		}
-	}
-}
-
-impl<T> From<(AdapterKind, T)> for ModelInfo
-where
-	T: Into<ModelName>,
-{
-	fn from((adapter_kind, model_name): (AdapterKind, T)) -> Self {
-		Self {
-			adapter_kind,
-			model_name: model_name.into(),
-		}
-	}
-}
-
-// endregion: --- ModelInfo
-
-// region:    --- ModelName
 
 #[derive(Clone, Debug)]
 pub struct ModelName(Arc<str>);
@@ -84,5 +48,3 @@ impl Deref for ModelName {
 		&self.0
 	}
 }
-
-// endregion: --- ModelName

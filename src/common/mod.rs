@@ -1,7 +1,9 @@
 // region:    --- Modules
 
-mod model_info;
+mod model_iden;
+mod model_name;
 
-pub use model_info::*;
+pub use model_iden::*;
+pub use model_name::*;
 
 // endregion: --- Modules

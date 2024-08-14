@@ -1,6 +1,6 @@
 use crate::adapter::AdapterKind;
 use crate::chat::ChatRole;
-use crate::{resolver, webc, ModelInfo};
+use crate::{resolver, webc, ModelIden};
 use derive_more::From;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -9,32 +9,38 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
 	// -- Chat Input
 	ChatReqHasNoMessages {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 	},
 	LastChatMessageIsNoUser {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		actual_role: ChatRole,
 	},
 	MessageRoleNotSupported {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		role: ChatRole,
 	},
 	JsonModeWithoutInstruction,
 
 	// -- Chat Output
 	NoChatResponse {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 	},
 
 	// -- Auth
 	RequiresApiKey {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 	},
 	NoAuthResolver {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 	},
 	NoAuthData {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
+	},
+
+	// -- ModelMapper
+	ModelMapperFailed {
+		model_iden: ModelIden,
+		cause: resolver::Error,
 	},
 
 	// -- Web Call error
@@ -43,27 +49,27 @@ pub enum Error {
 		webc_error: webc::Error,
 	},
 	WebModelCall {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		webc_error: webc::Error,
 	},
 
 	// -- Chat Stream
 	StreamParse {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		serde_error: serde_json::Error,
 	},
 	StreamEventError {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		body: serde_json::Value,
 	},
 	WebStream {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		cause: String,
 	},
 
 	// -- Modules
 	Resolver {
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		resolver_error: resolver::Error,
 	},
 

@@ -4,7 +4,7 @@ use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::ChatOptionsSet;
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebStream;
-use crate::{Error, ModelInfo, Result};
+use crate::{Error, ModelIden, Result};
 use serde::Deserialize;
 use serde_json::Value;
 use std::pin::Pin;
@@ -21,11 +21,11 @@ pub struct CohereStreamer {
 }
 
 impl CohereStreamer {
-	pub fn new(inner: WebStream, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: WebStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
-			options: StreamerOptions::new(model_info, options_set),
+			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 		}
 	}
@@ -60,7 +60,7 @@ impl futures::Stream for CohereStreamer {
 					let cohere_message =
 						serde_json::from_str::<CohereStreamMessage>(&raw_string).map_err(|serde_error| {
 							Error::StreamParse {
-								model_info: self.options.model_info.clone(),
+								model_iden: self.options.model_iden.clone(),
 								serde_error,
 							}
 						});
@@ -124,7 +124,7 @@ impl futures::Stream for CohereStreamer {
 				Some(Err(err)) => {
 					println!("Cohere Adapter Stream Error: {}", err);
 					return Poll::Ready(Some(Err(Error::WebStream {
-						model_info: self.options.model_info.clone(),
+						model_iden: self.options.model_iden.clone(),
 						cause: err.to_string(),
 					})));
 				}

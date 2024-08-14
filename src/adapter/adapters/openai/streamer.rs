@@ -4,7 +4,7 @@ use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::AdapterKind;
 use crate::chat::ChatOptionsSet;
 use crate::support::value_ext::ValueExt;
-use crate::{Error, ModelInfo, Result};
+use crate::{Error, ModelIden, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
@@ -22,11 +22,11 @@ pub struct OpenAIStreamer {
 
 impl OpenAIStreamer {
 	// TODO: Problem need the ChatOptions `.capture_content` `.capture_usage`
-	pub fn new(inner: EventSource, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSource, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
-			options: StreamerOptions::new(model_info, options_set),
+			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 		}
 	}
@@ -66,11 +66,11 @@ impl futures::Stream for OpenAIStreamer {
 					}
 
 					// -- Other Content Messages
-					let adapter_kind = self.options.model_info.adapter_kind;
+					let adapter_kind = self.options.model_iden.adapter_kind;
 					// parse to get the choice
 					let mut message_data: Value =
 						serde_json::from_str(&message.data).map_err(|serde_error| Error::StreamParse {
-							model_info: self.options.model_info.clone(),
+							model_iden: self.options.model_iden.clone(),
 							serde_error,
 						})?;
 					let first_choice: Option<Value> = message_data.x_take("/choices/0").ok();

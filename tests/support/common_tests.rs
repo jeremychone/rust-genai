@@ -2,7 +2,7 @@ use crate::get_option_value;
 use crate::support::{extract_stream_end, seed_chat_req_simple, Result};
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
-use genai::{Client, ClientConfig, ModelInfo};
+use genai::{Client, ClientConfig, ModelIden};
 use std::sync::Arc;
 
 // region:    --- Chat
@@ -182,8 +182,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 
 pub async fn common_test_resolver_auth_ok(model: &str, auth_data: AuthData) -> Result<()> {
 	// -- Setup & Fixtures
-	let auth_resolver =
-		AuthResolver::from_resolver_fn(move |model_info: ModelInfo, client_config: &ClientConfig| Ok(Some(auth_data)));
+	let auth_resolver = AuthResolver::from_resolver_fn(move |model_iden: ModelIden| Ok(Some(auth_data)));
 	let client = Client::builder().with_auth_resolver(auth_resolver).build();
 	let chat_req = seed_chat_req_simple();
 

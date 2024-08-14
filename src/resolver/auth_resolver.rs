@@ -7,7 +7,7 @@
 //! Note: AuthData is typically a single value but can be Multi for future adapters (e.g., AWS Bedrock).
 
 use crate::resolver::{Error, Result};
-use crate::{ClientConfig, ModelInfo};
+use crate::ModelIden;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,11 +27,11 @@ impl AuthResolver {
 }
 
 impl AuthResolver {
-	pub(crate) fn resolve(&self, model_info: ModelInfo, client_config: &ClientConfig) -> Result<Option<AuthData>> {
+	pub(crate) fn resolve(&self, model_iden: ModelIden) -> Result<Option<AuthData>> {
 		match self {
 			AuthResolver::ResolverFn(resolver_fn) => {
 				// Clone the Arc to get a new reference to the Box, then call exec_fn
-				resolver_fn.clone().exec_fn(model_info, client_config)
+				resolver_fn.clone().exec_fn(model_iden)
 			}
 		}
 	}
@@ -43,17 +43,17 @@ impl AuthResolver {
 
 // Define the trait for an auth resolver function
 pub trait AuthResolverFn: Send + Sync {
-	fn exec_fn(&self, model_info: ModelInfo, client_config: &ClientConfig) -> Result<Option<AuthData>>;
+	fn exec_fn(&self, model_iden: ModelIden) -> Result<Option<AuthData>>;
 	fn clone_box(&self) -> Box<dyn AuthResolverFn>;
 }
 
 // Implement AuthResolverFn for any `FnOnce`
 impl<F> AuthResolverFn for F
 where
-	F: FnOnce(ModelInfo, &ClientConfig) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
+	F: FnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
 {
-	fn exec_fn(&self, model_info: ModelInfo, client_config: &ClientConfig) -> Result<Option<AuthData>> {
-		(self.clone())(model_info, client_config)
+	fn exec_fn(&self, model_iden: ModelIden) -> Result<Option<AuthData>> {
+		(self.clone())(model_iden)
 	}
 
 	fn clone_box(&self) -> Box<dyn AuthResolverFn> {
@@ -91,7 +91,7 @@ impl IntoAuthResolverFn for Arc<Box<dyn AuthResolverFn>> {
 // Implement IntoAuthResolverFn for closures
 impl<F> IntoAuthResolverFn for F
 where
-	F: FnOnce(ModelInfo, &ClientConfig) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
+	F: FnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
 {
 	fn into_resolver_fn(self) -> Arc<Box<dyn AuthResolverFn>> {
 		Arc::new(Box::new(self))
