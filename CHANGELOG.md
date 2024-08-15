@@ -1,9 +1,22 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.6"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.7"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-08-14 - `0.1.7`
+
+- `+` Added ModelMapper scheme (client_builder::with_model_mapper_fn)
+- `!` **API CHANGE** Removed `AdapterKindResolver` (should use ModelMapper) (see [examples/c03-mapper.rs](examples/c03-mapper.rs))
+- `!` **API CHANGE** Renamed `ModelInfo` to `ModelIden`
+- `!` **API CHANGE** `AuthResolver` - Refactor AuthResolver Scheme/API (see [examples/c02-auth.rs](examples/c02-auth.rs))
+- `!` **API CHANGE** completely remove `AdapterConfig` (see `AuthResolver`)
+- `.` test groq - switch to llama3-groq-8b-8192-tool-use-preview for testing to have the test_chat_json work as expected
+- `^` chore: make stream is send
+- `.` test - `ChatOptions` - add tests for temperature
+- `.` A typo in adapters for OpenAI makes the temperature chat option unusable.
+- `.` unit test - first value_ext insert
 
 ## 2024-07-26 - `0.1.6`
 
