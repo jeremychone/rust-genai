@@ -116,11 +116,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Videos 
 
-- <a href="https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> - genai introduction (v0.1.0)]
+- <a style="display: inline-block;transform: translateY(4px);"  href="https://www.youtube.com/watch?v=5Enfcwrl7pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> - genai ModelMapper code demo (v0.1.7)
+
+- <a style="display: inline-block;transform: translateY(4px);"  href="https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> - genai introduction (v0.1.0)]
 
 - **genai code design**
-    - <a href="https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> (part 1/3) Module, Error, constructors/builders
-    - ..coming soon..
+    - <a style="display: inline-block;transform: translateY(4px);" href="https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> (part 1/3) Module, Error, constructors/builders
+    - <a style="display: inline-block;transform: translateY(4px);" href="https://www.youtube.com/watch?v=LRfDAZfo00o&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> (part 2/3) Extension Traits, Project Files, Versioning
 
 ## Thanks
 
