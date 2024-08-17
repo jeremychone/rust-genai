@@ -22,12 +22,16 @@ tokio-stream = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # -- Web
-reqwest = { version = "0.12", features = [
-    "json",
-    "rustls-tls",
-], default-features = false }
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
 reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
 bytes = "1.6"
 # -- Others
 derive_more = { version = "1.0.0-beta", features = ["from", "display"] }
+
+
+[features]
+default = ["reqwest-default-tls"]
+
+reqwest-default-tls = ["reqwest/default-tls"]
+reqwest-rustls-tls = ["reqwest/rustls-tls"]
