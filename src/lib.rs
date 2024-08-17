@@ -1,7 +1,6 @@
 // region:    --- Modules
 
 mod support;
-mod webc;
 
 mod client;
 mod common;
@@ -16,5 +15,6 @@ pub use error::{Error, Result};
 pub mod adapter;
 pub mod chat;
 pub mod resolver;
+pub mod webc;
 
 // endregion: --- Modules
