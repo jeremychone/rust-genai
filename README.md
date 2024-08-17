@@ -30,8 +30,8 @@ The goal of this library is to provide a common and ergonomic single API to many
 [examples/c00-readme.rs](examples/c00-readme.rs)
 
 ```rust
-use genai::chat::{ChatMessage, ChatRequest};
 use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
+use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
 
 const MODEL_OPENAI: &str = "gpt-4o-mini";
@@ -126,6 +126,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Thanks
 
+- Thanks to @tusharmath for make webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
+- Thanks to @giangndm for make stream is send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
 - Thanks to [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement groq completions
 
 
