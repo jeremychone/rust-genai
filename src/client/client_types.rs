@@ -1,8 +1,6 @@
-use crate::adapter::{AdapterConfig, AdapterKind};
 use crate::client::ClientConfig;
 use crate::webc::WebClient;
 use crate::ClientBuilder;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -10,7 +8,7 @@ pub struct Client {
 	pub(super) inner: Arc<ClientInner>,
 }
 
-// region:    --- Client C'o'n's't'r'u'c't'o'r's
+// region:    --- Client Constructors
 
 impl Default for Client {
 	fn default() -> Self {
@@ -36,11 +34,6 @@ impl Client {
 	pub(crate) fn config(&self) -> &ClientConfig {
 		&self.inner.config
 	}
-
-	/// Returns the eventual custom AdapterConfig that has been set for this client (in the builder phase)
-	pub(crate) fn custom_adapter_config(&self, adapter_kind: AdapterKind) -> Option<&AdapterConfig> {
-		self.inner.adapter_config_by_kind.as_ref()?.get(&adapter_kind)
-	}
 }
 
 // endregion: --- Client Getters
@@ -49,9 +42,6 @@ impl Client {
 
 #[derive(Debug)]
 pub(super) struct ClientInner {
-	#[allow(unused)]
-	pub(super) adapter_config_by_kind: Option<HashMap<AdapterKind, AdapterConfig>>,
-
 	pub(super) web_client: WebClient,
 
 	pub(super) config: ClientConfig,

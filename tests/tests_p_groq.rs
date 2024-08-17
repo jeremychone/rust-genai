@@ -1,10 +1,13 @@
 mod support;
 
 use crate::support::common_tests;
+use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-const MODEL: &str = "gemma-7b-it";
+// Note: On groq, the llama3.1 or gemma models fail to produce JSON without a proposed schema.
+//       With the "tool-use" groq version, it will work correctly.
+const MODEL: &str = "llama3-groq-8b-8192-tool-use-preview";
 
 // region:    --- Chat
 
@@ -43,3 +46,12 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- Resolver Tests
+
+#[tokio::test]
+async fn test_resolver_auth_ok() -> Result<()> {
+	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("GROQ_API_KEY")).await
+}
+
+// endregion: --- Resolver Tests

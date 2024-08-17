@@ -1,7 +1,9 @@
 use crate::get_option_value;
 use crate::support::{extract_stream_end, seed_chat_req_simple, Result};
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
-use genai::Client;
+use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
+use genai::{Client, ClientConfig, ModelIden};
+use std::sync::Arc;
 
 // region:    --- Chat
 
@@ -175,3 +177,28 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- With Resolvers
+
+pub async fn common_test_resolver_auth_ok(model: &str, auth_data: AuthData) -> Result<()> {
+	// -- Setup & Fixtures
+	let auth_resolver = AuthResolver::from_resolver_fn(move |model_iden: ModelIden| Ok(Some(auth_data)));
+	let client = Client::builder().with_auth_resolver(auth_resolver).build();
+	let chat_req = seed_chat_req_simple();
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	assert!(
+		!get_option_value!(chat_res.content).is_empty(),
+		"content should not be empty"
+	);
+	let usage = chat_res.usage;
+	let total_tokens = get_option_value!(usage.total_tokens);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+
+	Ok(())
+}
+
+// endregion: --- With Resolvers

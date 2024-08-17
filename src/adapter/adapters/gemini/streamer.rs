@@ -3,7 +3,7 @@ use crate::adapter::gemini::{GeminiAdapter, GeminiChatResponse};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::ChatOptionsSet;
 use crate::webc::WebStream;
-use crate::{Error, ModelInfo, Result};
+use crate::{Error, ModelIden, Result};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -19,11 +19,11 @@ pub struct GeminiStreamer {
 }
 
 impl GeminiStreamer {
-	pub fn new(inner: WebStream, model_info: ModelInfo, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: WebStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
-			options: StreamerOptions::new(model_info, options_set),
+			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 		}
 	}
@@ -59,7 +59,7 @@ impl futures::Stream for GeminiStreamer {
 							// -- Parse the block to json
 							let json_block = match serde_json::from_str::<Value>(block_string).map_err(|serde_error| {
 								Error::StreamParse {
-									model_info: self.options.model_info.clone(),
+									model_iden: self.options.model_iden.clone(),
 									serde_error,
 								}
 							}) {
@@ -72,7 +72,7 @@ impl futures::Stream for GeminiStreamer {
 
 							// -- Extract the Gemini Response
 							let gemini_response =
-								match GeminiAdapter::body_to_gemini_chat_response(&self.options.model_info, json_block)
+								match GeminiAdapter::body_to_gemini_chat_response(&self.options.model_iden, json_block)
 								{
 									Ok(gemini_response) => gemini_response,
 									Err(err) => {
@@ -113,7 +113,7 @@ impl futures::Stream for GeminiStreamer {
 				Some(Err(err)) => {
 					println!("Gemini Adapter Stream Error: {}", err);
 					return Poll::Ready(Some(Err(Error::WebStream {
-						model_info: self.options.model_info.clone(),
+						model_iden: self.options.model_iden.clone(),
 						cause: err.to_string(),
 					})));
 				}

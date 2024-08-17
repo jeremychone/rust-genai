@@ -1,7 +1,7 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatOptions, ChatRequest, ChatOptionsSet, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::client::Client;
-use crate::{ConfigSet, Error, ModelInfo, Result};
+use crate::{Error, ModelIden, Result};
 
 /// Public AI Functions
 impl Client {
@@ -23,20 +23,21 @@ impl Client {
 	/// See [AdapterKind::from_model]
 	///
 	/// [AdapterKind::from_model]: crate::adapter::AdapterKind::from_model
-	pub fn resolve_model_info(&self, model: &str) -> Result<ModelInfo> {
-		let adapter_kind_from_resolver = self
-			.config()
-			.adapter_kind_resolver()
-			.map(|r| r.resolve(model))
-			.transpose()?
-			.flatten();
+	pub fn resolve_model_iden(&self, model_name: &str) -> Result<ModelIden> {
+		// -- First get the default ModelInfo
+		let adapter_kind = AdapterKind::from_model(model_name)?;
+		let model_iden = ModelIden::new(adapter_kind, model_name);
 
-		let adapter_kind = match adapter_kind_from_resolver {
-			Some(adapter_kind) => adapter_kind,
-			None => AdapterKind::from_model(model)?,
+		// -- Exec the eventual model_mapper
+		let model_iden = if let Some(model_mapper) = self.config().model_mapper() {
+			model_mapper
+				.map_model(model_iden.clone())
+				.map_err(|cause| Error::ModelMapperFailed { model_iden, cause })?
+		} else {
+			model_iden
 		};
 
-		Ok(ModelInfo::new(adapter_kind, model))
+		Ok(model_iden)
 	}
 
 	/// Execute a chat
@@ -47,23 +48,15 @@ impl Client {
 		// options not implemented yet
 		options: Option<&ChatOptions>,
 	) -> Result<ChatResponse> {
-		let model_info = self.resolve_model_info(model)?;
-
-		let adapter_kind = model_info.adapter_kind;
-
-		let adapter_config = self
-			.custom_adapter_config(adapter_kind)
-			.unwrap_or_else(|| AdapterDispatcher::default_adapter_config(adapter_kind));
-
-		let config_set = ConfigSet::new(self.config(), adapter_config);
+		let model_iden = self.resolve_model_iden(model)?;
 
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_options());
 
 		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
-			model_info.clone(),
-			&config_set,
+			model_iden.clone(),
+			self.config(),
 			ServiceType::Chat,
 			chat_req,
 			options_set,
@@ -74,11 +67,11 @@ impl Client {
 				.do_post(&url, &headers, payload)
 				.await
 				.map_err(|webc_error| Error::WebModelCall {
-					model_info: model_info.clone(),
+					model_iden: model_iden.clone(),
 					webc_error,
 				})?;
 
-		let chat_res = AdapterDispatcher::to_chat_response(model_info, web_res)?;
+		let chat_res = AdapterDispatcher::to_chat_response(model_iden, web_res)?;
 
 		Ok(chat_res)
 	}
@@ -89,22 +82,15 @@ impl Client {
 		chat_req: ChatRequest, // options not implemented yet
 		options: Option<&ChatOptions>,
 	) -> Result<ChatStreamResponse> {
-		let model_info = self.resolve_model_info(model)?;
-		let adapter_kind = model_info.adapter_kind;
-
-		let adapter_config = self
-			.custom_adapter_config(adapter_kind)
-			.unwrap_or_else(|| AdapterDispatcher::default_adapter_config(adapter_kind));
-
-		let config_set = ConfigSet::new(self.config(), adapter_config);
+		let model_iden = self.resolve_model_iden(model)?;
 
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_options());
 
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
-			model_info.clone(),
-			&config_set,
+			model_iden.clone(),
+			self.config(),
 			ServiceType::ChatStream,
 			chat_req,
 			options_set.clone(),
@@ -114,11 +100,11 @@ impl Client {
 			.web_client()
 			.new_req_builder(&url, &headers, payload)
 			.map_err(|webc_error| Error::WebModelCall {
-				model_info: model_info.clone(),
+				model_iden: model_iden.clone(),
 				webc_error,
 			})?;
 
-		let res = AdapterDispatcher::to_chat_stream(model_info, reqwest_builder, options_set)?;
+		let res = AdapterDispatcher::to_chat_stream(model_iden, reqwest_builder, options_set)?;
 
 		Ok(res)
 	}

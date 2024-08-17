@@ -1,18 +1,16 @@
 use crate::adapter::anthropic::AnthropicStreamer;
-use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key;
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatRequest, ChatOptionsSet, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent,
-	MetaUsage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::Result;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelIden};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
 
 pub struct AnthropicAdapter;
 
@@ -27,36 +25,35 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for AnthropicAdapter {
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("ANTHROPIC_API_KEY")
+	}
+
 	/// Note: For now returns the common ones (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("ANTHROPIC_API_KEY"))
-	}
-
-	fn get_service_url(_model_info: ModelInfo, service_type: ServiceType) -> String {
+	fn get_service_url(_model_iden: ModelIden, service_type: ServiceType) -> String {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}messages"),
 		}
 	}
 
 	fn to_web_request_data(
-		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		model_iden: ModelIden,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let model_name = model_info.model_name.clone();
+		let model_name = model_iden.model_name.clone();
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
-		let url = Self::get_service_url(model_info.clone(), service_type);
+		let url = Self::get_service_url(model_iden.clone(), service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(model_info, config_set)?;
+		let api_key = get_api_key(model_iden, client_config)?;
 
 		let headers = vec![
 			// headers
@@ -91,7 +88,7 @@ impl Adapter for AnthropicAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 		let json_content_items: Vec<Value> = body.x_take("content")?;
 
@@ -111,18 +108,25 @@ impl Adapter for AnthropicAdapter {
 		};
 		let content = content.map(MessageContent::from);
 
-		Ok(ChatResponse { content, usage })
+		Ok(ChatResponse {
+			model_iden,
+			content,
+			usage,
+		})
 	}
 
 	fn to_chat_stream(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let anthropic_stream = AnthropicStreamer::new(event_source, model_info, options_set);
+		let anthropic_stream = AnthropicStreamer::new(event_source, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
-		Ok(ChatStreamResponse { stream: chat_stream })
+		Ok(ChatStreamResponse {
+			model_iden,
+			stream: chat_stream,
+		})
 	}
 }
 

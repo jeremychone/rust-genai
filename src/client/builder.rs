@@ -1,17 +1,12 @@
-use crate::adapter::{AdapterConfig, AdapterKind};
 use crate::chat::ChatOptions;
-use crate::resolver::AdapterKindResolver;
+use crate::resolver::{AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, ModelMapper};
 use crate::webc::WebClient;
 use crate::{Client, ClientConfig};
-use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug, Default)]
 pub struct ClientBuilder {
-	adapter_config_by_kind: Option<HashMap<AdapterKind, AdapterConfig>>,
-
 	web_client: Option<WebClient>,
-
 	config: Option<ClientConfig>,
 }
 
@@ -25,13 +20,6 @@ impl ClientBuilder {
 	/// With a client config.
 	pub fn with_config(mut self, config: ClientConfig) -> Self {
 		self.config = Some(config);
-		self
-	}
-
-	pub fn insert_adapter_config(mut self, kind: AdapterKind, adapter_config: AdapterConfig) -> Self {
-		self.adapter_config_by_kind
-			.get_or_insert_with(HashMap::new)
-			.insert(kind, adapter_config);
 		self
 	}
 }
@@ -48,12 +36,29 @@ impl ClientBuilder {
 		self
 	}
 
-	/// Set the AdapterKindResolver for the ClientConfig of this ClientBuilder.
-	/// Will create the ClientConfig if not present.
-	/// Otherwise, will just set the `client_config.adapter_kind_resolver`
-	pub fn with_adapter_kind_resolver(mut self, resolver: AdapterKindResolver) -> Self {
+	pub fn with_auth_resolver(mut self, auth_resolver: AuthResolver) -> Self {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
-		client_config.adapter_kind_resolver = Some(resolver);
+		client_config.auth_resolver = Some(auth_resolver);
+		self
+	}
+
+	pub fn with_auth_resolver_fn(mut self, auth_resolver_fn: impl IntoAuthResolverFn) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		let auth_resolver = AuthResolver::from_resolver_fn(auth_resolver_fn);
+		client_config.auth_resolver = Some(auth_resolver);
+		self
+	}
+
+	pub fn with_model_mapper(mut self, model_mapper: ModelMapper) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.model_mapper = Some(model_mapper);
+		self
+	}
+
+	pub fn with_model_mapper_fn(mut self, model_mapper_fn: impl IntoModelMapperFn) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		let model_mapper = ModelMapper::from_mapper_fn(model_mapper_fn);
+		client_config.model_mapper = Some(model_mapper);
 		self
 	}
 }
@@ -64,7 +69,6 @@ impl ClientBuilder {
 		let inner = super::ClientInner {
 			web_client: self.web_client.unwrap_or_default(),
 			config: self.config.unwrap_or_default(),
-			adapter_config_by_kind: self.adapter_config_by_kind,
 		};
 		Client { inner: Arc::new(inner) }
 	}

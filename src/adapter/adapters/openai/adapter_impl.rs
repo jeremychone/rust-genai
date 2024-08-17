@@ -1,17 +1,16 @@
 use crate::adapter::openai::OpenAIStreamer;
-use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key;
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
 
 pub struct OpenAIAdapter;
 
@@ -19,35 +18,32 @@ const BASE_URL: &str = "https://api.openai.com/v1/";
 const MODELS: &[&str] = &["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"];
 
 impl Adapter for OpenAIAdapter {
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("OPENAI_API_KEY")
+	}
+
 	/// Note: For now returns the common ones (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("OPENAI_API_KEY"))
-	}
-
-	fn get_service_url(model_info: ModelInfo, service_type: ServiceType) -> String {
-		Self::util_get_service_url(model_info, service_type, BASE_URL)
+	fn get_service_url(model_iden: ModelIden, service_type: ServiceType) -> String {
+		Self::util_get_service_url(model_iden, service_type, BASE_URL)
 	}
 
 	fn to_web_request_data(
-		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		model_iden: ModelIden,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
-		let url = Self::get_service_url(model_info.clone(), service_type);
+		let url = Self::get_service_url(model_iden.clone(), service_type);
 
-		OpenAIAdapter::util_to_web_request_data(model_info, url, chat_req, service_type, chat_options, &api_key)
+		OpenAIAdapter::util_to_web_request_data(model_iden, client_config, chat_req, service_type, chat_options, url)
 	}
 
-	fn to_chat_response(_model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
 		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
@@ -56,26 +52,33 @@ impl Adapter for OpenAIAdapter {
 		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
 		let content = content.map(MessageContent::from);
 
-		Ok(ChatResponse { content, usage })
+		Ok(ChatResponse {
+			model_iden,
+			content,
+			usage,
+		})
 	}
 
 	fn to_chat_stream(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSource::new(reqwest_builder)?;
-		let openai_stream = OpenAIStreamer::new(event_source, model_info, options_sets);
+		let openai_stream = OpenAIStreamer::new(event_source, model_iden.clone(), options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
-		Ok(ChatStreamResponse { stream: chat_stream })
+		Ok(ChatStreamResponse {
+			model_iden,
+			stream: chat_stream,
+		})
 	}
 }
 
 /// Support function for other Adapter that share OpenAI APIs
 impl OpenAIAdapter {
 	pub(in crate::adapter::adapters) fn util_get_service_url(
-		_model_info: ModelInfo,
+		_model_iden: ModelIden,
 		service_type: ServiceType,
 		// -- util args
 		base_url: &str,
@@ -86,15 +89,17 @@ impl OpenAIAdapter {
 	}
 
 	pub(in crate::adapter::adapters) fn util_to_web_request_data(
-		model_info: ModelInfo,
-		url: String,
+		model_iden: ModelIden,
+		client_config: &ClientConfig,
 		chat_req: ChatRequest,
 		service_type: ServiceType,
 		options_set: ChatOptionsSet<'_, '_>,
-		// -- utils args
-		api_key: &str,
+		base_url: String,
 	) -> Result<WebRequestData> {
 		let stream = matches!(service_type, ServiceType::ChatStream);
+
+		// -- Get the key
+		let api_key = get_api_key(model_iden.clone(), client_config)?;
 
 		// -- Build the header
 		let headers = vec![
@@ -103,8 +108,8 @@ impl OpenAIAdapter {
 		];
 
 		// -- Build the basic payload
-		let model_name = model_info.model_name.to_string();
-		let OpenAIRequestParts { messages } = Self::into_openai_request_parts(model_info, chat_req)?;
+		let model_name = model_iden.model_name.to_string();
+		let OpenAIRequestParts { messages } = Self::into_openai_request_parts(model_iden, chat_req)?;
 		let mut payload = json!({
 			"model": model_name,
 			"messages": messages,
@@ -132,7 +137,11 @@ impl OpenAIAdapter {
 			payload.x_insert("top_p", top_p)?;
 		}
 
-		Ok(WebRequestData { url, headers, payload })
+		Ok(WebRequestData {
+			url: base_url,
+			headers,
+			payload,
+		})
 	}
 
 	/// Note: needs to be called from super::streamer as well
@@ -154,11 +163,11 @@ impl OpenAIAdapter {
 	/// NOTE: here, the last `true` is for the ollama variant
 	///       It seems the Ollama compatibility layer does not work well with multiple System message.
 	///       So, when `true`, it will concatenate the system message as a single on at the beginning
-	fn into_openai_request_parts(model_info: ModelInfo, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
+	fn into_openai_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut system_messages: Vec<String> = Vec::new();
 		let mut messages: Vec<Value> = Vec::new();
 
-		let ollama_variant = matches!(model_info.adapter_kind, AdapterKind::Ollama);
+		let ollama_variant = matches!(model_iden.adapter_kind, AdapterKind::Ollama);
 
 		if let Some(system_msg) = chat_req.system {
 			if ollama_variant {
@@ -186,7 +195,7 @@ impl OpenAIAdapter {
 				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
-						model_info,
+						model_iden,
 						role: ChatRole::Tool,
 					})
 				}

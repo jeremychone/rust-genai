@@ -1,16 +1,15 @@
 use crate::adapter::gemini::GeminiStreamer;
-use crate::adapter::support::get_api_key_resolver;
-use crate::adapter::{Adapter, AdapterConfig, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::support::get_api_key;
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
-use crate::{ConfigSet, ModelInfo};
+use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
 
 pub struct GeminiAdapter;
 
@@ -28,37 +27,36 @@ const MODELS: &[&str] = &[
 //   -X POST 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 
 impl Adapter for GeminiAdapter {
+	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
+		Some("GEMINI_API_KEY")
+	}
+
 	/// Note: For now returns the common ones (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn default_adapter_config(_kind: AdapterKind) -> &'static AdapterConfig {
-		static INSTANCE: OnceLock<AdapterConfig> = OnceLock::new();
-		INSTANCE.get_or_init(|| AdapterConfig::default().with_auth_env_name("GEMINI_API_KEY"))
-	}
-
-	fn get_service_url(_model_info: ModelInfo, service_type: ServiceType) -> String {
+	fn get_service_url(_model_iden: ModelIden, service_type: ServiceType) -> String {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => BASE_URL.to_string(),
 		}
 	}
 
 	fn to_web_request_data(
-		model_info: ModelInfo,
-		config_set: &ConfigSet<'_>,
+		model_iden: ModelIden,
+		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key_resolver(model_info.clone(), config_set)?;
+		let api_key = get_api_key(model_iden.clone(), client_config)?;
 
 		// For gemini, the service url returned is just the base url
 		// since model and API key is part of the url (see below)
-		let url = Self::get_service_url(model_info.clone(), service_type);
+		let url = Self::get_service_url(model_iden.clone(), service_type);
 
 		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
-		let model_name = &*model_info.model_name;
+		let model_name = &*model_iden.model_name;
 		let url = match service_type {
 			ServiceType::Chat => format!("{url}models/{model_name}:generateContent?key={api_key}"),
 			ServiceType::ChatStream => format!("{url}models/{model_name}:streamGenerateContent?key={api_key}"),
@@ -66,7 +64,7 @@ impl Adapter for GeminiAdapter {
 
 		let headers = vec![];
 
-		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(model_info, chat_req)?;
+		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(model_iden, chat_req)?;
 
 		let mut payload = json!({
 			"contents": contents,
@@ -98,27 +96,34 @@ impl Adapter for GeminiAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(model_info: ModelInfo, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { body, .. } = web_response;
 
-		let gemini_response = Self::body_to_gemini_chat_response(&model_info, body)?;
+		let gemini_response = Self::body_to_gemini_chat_response(&model_iden.clone(), body)?;
 		let GeminiChatResponse { content, usage } = gemini_response;
 		let content = content.map(MessageContent::from);
 
-		Ok(ChatResponse { content, usage })
+		Ok(ChatResponse {
+			model_iden,
+			content,
+			usage,
+		})
 	}
 
 	fn to_chat_stream(
-		model_info: ModelInfo,
+		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_pretty_json_array(reqwest_builder);
 
-		let gemini_stream = GeminiStreamer::new(web_stream, model_info, options_set);
+		let gemini_stream = GeminiStreamer::new(web_stream, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(gemini_stream);
 
-		Ok(ChatStreamResponse { stream: chat_stream })
+		Ok(ChatStreamResponse {
+			model_iden,
+			stream: chat_stream,
+		})
 	}
 }
 
@@ -126,11 +131,11 @@ impl Adapter for GeminiAdapter {
 
 /// Support GeminiAdapter functions
 impl GeminiAdapter {
-	pub(super) fn body_to_gemini_chat_response(model_info: &ModelInfo, mut body: Value) -> Result<GeminiChatResponse> {
+	pub(super) fn body_to_gemini_chat_response(model_iden: &ModelIden, mut body: Value) -> Result<GeminiChatResponse> {
 		// if the body has a `error` property, then, it is assumed to be an error
 		if body.get("error").is_some() {
 			return Err(Error::StreamEventError {
-				model_info: model_info.clone(),
+				model_iden: model_iden.clone(),
 				body,
 			});
 		}
@@ -160,7 +165,7 @@ impl GeminiAdapter {
 	/// - `ChatRole::System` get concatenated (empty line) into a single `system` for the system instruction.
 	///   - This adapter use the v1beta, which supports`systemInstruction`
 	/// - the eventual `chat_req.system` get pushed first in the "systemInstruction"
-	fn into_gemini_request_parts(model_info: ModelInfo, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
+	fn into_gemini_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
 		let mut contents: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -180,7 +185,7 @@ impl GeminiAdapter {
 				ChatRole::Assistant => contents.push(json! ({"role": "model", "parts": [{"text": content}]})),
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
-						model_info,
+						model_iden,
 						role: ChatRole::Tool,
 					})
 				}

@@ -2,140 +2,140 @@
 //! It can take the following forms:
 //! - Configured with a custom environment name,
 //! - Contain a fixed auth value,
-//! - Contain an `AuthResolverFnSync` trait object or closure that will be called to return the AuthData.
+//! - Contain an `AuthResolverFn` trait object or closure that will be called to return the AuthData.
 //!
 //! Note: AuthData is typically a single value but can be Multi for future adapters (e.g., AWS Bedrock).
 
-use crate::adapter::AdapterKind;
 use crate::resolver::{Error, Result};
-use crate::ConfigSet;
+use crate::ModelIden;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug)]
-pub struct AuthResolver {
-	inner: AuthResolverInner,
+// region:    --- AuthResolver
+
+/// Holder for the AuthResolver function.
+/// NOTE: Eventually, we might also have a `ResolveAsyncFn`, hence the enum
+#[derive(Debug, Clone)]
+pub enum AuthResolver {
+	ResolverFn(Arc<Box<dyn AuthResolverFn>>),
 }
 
 impl AuthResolver {
-	pub fn from_env_name(env_name: impl Into<String>) -> Self {
-		AuthResolver {
-			inner: AuthResolverInner::EnvName(env_name.into()),
-		}
+	pub fn from_resolver_fn(resolver_fn: impl IntoAuthResolverFn) -> Self {
+		AuthResolver::ResolverFn(resolver_fn.into_resolver_fn())
 	}
+}
 
-	pub fn from_key_value(key: impl Into<String>) -> Self {
-		AuthResolver {
-			inner: AuthResolverInner::Fixed(AuthData::from_single(key)),
-		}
-	}
-
-	pub fn from_sync_resolver(resolver_fn: impl IntoSyncAuthResolverFn) -> Self {
-		AuthResolver {
-			inner: AuthResolverInner::SyncResolverFn(resolver_fn.into_sync_resolver_fn()),
+impl AuthResolver {
+	pub(crate) fn resolve(&self, model_iden: ModelIden) -> Result<Option<AuthData>> {
+		match self {
+			AuthResolver::ResolverFn(resolver_fn) => {
+				// Clone the Arc to get a new reference to the Box, then call exec_fn
+				resolver_fn.clone().exec_fn(model_iden)
+			}
 		}
 	}
 }
 
-// region:    --- AuthDataProvider & IntoAuthDataProvider
+// endregion: --- AuthResolver
 
-pub trait SyncAuthResolverFn: Send + Sync {
-	fn exec_sync_resolver_fn(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>>;
+// region:    --- AuthResolverFn
+
+// Define the trait for an auth resolver function
+pub trait AuthResolverFn: Send + Sync {
+	fn exec_fn(&self, model_iden: ModelIden) -> Result<Option<AuthData>>;
+	fn clone_box(&self) -> Box<dyn AuthResolverFn>;
 }
 
-// Define a trait for types that can be converted into Arc<dyn AuthDataProviderSync>
-pub trait IntoSyncAuthResolverFn {
-	fn into_sync_resolver_fn(self) -> Arc<dyn SyncAuthResolverFn>;
+// Implement AuthResolverFn for any `FnOnce`
+impl<F> AuthResolverFn for F
+where
+	F: FnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
+{
+	fn exec_fn(&self, model_iden: ModelIden) -> Result<Option<AuthData>> {
+		(self.clone())(model_iden)
+	}
+
+	fn clone_box(&self) -> Box<dyn AuthResolverFn> {
+		Box::new(self.clone())
+	}
 }
 
-// Implement IntoProvider for Arc<dyn AuthDataProviderSync>
-impl IntoSyncAuthResolverFn for Arc<dyn SyncAuthResolverFn> {
-	fn into_sync_resolver_fn(self) -> Arc<dyn SyncAuthResolverFn> {
+// Implement Clone for Box<dyn AuthResolverFn>
+impl Clone for Box<dyn AuthResolverFn> {
+	fn clone(&self) -> Box<dyn AuthResolverFn> {
+		self.clone_box()
+	}
+}
+
+impl std::fmt::Debug for dyn AuthResolverFn {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "AuthResolverFn")
+	}
+}
+
+// endregion: --- AuthResolverFn
+
+// region:    --- IntoAuthResolverFn
+
+pub trait IntoAuthResolverFn {
+	fn into_resolver_fn(self) -> Arc<Box<dyn AuthResolverFn>>;
+}
+
+impl IntoAuthResolverFn for Arc<Box<dyn AuthResolverFn>> {
+	fn into_resolver_fn(self) -> Arc<Box<dyn AuthResolverFn>> {
 		self
 	}
 }
 
-// Implement IntoProvider for closures
-impl<F> IntoSyncAuthResolverFn for F
+// Implement IntoAuthResolverFn for closures
+impl<F> IntoAuthResolverFn for F
 where
-	F: Fn(AdapterKind, &ConfigSet) -> Result<Option<AuthData>> + Send + Sync + 'static,
+	F: FnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
 {
-	fn into_sync_resolver_fn(self) -> Arc<dyn SyncAuthResolverFn> {
-		Arc::new(self)
+	fn into_resolver_fn(self) -> Arc<Box<dyn AuthResolverFn>> {
+		Arc::new(Box::new(self))
 	}
 }
 
-// Implement AuthDataProviderSync for closures
-impl<F> SyncAuthResolverFn for F
-where
-	F: Fn(AdapterKind, &ConfigSet) -> Result<Option<AuthData>> + Send + Sync,
-{
-	fn exec_sync_resolver_fn(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>> {
-		self(adapter_kind, config_set)
-	}
-}
-
-// endregion: --- AuthDataProvider & IntoAuthDataProvider
-
-impl AuthResolver {
-	pub(crate) fn resolve(&self, adapter_kind: AdapterKind, config_set: &ConfigSet) -> Result<Option<AuthData>> {
-		match &self.inner {
-			AuthResolverInner::EnvName(env_name) => {
-				let key = std::env::var(env_name).map_err(|_| Error::ApiKeyEnvNotFound {
-					env_name: env_name.to_string(),
-				})?;
-				Ok(Some(AuthData::from_single(key)))
-			}
-			AuthResolverInner::Fixed(auth_data) => Ok(Some(auth_data.clone())),
-			AuthResolverInner::SyncResolverFn(sync_provider) => {
-				sync_provider.exec_sync_resolver_fn(adapter_kind, config_set)
-			}
-		}
-	}
-}
-
-enum AuthResolverInner {
-	EnvName(String),
-	Fixed(AuthData),
-	SyncResolverFn(Arc<dyn SyncAuthResolverFn>),
-}
-
-// impl debug for AuthResolverInner
-impl std::fmt::Debug for AuthResolverInner {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			AuthResolverInner::EnvName(env_name) => write!(f, "AuthResolverInner::EnvName({})", env_name),
-			AuthResolverInner::Fixed(auth_data) => write!(f, "AuthResolverInner::Fixed({:?})", auth_data),
-			AuthResolverInner::SyncResolverFn(_) => write!(f, "AuthResolverInner::FnSync(...)"),
-		}
-	}
-}
+// endregion: --- IntoAuthResolverFn
 
 // region:    --- AuthData
 
 #[derive(Clone)]
 pub enum AuthData {
-	Single(String),
-	Multi(HashMap<String, String>),
+	FromEnv(String),
+	Key(String),
+	MultiKeys(HashMap<String, String>),
 }
 
 /// Constructors
 impl AuthData {
+	pub fn from_env(env_name: impl Into<String>) -> Self {
+		AuthData::FromEnv(env_name.into())
+	}
 	pub fn from_single(value: impl Into<String>) -> Self {
-		AuthData::Single(value.into())
+		AuthData::Key(value.into())
 	}
 
 	pub fn from_multi(data: HashMap<String, String>) -> Self {
-		AuthData::Multi(data)
+		AuthData::MultiKeys(data)
 	}
 }
 
 /// Getters
 impl AuthData {
-	pub fn single_value(&self) -> Result<&str> {
+	pub fn single_value(&self) -> Result<String> {
 		match self {
-			AuthData::Single(value) => Ok(value.as_str()),
-			AuthData::Multi(_) => Err(Error::ResolverAuthDataNotSingleValue),
+			AuthData::FromEnv(env_name) => {
+				// get value from env name
+				let value = std::env::var(env_name).map_err(|_| Error::ApiKeyEnvNotFound {
+					env_name: env_name.to_string(),
+				})?;
+				Ok(value)
+			}
+			AuthData::Key(value) => Ok(value.to_string()),
+			AuthData::MultiKeys(_) => Err(Error::ResolverAuthDataNotSingleValue),
 		}
 	}
 }
@@ -148,8 +148,10 @@ impl AuthData {
 impl std::fmt::Debug for AuthData {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			AuthData::Single(_) => write!(f, "AuthData::Single(REDACTED)"),
-			AuthData::Multi(_) => write!(f, "AuthData::Multi(REDACTED)"),
+			// NOTE: here we also redact for FromEnv in case dev confused this with key
+			AuthData::FromEnv(_env_name) => write!(f, "AuthData::FromEnv(REDACTED)"),
+			AuthData::Key(_) => write!(f, "AuthData::Single(REDACTED)"),
+			AuthData::MultiKeys(_) => write!(f, "AuthData::Multi(REDACTED)"),
 		}
 	}
 }
