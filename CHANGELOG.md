@@ -8,6 +8,7 @@
 ## 2024-08-14 - `0.1.7`
 
 - `+` Added ModelMapper scheme (client_builder::with_model_mapper_fn)
+  - <a style="display: inline-block;transform: translateY(4px);"  href="https://www.youtube.com/watch?v=5Enfcwrl7pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> - genai ModelMapper code demo (v0.1.7)
 - `!` **API CHANGE** Removed `AdapterKindResolver` (should use ModelMapper) (see [examples/c03-mapper.rs](examples/c03-mapper.rs))
 - `!` **API CHANGE** Renamed `ModelInfo` to `ModelIden`
 - `!` **API CHANGE** `AuthResolver` - Refactor AuthResolver Scheme/API (see [examples/c02-auth.rs](examples/c02-auth.rs))
@@ -28,8 +29,8 @@
 
 ## 2024-07-21 - `0.1.5`
 
-- `!` - **API CHANGE** now ClientBuilder::insert_adapter_config (was with_adapter_config)
-- `.` - code clean
+- `!` **API CHANGE** now ClientBuilder::insert_adapter_config (was with_adapter_config)
+- `.` code clean
 
 ## 2024-07-19 - `0.1.4`
 
