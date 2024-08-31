@@ -34,12 +34,17 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 	Ok(())
 }
 
+/// Test with just json mode on. Not structured output test for this one.
+/// - test_token: Is to avoid checking the token (because of a Ollama bug when json mode, no token back)
 pub async fn common_test_chat_json_ok(model: &str, test_token: bool) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
-		ChatMessage::system("Turn the user content into the most probable json content"),
+		ChatMessage::system(
+			r#"Turn the user content into the most probable json content. 
+Reply in a JSON Format."#,
+		),
 		ChatMessage::user(
 			r#"
 | Model          | Maker    
