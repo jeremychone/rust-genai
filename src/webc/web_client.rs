@@ -1,7 +1,6 @@
 use crate::webc::{Error, Result};
 use reqwest::header::HeaderMap;
 use reqwest::{Method, RequestBuilder, StatusCode};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Simple reqwest client wrapper for this library.
@@ -74,7 +73,7 @@ impl WebClient {
 // NOTE: This is not none-stream web response (assume json for this lib)
 //       Streaming is handled with event-source or custom stream (for Cohere for example)
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct WebResponse {
 	#[allow(unused)]
 	pub status: StatusCode,
