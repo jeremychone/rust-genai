@@ -1,7 +1,9 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelName(Arc<str>);
 
 impl std::fmt::Display for ModelName {

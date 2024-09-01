@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use crate::adapter::AdapterKind;
 use crate::ModelName;
 
 /// Hold the adapter_kind and model_name in a efficient clonable way
 /// Note: For now,
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelIden {
 	pub adapter_kind: AdapterKind,
 	pub model_name: ModelName,

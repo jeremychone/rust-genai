@@ -4,6 +4,7 @@ use crate::webc::WebResponse;
 use crate::Result;
 use crate::{ClientConfig, ModelIden};
 use reqwest::RequestBuilder;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub trait Adapter {
@@ -38,7 +39,7 @@ pub trait Adapter {
 
 // region:    --- ServiceType
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ServiceType {
 	Chat,
 	ChatStream,
@@ -49,7 +50,7 @@ pub enum ServiceType {
 // region:    --- WebRequestData
 
 // NOTE: This cannot really move to `webc` because it has to be public with the adapter and `webc` is private for now.
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebRequestData {
 	pub url: String,
 	pub headers: Vec<(String, String)>,

@@ -1,10 +1,11 @@
 //! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
 
 use crate::chat::MessageContent;
+use serde::{Serialize, Deserialize};
 
 // region:    --- ChatRequest
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
 	pub system: Option<String>,
 	pub messages: Vec<ChatMessage>,
@@ -84,7 +85,7 @@ impl ChatRequest {
 
 // region:    --- ChatMessage
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
 	pub role: ChatRole,
 	pub content: MessageContent,
@@ -118,7 +119,7 @@ impl ChatMessage {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ChatRole {
 	System,
 	User,
@@ -126,13 +127,13 @@ pub enum ChatRole {
 	Tool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MessageExtra {
 	Tool(ToolExtra),
 }
 
 #[allow(unused)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolExtra {
 	tool_id: String,
 }

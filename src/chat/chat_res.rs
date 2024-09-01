@@ -1,11 +1,13 @@
 //! This module contains all the types related to a Chat Response (except ChatStream which has it file).
 
+use serde::{Deserialize, Serialize};
+
 use crate::chat::{ChatStream, MessageContent};
 use crate::ModelIden;
 
 // region:    --- ChatResponse
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
 	pub content: Option<MessageContent>,
 	pub usage: MetaUsage,
@@ -41,7 +43,7 @@ pub struct ChatStreamResponse {
 // region:    --- MetaUsage
 
 /// IMPORTANT: This is **NOT SUPPORTED** for now. To show the API direction.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct MetaUsage {
 	pub input_tokens: Option<i32>,
 	pub output_tokens: Option<i32>,

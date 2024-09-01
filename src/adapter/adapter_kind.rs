@@ -1,8 +1,9 @@
 use super::groq::MODELS as GROQ_MODELS;
 use crate::Result;
 use derive_more::Display;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AdapterKind {
 	OpenAI,
 	Ollama,
