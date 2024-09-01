@@ -15,13 +15,13 @@ use serde_json::{json, Value};
 pub struct OpenAIAdapter;
 
 const BASE_URL: &str = "https://api.openai.com/v1/";
+// Latest models
 const MODELS: &[&str] = &[
+	//
 	"gpt-4o",
-	"gpt-4o-latest",
+	"gpt-4o-2024-08-06",
+	"gpt-4o-2024-05-13",
 	"gpt-4o-mini",
-	"gpt-4-turbo",
-	"gpt-4",
-	"gpt-3.5-turbo",
 ];
 
 impl Adapter for OpenAIAdapter {
