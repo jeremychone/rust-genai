@@ -5,9 +5,11 @@
 //!
 //! NOTE: This might be removed at some point as it might not be needed, and going directly to the genai stream.
 
+use serde::{Deserialize, Serialize};
+
 use crate::chat::MetaUsage;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct InterStreamEnd {
 	// When `ChatOptions..capture_usage == true`
 	pub captured_usage: Option<MetaUsage>,
@@ -17,6 +19,7 @@ pub struct InterStreamEnd {
 }
 
 /// Intermediary StreamEvent
+#[derive(Debug, Serialize, Deserialize)]
 pub enum InterStreamEvent {
 	Start,
 	Chunk(String),

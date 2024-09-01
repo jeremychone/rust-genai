@@ -4,7 +4,10 @@
 //!
 //! Note 1: Later, we will probably allow to set the client
 //! Note 2: Splitting it out of the `ChatRequest` object allows for better reusability of each component.
-#[derive(Debug, Clone, Default)]
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatOptions {
 	/// Will be set for this request if Adapter/providers supports it.
 	pub temperature: Option<f64>,

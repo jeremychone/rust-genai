@@ -2,12 +2,13 @@ use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{MessageContent, MetaUsage};
 use derive_more::From;
 use futures::Stream;
+use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
 type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>> + Send>>;
 
-/// ChatStream is a Rust Future Stream that iterates through the events of a chat stream request.
+/// ChatStream is a Rust Future Stream that iterates through the events of a chat stream request
 pub struct ChatStream {
 	inter_stream: InterStreamType,
 }
@@ -54,19 +55,19 @@ impl Stream for ChatStream {
 
 // region:    --- ChatStreamEvent
 
-#[derive(Debug, From)]
+#[derive(Debug, From, Serialize, Deserialize)]
 pub enum ChatStreamEvent {
 	Start,
 	Chunk(StreamChunk),
 	End(StreamEnd),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StreamChunk {
 	pub content: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StreamEnd {
 	/// The eventual captured UsageMeta
 	pub captured_usage: Option<MetaUsage>,

@@ -1,10 +1,11 @@
 use crate::chat::{ChatStreamEvent, ChatStreamResponse, StreamChunk};
 use futures::StreamExt;
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncWriteExt as _, Stdout};
 
 // region:    --- PrintChatOptions
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PrintChatStreamOptions {
 	print_events: Option<bool>,
 }

@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 /// For now, supports only Text,
 /// But the goal is to support multi-part message content (see below)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MessageContent {
 	Text(String),
 }
