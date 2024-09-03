@@ -5,6 +5,7 @@
 //! Note 1: Later, we will probably allow to set the client
 //! Note 2: Splitting it out of the `ChatRequest` object allows for better reusability of each component.
 
+use crate::chat::chat_response_format::ChatResponseFormat;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -27,13 +28,11 @@ pub struct ChatOptions {
 	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_content`
 	pub capture_content: Option<bool>,
 
-	/// Enable JSON mode for supported models
+	/// Specifies the response format for a chat request.
+	/// - `ChatResponseFormat::JsonMode` is for OpenAI-like API usage, where the user must specify in the prompt that they want a JSON format response.
 	///
-	/// IMPORTANT: When this is true, it's important to instruct the model to produce JSON yourself
-	///            for many models/providers to work correctly. This can be approximately done
-	///            by checking if any System and potentially User messages contain `"json"`
-	///            (make sure to check the `.system` property as well).
-	pub json_mode: Option<bool>,
+	/// NOTE: More response formats are coming soon.
+	pub response_format: Option<ChatResponseFormat>,
 }
 
 /// Chainable Setters
@@ -70,13 +69,22 @@ impl ChatOptions {
 
 	/// Set the `json_mode` for this request.
 	///
-	/// IMPORTANT: When this is true, it's important to instruct the model to produce JSON yourself
+	/// IMPORANT: This is deprecated now, use `with_response_format(ChatResponseFormat::JsonMode)`
+	///
+	/// IMPORTANT: When this is JsonMode, it's important to instruct the model to produce JSON yourself
 	///            for many models/providers to work correctly. This can be approximately done
 	///            by checking if any System and potentially User messages contain `"json"`
 	///            (make sure to check the `.system` property as well).
-	///
+	#[deprecated(note = "Use with_response_format(ChatResponseFormat::JsonMode)")]
 	pub fn with_json_mode(mut self, value: bool) -> Self {
-		self.json_mode = Some(value);
+		if value {
+			self.response_format = Some(ChatResponseFormat::JsonMode);
+		}
+		self
+	}
+
+	pub fn with_response_format(mut self, res_format: impl Into<ChatResponseFormat>) -> Self {
+		self.response_format = Some(res_format.into());
 		self
 	}
 }
@@ -135,10 +143,21 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.capture_content))
 	}
 
-	pub fn json_mode(&self) -> Option<bool> {
+	pub fn response_format(&self) -> Option<&ChatResponseFormat> {
 		self.chat
-			.and_then(|chat| chat.json_mode)
-			.or_else(|| self.client.and_then(|client| client.json_mode))
+			.and_then(|chat| chat.response_format.as_ref())
+			.or_else(|| self.client.and_then(|client| client.response_format.as_ref()))
+	}
+
+	/// Returns true only if there is  ChatResonseFormat::JsonMode
+	#[deprecated(note = "Use .response_format()")]
+	#[allow(unused)]
+	pub fn json_mode(&self) -> Option<bool> {
+		match self.response_format() {
+			Some(ChatResponseFormat::JsonMode) => Some(true),
+			None => None,
+			_ => Some(false),
+		}
 	}
 }
 

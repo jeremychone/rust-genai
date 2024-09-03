@@ -2,7 +2,8 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
+	MessageContent, MetaUsage,
 };
 use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
@@ -124,8 +125,16 @@ impl OpenAIAdapter {
 		});
 
 		// -- Add options
-		if let Some(true) = options_set.json_mode() {
-			payload["response_format"] = json!({"type": "json_object"});
+		let response_format = if let Some(response_format) = options_set.response_format() {
+			match response_format {
+				ChatResponseFormat::JsonMode => Some(json!({"type": "json_object"})),
+			}
+		} else {
+			None
+		};
+
+		if let Some(response_format) = response_format {
+			payload["response_format"] = response_format;
 		}
 
 		// --

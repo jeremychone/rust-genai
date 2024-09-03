@@ -1,6 +1,6 @@
 use crate::get_option_value;
 use crate::support::{extract_stream_end, seed_chat_req_simple, Result};
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat};
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
 use std::sync::Arc;
@@ -54,7 +54,7 @@ Reply in a JSON Format."#,
 		"#,
 		),
 	]);
-	let chat_options = ChatOptions::default().with_json_mode(true);
+	let chat_options = ChatOptions::default().with_response_format(ChatResponseFormat::JsonMode);
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
