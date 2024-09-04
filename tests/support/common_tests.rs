@@ -1,9 +1,11 @@
 use crate::get_option_value;
 use crate::support::{extract_stream_end, seed_chat_req_simple, Result};
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, StructuredJson};
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
+use serde_json::{json, Value};
 use std::sync::Arc;
+use value_ext::JsonValueExt;
 
 // region:    --- Chat
 
@@ -36,7 +38,7 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 
 /// Test with just json mode on. Not structured output test for this one.
 /// - test_token: Is to avoid checking the token (because of a Ollama bug when json mode, no token back)
-pub async fn common_test_chat_json_ok(model: &str, test_token: bool) -> Result<()> {
+pub async fn common_test_chat_json_mode_ok(model: &str, test_token: bool) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = ChatRequest::new(vec![
@@ -74,6 +76,75 @@ Reply in a JSON Format."#,
 	let json: serde_json::Value = serde_json::from_str(&content).map_err(|err| format!("Was not valid json: {err}"))?;
 	// pretty print json
 	let pretty_json = serde_json::to_string_pretty(&json).map_err(|err| format!("Was not valid json: {err}"))?;
+
+	Ok(())
+}
+
+/// Test with just json mode on. Not structured output test for this one.
+/// - test_token: Is to avoid checking the token (because of a Ollama bug when json mode, no token back)
+pub async fn common_test_chat_json_structured_ok(model: &str, test_token: bool) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (de/activate to see the differences)
+		ChatMessage::system(
+			r#"Turn the user content into the most probable json content. 
+Reply in a JSON Format."#,
+		),
+		ChatMessage::user(
+			r#"
+| Model          | Maker    
+| gpt-4o	       | OpenAI
+| gpt-4o-mini	   | OpenAI
+| llama-3.1-70B  | Meta
+		"#,
+		),
+	]);
+
+	let json_schema = json!({
+	  "type": "object",
+		"additionalProperties": false,
+	  "properties": {
+			"all_models": {
+				"type": "array",
+				"items": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"maker": { "type": "string" },
+						"model_name": { "type": "string" }
+					},
+					"required": ["maker", "model_name"]
+				}
+			}
+	  },
+	  "required": ["all_models"]
+	});
+
+	let chat_options = ChatOptions::default().with_response_format(StructuredJson::new("some-schema", json_schema));
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
+
+	// -- Check
+	// Make sure tokens still get counted
+	if test_token {
+		// ollama does not send back token usage when json
+		let usage = &chat_res.usage;
+		let total_tokens = get_option_value!(usage.total_tokens);
+		assert!(total_tokens > 0, "total_tokens should be > 0");
+	}
+
+	// Check content
+	let content = chat_res.content_text_into_string().ok_or("SHOULD HAVE CONTENT")?;
+	// parse content as json
+	let json_response: serde_json::Value =
+		serde_json::from_str(&content).map_err(|err| format!("Was not valid json: {err}"))?;
+	// check models count
+	let models: Vec<Value> = json_response.x_get("all_models")?;
+	assert_eq!(3, models.len(), "number of models");
+	let first_maker: String = models.first().ok_or("no models")?.x_get("maker")?;
+	assert_eq!("OpenAI", first_maker, "first maker");
 
 	Ok(())
 }

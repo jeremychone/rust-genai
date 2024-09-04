@@ -17,8 +17,8 @@ async fn test_chat_simple_ok() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_chat_json_ok() -> Result<()> {
-	common_tests::common_test_chat_json_ok(MODEL, true).await
+async fn test_chat_json_mode_ok() -> Result<()> {
+	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
 }
 
 #[tokio::test]

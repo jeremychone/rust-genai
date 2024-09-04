@@ -20,8 +20,8 @@ async fn test_chat_temperature_ok() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_chat_json_ok() -> Result<()> {
-	common_tests::common_test_chat_json_ok(MODEL, true).await
+async fn test_chat_json_mode_ok() -> Result<()> {
+	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
 }
 
 // endregion: --- Chat
