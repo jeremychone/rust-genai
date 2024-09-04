@@ -5,13 +5,13 @@ use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
 	MessageContent, MetaUsage,
 };
-use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
+use value_ext::JsonValueExt;
 
 pub struct OpenAIAdapter;
 

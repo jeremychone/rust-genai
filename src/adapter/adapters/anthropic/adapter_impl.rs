@@ -4,13 +4,13 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
-use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::Result;
 use crate::{ClientConfig, ModelIden};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
+use value_ext::JsonValueExt;
 
 pub struct AnthropicAdapter;
 

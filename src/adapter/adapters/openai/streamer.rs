@@ -3,12 +3,12 @@ use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::AdapterKind;
 use crate::chat::ChatOptionsSet;
-use crate::support::value_ext::ValueExt;
 use crate::{Error, ModelIden, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use value_ext::JsonValueExt;
 
 pub struct OpenAIStreamer {
 	inner: EventSource,

@@ -2,13 +2,13 @@ use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::ChatOptionsSet;
-use crate::support::value_ext::ValueExt;
 use crate::webc::WebStream;
 use crate::{Error, ModelIden, Result};
 use serde::Deserialize;
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use value_ext::JsonValueExt;
 
 pub struct CohereStreamer {
 	inner: WebStream,

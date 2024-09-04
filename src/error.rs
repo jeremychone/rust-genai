@@ -2,6 +2,7 @@ use crate::adapter::AdapterKind;
 use crate::chat::ChatRole;
 use crate::{resolver, webc, ModelIden};
 use derive_more::From;
+use value_ext::JsonValueExtError;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -74,12 +75,12 @@ pub enum Error {
 	},
 
 	// -- Utils
-	#[from]
-	XValue(crate::support::value_ext::Error),
 
 	// -- Externals
 	#[from]
 	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
+	#[from]
+	JsonValueExt(JsonValueExtError),
 	ReqwestEventSource(reqwest_eventsource::Error),
 }
 

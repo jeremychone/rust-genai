@@ -1,5 +1,6 @@
 use derive_more::From;
 use reqwest::StatusCode;
+use value_ext::JsonValueExtError;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -16,7 +17,7 @@ pub enum Error {
 
 	// -- Utils
 	#[from]
-	XValue(crate::support::value_ext::Error),
+	JsonValueExt(JsonValueExtError),
 
 	// -- Externals
 	#[from]

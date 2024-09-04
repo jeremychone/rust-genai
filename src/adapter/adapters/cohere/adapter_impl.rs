@@ -4,12 +4,12 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
-use crate::support::value_ext::ValueExt;
 use crate::webc::{WebResponse, WebStream};
 use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
+use value_ext::JsonValueExt;
 
 pub struct CohereAdapter;
 

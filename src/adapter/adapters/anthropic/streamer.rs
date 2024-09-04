@@ -1,12 +1,12 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, MetaUsage};
-use crate::support::value_ext::ValueExt;
 use crate::{Error, ModelIden, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use value_ext::JsonValueExt;
 
 pub struct AnthropicStreamer {
 	inner: EventSource,

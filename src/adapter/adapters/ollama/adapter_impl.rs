@@ -3,12 +3,12 @@
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
-use crate::support::value_ext::ValueExt;
 use crate::webc::WebResponse;
 use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::Value;
+use value_ext::JsonValueExt;
 
 pub struct OllamaAdapter;
 

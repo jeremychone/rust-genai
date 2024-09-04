@@ -1,7 +1,5 @@
 // region:    --- Modules
 
-mod support;
-
 mod client;
 mod common;
 mod error;
