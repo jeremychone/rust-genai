@@ -84,7 +84,7 @@ impl Adapter for GeminiAdapter {
 		}
 
 		// -- Response Format
-		if let Some(ChatResponseFormat::StructuredJson(st_json)) = options_set.response_format() {
+		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
 			// x_insert
 			//     responseMimeType: "application/json",
 			// responseSchema: {

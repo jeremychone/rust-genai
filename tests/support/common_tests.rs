@@ -1,6 +1,6 @@
 use crate::get_option_value;
 use crate::support::{extract_stream_end, seed_chat_req_simple, Result};
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, StructuredJson};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, JsonSpec};
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
 use serde_json::{json, Value};
@@ -121,7 +121,7 @@ Reply in a JSON Format."#,
 	  "required": ["all_models"]
 	});
 
-	let chat_options = ChatOptions::default().with_response_format(StructuredJson::new("some-schema", json_schema));
+	let chat_options = ChatOptions::default().with_response_format(JsonSpec::new("some-schema", json_schema));
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;

@@ -6,18 +6,18 @@ use serde_json::Value;
 pub enum ChatResponseFormat {
 	JsonMode,
 	#[from]
-	StructuredJson(StructuredJson),
+	JsonSpec(JsonSpec),
 }
 
 #[derive(Debug, Clone, From, Serialize, Deserialize)]
-pub struct StructuredJson {
+pub struct JsonSpec {
 	pub name: String,
 	pub description: Option<String>,
 	pub schema: Value,
 }
 
 /// Constructors
-impl StructuredJson {
+impl JsonSpec {
 	pub fn new(name: impl Into<String>, schema: impl Into<Value>) -> Self {
 		Self {
 			name: name.into(),
@@ -28,7 +28,7 @@ impl StructuredJson {
 }
 
 /// Setters
-impl StructuredJson {
+impl JsonSpec {
 	pub fn with_description(mut self, description: impl Into<String>) -> Self {
 		self.description = Some(description.into());
 		self

@@ -128,7 +128,7 @@ impl OpenAIAdapter {
 		let response_format = if let Some(response_format) = options_set.response_format() {
 			match response_format {
 				ChatResponseFormat::JsonMode => Some(json!({"type": "json_object"})),
-				ChatResponseFormat::StructuredJson(st_json) => {
+				ChatResponseFormat::JsonSpec(st_json) => {
 					// "type": "json_schema", "json_schema": {...}
 
 					let mut schema = st_json.schema.clone();
