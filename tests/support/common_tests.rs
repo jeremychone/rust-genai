@@ -103,13 +103,13 @@ Reply in a JSON Format."#,
 
 	let json_schema = json!({
 	  "type": "object",
-		"additionalProperties": false,
+		// "additionalProperties": false,
 	  "properties": {
 			"all_models": {
 				"type": "array",
 				"items": {
 					"type": "object",
-					"additionalProperties": false,
+					// "additionalProperties": false,
 					"properties": {
 						"maker": { "type": "string" },
 						"model_name": { "type": "string" }

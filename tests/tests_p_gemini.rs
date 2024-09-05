@@ -15,6 +15,11 @@ async fn test_chat_simple_ok() -> Result<()> {
 }
 
 #[tokio::test]
+async fn test_chat_json_structured_ok() -> Result<()> {
+	common_tests::common_test_chat_json_structured_ok(MODEL, true).await
+}
+
+#[tokio::test]
 async fn test_chat_temperature_ok() -> Result<()> {
 	common_tests::common_test_chat_temperature_ok(MODEL).await
 }

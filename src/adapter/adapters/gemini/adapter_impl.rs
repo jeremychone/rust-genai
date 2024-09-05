@@ -2,7 +2,8 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
+	MessageContent, MetaUsage,
 };
 use crate::webc::{WebResponse, WebStream};
 use crate::{ClientConfig, ModelIden};
@@ -80,6 +81,22 @@ impl Adapter for GeminiAdapter {
 					"parts": [ { "text": system }]
 				}),
 			)?;
+		}
+
+		// -- Response Format
+		if let Some(ChatResponseFormat::StructuredJson(st_json)) = options_set.response_format() {
+			// x_insert
+			//     responseMimeType: "application/json",
+			// responseSchema: {
+			payload.x_insert("/generationConfig/responseMimeType", "application/json")?;
+			let mut schema = st_json.schema.clone();
+			schema.x_walk(|parent_map, name| {
+				if name == "additionalProperties" {
+					parent_map.remove("additionalProperties");
+				}
+				true
+			});
+			payload.x_insert("/generationConfig/responseSchema", schema)?;
 		}
 
 		// -- Add supported ChatOptions
