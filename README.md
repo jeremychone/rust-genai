@@ -12,14 +12,14 @@ Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **
 
 ```toml
 # cargo.toml
-genai = "=0.1.7" # Version lock for `0.1.x`
+genai = "=0.1.8" # Version lock for `0.1.x`
 ```
 
 <br />
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI Providers, such as OpenAI, Anthropic, Cohere, Ollama.
 
-- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.7"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
+- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.8"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
 
@@ -114,17 +114,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per request level.
 - [examples/c05-model-names.rs](examples/c05-model-names.rs) - Show how to get model names per AdapterKind.
 
-### Videos 
+## <img alt="Static Badge" src="https://img.shields.io/badge/YouTube_Videos-Video?style=flat&logo=youtube&color=%23ff0000">
 
-- <a style="display: inline-block;transform: translateY(5px);"  href="https://www.youtube.com/watch?v=5Enfcwrl7pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> - genai ModelMapper code demo (v0.1.7)
+- [genai ModelMapper code demo (v0.1.7)](https://www.youtube.com/watch?v=5Enfcwrl7pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
 
-- <a style="display: inline-block;transform: translateY(5px);"  href="https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> - genai introduction (v0.1.0)]
+- [genai introduction (v0.1.0)](https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
 
-- **genai code design & best practices**
-    - <a style="display: inline-block;transform: translateY(5px);" href="https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> (part 1/3) Module, Error, constructors/builders
-    - <a style="display: inline-block;transform: translateY(5px);" href="https://www.youtube.com/watch?v=LRfDAZfo00o&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> (part 2/3) Extension Traits, Project Files, Versioning
-    - <a style="display: inline-block;transform: translateY(5px);" href="https://www.youtube.com/watch?v=93SS3VGsKx4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> (part 3/3) When to Async? Project Files, Versioning strategy.
-
+- **genai live coding, code design, & best practices**
+    - [Adding **Gemini** Structured Output (vid-0060)](https://www.youtube.com/watch?v=GdFsqLJ1_pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+    - [Adding **OpenAI** Structured Output (vid-0059)](https://www.youtube.com/watch?v=FpoNbQMhAH8&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+    - [Splitting the json value extension trait to its own public crate value-ext](https://www.youtube.com/watch?v=OS5KOz9y7Cg&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj) [value-ext](https://crates.io/crates/value-ext)
+    - [(part 1/3) Module, Error, constructors/builders](https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+    - [(part 2/3) Extension Traits, Project Files, Versioning](https://www.youtube.com/watch?v=LRfDAZfo00o&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+    - [(part 3/3) When to Async? Project Files, Versioning strategy](https://www.youtube.com/watch?v=93SS3VGsKx4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q)
+    
 ## Thanks
 
 - Thanks to [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)

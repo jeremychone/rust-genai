@@ -1,9 +1,22 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.7"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.8"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-09-06 - `0.1.8`
+
+- `.` printer - now uses printer::Error (rather than box dyn) (rel #21)
+- `+` **NEW** - **structured output** - for gemini & OpenAI
+  - Behind the scene:
+    - <a style="display: inline-block;transform: translateY(4px);"  href="https://www.youtube.com/watch?v=GdFsqLJ1_pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> Adding **Gemini** Structured Output (vid-0060)
+    - <a style="display: inline-block;transform: translateY(4px);"  href="https://www.youtube.com/watch?v=FpoNbQMhAH8&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube-Video?style=flat&logo=youtube&color=%23ff0000"></a> Adding **OpenAI** Structured Output (vid-0059)
+- `!` **soft deprecation (for now)** use `ChatResponseFormat::JsonMode` (was `ChatOptions::json_mode` flag) 
+- `*` Make most public types `De/Serializable`
+- `.` openai - fix chatgpt prefix. Update current model lists
+- `.` add json test for anthropic
+- `.` makes `webc::Error` public (relates to: #12)
 
 ## 2024-08-14 - `0.1.7`
 
