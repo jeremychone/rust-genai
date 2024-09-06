@@ -3,6 +3,9 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncWriteExt as _, Stdout};
 
+// Note: This module has its own Error type (see end of file)
+type Result<T> = core::result::Result<T, Error>;
+
 // region:    --- PrintChatOptions
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -25,7 +28,7 @@ impl PrintChatStreamOptions {
 pub async fn print_chat_stream(
 	chat_res: ChatStreamResponse,
 	options: Option<&PrintChatStreamOptions>,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String> {
 	let mut stdout = tokio::io::stdout();
 	let res = print_chat_stream_inner(&mut stdout, chat_res, options).await;
 	// make sure tokio stdout flush get called, regardless of success or not.
@@ -37,7 +40,7 @@ async fn print_chat_stream_inner(
 	stdout: &mut Stdout,
 	chat_res: ChatStreamResponse,
 	options: Option<&PrintChatStreamOptions>,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String> {
 	let mut stream = chat_res.stream;
 
 	let mut content_capture = String::new();
@@ -97,3 +100,31 @@ async fn print_chat_stream_inner(
 
 	Ok(content_capture)
 }
+
+// region:    --- Error
+
+// Note 1: The printer has its own error as it is more of a utility, and therefore
+//         making the main crate error aware of the different error types will be unnecessary.
+//
+// Note 2: This Printer Error is not
+
+use derive_more::From;
+
+/// The Printer error.
+#[derive(Debug, From)]
+pub enum Error {
+	#[from]
+	TokioIo(tokio::io::Error),
+}
+
+// region:    --- Error Boilerplate
+
+impl core::fmt::Display for Error {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+		write!(fmt, "{self:?}")
+	}
+}
+
+impl std::error::Error for Error {}
+
+// endregion: --- Error Boilerplate
