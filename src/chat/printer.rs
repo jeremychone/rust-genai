@@ -103,10 +103,11 @@ async fn print_chat_stream_inner(
 
 // region:    --- Error
 
-// Note 1: The printer has its own error as it is more of a utility, and therefore
-//         making the main crate error aware of the different error types will be unnecessary.
+// Note 1: The printer has its own error because it is more of a utility, and therefore
+//         making the main crate error aware of the different error types would be unnecessary.
 //
-// Note 2: This Printer Error is not
+// Note 2: This Printer Error is not wrapped in the main crate error because the printer
+//         functions are not used by any other crate function (more of a debug utility)
 
 use derive_more::From;
 
