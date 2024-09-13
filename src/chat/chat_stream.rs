@@ -14,11 +14,11 @@ pub struct ChatStream {
 }
 
 impl ChatStream {
-	pub fn new(inter_stream: InterStreamType) -> Self {
+	pub(crate) fn new(inter_stream: InterStreamType) -> Self {
 		ChatStream { inter_stream }
 	}
 
-	pub fn from_inter_stream<T>(inter_stream: T) -> Self
+	pub(crate) fn from_inter_stream<T>(inter_stream: T) -> Self
 	where
 		T: Stream<Item = crate::Result<InterStreamEvent>> + Send + Unpin + 'static,
 	{
@@ -55,18 +55,29 @@ impl Stream for ChatStream {
 
 // region:    --- ChatStreamEvent
 
+/// The normalized chat stream event for any provider when calling `Client::exec`
 #[derive(Debug, From, Serialize, Deserialize)]
 pub enum ChatStreamEvent {
+	/// Represents the start of the stream. First event.
 	Start,
+
+	/// Represents each chunk response. Currently only contains text content.
 	Chunk(StreamChunk),
+
+	/// Represents the end of the stream.
+	/// Will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`
 	End(StreamEnd),
 }
 
+/// Chunk content of the `ChatStreamEvent::Chunk` variant.
+/// For now, just contain text
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StreamChunk {
+	/// The content text
 	pub content: String,
 }
 
+/// StreamEnd content, with the eventual `.captured_usage` and `.captured_content`
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StreamEnd {
 	/// The eventual captured UsageMeta

@@ -8,10 +8,12 @@ use std::sync::Arc;
 /// It must return a `ModelIden` or an appropriate
 #[derive(Debug, Clone)]
 pub enum ModelMapper {
+	/// The mapper function holder variant
 	MapperFn(Arc<Box<dyn ModelMapperFn>>),
 }
 
 impl ModelMapper {
+	/// Create a new `ModelMapper` from a mapper function.
 	pub fn from_mapper_fn(mapper_fn: impl IntoModelMapperFn) -> Self {
 		ModelMapper::MapperFn(mapper_fn.into_mapper_fn())
 	}
@@ -32,9 +34,12 @@ impl ModelMapper {
 
 // region:    --- ModelMapperFn
 
-// Define the trait for an auth resolver function
+/// The `ModelMapperFn` trait object.
 pub trait ModelMapperFn: Send + Sync {
+	/// Execute the `ModelMapperFn` to get the `ModelIden`.
 	fn exec_fn(&self, model_iden: ModelIden) -> Result<ModelIden>;
+
+	/// Clone the trait object into a box dyn
 	fn clone_box(&self) -> Box<dyn ModelMapperFn>;
 }
 
@@ -69,7 +74,9 @@ impl std::fmt::Debug for dyn ModelMapperFn {
 
 // region:    --- IntoModelMapperFn
 
+/// Implement IntoModelMapperFn for closures `ModelMapper::from_mapper_fn` argument
 pub trait IntoModelMapperFn {
+	/// Convert the given closure into a `ModelMapperFn` trait object.
 	fn into_mapper_fn(self) -> Arc<Box<dyn ModelMapperFn>>;
 }
 
@@ -79,7 +86,6 @@ impl IntoModelMapperFn for Arc<Box<dyn ModelMapperFn>> {
 	}
 }
 
-// Implement IntoModelMapperFn for closures
 impl<F> IntoModelMapperFn for F
 where
 	F: FnOnce(ModelIden) -> Result<ModelIden> + Send + Sync + Clone + 'static,

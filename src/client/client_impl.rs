@@ -76,6 +76,7 @@ impl Client {
 		Ok(chat_res)
 	}
 
+	/// Execute a chat stream response.
 	pub async fn exec_chat_stream(
 		&self,
 		model: &str,

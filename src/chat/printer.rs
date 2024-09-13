@@ -1,3 +1,6 @@
+//! Printer utility to help print a chat stream
+//! > Note: This is mostly for quick testing and temporary debugging
+
 use crate::chat::{ChatStreamEvent, ChatStreamResponse, StreamChunk};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -8,6 +11,7 @@ type Result<T> = core::result::Result<T, Error>;
 
 // region:    --- PrintChatOptions
 
+/// Options to be passed into the `printer::print_chat_stream`
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PrintChatStreamOptions {
 	print_events: Option<bool>,
@@ -15,6 +19,7 @@ pub struct PrintChatStreamOptions {
 
 /// constructors
 impl PrintChatStreamOptions {
+	/// Create a `PrintChatStreamOptions` with the `print_events` field set to `true`
 	pub fn from_print_events(print_events: bool) -> Self {
 		PrintChatStreamOptions {
 			print_events: Some(print_events),
@@ -114,6 +119,7 @@ use derive_more::From;
 /// The Printer error.
 #[derive(Debug, From)]
 pub enum Error {
+	/// The `tokio::io::Error` when using `tokio::io::stdout`
 	#[from]
 	TokioIo(tokio::io::Error),
 }

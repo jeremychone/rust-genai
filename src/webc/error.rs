@@ -4,6 +4,8 @@ use value_ext::JsonValueExtError;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
+/// webc sub module error.
+#[allow(missing_docs)]
 #[derive(Debug, From)]
 pub enum Error {
 	ResponseFailedNotJson {

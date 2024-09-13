@@ -1,14 +1,21 @@
 use derive_more::From;
 
+/// resolver Result type alias
 pub type Result<T> = core::result::Result<T, Error>;
 
+/// Resolver error type
 #[derive(Debug, From)]
 pub enum Error {
+	/// The API key environment variable was not found.
 	ApiKeyEnvNotFound {
+		/// The name of the environment variable.
 		env_name: String,
 	},
+
+	/// The `AuthData` is not a single value.
 	ResolverAuthDataNotSingleValue,
 
+	/// Custom error message.
 	#[from]
 	Custom(String),
 }

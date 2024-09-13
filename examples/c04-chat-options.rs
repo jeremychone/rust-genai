@@ -1,3 +1,7 @@
+//! This example shows how to use a custom AdapterKindResolver to have some custom
+//! mapping from a model name to a AdapterKind.
+//! This allows to map missing models to their Adapter implementations.
+
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
 use genai::{Client, ClientConfig};
@@ -8,10 +12,6 @@ use genai::{Client, ClientConfig};
 // const MODEL: &str = "gemini-1.5-flash-latest";
 // const MODEL: &str = "llama3-8b-8192";
 const MODEL: &str = "gemma:2b";
-
-/// This example shows how to use a custom AdapterKindResolver to have some custom
-/// mapping from a model name to a AdapterKind.
-/// This allows to map missing models to their Adapter implementations.
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

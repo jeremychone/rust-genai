@@ -1,3 +1,5 @@
+//! The genai web client construct that use reqwest. Only `webc::Error` is exposed as public interface.
+
 // region:    --- Modules
 
 mod error;

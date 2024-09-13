@@ -1,3 +1,5 @@
+//! Base examples showing the core capability of genai
+
 use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;

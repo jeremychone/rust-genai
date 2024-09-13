@@ -8,6 +8,10 @@
 use crate::chat::chat_response_format::ChatResponseFormat;
 use serde::{Deserialize, Serialize};
 
+/// Chat Options that is taken in account for any `Client::exec...` calls.
+///
+/// A fallback `ChatOptions` can also be set at the `Client` at the client builder phase
+/// ``
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatOptions {
 	/// Will be set for this request if Adapter/providers supports it.
@@ -83,6 +87,7 @@ impl ChatOptions {
 		self
 	}
 
+	/// Set the `response_format` for this request.
 	pub fn with_response_format(mut self, res_format: impl Into<ChatResponseFormat>) -> Self {
 		self.response_format = Some(res_format.into());
 		self

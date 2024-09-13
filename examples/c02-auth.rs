@@ -1,12 +1,12 @@
+//! This example demonstrates how to use a custom authentication function to override the default AuthData resolution
+//! for any specific adapter (which is based on environment variables).
+
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::{AuthData, AuthResolver};
 use genai::{Client, ModelIden};
 
 const MODEL: &str = "gpt-4o-mini";
-
-/// This example demonstrates how to use a custom authentication function to override the default AuthData resolution
-/// for any specific adapter (which is based on environment variables).
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

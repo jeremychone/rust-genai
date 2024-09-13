@@ -1,3 +1,6 @@
+//! The genai chat module contains all of the constructs necessary
+//! to make genai requests with the `genai::Client`.
+
 // region:    --- Modules
 
 mod chat_options;

@@ -3,13 +3,20 @@ use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
+/// AdapterKind is an enum that represents the different kinds of adapters that can be used to interact with the API.
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AdapterKind {
+	/// Main Adapter kind for the OpenAI service.
 	OpenAI,
+	/// Used for the Ollama adapter (right now, localhost only). Behind the scenes, it uses the OpenAI Adapter logic.
 	Ollama,
+	/// Used for the Anthropic adapter.
 	Anthropic,
+	/// Used for the Cohere adapter.
 	Cohere,
+	/// Used for the Gemini adapter.
 	Gemini,
+	/// Used for the Groq adapter. Behind the scenes, it uses the OpenAI Adapter logic with the necessary Groq differences (e.g., usage).
 	Groq,
 	// Note: Variants will probably be suffixed
 	// AnthropicBedrock,
@@ -17,6 +24,7 @@ pub enum AdapterKind {
 
 /// Serialization impls
 impl AdapterKind {
+	/// Serialize to a static str
 	pub fn as_str(&self) -> &'static str {
 		match self {
 			AdapterKind::OpenAI => "OpenAI",
@@ -28,6 +36,7 @@ impl AdapterKind {
 		}
 	}
 
+	/// Serialize to a static str
 	pub fn as_lower_str(&self) -> &'static str {
 		match self {
 			AdapterKind::OpenAI => "openai",

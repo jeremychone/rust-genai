@@ -4,11 +4,13 @@ use serde::{Deserialize, Serialize};
 /// But the goal is to support multi-part message content (see below)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MessageContent {
+	/// Text content
 	Text(String),
 }
 
 /// Constructors
 impl MessageContent {
+	/// Create a new MessageContent with Text variant
 	pub fn text(content: impl Into<String>) -> Self {
 		MessageContent::Text(content.into())
 	}

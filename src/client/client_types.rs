@@ -3,6 +3,10 @@ use crate::webc::WebClient;
 use crate::ClientBuilder;
 use std::sync::Arc;
 
+/// genai Client for executing AI requests to any providers.
+/// Build with:
+/// - `ClientBuilder::default()...build()`
+/// - or `Client::builder()`, which is equivalent to `ClientBuilder::default()...build()`
 #[derive(Debug, Clone)]
 pub struct Client {
 	pub(super) inner: Arc<ClientInner>,
@@ -17,6 +21,8 @@ impl Default for Client {
 }
 
 impl Client {
+	/// Create a new ClientBuilder for Client
+	/// Just another way for `ClientBuilder::default()`
 	pub fn builder() -> ClientBuilder {
 		ClientBuilder::default()
 	}

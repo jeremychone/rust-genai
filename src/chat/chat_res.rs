@@ -7,10 +7,17 @@ use crate::ModelIden;
 
 // region:    --- ChatResponse
 
+/// The Chat response when doing a direct `Client::`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
+	/// The eventual content of the chat response
 	pub content: Option<MessageContent>,
+
+	/// The eventual usage of the chat response
 	pub usage: MetaUsage,
+
+	/// The Model Identifier (AdapterKind/ModelName) used for this request.
+	/// > NOTE: This might be different than the request model if changed by the ModelMapper
 	pub model_iden: ModelIden,
 }
 
@@ -33,8 +40,12 @@ impl ChatResponse {
 
 // region:    --- ChatStreamResponse
 
+/// The result returned from
 pub struct ChatStreamResponse {
+	/// The stream result to iterate through the stream events
 	pub stream: ChatStream,
+
+	/// The Model Identifier (AdapterKind/ModelName) used for this request.
 	pub model_iden: ModelIden,
 }
 
@@ -45,8 +56,12 @@ pub struct ChatStreamResponse {
 /// IMPORTANT: This is **NOT SUPPORTED** for now. To show the API direction.
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct MetaUsage {
+	/// The number of input token if returned by the api call.
 	pub input_tokens: Option<i32>,
+	/// The number of output token if returned by the api call.
 	pub output_tokens: Option<i32>,
+	/// The total number of token if returned by the api call.
+	/// Either the total_tokens if returned, or sum of input/output if not specified in the response
 	pub total_tokens: Option<i32>,
 }
 

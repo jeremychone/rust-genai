@@ -1,18 +1,23 @@
 //! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
 
 use crate::chat::MessageContent;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
 
+/// The Chat request when doing a direct `Client::`
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
+	/// The initial system of the request.
 	pub system: Option<String>,
+
+	/// The messages of the request.
 	pub messages: Vec<ChatMessage>,
 }
 
 /// Constructors
 impl ChatRequest {
+	/// Create a new ChatRequest with the given messages.
 	pub fn new(messages: Vec<ChatMessage>) -> Self {
 		Self { messages, system: None }
 	}
@@ -28,11 +33,13 @@ impl ChatRequest {
 
 /// Chainable Setters
 impl ChatRequest {
+	/// Set the system content of the request.
 	pub fn with_system(mut self, system: impl Into<String>) -> Self {
 		self.system = Some(system.into());
 		self
 	}
 
+	/// Append a message to the request.
 	pub fn append_message(mut self, msg: ChatMessage) -> Self {
 		self.messages.push(msg);
 		self
@@ -85,15 +92,22 @@ impl ChatRequest {
 
 // region:    --- ChatMessage
 
+/// An individual Chat message
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
+	/// The role of the message
 	pub role: ChatRole,
+
+	/// The content of the message
 	pub content: MessageContent,
+
+	/// Extra information about the message
 	pub extra: Option<MessageExtra>,
 }
 
 /// Constructors
 impl ChatMessage {
+	/// Create a new ChatMessage with the role `ChatRole::System`
 	pub fn system(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::System,
@@ -102,6 +116,7 @@ impl ChatMessage {
 		}
 	}
 
+	/// Create a new ChatMessage with the role `ChatRole::Assistant`
 	pub fn assistant(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::Assistant,
@@ -110,6 +125,7 @@ impl ChatMessage {
 		}
 	}
 
+	/// Create a new ChatMessage with the role `ChatRole::Tool`
 	pub fn user(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::User,
@@ -119,7 +135,9 @@ impl ChatMessage {
 	}
 }
 
+/// Chat roles
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(missing_docs)]
 pub enum ChatRole {
 	System,
 	User,
@@ -127,11 +145,14 @@ pub enum ChatRole {
 	Tool,
 }
 
+/// NOTE: DO NOT USE, just a placeholder for now
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(missing_docs)]
 pub enum MessageExtra {
 	Tool(ToolExtra),
 }
 
+/// NOTE: DO NOT USE, just a placeholder for now
 #[allow(unused)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolExtra {
