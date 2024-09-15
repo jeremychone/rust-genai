@@ -1,5 +1,5 @@
 //! This example demonstrates how to use the ModelMapper to map a ModelIden (model identifier) to
-//! a potentially different one, using the model mapper.
+//! a potentially different one using the model mapper.
 
 use genai::adapter::AdapterKind;
 use genai::chat::printer::print_chat_stream;
@@ -7,7 +7,7 @@ use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::ModelMapper;
 use genai::{Client, ModelIden};
 
-// NOTE: This will be overriden below to `gpt-4o-mini`
+// NOTE: This will be overridden below to `gpt-4o-mini`
 const MODEL: &str = "gpt-4o";
 
 #[tokio::main]
@@ -15,12 +15,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let questions = &[
 		// follow-up questions
 		"Why is the sky blue?",
-		"Why is it red sometime?",
+		"Why is it red sometimes?",
 	];
 
-	// -- Build a auth_resolver and the AdapterConfig
+	// -- Build an auth_resolver and the AdapterConfig
 	let model_mapper = ModelMapper::from_mapper_fn(|model_iden: ModelIden| {
-		// let's be cheap, and map all gpt to "gpt-4o-mini"
+		// let's be economical, and map all gpt to "gpt-4o-mini"
 		if model_iden.model_name.starts_with("gpt-") {
 			Ok(ModelIden::new(AdapterKind::OpenAI, "gpt-4o-mini"))
 		} else {

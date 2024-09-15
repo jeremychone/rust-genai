@@ -13,22 +13,22 @@ pub enum ChatResponseFormat {
 	/// Note: Make sure to add "Reply in JSON format." to the prompt or system to ensure it works correctly.
 	JsonMode,
 
-	/// Request to return a stuctured Structured Output
+	/// Request to return a structured output.
 	#[from]
 	JsonSpec(JsonSpec),
 }
 
-/// The json specification for the Structured Output format.
+/// The JSON specification for the structured output format.
 #[derive(Debug, Clone, From, Serialize, Deserialize)]
 pub struct JsonSpec {
-	/// The name of the spec. Mostly used by open-ai.
-	/// IMPORTANT: With openAI, this cannot contains any space or special characters beside `-` and `_`
+	/// The name of the spec. Mostly used by OpenAI.
+	/// IMPORTANT: With OpenAI, this cannot contain any spaces or special characters besides `-` and `_`.
 	pub name: String,
-	/// The description of the json spec. Mostly used by OpenAI adapters (future).
-	/// NOTE: Today, ignored in the OpenAI adapter
+	/// The description of the JSON spec. Mostly used by OpenAI adapters (future).
+	/// NOTE: Currently ignored in the OpenAI adapter.
 	pub description: Option<String>,
 
-	/// The simplified json-schema that will be used by the AI Provider as json schema.
+	/// The simplified JSON schema that will be used by the AI provider as JSON schema.
 	pub schema: Value,
 }
 
@@ -46,7 +46,7 @@ impl JsonSpec {
 
 /// Setters
 impl JsonSpec {
-	/// Chainable setter to set the descrition in a JsonSpec construct.
+	/// Chainable setter to set the description in a JsonSpec construct.
 	pub fn with_description(mut self, description: impl Into<String>) -> Self {
 		self.description = Some(description.into());
 		self

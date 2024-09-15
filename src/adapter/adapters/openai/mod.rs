@@ -1,6 +1,6 @@
-//! API DOC:     https://platform.openai.com/docs/api-reference/chat
-//! MODEL NAMES: https://platform.openai.com/docs/models
-//! PRICING:     https://openai.com/api/pricing/
+//! API Documentation:     https://platform.openai.com/docs/api-reference/chat
+//! Model Names:           https://platform.openai.com/docs/models
+//! Pricing:               https://openai.com/api/pricing/
 
 // region:    --- Modules
 

@@ -8,7 +8,7 @@ use std::task::{Context, Poll};
 
 type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>> + Send>>;
 
-/// ChatStream is a Rust Future Stream that iterates through the events of a chat stream request
+/// ChatStream is a Rust Future Stream that iterates through the events of a chat stream request.
 pub struct ChatStream {
 	inter_stream: InterStreamType,
 }
@@ -55,7 +55,7 @@ impl Stream for ChatStream {
 
 // region:    --- ChatStreamEvent
 
-/// The normalized chat stream event for any provider when calling `Client::exec`
+/// The normalized chat stream event for any provider when calling `Client::exec`.
 #[derive(Debug, From, Serialize, Deserialize)]
 pub enum ChatStreamEvent {
 	/// Represents the start of the stream. First event.
@@ -65,25 +65,25 @@ pub enum ChatStreamEvent {
 	Chunk(StreamChunk),
 
 	/// Represents the end of the stream.
-	/// Will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`
+	/// Will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`.
 	End(StreamEnd),
 }
 
 /// Chunk content of the `ChatStreamEvent::Chunk` variant.
-/// For now, just contain text
+/// For now, it only contains text.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StreamChunk {
-	/// The content text
+	/// The content text.
 	pub content: String,
 }
 
-/// StreamEnd content, with the eventual `.captured_usage` and `.captured_content`
+/// StreamEnd content, with the eventual `.captured_usage` and `.captured_content`.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StreamEnd {
-	/// The eventual captured UsageMeta
+	/// The eventual captured UsageMeta.
 	pub captured_usage: Option<MetaUsage>,
 
-	/// The optional captured full content
+	/// The optional captured full content.
 	pub captured_content: Option<MessageContent>,
 }
 

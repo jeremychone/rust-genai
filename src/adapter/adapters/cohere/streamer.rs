@@ -15,7 +15,7 @@ pub struct CohereStreamer {
 	options: StreamerOptions,
 
 	// -- Set by the poll_next
-	/// Flag to not poll the EventSource after a MessageStop event
+	/// Flag to prevent polling the EventSource after a MessageStop event
 	done: bool,
 	captured_data: StreamerCapturedData,
 }
@@ -31,7 +31,7 @@ impl CohereStreamer {
 	}
 }
 
-/// Only needed properties that need to be parsed
+/// Required properties that need to be parsed
 #[derive(Deserialize, Debug)]
 struct CohereStreamMessage {
 	#[allow(unused)]
@@ -71,7 +71,7 @@ impl futures::Stream for CohereStreamer {
 								"stream-start" => InterStreamEvent::Start,
 								"text-generation" => {
 									if let Some(content) = cohere_message.text {
-										// add to the captured_content if chat options say so
+										// Add to the captured_content if chat options allow it
 										if self.options.capture_content {
 											match self.captured_data.content {
 												Some(ref mut c) => c.push_str(&content),
@@ -90,7 +90,7 @@ impl futures::Stream for CohereStreamer {
 										meta.and_then(|mut v| v.x_take("tokens").ok())
 											.map(CohereAdapter::into_usage)
 											.map(|mut usage| {
-												// compute the total if anh of input/output are not null
+												// Compute the total if any of input/output are not null
 												if usage.input_tokens.is_some() || usage.output_tokens.is_some() {
 													usage.total_tokens = Some(
 														usage.input_tokens.unwrap_or(0)

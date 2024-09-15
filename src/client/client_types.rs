@@ -22,7 +22,7 @@ impl Default for Client {
 
 impl Client {
 	/// Create a new ClientBuilder for Client
-	/// Just another way for `ClientBuilder::default()`
+	/// This is just another way to use `ClientBuilder::default()`
 	pub fn builder() -> ClientBuilder {
 		ClientBuilder::default()
 	}

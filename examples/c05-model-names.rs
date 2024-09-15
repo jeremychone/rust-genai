@@ -1,5 +1,5 @@
-//! Example to show how to get the list of models per AdapterKind
-//! Note: For now, only Ollama makes a dynamic query. Other adapters have a static list of models.
+//! Example showing how to get the list of models per AdapterKind
+//! Note: Currently, only Ollama makes a dynamic query. Other adapters have a static list of models.
 
 use genai::adapter::AdapterKind;
 use genai::Client;

@@ -4,10 +4,10 @@ use crate::{resolver, webc, ModelIden};
 use derive_more::From;
 use value_ext::JsonValueExtError;
 
-/// genai main Result type alias (with genai::Error)
+/// GenAI main Result type alias (with genai::Error)
 pub type Result<T> = core::result::Result<T, Error>;
 
-/// Main genai error
+/// Main GenAI error
 #[derive(Debug, From)]
 #[allow(missing_docs)]
 pub enum Error {
@@ -15,7 +15,7 @@ pub enum Error {
 	ChatReqHasNoMessages {
 		model_iden: ModelIden,
 	},
-	LastChatMessageIsNoUser {
+	LastChatMessageIsNotUser {
 		model_iden: ModelIden,
 		actual_role: ChatRole,
 	},

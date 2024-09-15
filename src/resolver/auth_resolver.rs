@@ -1,10 +1,10 @@
 //! An `AuthResolver` is responsible for returning the `AuthData` (typically containing the `api_key`).
 //! It can take the following forms:
 //! - Configured with a custom environment name,
-//! - Contain a fixed auth value,
-//! - Contain an `AuthResolverFn` trait object or closure that will be called to return the `AuthData`.
+//! - Contains a fixed auth value,
+//! - Contains an `AuthResolverFn` trait object or closure that will be called to return the `AuthData`.
 //!
-//! Note: `AuthData` is typically a single value but can be multi for future adapters (e.g., AWS Bedrock).
+//! Note: `AuthData` is typically a single value but can be multiple for future adapters (e.g., AWS Bedrock).
 
 use crate::resolver::{Error, Result};
 use crate::ModelIden;
@@ -118,7 +118,7 @@ pub enum AuthData {
 	/// The key value itself.
 	Key(String),
 
-	/// The key names/values when a credential has multiple credential information.
+	/// The key names/values when a credential has multiple pieces of credential information.
 	/// This will be adapter-specific.
 	/// NOTE: Not used yet.
 	MultiKeys(HashMap<String, String>),
@@ -148,7 +148,7 @@ impl AuthData {
 	pub fn single_value(&self) -> Result<String> {
 		match self {
 			AuthData::FromEnv(env_name) => {
-				// Get value from environment name.
+				// Get value from the environment name.
 				let value = std::env::var(env_name).map_err(|_| Error::ApiKeyEnvNotFound {
 					env_name: env_name.to_string(),
 				})?;

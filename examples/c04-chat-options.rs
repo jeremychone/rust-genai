@@ -1,6 +1,6 @@
 //! This example shows how to use a custom AdapterKindResolver to have some custom
-//! mapping from a model name to a AdapterKind.
-//! This allows to map missing models to their Adapter implementations.
+//! mapping from a model name to an AdapterKind.
+//! This allows mapping missing models to their Adapter implementations.
 
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
@@ -18,8 +18,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let question = "Why is the sky red?";
 
 	// -- Global ChatOptions
-	// Note: The ChatOptions properties set at the client config level will be
-	//       the fallback value if not provided at the chat exec level.
+	// Note: The properties of ChatOptions set at the client config level will be
+	//       the fallback values if not provided at the chat execution level.
 	let client_config =
 		ClientConfig::default().with_chat_options(ChatOptions::default().with_temperature(0.0).with_top_p(0.99));
 
@@ -29,10 +29,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// -- Build the chat request
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);
 
-	// -- Build the chat request options (used per exec chat)
+	// -- Build the chat request options (used per execution chat)
 	let options = ChatOptions::default().with_max_tokens(1000);
 
-	// -- Exec and print
+	// -- Execute and print
 	println!("\n--- Question:\n{question}");
 	let chat_res = client.exec_chat_stream(MODEL, chat_req.clone(), Some(&options)).await?;
 

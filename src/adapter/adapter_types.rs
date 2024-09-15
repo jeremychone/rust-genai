@@ -9,14 +9,14 @@ use serde_json::Value;
 pub trait Adapter {
 	fn default_key_env_name(kind: AdapterKind) -> Option<&'static str>;
 
-	// NOTE: Adapter is a crate Trait, so, ok to use async fn here.
+	// NOTE: Adapter is a crate trait, so it is acceptable to use async fn here.
 	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>>;
 
-	/// The base service url for this AdapterKind for this given service type.
-	/// NOTE: For some services, the url will be further updated in the to_web_request_data
+	/// The base service URL for this AdapterKind for the given service type.
+	/// NOTE: For some services, the URL will be further updated in the to_web_request_data method.
 	fn get_service_url(model_iden: ModelIden, service_type: ServiceType) -> String;
 
-	/// To be implemented by Adapters
+	/// To be implemented by Adapters.
 	fn to_web_request_data(
 		model_iden: ModelIden,
 		config_set: &ClientConfig,
@@ -25,10 +25,10 @@ pub trait Adapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData>;
 
-	/// To be implemented by Adapters
+	/// To be implemented by Adapters.
 	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse>;
 
-	/// To be implemented by Adapters
+	/// To be implemented by Adapters.
 	fn to_chat_stream(
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
@@ -48,7 +48,7 @@ pub enum ServiceType {
 
 // region:    --- WebRequestData
 
-// NOTE: This cannot really move to `webc` because it has to be public with the adapter and `webc` is private for now.
+// NOTE: This cannot really move to `webc` because it must be public with the adapter, and `webc` is private for now.
 #[derive(Debug, Clone)]
 pub struct WebRequestData {
 	pub url: String,

@@ -1,34 +1,34 @@
-//! ChatOptions allows to customize a chat request.
-//! - It can be given at the `client::exec_chat(..)` level as argument,
-//! - or set in the client config `client_config.with_chat_options(..)` to be taken as default by all requests
+//! ChatOptions allows customization of a chat request.
+//! - It can be provided at the `client::exec_chat(..)` level as an argument,
+//! - or set in the client config `client_config.with_chat_options(..)` to be used as default for all requests
 //!
-//! Note 1: Later, we will probably allow to set the client
-//! Note 2: Splitting it out of the `ChatRequest` object allows for better reusability of each component.
+//! Note 1: In the future, we will probably allow setting the client
+//! Note 2: Extracting it from the `ChatRequest` object allows for better reusability of each component.
 
 use crate::chat::chat_response_format::ChatResponseFormat;
 use serde::{Deserialize, Serialize};
 
-/// Chat Options that is taken in account for any `Client::exec...` calls.
+/// Chat Options that are taken into account for any `Client::exec...` calls.
 ///
-/// A fallback `ChatOptions` can also be set at the `Client` at the client builder phase
+/// A fallback `ChatOptions` can also be set at the `Client` during the client builder phase
 /// ``
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatOptions {
-	/// Will be set for this request if Adapter/providers supports it.
+	/// Will be used for this request if the Adapter/provider supports it.
 	pub temperature: Option<f64>,
 
-	/// Will be set of this request if Adapter/provider supports it.
+	/// Will be used for this request if the Adapter/provider supports it.
 	pub max_tokens: Option<u32>,
 
-	/// Will be set of this request if Adapter/provider supports it.
+	/// Will be used for this request if the Adapter/provider supports it.
 	pub top_p: Option<f64>,
 
-	/// (for steam only) Capture the meta usage when in stream mode
+	/// (for streaming only) Capture the meta usage when in stream mode
 	/// `StreamEnd` event payload will contain `captured_usage`
 	/// > Note: Will capture the `MetaUsage`
 	pub capture_usage: Option<bool>,
 
-	/// (for stream only) Capture/concatenate the full message content from all content chunk
+	/// (for streaming only) Capture/concatenate the full message content from all content chunks
 	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_content`
 	pub capture_content: Option<bool>,
 
@@ -73,7 +73,7 @@ impl ChatOptions {
 
 	/// Set the `json_mode` for this request.
 	///
-	/// IMPORANT: This is deprecated now, use `with_response_format(ChatResponseFormat::JsonMode)`
+	/// IMPORTANT: This is deprecated now; use `with_response_format(ChatResponseFormat::JsonMode)`
 	///
 	/// IMPORTANT: When this is JsonMode, it's important to instruct the model to produce JSON yourself
 	///            for many models/providers to work correctly. This can be approximately done
@@ -97,8 +97,8 @@ impl ChatOptions {
 // region:    --- ChatOptionsSet
 
 /// This is an internal crate struct to resolve the ChatOptions value in a cascading manner.
-/// First, try to get the value at the chat level. (ChatOptions from the exec_chat...(...) argument)
-/// If value for the property not found, look at the client default one.
+/// First, it attempts to get the value at the chat level (ChatOptions from the exec_chat...(...) argument).
+/// If a value for the property is not found, it looks at the client default one.
 #[derive(Default, Clone)]
 pub(crate) struct ChatOptionsSet<'a, 'b> {
 	client: Option<&'a ChatOptions>,
@@ -154,7 +154,7 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.response_format.as_ref()))
 	}
 
-	/// Returns true only if there is  ChatResonseFormat::JsonMode
+	/// Returns true only if there is a ChatResponseFormat::JsonMode
 	#[deprecated(note = "Use .response_format()")]
 	#[allow(unused)]
 	pub fn json_mode(&self) -> Option<bool> {

@@ -3,12 +3,12 @@ use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
-/// AdapterKind is an enum that represents the different kinds of adapters that can be used to interact with the API.
+/// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AdapterKind {
-	/// Main Adapter kind for the OpenAI service.
+	/// Main adapter type for the OpenAI service.
 	OpenAI,
-	/// Used for the Ollama adapter (right now, localhost only). Behind the scenes, it uses the OpenAI Adapter logic.
+	/// Used for the Ollama adapter (currently, localhost only). Behind the scenes, it uses the OpenAI adapter logic.
 	Ollama,
 	/// Used for the Anthropic adapter.
 	Anthropic,
@@ -16,13 +16,13 @@ pub enum AdapterKind {
 	Cohere,
 	/// Used for the Gemini adapter.
 	Gemini,
-	/// Used for the Groq adapter. Behind the scenes, it uses the OpenAI Adapter logic with the necessary Groq differences (e.g., usage).
+	/// Used for the Groq adapter. Behind the scenes, it uses the OpenAI adapter logic with the necessary Groq differences (e.g., usage).
 	Groq,
 	// Note: Variants will probably be suffixed
 	// AnthropicBedrock,
 }
 
-/// Serialization impls
+/// Serialization implementations
 impl AdapterKind {
 	/// Serialize to a static str
 	pub fn as_str(&self) -> &'static str {
@@ -49,9 +49,9 @@ impl AdapterKind {
 	}
 }
 
-/// From Model impls
+/// From Model implementations
 impl AdapterKind {
-	/// Very simplistic mapper for now.
+	/// A very simplistic mapper for now.
 	///  - starts_with "gpt"      -> OpenAI
 	///  - starts_with "claude"   -> Anthropic
 	///  - starts_with "command"  -> Cohere
@@ -70,7 +70,7 @@ impl AdapterKind {
 		} else if GROQ_MODELS.contains(&model) {
 			return Ok(Self::Groq);
 		}
-		// for now, fallback on Ollama
+		// for now, fallback to Ollama
 		else {
 			Ok(Self::Ollama)
 		}

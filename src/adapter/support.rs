@@ -4,10 +4,10 @@ use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 
 /// Returns the `api_key` value from the config_set auth_resolver
-/// This function should be called if the adapter must have a api_key
-/// Fail if the no auth_resolver or no auth_data
+/// This function should be called if the adapter requires an api_key
+/// Fails if there is no auth_resolver or no auth_data
 pub fn get_api_key(model_iden: ModelIden, client_config: &ClientConfig) -> Result<String> {
-	// -- Try to get it from the eventual auth_resolver
+	// -- Try to get it from the optional auth_resolver
 	let auth_data = client_config
 		.auth_resolver()
 		.map(|auth_resolver| {
@@ -18,10 +18,10 @@ pub fn get_api_key(model_iden: ModelIden, client_config: &ClientConfig) -> Resul
 					resolver_error,
 				})
 		})
-		.transpose()? // return error if error on auth resolver
+		.transpose()? // return error if there is an error on auth resolver
 		.flatten(); // flatten the two options
 
-	// -- If no auth resolver, get it from env name (or 'ollama' for ollama)
+	// -- If there is no auth resolver, get it from the environment name (or 'ollama' for Ollama)
 	let auth_data = auth_data.or_else(|| {
 		if let AdapterKind::Ollama = model_iden.adapter_kind {
 			Some(AuthData::from_single("ollama".to_string()))
@@ -35,7 +35,7 @@ pub fn get_api_key(model_iden: ModelIden, client_config: &ClientConfig) -> Resul
 		return Err(Error::NoAuthData { model_iden });
 	};
 
-	// TODO: Needs to support multi value
+	// TODO: Needs to support multiple values
 	let key = auth_data
 		.single_value()
 		.map_err(|resolver_error| Error::Resolver {

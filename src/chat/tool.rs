@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// NOT USED FOR NOW
-/// > For later, will be for function calling
-/// > Will probably use the JsonSpec type we had in response format,
+/// > For later, it will be used for function calling
+/// > It will probably use the JsonSpec type we had in the response format,
 /// > or have a `From<JsonSpec>` implementation.
 #[allow(unused)] // Not used yet
 #[derive(Debug, Clone, Serialize, Deserialize)]

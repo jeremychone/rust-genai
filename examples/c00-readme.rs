@@ -1,4 +1,4 @@
-//! Base examples showing the core capability of genai
+//! Base examples demonstrating the core capabilities of genai
 
 use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
@@ -11,10 +11,10 @@ const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
 const MODEL_GROQ: &str = "gemma-7b-it";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 
-// NOTE: Those are the default environment keys for each AI Adapter Type.
-//       Can be customized, see `examples/c02-auth.rs`
+// NOTE: These are the default environment keys for each AI Adapter Type.
+//       They can be customized; see `examples/c02-auth.rs`
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
-	// -- de/activate models/providers
+	// -- De/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
 	(MODEL_COHERE, "COHERE_API_KEY"),
@@ -31,7 +31,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - model in Groq models   -> Groq
 //  - For anything else      -> Ollama
 //
-// Can be customized, see `examples/c03-kind.rs`
+// This can be customized; see `examples/c03-kind.rs`
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let print_options = PrintChatStreamOptions::from_print_events(false);
 
 	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
-		// Skip if does not have the environment name set
+		// Skip if the environment name is not set
 		if !env_name.is_empty() && std::env::var(env_name).is_err() {
 			println!("===== Skipping model: {model} (env var not set: {env_name})");
 			continue;

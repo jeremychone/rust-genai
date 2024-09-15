@@ -16,19 +16,19 @@ pub struct OllamaAdapter;
 const BASE_URL: &str = "http://localhost:11434/v1/";
 const OLLAMA_BASE_URL: &str = "http://localhost:11434/api/";
 
-/// Note: For now, it uses the openai compatibility layer
+/// Note: For now, it uses the OpenAI compatibility layer
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
-///       Since the base ollama API supports `application/x-ndjson` for streaming whereas others support `text/event-stream`
+///       Since the base Ollama API supports `application/x-ndjson` for streaming, whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
 	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
 		None
 	}
 
-	/// Note: For now returns empty as it should probably do a request to the ollama server
+	/// Note: For now, it returns empty as it should probably make a request to the Ollama server
 	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
 		let url = format!("{OLLAMA_BASE_URL}tags");
 
-		// TODO: need to get the WebClient from the client.
+		// TODO: Need to get the WebClient from the client.
 		let web_c = crate::webc::WebClient::default();
 		let mut res = web_c.do_get(&url, &[]).await.map_err(|webc_error| Error::WebAdapterCall {
 			adapter_kind,
@@ -43,7 +43,7 @@ impl Adapter for OllamaAdapter {
 				models.push(model_name);
 			}
 		} else {
-			// TODO: need to add tracing
+			// TODO: Need to add tracing
 			// error!("OllamaAdapter::list_models did not have any models {res:?}");
 		}
 

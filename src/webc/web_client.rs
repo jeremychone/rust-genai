@@ -3,13 +3,13 @@ use reqwest::header::HeaderMap;
 use reqwest::{Method, RequestBuilder, StatusCode};
 use serde_json::Value;
 
-/// Simple reqwest client wrapper for this library.
+/// A simple reqwest client wrapper for this library.
 #[derive(Debug)]
 pub struct WebClient {
 	reqwest_client: reqwest::Client,
 }
 
-// impl default
+// Implements Default
 impl Default for WebClient {
 	fn default() -> Self {
 		WebClient {
@@ -28,7 +28,7 @@ impl WebClient {
 
 // endregion: --- Constructors
 
-// region:    --- Web Method Impl
+// region:    --- Web Method Implementation
 
 impl WebClient {
 	pub async fn do_get(&self, url: &str, headers: &[(String, String)]) -> Result<WebResponse> {
@@ -66,12 +66,12 @@ impl WebClient {
 		Ok(reqwest_builder)
 	}
 }
-// endregion: --- Web Method Impl
+// endregion: --- Web Method Implementation
 
 // region:    --- WebResponse
 
-// NOTE: This is not none-stream web response (assume json for this lib)
-//       Streaming is handled with event-source or custom stream (for Cohere for example)
+// NOTE: This is not a non-streaming web response (assumed to be JSON for this library).
+//       Streaming is handled with event-source or custom streams (for example, for Cohere).
 
 #[derive(Debug)]
 pub struct WebResponse {
@@ -82,9 +82,9 @@ pub struct WebResponse {
 
 impl WebResponse {
 	/// Note 1: For now, assume only a JSON response.
-	/// Note 2: Currently, the WebResponse holds a Value (parsed from the whole body), and then the caller
+	/// Note 2: Currently, the WebResponse holds a Value (parsed from the entire body), and then the caller
 	///         can cherry-pick/deserialize further. In the future, we might consider returning `body: String`
-	///         to enable more optimized parsing, allowing for selective parsing constrained by the struct.
+	///         to enable more optimized parsing, allowing for selective parsing constrained by the structure.
 	pub(crate) async fn from_reqwest_response(mut res: reqwest::Response) -> Result<WebResponse> {
 		let status = res.status();
 

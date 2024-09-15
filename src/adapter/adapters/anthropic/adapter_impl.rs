@@ -29,7 +29,7 @@ impl Adapter for AnthropicAdapter {
 		Some("ANTHROPIC_API_KEY")
 	}
 
-	/// Note: For now returns the common ones (see above)
+	/// Note: For now, it returns the common models (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
@@ -79,7 +79,7 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		let max_tokens = options_set.max_tokens().unwrap_or(MAX_TOKENS);
-		payload.x_insert("max_tokens", max_tokens)?; // required for anyhropic
+		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
 
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("top_p", top_p)?;
@@ -151,8 +151,8 @@ impl AnthropicAdapter {
 		}
 	}
 
-	/// Takes the genai ChatMessages and build the System string and json Messages for Anthropic.
-	/// - Will push the `ChatRequest.system` and systems message to `AnthropicsRequestParts.system`
+	/// Takes the GenAI ChatMessages and constructs the System string and JSON Messages for Anthropic.
+	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
 	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
@@ -166,7 +166,7 @@ impl AnthropicAdapter {
 			let MessageContent::Text(content) = msg.content;
 
 			match msg.role {
-				// for now, system and tool goes to system
+				// for now, system and tool messages go to system
 				ChatRole::System | ChatRole::Tool => systems.push(content),
 				ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
 				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),

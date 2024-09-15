@@ -5,7 +5,7 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// Note: On groq, the llama3.1 or gemma models fail to produce JSON without a proposed schema.
+// Note: In groq, the llama3.1 or gemma models fail to produce JSON without a proposed schema.
 //       With the "tool-use" groq version, it will work correctly.
 const MODEL: &str = "llama3-groq-8b-8192-tool-use-preview";
 

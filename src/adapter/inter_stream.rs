@@ -1,9 +1,9 @@
-//! Internal Stream Event Types which serve as an intermediary between the Provider event and the genai stream event.
+//! Internal stream event types that serve as an intermediary between the provider event and the GenAI stream event.
 //!
-//! This allows to eventually have flexibility if we want to capture event across providers that does not need to
+//! This allows for flexibility if we want to capture events across providers that do not need to
 //! be reflected in the public ChatStream event.
 //!
-//! NOTE: This might be removed at some point as it might not be needed, and going directly to the genai stream.
+//! NOTE: This might be removed at some point as it may not be needed, and we could go directly to the GenAI stream.
 
 use crate::chat::MetaUsage;
 
@@ -12,7 +12,7 @@ pub struct InterStreamEnd {
 	// When `ChatOptions..capture_usage == true`
 	pub captured_usage: Option<MetaUsage>,
 
-	// When  `ChatOptions..capture_content == true`
+	// When `ChatOptions..capture_content == true`
 	pub captured_content: Option<String>,
 }
 

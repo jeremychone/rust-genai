@@ -2,7 +2,7 @@ use super::Result;
 use genai::chat::{ChatStream, ChatStreamEvent, StreamEnd};
 use tokio_stream::StreamExt;
 
-/// A macro to get the value of an `Option` field from a struct, returning an error if the field is `None`.
+/// A macro to retrieve the value of an `Option` field from a struct, returning an error if the field is `None`.
 ///
 /// # Arguments
 ///

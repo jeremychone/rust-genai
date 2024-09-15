@@ -4,7 +4,7 @@ use crate::webc::WebClient;
 use crate::{Client, ClientConfig};
 use std::sync::Arc;
 
-/// The builder for the `Client` construct.
+/// The builder for the `Client` structure.
 ///
 /// - `ClientBuilder::default()`
 /// - `Client::builder()`

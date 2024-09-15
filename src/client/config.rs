@@ -9,7 +9,7 @@ pub struct ClientConfig {
 	pub(in crate::client) chat_options: Option<ChatOptions>,
 }
 
-/// Adapter-related chainable setters for ClientConfig.
+/// Chainable setters related to the ClientConfig.
 impl ClientConfig {
 	/// Set the AuthResolver for the ClientConfig.
 	pub fn with_auth_resolver(mut self, auth_resolver: AuthResolver) -> Self {
@@ -30,7 +30,7 @@ impl ClientConfig {
 	}
 }
 
-/// Getters for ClientConfig fields (as references).
+/// Getters for the fields of ClientConfig (as references).
 impl ClientConfig {
 	/// Get a reference to the AuthResolver, if it exists.
 	pub fn auth_resolver(&self) -> Option<&AuthResolver> {

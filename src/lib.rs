@@ -1,4 +1,4 @@
-//! genai library - any AI-Provider AI client library.
+//! genai library - Any AI provider AI client library.
 //! See [examples/c00-readme.rs](./examples/c00-readme.rs)
 
 // region:    --- Modules

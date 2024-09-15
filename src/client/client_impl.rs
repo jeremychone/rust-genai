@@ -5,17 +5,17 @@ use crate::{Error, ModelIden, Result};
 
 /// Public AI Functions
 impl Client {
-	/// Returns all the model names for a given adapter_kind
+	/// Returns all the model names for a given adapter kind.
 	/// Notes:
-	/// - Since genai only supports Chat for now, the adapter implementation should try to remove the non-chat models
+	/// - Since genai only supports Chat for now, the adapter implementation should attempt to remove the non-chat models.
 	/// - Later, as genai adds more capabilities, we will have a `model_names(adapter_kind, Option<&[Skill]>)`
-	///   that will take a list of skills like (`ChatText`, `ChatImage`, `ChatFunction`, `TextToSpeech`, ...)
+	///   that will take a list of skills like (`ChatText`, `ChatImage`, `ChatFunction`, `TextToSpeech`, ...).
 	pub async fn all_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
 		let models = AdapterDispatcher::all_model_names(adapter_kind).await?;
 		Ok(models)
 	}
 
-	/// Resolve the adapter kind for a given model name.
+	/// Resolves the adapter kind for a given model name.
 	/// Note: This does not use the `all_model_names` function to find a match, but instead relies on hardcoded matching rules.
 	///       This strategy makes the library more flexible as it does not require updates
 	///       when the AI Provider adds new models (assuming they follow a consistent naming pattern).
@@ -28,7 +28,7 @@ impl Client {
 		let adapter_kind = AdapterKind::from_model(model_name)?;
 		let model_iden = ModelIden::new(adapter_kind, model_name);
 
-		// -- Exec the eventual model_mapper
+		// -- Execute the optional model_mapper
 		let model_iden = if let Some(model_mapper) = self.config().model_mapper() {
 			model_mapper
 				.map_model(model_iden.clone())
@@ -40,7 +40,7 @@ impl Client {
 		Ok(model_iden)
 	}
 
-	/// Execute a chat
+	/// Executes a chat.
 	pub async fn exec_chat(
 		&self,
 		model: &str,
@@ -76,7 +76,7 @@ impl Client {
 		Ok(chat_res)
 	}
 
-	/// Execute a chat stream response.
+	/// Executes a chat stream response.
 	pub async fn exec_chat_stream(
 		&self,
 		model: &str,

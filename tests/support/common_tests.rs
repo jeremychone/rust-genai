@@ -20,7 +20,7 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 	// -- Check
 	assert!(
 		!get_option_value!(chat_res.content).is_empty(),
-		"content should not be empty"
+		"Content should not be empty"
 	);
 	let usage = chat_res.usage;
 	let input_tokens = get_option_value!(usage.input_tokens);
@@ -30,22 +30,22 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 	assert!(total_tokens > 0, "total_tokens should be > 0");
 	assert!(
 		total_tokens == input_tokens + output_tokens,
-		"total_tokens should be input_tokens + output_tokens"
+		"total_tokens should be equal to input_tokens + output_tokens"
 	);
 
 	Ok(())
 }
 
-/// Test with just json mode on. Not structured output test for this one.
-/// - test_token: Is to avoid checking the token (because of a Ollama bug when json mode, no token back)
+/// Test with JSON mode enabled. This is not a structured output test.
+/// - test_token: This is to avoid checking the token (due to an Ollama bug when in JSON mode, no token is returned)
 pub async fn common_test_chat_json_mode_ok(model: &str, test_token: bool) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
 		ChatMessage::system(
-			r#"Turn the user content into the most probable json content. 
-Reply in a JSON Format."#,
+			r#"Turn the user content into the most probable JSON content. 
+Reply in a JSON format."#,
 		),
 		ChatMessage::user(
 			r#"
@@ -62,9 +62,9 @@ Reply in a JSON Format."#,
 	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
 
 	// -- Check
-	// Make sure tokens still get counted
+	// Ensure tokens are still counted
 	if test_token {
-		// ollama does not send back token usage when json
+		// Ollama does not send back token usage when in JSON mode
 		let usage = &chat_res.usage;
 		let total_tokens = get_option_value!(usage.total_tokens);
 		assert!(total_tokens > 0, "total_tokens should be > 0");
@@ -72,24 +72,24 @@ Reply in a JSON Format."#,
 
 	// Check content
 	let content = chat_res.content_text_into_string().ok_or("SHOULD HAVE CONTENT")?;
-	// parse content as json
-	let json: serde_json::Value = serde_json::from_str(&content).map_err(|err| format!("Was not valid json: {err}"))?;
-	// pretty print json
-	let pretty_json = serde_json::to_string_pretty(&json).map_err(|err| format!("Was not valid json: {err}"))?;
+	// Parse content as JSON
+	let json: serde_json::Value = serde_json::from_str(&content).map_err(|err| format!("Was not valid JSON: {err}"))?;
+	// Pretty print JSON
+	let pretty_json = serde_json::to_string_pretty(&json).map_err(|err| format!("Was not valid JSON: {err}"))?;
 
 	Ok(())
 }
 
-/// Test with just json mode on. Not structured output test for this one.
-/// - test_token: Is to avoid checking the token (because of a Ollama bug when json mode, no token back)
+/// Test with JSON mode enabled. This is not a structured output test.
+/// - test_token: This is to avoid checking the token (due to an Ollama bug when in JSON mode, no token is returned)
 pub async fn common_test_chat_json_structured_ok(model: &str, test_token: bool) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
 		ChatMessage::system(
-			r#"Turn the user content into the most probable json content. 
-Reply in a JSON Format."#,
+			r#"Turn the user content into the most probable JSON content. 
+Reply in a JSON format."#,
 		),
 		ChatMessage::user(
 			r#"
@@ -127,9 +127,9 @@ Reply in a JSON Format."#,
 	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
 
 	// -- Check
-	// Make sure tokens still get counted
+	// Ensure tokens are still counted
 	if test_token {
-		// ollama does not send back token usage when json
+		// Ollama does not send back token usage when in JSON mode
 		let usage = &chat_res.usage;
 		let total_tokens = get_option_value!(usage.total_tokens);
 		assert!(total_tokens > 0, "total_tokens should be > 0");
@@ -137,14 +137,14 @@ Reply in a JSON Format."#,
 
 	// Check content
 	let content = chat_res.content_text_into_string().ok_or("SHOULD HAVE CONTENT")?;
-	// parse content as json
+	// Parse content as JSON
 	let json_response: serde_json::Value =
-		serde_json::from_str(&content).map_err(|err| format!("Was not valid json: {err}"))?;
-	// check models count
+		serde_json::from_str(&content).map_err(|err| format!("Was not valid JSON: {err}"))?;
+	// Check models count
 	let models: Vec<Value> = json_response.x_get("all_models")?;
-	assert_eq!(3, models.len(), "number of models");
-	let first_maker: String = models.first().ok_or("no models")?.x_get("maker")?;
-	assert_eq!("OpenAI", first_maker, "first maker");
+	assert_eq!(3, models.len(), "Number of models");
+	let first_maker: String = models.first().ok_or("No models")?.x_get("maker")?;
+	assert_eq!("OpenAI", first_maker, "First maker");
 
 	Ok(())
 }
@@ -183,10 +183,10 @@ pub async fn common_test_chat_stream_simple_ok(model: &str) -> Result<()> {
 	let stream_end = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check no meta_usage and captured_content
-	assert!(stream_end.captured_usage.is_none(), "StreamEnd not have any meta_usage");
+	assert!(stream_end.captured_usage.is_none(), "StreamEnd should not have any meta_usage");
 	assert!(
 		stream_end.captured_content.is_none(),
-		"StreamEnd not have any captured_content"
+		"StreamEnd should not have any captured_content"
 	);
 
 	Ok(())
@@ -206,12 +206,12 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<(
 	let stream_end = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check meta_usage
-	// should be None as not captured
-	assert!(stream_end.captured_usage.is_none(), "StreamEnd not have any meta_usage");
+	// Should be None as not captured
+	assert!(stream_end.captured_usage.is_none(), "StreamEnd should not have any meta_usage");
 
 	// -- Check captured_content
 	let captured_content = get_option_value!(stream_end.captured_content);
-	assert!(!captured_content.is_empty(), "captured_content.len should be > 0");
+	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
 
 	Ok(())
 }
@@ -247,7 +247,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 
 	// -- Check captured_content
 	let captured_content = get_option_value!(stream_end.captured_content);
-	assert!(!captured_content.is_empty(), "captured_content.len should be > 0");
+	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
 
 	Ok(())
 }
@@ -268,7 +268,7 @@ pub async fn common_test_resolver_auth_ok(model: &str, auth_data: AuthData) -> R
 	// -- Check
 	assert!(
 		!get_option_value!(chat_res.content).is_empty(),
-		"content should not be empty"
+		"Content should not be empty"
 	);
 	let usage = chat_res.usage;
 	let total_tokens = get_option_value!(usage.total_tokens);

@@ -32,7 +32,7 @@ impl Adapter for GeminiAdapter {
 		Some("GEMINI_API_KEY")
 	}
 
-	/// Note: For now returns the common ones (see above)
+	/// Note: For now, this returns the common models (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
@@ -52,8 +52,8 @@ impl Adapter for GeminiAdapter {
 	) -> Result<WebRequestData> {
 		let api_key = get_api_key(model_iden.clone(), client_config)?;
 
-		// For gemini, the service url returned is just the base url
-		// since model and API key is part of the url (see below)
+		// For Gemini, the service URL returned is just the base URL
+		// since the model and API key are part of the URL (see below)
 		let url = Self::get_service_url(model_iden.clone(), service_type);
 
 		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
@@ -71,8 +71,8 @@ impl Adapter for GeminiAdapter {
 			"contents": contents,
 		});
 
-		// Note: It's not clear from the spec if the content of systemInstruction should have a role.
-		//       Right now, omitting it (since the spec say it can be only "user" or "model")
+		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
+		//       Right now, it is omitted (since the spec states it can only be "user" or "model")
 		//       It seems to work. https://ai.google.dev/api/rest/v1beta/models/generateContent
 		if let Some(system) = system {
 			payload.x_insert(
@@ -146,10 +146,10 @@ impl Adapter for GeminiAdapter {
 
 // region:    --- Support
 
-/// Support GeminiAdapter functions
+/// Support functions for GeminiAdapter
 impl GeminiAdapter {
 	pub(super) fn body_to_gemini_chat_response(model_iden: &ModelIden, mut body: Value) -> Result<GeminiChatResponse> {
-		// if the body has a `error` property, then, it is assumed to be an error
+		// If the body has an `error` property, then it is assumed to be an error.
 		if body.get("error").is_some() {
 			return Err(Error::StreamEventError {
 				model_iden: model_iden.clone(),
@@ -177,11 +177,11 @@ impl GeminiAdapter {
 		}
 	}
 
-	/// Takes the genai ChatMessages and build the System string and json Messages for gemini.
+	/// Takes the genai ChatMessages and builds the System string and JSON Messages for Gemini.
 	/// - Role mapping `ChatRole:User -> role: "user"`, `ChatRole::Assistant -> role: "model"`
-	/// - `ChatRole::System` get concatenated (empty line) into a single `system` for the system instruction.
-	///   - This adapter use the v1beta, which supports`systemInstruction`
-	/// - the eventual `chat_req.system` get pushed first in the "systemInstruction"
+	/// - `ChatRole::System` is concatenated (with an empty line) into a single `system` for the system instruction.
+	///   - This adapter uses version v1beta, which supports `systemInstruction`
+	/// - The eventual `chat_req.system` is pushed first into the "systemInstruction"
 	fn into_gemini_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
 		let mut contents: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
@@ -196,7 +196,7 @@ impl GeminiAdapter {
 			let MessageContent::Text(content) = msg.content;
 
 			match msg.role {
-				// for now, system go as "user" (later, we might have adapter_config.system_to_user_impl)
+				// For now, system goes as "user" (later, we might have adapter_config.system_to_user_impl)
 				ChatRole::System => systems.push(content),
 				ChatRole::User => contents.push(json! ({"role": "user", "parts": [{"text": content}]})),
 				ChatRole::Assistant => contents.push(json! ({"role": "model", "parts": [{"text": content}]})),
@@ -228,7 +228,7 @@ pub(super) struct GeminiChatResponse {
 
 struct GeminiChatRequestParts {
 	system: Option<String>,
-	/// The chat history (user and assistant, except last user message which is message)
+	/// The chat history (user and assistant, except for the last user message which is a message)
 	contents: Vec<Value>,
 }
 

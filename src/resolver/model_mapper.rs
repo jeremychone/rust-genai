@@ -4,11 +4,11 @@ use std::sync::Arc;
 
 // region:    --- ModelMapper
 
-/// An ModelMapper for mapping a resolved `ModelIden` (i.e. AdapterKind + ModelName) to another one.
-/// It must return a `ModelIden` or an appropriate
+/// A ModelMapper for mapping a resolved `ModelIden` (i.e. AdapterKind + ModelName) to another one.
+/// It must return a `ModelIden` or an appropriate result.
 #[derive(Debug, Clone)]
 pub enum ModelMapper {
-	/// The mapper function holder variant
+	/// The variant that holds the mapper function
 	MapperFn(Arc<Box<dyn ModelMapperFn>>),
 }
 
@@ -23,7 +23,7 @@ impl ModelMapper {
 	pub(crate) fn map_model(&self, model_iden: ModelIden) -> Result<ModelIden> {
 		match self {
 			ModelMapper::MapperFn(mapper_fn) => {
-				// Clone the Arc to get a new reference to the Box, then call exec_fn
+				// Clone the Arc to get a new reference to the Box, then call exec_fn.
 				mapper_fn.clone().exec_fn(model_iden)
 			}
 		}
@@ -36,10 +36,10 @@ impl ModelMapper {
 
 /// The `ModelMapperFn` trait object.
 pub trait ModelMapperFn: Send + Sync {
-	/// Execute the `ModelMapperFn` to get the `ModelIden`.
+	/// Execute the `ModelMapperFn` to obtain the `ModelIden`.
 	fn exec_fn(&self, model_iden: ModelIden) -> Result<ModelIden>;
 
-	/// Clone the trait object into a box dyn
+	/// Clone the trait object into a boxed dynamic object.
 	fn clone_box(&self) -> Box<dyn ModelMapperFn>;
 }
 
@@ -74,7 +74,7 @@ impl std::fmt::Debug for dyn ModelMapperFn {
 
 // region:    --- IntoModelMapperFn
 
-/// Implement IntoModelMapperFn for closures `ModelMapper::from_mapper_fn` argument
+/// Implement IntoModelMapperFn for closures used as arguments in `ModelMapper::from_mapper_fn`.
 pub trait IntoModelMapperFn {
 	/// Convert the given closure into a `ModelMapperFn` trait object.
 	fn into_mapper_fn(self) -> Arc<Box<dyn ModelMapperFn>>;

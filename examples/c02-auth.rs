@@ -11,12 +11,12 @@ const MODEL: &str = "gpt-4o-mini";
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let questions = &[
-		// follow-up questions
+		// Follow-up questions
 		"Why is the sky blue?",
-		"Why is it red sometime?",
+		"Why is it red sometimes?",
 	];
 
-	// -- Build a auth_resolver and the AdapterConfig
+	// -- Build an auth_resolver and the AdapterConfig
 	let auth_resolver = AuthResolver::from_resolver_fn(
 		|model_iden: ModelIden| -> Result<Option<AuthData>, genai::resolver::Error> {
 			let ModelIden {

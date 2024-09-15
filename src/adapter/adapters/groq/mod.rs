@@ -1,6 +1,6 @@
-//! API DOC:     https://console.groq.com/docs/api-reference#chat
-//! MODEL NAMES: https://console.groq.com/docs/models
-//! PRICING:     https://wow.groq.com/
+//! API Documentation:     https://console.groq.com/docs/api-reference#chat
+//! Model Names:           https://console.groq.com/docs/models
+//! Pricing:              https://wow.groq.com/
 
 // region:    --- Modules
 

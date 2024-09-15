@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
 
-/// The Chat request when doing a direct `Client::`
+/// The Chat request when performing a direct `Client::`
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
 	/// The initial system of the request.
@@ -22,7 +22,7 @@ impl ChatRequest {
 		Self { messages, system: None }
 	}
 
-	/// From `.system` property content.
+	/// From the `.system` property content.
 	pub fn from_system(content: impl Into<String>) -> Self {
 		Self {
 			system: Some(content.into()),
@@ -49,7 +49,7 @@ impl ChatRequest {
 /// Getters
 impl ChatRequest {
 	/// Iterate through all of the system content, starting with the eventual
-	/// ChatRequest.system and then the ChatMessage of role System
+	/// ChatRequest.system and then the ChatMessage of role System.
 	pub fn iter_systems(&self) -> impl Iterator<Item = &str> {
 		self.system
 			.iter()
@@ -63,11 +63,11 @@ impl ChatRequest {
 	}
 
 	/// Combine the eventual ChatRequest `.system` and system messages into one string.
-	/// - It will start with the evnetual `chat_request.system`
-	/// - Then concatenate the eventual `ChatRequestMessage` of Role `System`
+	/// - It will start with the eventual `chat_request.system`.
+	/// - Then concatenate the eventual `ChatRequestMessage` of Role `System`.
 	/// - This will attempt to add an empty line between system content. So, it will add
-	///   - Two `\n` when the prev content does not end with `\n`
-	///   - and one `\n` if the prev content ends with `\n`
+	///   - Two `\n` when the previous content does not end with `\n`.
+	///   - One `\n` if the previous content ends with `\n`.
 	pub fn combine_systems(&self) -> Option<String> {
 		let mut systems: Option<String> = None;
 
@@ -79,7 +79,7 @@ impl ChatRequest {
 				systems_content.push('\n');
 			} else if !systems_content.is_empty() {
 				systems_content.push_str("\n\n");
-			} // do not add any empyt line if prev content is empty
+			} // do not add any empty line if previous content is empty
 
 			systems_content.push_str(system);
 		}
@@ -92,22 +92,22 @@ impl ChatRequest {
 
 // region:    --- ChatMessage
 
-/// An individual Chat message
+/// An individual chat message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
-	/// The role of the message
+	/// The role of the message.
 	pub role: ChatRole,
 
-	/// The content of the message
+	/// The content of the message.
 	pub content: MessageContent,
 
-	/// Extra information about the message
+	/// Extra information about the message.
 	pub extra: Option<MessageExtra>,
 }
 
 /// Constructors
 impl ChatMessage {
-	/// Create a new ChatMessage with the role `ChatRole::System`
+	/// Create a new ChatMessage with the role `ChatRole::System`.
 	pub fn system(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::System,
@@ -116,7 +116,7 @@ impl ChatMessage {
 		}
 	}
 
-	/// Create a new ChatMessage with the role `ChatRole::Assistant`
+	/// Create a new ChatMessage with the role `ChatRole::Assistant`.
 	pub fn assistant(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::Assistant,
@@ -125,7 +125,7 @@ impl ChatMessage {
 		}
 	}
 
-	/// Create a new ChatMessage with the role `ChatRole::Tool`
+	/// Create a new ChatMessage with the role `ChatRole::User`.
 	pub fn user(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::User,
@@ -135,7 +135,7 @@ impl ChatMessage {
 	}
 }
 
-/// Chat roles
+/// Chat roles.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum ChatRole {
@@ -145,14 +145,14 @@ pub enum ChatRole {
 	Tool,
 }
 
-/// NOTE: DO NOT USE, just a placeholder for now
+/// NOTE: DO NOT USE, just a placeholder for now.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum MessageExtra {
 	Tool(ToolExtra),
 }
 
-/// NOTE: DO NOT USE, just a placeholder for now
+/// NOTE: DO NOT USE, just a placeholder for now.
 #[allow(unused)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolExtra {

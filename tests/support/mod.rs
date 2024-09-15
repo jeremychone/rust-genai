@@ -1,5 +1,5 @@
 //! Some support utilities for the tests
-//! Note: Must be imported in each test files
+//! Note: Must be imported in each test file
 
 #![allow(unused)] // For test support
 

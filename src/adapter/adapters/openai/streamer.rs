@@ -15,13 +15,13 @@ pub struct OpenAIStreamer {
 	options: StreamerOptions,
 
 	// -- Set by the poll_next
-	/// Flag to not poll the EventSource after a MessageStop event
+	/// Flag to prevent polling the EventSource after a MessageStop event
 	done: bool,
 	captured_data: StreamerCapturedData,
 }
 
 impl OpenAIStreamer {
-	// TODO: Problem need the ChatOptions `.capture_content` `.capture_usage`
+	// TODO: Problem - need the ChatOptions `.capture_content` and `.capture_usage`
 	pub fn new(inner: EventSource, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
@@ -37,8 +37,8 @@ impl futures::Stream for OpenAIStreamer {
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		if self.done {
-			// The last poll was the end for sure, so, end the stream.
-			// This will avoid doing the stream ended error
+			// The last poll was definitely the end, so end the stream.
+			// This will prevent triggering a stream ended error
 			return Poll::Ready(None);
 		}
 		while let Poll::Ready(event) = Pin::new(&mut self.inner).poll_next(cx) {
@@ -46,7 +46,7 @@ impl futures::Stream for OpenAIStreamer {
 				Some(Ok(Event::Open)) => return Poll::Ready(Some(Ok(InterStreamEvent::Start))),
 				Some(Ok(Event::Message(message))) => {
 					// -- End Message
-					// Per OpenAI Spec, this is the end message
+					// According to OpenAI Spec, this is the end message
 					if message.data == "[DONE]" {
 						self.done = true;
 
@@ -67,7 +67,7 @@ impl futures::Stream for OpenAIStreamer {
 
 					// -- Other Content Messages
 					let adapter_kind = self.options.model_iden.adapter_kind;
-					// parse to get the choice
+					// Parse to get the choice
 					let mut message_data: Value =
 						serde_json::from_str(&message.data).map_err(|serde_error| Error::StreamParse {
 							model_iden: self.options.model_iden.clone(),
@@ -75,25 +75,25 @@ impl futures::Stream for OpenAIStreamer {
 						})?;
 					let first_choice: Option<Value> = message_data.x_take("/choices/0").ok();
 
-					// if we have a first choice, then, normal message
+					// If we have a first choice, then it's a normal message
 					if let Some(mut first_choice) = first_choice {
-						// If finish_reason, it's the end of this choice,
-						// Since we support only single choice, we are good, and we just continue because
-						// there might be other message, and the end one is with data: `[DONE]`
+						// If finish_reason exists, it's the end of this choice.
+						// Since we support only a single choice, we can proceed,
+						// as there might be other messages, and the last one contains data: `[DONE]`
 						if let Some(_finish_reason) = first_choice.x_take::<Option<String>>("finish_reason")? {
-							// NOTE: For Groq, the usage is captured in the when finish_reason stop, and in the `/x_groq/usage`
+							// NOTE: For Groq, the usage is captured when finish_reason indicates stopping, and in the `/x_groq/usage`
 							if matches!(adapter_kind, AdapterKind::Groq) && self.options.capture_usage {
 								let usage = message_data
 									.x_take("/x_groq/usage")
 									.map(OpenAIAdapter::into_usage)
-									.unwrap_or_default(); // premissive for now
+									.unwrap_or_default(); // permissive for now
 								self.captured_data.usage = Some(usage)
 							}
 							continue;
 						}
-						// If not finish_reason and some content, we can get the delta content and send the Internal Stream Event
+						// If there is no finish_reason but there is some content, we can get the delta content and send the Internal Stream Event
 						else if let Some(content) = first_choice.x_take::<Option<String>>("/delta/content")? {
-							// add to the captured_content if chat options say so
+							// Add to the captured_content if chat options allow it
 							if self.options.capture_content {
 								match self.captured_data.content {
 									Some(ref mut c) => c.push_str(&content),
@@ -101,10 +101,10 @@ impl futures::Stream for OpenAIStreamer {
 								}
 							}
 
-							// return the Event
+							// Return the Event
 							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
 						}
-						// If we do not have content, then, do a trace message
+						// If we do not have content, then log a trace message
 						else {
 							// TODO: use tracing debug
 							println!("EMPTY CHOICE CONTENT");
@@ -112,13 +112,13 @@ impl futures::Stream for OpenAIStreamer {
 					}
 					// -- Usage message
 					else {
-						// If not Groq, then the usage is at the end when choices is empty/null
+						// If it's not Groq, then the usage is captured at the end when choices are empty or null
 
 						if !matches!(adapter_kind, AdapterKind::Groq)
 							&& self.captured_data.usage.is_none()
 							&& self.options.capture_usage
 						{
-							let usage = message_data.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default(); // premissive for now
+							let usage = message_data.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default(); // permissive for now
 							self.captured_data.usage = Some(usage); // permissive for now
 						}
 					}

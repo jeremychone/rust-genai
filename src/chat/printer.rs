@@ -1,5 +1,5 @@
 //! Printer utility to help print a chat stream
-//! > Note: This is mostly for quick testing and temporary debugging
+//! > Note: This is primarily for quick testing and temporary debugging
 
 use crate::chat::{ChatStreamEvent, ChatStreamResponse, StreamChunk};
 use futures::StreamExt;
@@ -17,7 +17,7 @@ pub struct PrintChatStreamOptions {
 	print_events: Option<bool>,
 }
 
-/// constructors
+/// Constructors
 impl PrintChatStreamOptions {
 	/// Create a `PrintChatStreamOptions` with the `print_events` field set to `true`
 	pub fn from_print_events(print_events: bool) -> Self {
@@ -29,14 +29,14 @@ impl PrintChatStreamOptions {
 
 // endregion: --- PrintChatOptions
 
-/// Convenient function that print a chat stream and also capture the content and returns it (only concatenated chunks).
+/// Convenient function that prints a chat stream, captures the content, and returns it (only concatenated chunks).
 pub async fn print_chat_stream(
 	chat_res: ChatStreamResponse,
 	options: Option<&PrintChatStreamOptions>,
 ) -> Result<String> {
 	let mut stdout = tokio::io::stdout();
 	let res = print_chat_stream_inner(&mut stdout, chat_res, options).await;
-	// make sure tokio stdout flush get called, regardless of success or not.
+	// Ensure tokio stdout flush is called, regardless of success or failure.
 	stdout.flush().await?;
 	res
 }
@@ -59,7 +59,7 @@ async fn print_chat_stream_inner(
 			match stream_event {
 				ChatStreamEvent::Start => {
 					if print_events {
-						// TODO: Might do a pretty json format
+						// TODO: Might implement pretty JSON formatting
 						(Some("\n-- ChatStreamEvent::Start\n".to_string()), None)
 					} else {
 						(None, None)
@@ -80,7 +80,7 @@ async fn print_chat_stream_inner(
 
 				ChatStreamEvent::End(end_event) => {
 					if print_events {
-						// TODO: Might do a pretty json format
+						// TODO: Might implement pretty JSON formatting
 						(Some(format!("\n\n-- ChatStreamEvent::End {end_event:?}\n")), None)
 					} else {
 						(None, None)
@@ -108,11 +108,11 @@ async fn print_chat_stream_inner(
 
 // region:    --- Error
 
-// Note 1: The printer has its own error because it is more of a utility, and therefore
+// Note 1: The printer has its own error type because it is more of a utility, and therefore
 //         making the main crate error aware of the different error types would be unnecessary.
 //
 // Note 2: This Printer Error is not wrapped in the main crate error because the printer
-//         functions are not used by any other crate function (more of a debug utility)
+//         functions are not used by any other crate function (they are more of a debug utility)
 
 use derive_more::From;
 

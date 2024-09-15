@@ -41,10 +41,10 @@ impl futures::Stream for GeminiStreamer {
 		while let Poll::Ready(item) = Pin::new(&mut self.inner).poll_next(cx) {
 			match item {
 				Some(Ok(raw_message)) => {
-					// This is the message sent by the WebStream in mode PrettyJsonArray
+					// This is the message sent by the WebStream in PrettyJsonArray mode
 					// - `[` document start
 					// - `{...}` block
-					// - `]` document
+					// - `]` document end
 					let inter_event = match raw_message.as_str() {
 						"[" => InterStreamEvent::Start,
 						"]" => {
@@ -56,7 +56,7 @@ impl futures::Stream for GeminiStreamer {
 							InterStreamEvent::End(inter_stream_end)
 						}
 						block_string => {
-							// -- Parse the block to json
+							// -- Parse the block to JSON
 							let json_block = match serde_json::from_str::<Value>(block_string).map_err(|serde_error| {
 								Error::StreamParse {
 									model_iden: self.options.model_iden.clone(),
@@ -85,7 +85,7 @@ impl futures::Stream for GeminiStreamer {
 
 							// -- Send Chunk event
 							if let Some(content) = content {
-								// capture content
+								// Capture content
 								if self.options.capture_content {
 									match self.captured_data.content {
 										Some(ref mut c) => c.push_str(&content),
@@ -93,9 +93,9 @@ impl futures::Stream for GeminiStreamer {
 									}
 								}
 
-								// NOTE: Apparently in Gemini API, all event get a usage but their are cumulative
-								//       meaning the each message seems to have the tokens for all of the previous stream.
-								//       So, we do not need ot add it, just to replace the captured_data.usage with the latest one.
+								// NOTE: Apparently in the Gemini API, all events have cumulative usage
+								//       meaning each message seems to include the tokens for all previous streams.
+								//       Thus, we do not need to add it; we only need to replace captured_data.usage with the latest one.
 								//       See https://twitter.com/jeremychone/status/1813734565967802859 for potential additional information
 								if self.options.capture_usage {
 									self.captured_data.usage = Some(usage);

@@ -30,7 +30,7 @@ impl Adapter for OpenAIAdapter {
 		Some("OPENAI_API_KEY")
 	}
 
-	/// Note: For now returns the common ones (see above)
+	/// Note: Currently returns the common models (see above)
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
@@ -83,12 +83,12 @@ impl Adapter for OpenAIAdapter {
 	}
 }
 
-/// Support function for other Adapter that share OpenAI APIs
+/// Support functions for other adapters that share OpenAI APIs
 impl OpenAIAdapter {
 	pub(in crate::adapter::adapters) fn util_get_service_url(
 		_model_iden: ModelIden,
 		service_type: ServiceType,
-		// -- util args
+		// -- utility arguments
 		base_url: &str,
 	) -> String {
 		match service_type {
@@ -184,7 +184,7 @@ impl OpenAIAdapter {
 		})
 	}
 
-	/// Note: needs to be called from super::streamer as well
+	/// Note: Needs to be called from super::streamer as well
 	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
 		let input_tokens: Option<i32> = usage_value.x_take("prompt_tokens").ok();
 		let output_tokens: Option<i32> = usage_value.x_take("completion_tokens").ok();
@@ -196,13 +196,13 @@ impl OpenAIAdapter {
 		}
 	}
 
-	/// Takes the genai ChatMessages and build the OpenAIChatRequestParts
-	/// - `genai::ChatRequest.system`, if present, goes as first message with role 'system'.
-	/// - All messages get added with the corresponding roles (does not support tools for now)
+	/// Takes the genai ChatMessages and builds the OpenAIChatRequestParts
+	/// - `genai::ChatRequest.system`, if present, is added as the first message with role 'system'.
+	/// - All messages get added with the corresponding roles (tools are not supported for now)
 	///
-	/// NOTE: here, the last `true` is for the ollama variant
-	///       It seems the Ollama compatibility layer does not work well with multiple System message.
-	///       So, when `true`, it will concatenate the system message as a single on at the beginning
+	/// NOTE: Here, the last `true` is for the Ollama variant
+	///       It seems the Ollama compatibility layer does not work well with multiple system messages.
+	///       So, when `true`, it will concatenate the system message into a single one at the beginning
 	fn into_openai_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut system_messages: Vec<String> = Vec::new();
 		let mut messages: Vec<Value> = Vec::new();
@@ -222,9 +222,9 @@ impl OpenAIAdapter {
 			let MessageContent::Text(content) = msg.content;
 
 			match msg.role {
-				// for now, system and tool goes to system
+				// For now, system and tool messages go to the system
 				ChatRole::System => {
-					// see note in the function comment
+					// See note in the function comment
 					if ollama_variant {
 						system_messages.push(content);
 					} else {

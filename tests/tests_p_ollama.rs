@@ -39,10 +39,10 @@ async fn test_chat_stream_capture_content_ok() -> Result<()> {
 }
 
 // /// COMMENTED FOR NOW AS OLLAMA OpenAI Compatibility Layer does not support
-// /// usage token when streaming. See https://github.com/ollama/ollama/issues/4448
+// /// usage tokens when streaming. See https://github.com/ollama/ollama/issues/4448
 // #[tokio::test]
 // async fn test_chat_stream_capture_all_ok() -> Result<()> {
-// 	common_test_chat_stream_capture_all_ok(MODEL).await
+// 	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
 // }
 
 // endregion: --- Chat Stream Tests

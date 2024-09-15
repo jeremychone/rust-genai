@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-/// The model name, which is just a `Arc<str>` wrapper (simple and relatively efficient to clone)
+/// The model name, which is just an `Arc<str>` wrapper (simple and relatively efficient to clone)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelName(Arc<str>);
 
@@ -22,8 +22,8 @@ impl From<ModelName> for String {
 }
 
 // NOTE: Below we avoid the `T: Into<String>` blanket implementation because
-//       it would prevent us to have the `From<ModelName> for String` as `ModelName`
-//       also implement `T: Into<String>` from it's deref to `&str`
+//       it would prevent us from having the `From<ModelName> for String` as `ModelName`
+//       also implements `T: Into<String>` from its deref to `&str`
 
 impl From<String> for ModelName {
 	fn from(s: String) -> Self {
