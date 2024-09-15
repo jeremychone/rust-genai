@@ -4,7 +4,7 @@ use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
 
-const MODEL_OPENAI: &str = "gpt-4o-mini";
+const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 const MODEL_COHERE: &str = "command-light";
 const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";

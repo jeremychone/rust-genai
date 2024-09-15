@@ -59,7 +59,7 @@ impl AdapterKind {
 	///  - model in Groq models   -> Groq
 	///  - For anything else      -> Ollama
 	pub fn from_model(model: &str) -> Result<Self> {
-		if model.starts_with("gpt") || model.starts_with("chatgpt") {
+		if model.starts_with("gpt") || model.starts_with("chatgpt") || model.starts_with("o1-") {
 			Ok(Self::OpenAI)
 		} else if model.starts_with("claude") {
 			Ok(Self::Anthropic)
