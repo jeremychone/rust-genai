@@ -183,7 +183,10 @@ pub async fn common_test_chat_stream_simple_ok(model: &str) -> Result<()> {
 	let stream_end = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check no meta_usage and captured_content
-	assert!(stream_end.captured_usage.is_none(), "StreamEnd should not have any meta_usage");
+	assert!(
+		stream_end.captured_usage.is_none(),
+		"StreamEnd should not have any meta_usage"
+	);
 	assert!(
 		stream_end.captured_content.is_none(),
 		"StreamEnd should not have any captured_content"
@@ -207,7 +210,10 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<(
 
 	// -- Check meta_usage
 	// Should be None as not captured
-	assert!(stream_end.captured_usage.is_none(), "StreamEnd should not have any meta_usage");
+	assert!(
+		stream_end.captured_usage.is_none(),
+		"StreamEnd should not have any meta_usage"
+	);
 
 	// -- Check captured_content
 	let captured_content = get_option_value!(stream_end.captured_content);

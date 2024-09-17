@@ -11,17 +11,17 @@ const MODEL: &str = "gemini-1.5-flash-latest";
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
-    common_tests::common_test_chat_simple_ok(MODEL).await
+	common_tests::common_test_chat_simple_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_json_structured_ok() -> Result<()> {
-    common_tests::common_test_chat_json_structured_ok(MODEL, true).await
+	common_tests::common_test_chat_json_structured_ok(MODEL, true).await
 }
 
 #[tokio::test]
 async fn test_chat_temperature_ok() -> Result<()> {
-    common_tests::common_test_chat_temperature_ok(MODEL).await
+	common_tests::common_test_chat_temperature_ok(MODEL).await
 }
 
 // endregion: --- Chat
@@ -30,17 +30,17 @@ async fn test_chat_temperature_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat_stream_simple_ok() -> Result<()> {
-    common_tests::common_test_chat_stream_simple_ok(MODEL).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_stream_capture_content_ok() -> Result<()> {
-    common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
+	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_stream_capture_all_ok() -> Result<()> {
-    common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
 }
 
 // endregion: --- Chat Stream Tests
@@ -49,7 +49,7 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_resolver_auth_ok() -> Result<()> {
-    common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("GEMINI_API_KEY")).await
+	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("GEMINI_API_KEY")).await
 }
 
 // endregion: --- Resolver Tests
