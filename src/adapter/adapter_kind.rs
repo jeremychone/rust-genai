@@ -1,4 +1,5 @@
 use super::groq::MODELS as GROQ_MODELS;
+use crate::adapter::{Adapter, AdapterDispatcher};
 use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -49,15 +50,26 @@ impl AdapterKind {
 	}
 }
 
+/// Utilities
+impl AdapterKind {
+	/// Get the default key environment variable name for the adapter kind.
+	pub fn default_key_env_name(&self) -> Option<&'static str> {
+		AdapterDispatcher::default_key_env_name(*self)
+	}
+}
+
 /// From Model implementations
 impl AdapterKind {
-	/// A very simplistic mapper for now.
+	/// A very simplistic default mapper for now.
 	///  - starts_with "gpt"      -> OpenAI
 	///  - starts_with "claude"   -> Anthropic
 	///  - starts_with "command"  -> Cohere
 	///  - starts_with "gemini"   -> Gemini
 	///  - model in Groq models   -> Groq
 	///  - For anything else      -> Ollama
+	///
+	/// Note: At this point, this will never fail as the fallback is the Ollama adapter.
+	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
 		if model.starts_with("gpt") || model.starts_with("chatgpt") || model.starts_with("o1-") {
 			Ok(Self::OpenAI)
