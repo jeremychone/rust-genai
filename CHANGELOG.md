@@ -1,9 +1,19 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.8"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.9"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+
+## 2024-09-18 - `0.1.9`
+
+- `^` AdapterKind - expose default_key_env_name
+- `.` openai - add 'o1-' model prefix to point to OpenAI Adapter
+- `.` comments proofing (using genai with custom devai script)
+- `.` #23 - add documentation
+- `.` fix printer comment
+- `.` updated to v0.1.9-wip
 
 ## 2024-09-06 - `0.1.8`
 
