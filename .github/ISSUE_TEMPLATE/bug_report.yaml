@@ -69,6 +69,3 @@ body:
                     with model: mistral:latest
         # ...
       render: fundamental
-  - type: textarea
-    attributes:
-      label: Additional information
