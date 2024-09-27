@@ -1,5 +1,5 @@
 name: Bug Report
-about: File a bug report.
+description: File a bug report.
 title: "🐛 "
 labels: ["bug"]
 body:
@@ -19,13 +19,11 @@ body:
       label: Command
       description: "`devai` command that triggered the bug"
       placeholder: 'devai run {agent-name} -f {file-name} --verbose'
-      render: bash
   - type: input
     attributes:
       label: Error
       description: Error message, if any
       placeholder: 'Error: Rhai(ErrorArrayBounds(0, 0, 2:36))'
-      render: bash
   - type: textarea
     attributes:
       label: Config
