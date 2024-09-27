@@ -35,6 +35,7 @@ body:
         [runtime]
         # Default to 1 if absent
         items_concurrency = 1 
+      render: toml
   - type: textarea
     attributes:
       label: Agent
@@ -67,11 +68,6 @@ body:
                           from: .devai/defaults/proof-comments.md
                     with model: mistral:latest
         # ...
-      render: fundamental
-  - type: textarea
-    attributes:
-      label: Target file
-      description: 'The relevant contents of the file targeted by the `-f` flag. Take care not to include any sensitive data. '
       render: fundamental
   - type: textarea
     attributes:
