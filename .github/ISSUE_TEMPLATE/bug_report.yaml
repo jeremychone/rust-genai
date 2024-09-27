@@ -59,22 +59,22 @@ body:
         // ...
         ```
       render: md
-    - type: textarea
-      attributes:
-        label: Verbose output
-        description: 'Output of the command run (with ther verbose flag). The output will include the contents of your target file, so take care not to include any sensitive data.'
-        value: |
-          $ devai run proof-comments
-          Running agent command: proof-comments
-                           from: .devai/defaults/proof-comments.md
-                     with model: mistral:latest
-          # ...
-        render: fundamental
-    - type: textarea
-      attributes:
-        label: Target file
-        description: 'The relevant contents of the file targeted by the `-f` flag. Take care not to include any sensitive data. '
-        render: fundamental
-    - type: textarea
-      attributes:
-        label: Additional information
+  - type: textarea
+    attributes:
+      label: Verbose output
+      description: 'Output of the command run (with ther verbose flag). The output will include the contents of your target file, so take care not to include any sensitive data.'
+      value: |
+        $ devai run proof-comments
+        Running agent command: proof-comments
+                          from: .devai/defaults/proof-comments.md
+                    with model: mistral:latest
+        # ...
+      render: fundamental
+  - type: textarea
+    attributes:
+      label: Target file
+      description: 'The relevant contents of the file targeted by the `-f` flag. Take care not to include any sensitive data. '
+      render: fundamental
+  - type: textarea
+    attributes:
+      label: Additional information
