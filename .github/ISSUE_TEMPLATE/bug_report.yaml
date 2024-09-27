@@ -7,10 +7,10 @@ body:
     attributes:
       value: |
         Thanks for taking the time to fill out this bug report!
-  - type: input
+  - type: textarea
     attributes:
       label: Bug description
-      description: Describe the bug in one line
+      description: Describe the bug
       placeholder: Ran {this}, did {that}, expected {the other}
     validations: 
       required: true
