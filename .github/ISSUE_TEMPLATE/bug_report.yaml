@@ -1,0 +1,71 @@
+name: Bug Report
+description: File a bug report.
+title: "🐛 "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    attributes:
+      label: Bug description
+      description: Describe the bug
+      placeholder: Ran {this}, did {that}, expected {the other}
+    validations: 
+      required: true
+  - type: input
+    attributes:
+      label: Command
+      description: "`devai` command that triggered the bug"
+      placeholder: 'devai run {agent-name} -f {file-name} --verbose'
+  - type: input
+    attributes:
+      label: Error
+      description: Error message, if any
+      placeholder: 'Error: Rhai(ErrorArrayBounds(0, 0, 2:36))'
+  - type: textarea
+    attributes:
+      label: Config
+      description: 'Contents of ".devai/config.toml"'
+      value: |
+        [genai]
+        model = "gpt-4o"
+        
+        [runtime]
+        # Default to 1 if absent
+        items_concurrency = 1 
+      render: toml
+  - type: textarea
+    attributes:
+      label: Agent
+      description: 'Contents of "{{my-agent}}.md". Markdown will be escaped automatically.'
+      value: |
+        # Data
+        ```rhai
+        let path = item.path;
+        // ...
+        ```
+
+        # Instruction
+
+        - The user will provide good error messages
+        - The information provided by the user will be helpful for debugging issues
+        - ...
+
+        # Output
+        ```rhai
+        // ...
+        ```
+      render: md
+  - type: textarea
+    attributes:
+      label: Verbose output
+      description: 'Output of the command run (with ther verbose flag). The output will include the contents of your target file, so take care not to include any sensitive data.'
+      value: |
+        $ devai run proof-comments
+        Running agent command: proof-comments
+                          from: .devai/defaults/proof-comments.md
+                    with model: mistral:latest
+        # ...
+      render: fundamental
