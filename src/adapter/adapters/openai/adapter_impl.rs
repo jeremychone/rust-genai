@@ -20,9 +20,9 @@ const BASE_URL: &str = "https://api.openai.com/v1/";
 const MODELS: &[&str] = &[
 	//
 	"gpt-4o",
-	"gpt-4o-2024-08-06",
-	"gpt-4o-2024-05-13",
 	"gpt-4o-mini",
+	"o1-preview",
+	"o1-mini",
 ];
 
 impl Adapter for OpenAIAdapter {
