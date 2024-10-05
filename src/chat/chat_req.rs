@@ -29,6 +29,14 @@ impl ChatRequest {
 			messages: Vec::new(),
 		}
 	}
+
+	/// Create a ChatRequest with one user message.
+	pub fn from_user(content: impl Into<String>) -> Self {
+		Self {
+			system: None,
+			messages: vec![ChatMessage::user(content)],
+		}
+	}
 }
 
 /// Chainable Setters
