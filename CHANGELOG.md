@@ -1,9 +1,19 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.9"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.10"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-10-05 - `0.1.10`
+
+(minor release)
+
+- `^` ChatRequest - add `ChatReqeust::from_user(...)`
+- `.` openai - add o1-preview, o1-mini to openai list
+- `.` update groq models (llama 3.2)
+- `.` Added .github with Github Bug Report template (#26)
+- `.` minor readme update to avoid browser issue to scroll down to video section
 
 
 ## 2024-09-18 - `0.1.9`
