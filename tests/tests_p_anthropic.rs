@@ -45,6 +45,20 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 
 // endregion: --- Chat Stream Tests
 
+// region:    --- Tool Tests
+
+#[tokio::test]
+async fn test_tool_simple_ok() -> Result<()> {
+	common_tests::common_test_tool_simple_ok(MODEL, false).await
+}
+
+#[tokio::test]
+async fn test_tool_full_flow_ok() -> Result<()> {
+	common_tests::common_test_tool_full_flow_ok(MODEL, false).await
+}
+
+// endregion: --- Tool Tests
+
 // region:    --- Resolver Tests
 
 #[tokio::test]

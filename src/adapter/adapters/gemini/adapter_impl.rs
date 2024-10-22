@@ -121,8 +121,8 @@ impl Adapter for GeminiAdapter {
 		let content = content.map(MessageContent::from);
 
 		Ok(ChatResponse {
-			model_iden,
 			content,
+			model_iden,
 			usage,
 		})
 	}
@@ -192,8 +192,13 @@ impl GeminiAdapter {
 
 		// -- Build
 		for msg in chat_req.messages {
-			// Note: Will handle more types later
-			let MessageContent::Text(content) = msg.content;
+			// TODO: Needs to implement tool_calls
+			let MessageContent::Text(content) = msg.content else {
+				return Err(Error::MessageContentTypeNotSupported {
+					model_iden,
+					cause: "Only MessageContent::Text supported for this model (for now)",
+				});
+			};
 
 			match msg.role {
 				// For now, system goes as "user" (later, we might have adapter_config.system_to_user_impl)

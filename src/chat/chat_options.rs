@@ -5,7 +5,7 @@
 //! Note 1: In the future, we will probably allow setting the client
 //! Note 2: Extracting it from the `ChatRequest` object allows for better reusability of each component.
 
-use crate::chat::chat_response_format::ChatResponseFormat;
+use crate::chat::chat_req_response_format::ChatResponseFormat;
 use serde::{Deserialize, Serialize};
 
 /// Chat Options that are taken into account for any `Client::exec...` calls.

@@ -3,13 +3,14 @@ use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	MessageContent, MetaUsage,
+	MessageContent, MetaUsage, Tool, ToolCall,
 };
 use crate::webc::WebResponse;
 use crate::{ClientConfig, ModelIden};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
 
@@ -54,15 +55,31 @@ impl Adapter for OpenAIAdapter {
 	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
+		// -- Capture the usage
 		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
 
-		let first_choice: Option<Value> = body.x_take("/choices/0")?;
-		let content: Option<String> = first_choice.map(|mut c| c.x_take("/message/content")).transpose()?;
-		let content = content.map(MessageContent::from);
+		// -- Capture the content
+		let content = if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
+			if let Some(content) = first_choice
+				.x_take::<Option<String>>("/message/content")?
+				.map(MessageContent::from)
+			{
+				Some(content)
+			} else {
+				first_choice
+					.x_take("/message/tool_calls")
+					.ok()
+					.map(parse_tool_calls)
+					.transpose()?
+					.map(MessageContent::from_tool_calls)
+			}
+		} else {
+			None
+		};
 
 		Ok(ChatResponse {
-			model_iden,
 			content,
+			model_iden,
 			usage,
 		})
 	}
@@ -117,12 +134,16 @@ impl OpenAIAdapter {
 
 		// -- Build the basic payload
 		let model_name = model_iden.model_name.to_string();
-		let OpenAIRequestParts { messages } = Self::into_openai_request_parts(model_iden, chat_req)?;
+		let OpenAIRequestParts { messages, tools } = Self::into_openai_request_parts(model_iden, chat_req)?;
 		let mut payload = json!({
 			"model": model_name,
 			"messages": messages,
 			"stream": stream
 		});
+
+		if let Some(tools) = tools {
+			payload.x_insert("/tools", tools);
+		}
 
 		// -- Add options
 		let response_format = if let Some(response_format) = options_set.response_format() {
@@ -199,16 +220,17 @@ impl OpenAIAdapter {
 	/// Takes the genai ChatMessages and builds the OpenAIChatRequestParts
 	/// - `genai::ChatRequest.system`, if present, is added as the first message with role 'system'.
 	/// - All messages get added with the corresponding roles (tools are not supported for now)
-	///
-	/// NOTE: Here, the last `true` is for the Ollama variant
-	///       It seems the Ollama compatibility layer does not work well with multiple system messages.
-	///       So, when `true`, it will concatenate the system message into a single one at the beginning
 	fn into_openai_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
-		let mut system_messages: Vec<String> = Vec::new();
 		let mut messages: Vec<Value> = Vec::new();
+
+		/// NOTE: For now system_messages is use to fix an issue with the Ollama compatibility layer that does not support multiple system messages.
+		///       So, when ollama, it will concatenate the system message into a single one at the beginning
+		/// NOTE: This might be fixed now, so, we could remove this.
+		let mut system_messages: Vec<String> = Vec::new();
 
 		let ollama_variant = matches!(model_iden.adapter_kind, AdapterKind::Ollama);
 
+		// -- Process the system
 		if let Some(system_msg) = chat_req.system {
 			if ollama_variant {
 				system_messages.push(system_msg)
@@ -217,37 +239,98 @@ impl OpenAIAdapter {
 			}
 		}
 
+		// -- Process the messages
 		for msg in chat_req.messages {
 			// Note: Will handle more types later
-			let MessageContent::Text(content) = msg.content;
-
 			match msg.role {
 				// For now, system and tool messages go to the system
 				ChatRole::System => {
-					// See note in the function comment
-					if ollama_variant {
-						system_messages.push(content);
-					} else {
-						messages.push(json!({"role": "system", "content": content}))
+					if let MessageContent::Text(content) = msg.content {
+						// NOTE: Ollama does not support multiple system messages
+
+						// See note in the function comment
+						if ollama_variant {
+							system_messages.push(content);
+						} else {
+							messages.push(json!({"role": "system", "content": content}))
+						}
 					}
+					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
-				ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
-				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
+				ChatRole::User => {
+					if let MessageContent::Text(content) = msg.content {
+						messages.push(json! ({"role": "user", "content": content}));
+					}
+					// TODO: Probably need to warn if it is a ToolCalls type of content
+				}
+
+				ChatRole::Assistant => match msg.content {
+					MessageContent::Text(content) => messages.push(json! ({"role": "assistant", "content": content})),
+					MessageContent::ToolCalls(tool_calls) => {
+						let tool_calls = tool_calls
+							.into_iter()
+							.map(|tool_call| {
+								json!({
+									"type": "function",
+									"id": tool_call.call_id,
+									"function": {
+										"name": tool_call.fn_name,
+										"arguments": tool_call.fn_arguments.to_string(),
+									}
+								})
+							})
+							.collect::<Vec<Value>>();
+						messages.push(json! ({"role": "assistant", "tool_calls": tool_calls}))
+					}
+					// TODO: Probably need to trace/warn that this will be ignored
+					MessageContent::ToolResponses(_) => (),
+				},
+
 				ChatRole::Tool => {
-					return Err(Error::MessageRoleNotSupported {
-						model_iden,
-						role: ChatRole::Tool,
-					})
+					if let MessageContent::ToolResponses(tool_responses) = msg.content {
+						for tool_response in tool_responses {
+							messages.push(json!({
+								"role": "tool",
+								"content": tool_response.content,
+								"tool_call_id": tool_response.call_id,
+							}))
+						}
+					}
+					// TODO: Probably need to trace/warn that this will be ignored
 				}
 			}
 		}
 
+		// -- Finalize the system messages ollama case
 		if !system_messages.is_empty() {
 			let system_message = system_messages.join("\n");
 			messages.insert(0, json!({"role": "system", "content": system_message}));
 		}
 
-		Ok(OpenAIRequestParts { messages })
+		// -- Process the tools
+		let tools = chat_req.tools.map(|tools| {
+			tools
+				.into_iter()
+				.map(|tool| {
+					// TODO: Need to handle the error correctly
+					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
+					// NOTE: Right now, low probability, so, we just return null if cannto to value.
+					json!({
+						"type": "function",
+						"function": {
+							"name": tool.name,
+							"description": tool.description,
+							"parameters": tool.schema,
+							// TODO: If we need to support `strict: true` we need to add additionalProperties: false into the schema
+							//       above (like structured output)
+							"strict": false,
+						}
+					})
+				})
+				.collect::<Vec<Value>>()
+		});
+
+		Ok(OpenAIRequestParts { messages, tools })
 	}
 }
 
@@ -255,6 +338,59 @@ impl OpenAIAdapter {
 
 struct OpenAIRequestParts {
 	messages: Vec<Value>,
+	tools: Option<Vec<Value>>,
+}
+
+fn parse_tool_calls(raw_tool_calls: Value) -> Result<Vec<ToolCall>> {
+	let Value::Array(raw_tool_calls) = raw_tool_calls else {
+		return Err(Error::InvalidJsonResponseElement {
+			info: "tool calls is not an array",
+		});
+	};
+
+	let tool_calls = raw_tool_calls.into_iter().map(parse_tool_call).collect::<Result<Vec<_>>>()?;
+
+	Ok(tool_calls)
+}
+
+fn parse_tool_call(raw_tool_call: Value) -> Result<ToolCall> {
+	// Define a helper struct to match the original JSON structure.
+	#[derive(Deserialize)]
+	struct IterimToolFnCall {
+		id: String,
+		#[serde(rename = "type")]
+		r#type: String,
+		function: IterimFunction,
+	}
+
+	#[derive(Deserialize)]
+	struct IterimFunction {
+		name: String,
+		arguments: Value,
+	}
+
+	let iterim = serde_json::from_value::<IterimToolFnCall>(raw_tool_call)?;
+
+	let fn_name = iterim.function.name;
+
+	// For now support Object only, and parse the eventual string as a json value.
+	// Eventually, we might check pricing
+	let fn_arguments = match iterim.function.arguments {
+		Value::Object(obj) => Value::Object(obj),
+		Value::String(txt) => serde_json::from_str(&txt)?,
+		_ => {
+			return Err(Error::InvalidJsonResponseElement {
+				info: "tool call arguments is not an object",
+			})
+		}
+	};
+
+	// Then, map the fields of the helper struct to the flat structure.
+	Ok(ToolCall {
+		call_id: iterim.id,
+		fn_name,
+		fn_arguments,
+	})
 }
 
 // endregion: --- Support

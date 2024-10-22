@@ -23,11 +23,18 @@ pub enum Error {
 		model_iden: ModelIden,
 		role: ChatRole,
 	},
+	MessageContentTypeNotSupported {
+		model_iden: ModelIden,
+		cause: &'static str,
+	},
 	JsonModeWithoutInstruction,
 
 	// -- Chat Output
 	NoChatResponse {
 		model_iden: ModelIden,
+	},
+	InvalidJsonResponseElement {
+		info: &'static str,
 	},
 
 	// -- Auth
@@ -77,14 +84,15 @@ pub enum Error {
 		resolver_error: resolver::Error,
 	},
 
-	// -- Utils
-
 	// -- Externals
 	#[from]
 	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
 	#[from]
 	JsonValueExt(JsonValueExtError),
 	ReqwestEventSource(reqwest_eventsource::Error),
+	// Note: will probably need to remvoe this one to give more context
+	#[from]
+	SerdeJson(serde_json::Error),
 }
 
 // region:    --- Error Boilerplate

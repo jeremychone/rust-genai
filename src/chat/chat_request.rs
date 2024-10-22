@@ -1,6 +1,6 @@
 //! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
 
-use crate::chat::MessageContent;
+use crate::chat::{ChatMessage, ChatRole, MessageContent, Tool};
 use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
@@ -13,13 +13,19 @@ pub struct ChatRequest {
 
 	/// The messages of the request.
 	pub messages: Vec<ChatMessage>,
+
+	pub tools: Option<Vec<Tool>>,
 }
 
 /// Constructors
 impl ChatRequest {
 	/// Create a new ChatRequest with the given messages.
 	pub fn new(messages: Vec<ChatMessage>) -> Self {
-		Self { messages, system: None }
+		Self {
+			messages,
+			system: None,
+			tools: None,
+		}
 	}
 
 	/// From the `.system` property content.
@@ -27,6 +33,7 @@ impl ChatRequest {
 		Self {
 			system: Some(content.into()),
 			messages: Vec::new(),
+			tools: None,
 		}
 	}
 
@@ -34,7 +41,8 @@ impl ChatRequest {
 	pub fn from_user(content: impl Into<String>) -> Self {
 		Self {
 			system: None,
-			messages: vec![ChatMessage::user(content)],
+			messages: vec![ChatMessage::user(content.into())],
+			tools: None,
 		}
 	}
 }
@@ -48,8 +56,18 @@ impl ChatRequest {
 	}
 
 	/// Append a message to the request.
-	pub fn append_message(mut self, msg: ChatMessage) -> Self {
-		self.messages.push(msg);
+	pub fn append_message(mut self, msg: impl Into<ChatMessage>) -> Self {
+		self.messages.push(msg.into());
+		self
+	}
+
+	pub fn with_tools(mut self, tools: Vec<Tool>) -> Self {
+		self.tools = Some(tools);
+		self
+	}
+
+	pub fn append_tool(mut self, tool: impl Into<Tool>) -> Self {
+		self.tools.get_or_insert_with(Vec::new).push(tool.into());
 		self
 	}
 }
@@ -65,6 +83,8 @@ impl ChatRequest {
 			.chain(self.messages.iter().filter_map(|message| match message.role {
 				ChatRole::System => match message.content {
 					MessageContent::Text(ref content) => Some(content.as_str()),
+					/// If system content is not text, then, we do not add it for now.
+					_ => None,
 				},
 				_ => None,
 			}))
@@ -97,74 +117,3 @@ impl ChatRequest {
 }
 
 // endregion: --- ChatRequest
-
-// region:    --- ChatMessage
-
-/// An individual chat message.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatMessage {
-	/// The role of the message.
-	pub role: ChatRole,
-
-	/// The content of the message.
-	pub content: MessageContent,
-
-	/// Extra information about the message.
-	pub extra: Option<MessageExtra>,
-}
-
-/// Constructors
-impl ChatMessage {
-	/// Create a new ChatMessage with the role `ChatRole::System`.
-	pub fn system(content: impl Into<MessageContent>) -> Self {
-		Self {
-			role: ChatRole::System,
-			content: content.into(),
-			extra: None,
-		}
-	}
-
-	/// Create a new ChatMessage with the role `ChatRole::Assistant`.
-	pub fn assistant(content: impl Into<MessageContent>) -> Self {
-		Self {
-			role: ChatRole::Assistant,
-			content: content.into(),
-			extra: None,
-		}
-	}
-
-	/// Create a new ChatMessage with the role `ChatRole::User`.
-	pub fn user(content: impl Into<MessageContent>) -> Self {
-		Self {
-			role: ChatRole::User,
-			content: content.into(),
-			extra: None,
-		}
-	}
-}
-
-/// Chat roles.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(missing_docs)]
-pub enum ChatRole {
-	System,
-	User,
-	Assistant,
-	Tool,
-}
-
-/// NOTE: DO NOT USE, just a placeholder for now.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(missing_docs)]
-pub enum MessageExtra {
-	Tool(ToolExtra),
-}
-
-/// NOTE: DO NOT USE, just a placeholder for now.
-#[allow(unused)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolExtra {
-	tool_id: String,
-}
-
-// endregion: --- ChatMessage

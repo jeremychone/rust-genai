@@ -110,8 +110,8 @@ impl Adapter for CohereAdapter {
 			.map(MessageContent::from);
 
 		Ok(ChatResponse {
-			model_iden,
 			content,
+			model_iden,
 			usage,
 		})
 	}
@@ -185,13 +185,23 @@ impl CohereAdapter {
 				actual_role: last_chat_msg.role,
 			});
 		}
-		// Will handle more types later
-		let MessageContent::Text(message) = last_chat_msg.content;
+
+		// TODO: Needs to implement tool_calls
+		let MessageContent::Text(message) = last_chat_msg.content else {
+			return Err(Error::MessageContentTypeNotSupported {
+				model_iden,
+				cause: "Only MessageContent::Text supported for this model (for now)",
+			});
+		};
 
 		// -- Build
 		for msg in chat_req.messages {
-			// Note: Will handle more types later
-			let MessageContent::Text(content) = msg.content;
+			let MessageContent::Text(content) = msg.content else {
+				return Err(Error::MessageContentTypeNotSupported {
+					model_iden,
+					cause: "Only MessageContent::Text supported for this model (for now)",
+				});
+			};
 
 			match msg.role {
 				// For now, system and tool go to the system

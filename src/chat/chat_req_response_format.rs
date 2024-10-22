@@ -2,7 +2,7 @@ use derive_more::From;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// The chat response format to be sent back by the LLM.
+/// The chat response format for the ChatRequest for structured output.
 /// This will be taken into consideration only if the provider supports it.
 ///
 /// > Note: Currently, the AI Providers will not report an error if not supported. It will just be ignored.

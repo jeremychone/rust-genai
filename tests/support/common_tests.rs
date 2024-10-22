@@ -1,6 +1,6 @@
 use crate::get_option_value;
-use crate::support::{extract_stream_end, seed_chat_req_simple, Result};
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, JsonSpec};
+use crate::support::{extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple, Result};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, JsonSpec, Tool, ToolResponse};
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
 use serde_json::{json, Value};
@@ -259,6 +259,68 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- Tools
+
+/// Just making the tool request, and checking the tool call response
+/// `complete_check` if for LLMs that are better at giving back the unit and weather.
+pub async fn common_test_tool_simple_ok(model: &str, complete_check: bool) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = seed_chat_req_tool_simple();
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let mut tool_calls = chat_res.tool_calls().ok_or("Should have tool calls")?;
+	let tool_call = tool_calls.pop().ok_or("Should have at least one tool call")?;
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("city")?, "Paris");
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("country")?, "France");
+	if complete_check {
+		// Note: Not all LLM will output the weather (e.g. Anthropic Haiku)
+		assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("unit")?, "C");
+	}
+
+	Ok(())
+}
+
+/// `complete_check` if for LLMs that are better at giving back the unit and weather.
+///                  
+pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let mut chat_req = seed_chat_req_tool_simple();
+
+	// -- Exec first request to get the tool calls
+	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+	let tool_calls = chat_res.into_tool_calls().ok_or("Should have tool calls in chat_res")?;
+
+	// -- Exec the second request
+	// get the tool call id (first one)
+	let first_tool_call = tool_calls.first().ok_or("Should have at least one tool call")?;
+	let first_tool_call_id = &first_tool_call.call_id;
+	// simulate the response
+	let tool_response = ToolResponse::new(first_tool_call_id, r#"{"weather": "Sunny", "temperature": "32C"}"#);
+
+	// Add the tool_calls, tool_response
+	let chat_req = chat_req.append_message(tool_calls).append_message(tool_response);
+
+	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+
+	// -- Check
+	let content = chat_res.content_text_as_str().ok_or("Last response should be message")?;
+	assert!(content.contains("Paris"), "Should contain 'Paris'");
+	assert!(content.contains("32"), "Should contain '32'");
+	if complete_check {
+		// Note: Not all LLM will output the weather (e.g. Anthropic Haiku)
+		assert!(content.contains("sunny"), "Should contain 'sunny'");
+	}
+
+	Ok(())
+}
+
+// endregion: --- Tools
 
 // region:    --- With Resolvers
 

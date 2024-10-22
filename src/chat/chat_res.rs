@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::chat::{ChatStream, MessageContent};
+use crate::chat::{ChatStream, MessageContent, ToolCall};
 use crate::ModelIden;
 
 // region:    --- ChatResponse
@@ -13,12 +13,12 @@ pub struct ChatResponse {
 	/// The eventual content of the chat response
 	pub content: Option<MessageContent>,
 
-	/// The eventual usage of the chat response
-	pub usage: MetaUsage,
-
 	/// The Model Identifier (AdapterKind/ModelName) used for this request.
 	/// > NOTE: This might be different from the request model if changed by the ModelMapper
 	pub model_iden: ModelIden,
+
+	/// The eventual usage of the chat response
+	pub usage: MetaUsage,
 }
 
 // Getters
@@ -33,6 +33,22 @@ impl ChatResponse {
 	/// Otherwise, returns None
 	pub fn content_text_into_string(self) -> Option<String> {
 		self.content.and_then(MessageContent::text_into_string)
+	}
+
+	pub fn tool_calls(&self) -> Option<Vec<&ToolCall>> {
+		if let Some(MessageContent::ToolCalls(tool_calls)) = self.content.as_ref() {
+			Some(tool_calls.iter().collect())
+		} else {
+			None
+		}
+	}
+
+	pub fn into_tool_calls(self) -> Option<Vec<ToolCall>> {
+		if let Some(MessageContent::ToolCalls(tool_calls)) = self.content {
+			Some(tool_calls)
+		} else {
+			None
+		}
 	}
 }
 

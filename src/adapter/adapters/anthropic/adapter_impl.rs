@@ -3,10 +3,11 @@ use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
+	ToolCall,
 };
 use crate::webc::WebResponse;
-use crate::Result;
 use crate::{ClientConfig, ModelIden};
+use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -18,9 +19,9 @@ const BASE_URL: &str = "https://api.anthropic.com/v1/";
 const MAX_TOKENS: u32 = 1024;
 const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
+	"claude-3-5-sonnet-20241022",
 	"claude-3-5-sonnet-20240620",
 	"claude-3-opus-20240229",
-	"claude-3-sonnet-20240229",
 	"claude-3-haiku-20240307",
 ];
 
@@ -53,7 +54,7 @@ impl Adapter for AnthropicAdapter {
 		let url = Self::get_service_url(model_iden.clone(), service_type);
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key(model_iden, client_config)?;
+		let api_key = get_api_key(model_iden.clone(), client_config)?;
 
 		let headers = vec![
 			// headers
@@ -61,7 +62,11 @@ impl Adapter for AnthropicAdapter {
 			("anthropic-version".to_string(), ANTRHOPIC_VERSION.to_string()),
 		];
 
-		let AnthropicRequestParts { system, messages } = Self::into_anthropic_request_parts(chat_req)?;
+		let AnthropicRequestParts {
+			system,
+			messages,
+			tools,
+		} = Self::into_anthropic_request_parts(model_iden, chat_req)?;
 
 		// -- Build the basic payload
 		let mut payload = json!({
@@ -69,8 +74,13 @@ impl Adapter for AnthropicAdapter {
 			"messages": messages,
 			"stream": stream
 		});
+
 		if let Some(system) = system {
 			payload.x_insert("system", system)?;
+		}
+
+		if let Some(tools) = tools {
+			payload.x_insert("/tools", tools);
 		}
 
 		// -- Add supported ChatOptions
@@ -90,27 +100,51 @@ impl Adapter for AnthropicAdapter {
 
 	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-		let json_content_items: Vec<Value> = body.x_take("content")?;
 
-		let mut content: Vec<String> = Vec::new();
-
+		// -- Capture the usage
 		let usage = body.x_take("usage").map(Self::into_usage).unwrap_or_default();
 
-		for mut item in json_content_items {
-			let item_text: String = item.x_take("text")?;
-			content.push(item_text);
+		// -- Capture the content
+		// NOTE: Anthropic support a list of content of multitypes but not the ChatResponse
+		//       So, the strategy is to:
+		//       - List all of the content and capture the text and tool_use
+		//       - If there is one or more tool_use, this will take precedence and MessageContent support tool_call list
+		//       - Otherwise, the text is concatenated
+		// NOTE: We need to see if the multiple content type text happens and why. If not, we can probably simplify this by just capturing the first one.
+		//       Eventually, ChatResponse will have `content: Option<Vec<MessageContent>>` for the multi parts (with images and such)
+		let content_items: Vec<Value> = body.x_take("content")?;
+
+		let mut text_content: Vec<String> = Vec::new();
+		// Note: here tool_calls is probably the exception, so, not creating the vector if not needed
+		let mut tool_calls: Option<Vec<ToolCall>> = None;
+
+		for mut item in content_items {
+			let typ: &str = item.x_get_as("type")?;
+			if typ == "text" {
+				text_content.push(item.x_take("text")?);
+			} else if typ == "tool_use" {
+				let call_id = item.x_take::<String>("id")?;
+				let fn_name = item.x_take::<String>("name")?;
+				// if not found, will be Value::Null
+				let fn_arguments = item.x_take::<Value>("input").unwrap_or_default();
+				let tool_call = ToolCall {
+					call_id,
+					fn_name,
+					fn_arguments,
+				};
+				tool_calls.get_or_insert_with(Vec::new).push(tool_call);
+			}
 		}
 
-		let content = if content.is_empty() {
-			None
+		let content = if let Some(tool_calls) = tool_calls {
+			Some(MessageContent::from(tool_calls))
 		} else {
-			Some(content.join(""))
+			Some(MessageContent::from(text_content.join("\n")))
 		};
-		let content = content.map(MessageContent::from);
 
 		Ok(ChatResponse {
-			model_iden,
 			content,
+			model_iden,
 			usage,
 		})
 	}
@@ -153,7 +187,7 @@ impl AnthropicAdapter {
 
 	/// Takes the GenAI ChatMessages and constructs the System string and JSON Messages for Anthropic.
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
-	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
+	fn into_anthropic_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -161,32 +195,115 @@ impl AnthropicAdapter {
 			systems.push(system);
 		}
 
+		// -- Process the messages
 		for msg in chat_req.messages {
-			// Note: Will handle more types later
-			let MessageContent::Text(content) = msg.content;
-
 			match msg.role {
 				// for now, system and tool messages go to system
-				ChatRole::System | ChatRole::Tool => systems.push(content),
-				ChatRole::User => messages.push(json! ({"role": "user", "content": content})),
-				ChatRole::Assistant => messages.push(json! ({"role": "assistant", "content": content})),
+				ChatRole::System => {
+					if let MessageContent::Text(content) = msg.content {
+						systems.push(content)
+					}
+					// TODO: Needs to trace/warn that other type are not supported
+				}
+				ChatRole::User => {
+					if let MessageContent::Text(content) = msg.content {
+						messages.push(json! ({"role": "user", "content": content}))
+					}
+					// TODO: Needs to trace/warn that other type are not supported
+				}
+				ChatRole::Assistant => {
+					//
+					match msg.content {
+						MessageContent::Text(content) => {
+							messages.push(json! ({"role": "assistant", "content": content}))
+						}
+						MessageContent::ToolCalls(tool_calls) => {
+							let tool_calls = tool_calls
+								.into_iter()
+								.map(|tool_call| {
+									// see: https://docs.anthropic.com/en/docs/build-with-claude/tool-use#example-of-successful-tool-result
+									json!({
+										"type": "tool_use",
+										"id": tool_call.call_id,
+										"name": tool_call.fn_name,
+										"input": tool_call.fn_arguments,
+									})
+								})
+								.collect::<Vec<Value>>();
+							messages.push(json! ({
+								"role": "assistant",
+								"content": tool_calls
+							}));
+						}
+						// TODO: Probably need to trace/warn that this will be ignored
+						MessageContent::ToolResponses(_) => (),
+					}
+				}
+				ChatRole::Tool => {
+					if let MessageContent::ToolResponses(tool_responses) = msg.content {
+						let tool_responses = tool_responses
+							.into_iter()
+							.map(|tool_response| {
+								json!({
+									"type": "tool_result",
+									"content": tool_response.content,
+									"tool_use_id": tool_response.call_id,
+								})
+							})
+							.collect::<Vec<Value>>();
+
+						// FIXME: MessageContent::ToolResponse should be MessageContent::ToolResponses (even if openAI does require multi Tool message)
+						messages.push(json!({
+							"role": "user",
+							"content": tool_responses
+						}));
+					}
+					// TODO: Probably need to trace/warn that this will be ignored
+				}
 			}
 		}
 
+		// -- Create the Anthropic system
+		// NOTE: Anthropic does not have a "role": "system", just a single optional system property
 		let system = if !systems.is_empty() {
 			Some(systems.join("\n"))
 		} else {
 			None
 		};
 
-		Ok(AnthropicRequestParts { system, messages })
+		// -- Process the tools
+		let tools = chat_req.tools.map(|tools| {
+			tools
+				.into_iter()
+				.map(|tool| {
+					// TODO: Need to handle the error correctly
+					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
+					// NOTE: Right now, low probability, so, we just return null if cannto to value.
+					let mut tool_value = json!({
+						"name": tool.name,
+						"input_schema": tool.schema,
+					});
+
+					if let Some(description) = tool.description {
+						tool_value.x_insert("description", description);
+					}
+					tool_value
+				})
+				.collect::<Vec<Value>>()
+		});
+
+		Ok(AnthropicRequestParts {
+			system,
+			messages,
+			tools,
+		})
 	}
 }
 
 struct AnthropicRequestParts {
 	system: Option<String>,
 	messages: Vec<Value>,
-	// TODO: need to add tools
+	tools: Option<Vec<Value>>,
 }
 
 // endregion: --- Support
