@@ -4,7 +4,39 @@
 use crate::chat::{ChatStreamEvent, ChatStreamResponse, StreamChunk};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncWriteExt as _, Stdout};
+
+struct OutputCtx {
+	#[cfg(not(target_arch = "wasm32"))]
+    stdout: tokio::io::Stdout
+}
+
+impl OutputCtx {
+	async fn write_all(&mut self, data: &[u8]) -> Result<()> {
+		#[cfg(not(target_arch = "wasm32"))]
+        {
+			use tokio::io::AsyncWriteExt;
+			self.stdout.write_all(data).await?;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+			let message = String::from_utf8_lossy(data);
+			log::info!("{}", message);
+        }
+
+        Ok(())
+    }
+
+	async fn flush(&mut self) -> Result<()> {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+			use tokio::io::AsyncWriteExt;
+			self.stdout.flush().await?;
+        }
+
+        Ok(())
+    }
+}
 
 // Note: This module has its own Error type (see end of file)
 type Result<T> = core::result::Result<T, Error>;
@@ -34,7 +66,10 @@ pub async fn print_chat_stream(
 	chat_res: ChatStreamResponse,
 	options: Option<&PrintChatStreamOptions>,
 ) -> Result<String> {
-	let mut stdout = tokio::io::stdout();
+	let mut stdout = OutputCtx {
+		#[cfg(not(target_arch = "wasm32"))]
+		stdout: tokio::io::stdout()
+	};
 	let res = print_chat_stream_inner(&mut stdout, chat_res, options).await;
 	// Ensure tokio stdout flush is called, regardless of success or failure.
 	stdout.flush().await?;
@@ -42,7 +77,7 @@ pub async fn print_chat_stream(
 }
 
 async fn print_chat_stream_inner(
-	stdout: &mut Stdout,
+	stdout: &mut OutputCtx,
 	chat_res: ChatStreamResponse,
 	options: Option<&PrintChatStreamOptions>,
 ) -> Result<String> {
@@ -120,6 +155,7 @@ use derive_more::From;
 #[derive(Debug, From)]
 pub enum Error {
 	/// The `tokio::io::Error` when using `tokio::io::stdout`
+	#[cfg(not(target_arch = "wasm32"))]
 	#[from]
 	TokioIo(tokio::io::Error),
 }

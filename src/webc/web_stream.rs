@@ -7,6 +7,16 @@ use std::error::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+#[cfg(not(target_arch = "wasm32"))]
+type ResponseFuture = Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>> + Send>>>;
+#[cfg(target_arch = "wasm32")]
+type ResponseFuture = Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>>>>>;
+
+#[cfg(not(target_arch = "wasm32"))]
+type BytesStream = Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>> + Send>>>;
+#[cfg(target_arch = "wasm32")]
+type BytesStream = Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>>>>>;
+
 /// WebStream is a simple web stream implementation that splits the stream messages by a given delimiter.
 /// - It is intended to be a pragmatic solution for services that do not adhere to the `text/event-stream` format and content type.
 /// - For providers that support the standard `text/event-stream`, `genai` uses the `reqwest-eventsource`/`eventsource-stream` crates.
@@ -17,8 +27,8 @@ use std::task::{Context, Poll};
 pub struct WebStream {
 	stream_mode: StreamMode,
 	reqwest_builder: Option<RequestBuilder>,
-	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>> + Send>>>,
-	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>> + Send>>>,
+	response_future: ResponseFuture,
+	bytes_stream: BytesStream,
 	// If a poll was a partial message, then we kept the previous part
 	partial_message: Option<String>,
 	// If a poll retrieved multiple messages, we keep them to be sent in the next poll

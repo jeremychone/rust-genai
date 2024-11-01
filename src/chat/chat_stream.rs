@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+#[cfg(not(target_arch = "wasm32"))]
 type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>> + Send>>;
+#[cfg(target_arch = "wasm32")]
+type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>>>>;
 
 /// ChatStream is a Rust Future Stream that iterates through the events of a chat stream request.
 pub struct ChatStream {
@@ -18,9 +21,19 @@ impl ChatStream {
 		ChatStream { inter_stream }
 	}
 
+	#[cfg(not(target_arch = "wasm32"))]
 	pub(crate) fn from_inter_stream<T>(inter_stream: T) -> Self
 	where
 		T: Stream<Item = crate::Result<InterStreamEvent>> + Send + Unpin + 'static,
+	{
+		let boxed_stream: InterStreamType = Box::pin(inter_stream);
+		ChatStream::new(boxed_stream)
+	}
+
+	#[cfg(target_arch = "wasm32")]
+	pub(crate) fn from_inter_stream<T>(inter_stream: T) -> Self
+	where
+		T: Stream<Item = crate::Result<InterStreamEvent>> + Unpin + 'static,
 	{
 		let boxed_stream: InterStreamType = Box::pin(inter_stream);
 		ChatStream::new(boxed_stream)
