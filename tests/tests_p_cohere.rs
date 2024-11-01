@@ -1,3 +1,5 @@
+
+
 mod support;
 
 use crate::support::common_tests;
@@ -9,7 +11,8 @@ const MODEL: &str = "command-light";
 
 // region:    --- Chat
 
-#[tokio::test]
+#[cfg_attr(not(target_arch = "wasm32"), tokio::test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL).await
 }
@@ -18,22 +21,26 @@ async fn test_chat_simple_ok() -> Result<()> {
 
 // region:    --- Chat Stream Tests
 
-#[tokio::test]
+#[cfg_attr(not(target_arch = "wasm32"), tokio::test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 async fn test_chat_stream_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_stream_simple_ok(MODEL).await
 }
 
-#[tokio::test]
+#[cfg_attr(not(target_arch = "wasm32"), tokio::test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 async fn test_chat_stream_capture_content_ok() -> Result<()> {
 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
-#[tokio::test]
+#[cfg_attr(not(target_arch = "wasm32"), tokio::test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 async fn test_chat_stream_capture_all_ok() -> Result<()> {
 	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
 }
 
-#[tokio::test]
+#[cfg_attr(not(target_arch = "wasm32"), tokio::test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 async fn test_chat_temperature_ok() -> Result<()> {
 	common_tests::common_test_chat_temperature_ok(MODEL).await
 }
@@ -42,7 +49,8 @@ async fn test_chat_temperature_ok() -> Result<()> {
 
 // region:    --- Resolver Tests
 
-#[tokio::test]
+#[cfg_attr(not(target_arch = "wasm32"), tokio::test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
 async fn test_resolver_auth_ok() -> Result<()> {
 	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("COHERE_API_KEY")).await
 }
