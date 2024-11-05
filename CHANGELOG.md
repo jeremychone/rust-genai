@@ -5,6 +5,13 @@
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
+## 2024-11-04 - `0.1.11`
+
+- `^` anthropic - updated the default max_token to the max for given the model (i.e. 3-5 will be 8k)
+- `+` tool - First pass at adding Function Calling for OpenAI and Anthropic (rel #24)
+  - **NOTE**: The tool is still work in progress, but this should be a good first start. 
+- `.` update version to 0.1.11-WIP
+
 ## 2024-10-05 - `0.1.10`
 
 (minor release)

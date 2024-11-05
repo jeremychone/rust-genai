@@ -5,7 +5,10 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
+// 4k
 const MODEL: &str = "claude-3-haiku-20240307";
+// 8k output context
+// const MODEL: &str = "claude-3-5-haiku-20241022";
 
 // region:    --- Chat
 

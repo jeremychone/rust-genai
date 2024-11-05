@@ -16,11 +16,17 @@ use value_ext::JsonValueExt;
 pub struct AnthropicAdapter;
 
 const BASE_URL: &str = "https://api.anthropic.com/v1/";
-const MAX_TOKENS: u32 = 1024;
+
+// NOTE: For Anthropic, the max_tokens must be specified.
+//       To avoid surprises, the default value for genai is the maximum for a given model.
+// The 3-5 models have an 8k max token limit, while the 3 models have a 4k limit.
+const MAX_TOKENS_8K: u32 = 8192;
+const MAX_TOKENS_4K: u32 = 4096;
+
 const ANTRHOPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
 	"claude-3-5-sonnet-20241022",
-	"claude-3-5-sonnet-20240620",
+	"claude-3-5-haiku-20241022",
 	"claude-3-opus-20240229",
 	"claude-3-haiku-20240307",
 ];
@@ -66,7 +72,7 @@ impl Adapter for AnthropicAdapter {
 			system,
 			messages,
 			tools,
-		} = Self::into_anthropic_request_parts(model_iden, chat_req)?;
+		} = Self::into_anthropic_request_parts(model_iden.clone(), chat_req)?;
 
 		// -- Build the basic payload
 		let mut payload = json!({
@@ -88,7 +94,13 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("temperature", temperature)?;
 		}
 
-		let max_tokens = options_set.max_tokens().unwrap_or(MAX_TOKENS);
+		let max_tokens = options_set.max_tokens().unwrap_or_else(|| {
+			if model_iden.model_name.contains("3-5") {
+				MAX_TOKENS_8K
+			} else {
+				MAX_TOKENS_4K
+			}
+		});
 		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
 
 		if let Some(top_p) = options_set.top_p() {
