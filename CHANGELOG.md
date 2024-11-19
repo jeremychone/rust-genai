@@ -5,6 +5,12 @@
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
+## 2024-11-18 - `0.1.12`
+
+- `.` minor update on llms model names
+- `^` ChatRole - impl Display
+- `^` ChatReqeuust - added from_messages, and append_messages
+
 ## 2024-11-04 - `0.1.11`
 
 - `^` anthropic - updated the default max_token to the max for given the model (i.e. 3-5 will be 8k)
