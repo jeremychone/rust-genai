@@ -39,7 +39,7 @@ impl ChatMessage {
 }
 
 /// Chat roles.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, derive_more::Display)]
 #[allow(missing_docs)]
 pub enum ChatRole {
 	System,
