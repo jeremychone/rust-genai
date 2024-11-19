@@ -6,8 +6,8 @@ use crate::chat::{
 	ToolCall,
 };
 use crate::webc::WebResponse;
+use crate::Result;
 use crate::{ClientConfig, ModelIden};
-use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -86,7 +86,7 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		if let Some(tools) = tools {
-			payload.x_insert("/tools", tools);
+			payload.x_insert("/tools", tools)?;
 		}
 
 		// -- Add supported ChatOptions
@@ -199,7 +199,7 @@ impl AnthropicAdapter {
 
 	/// Takes the GenAI ChatMessages and constructs the System string and JSON Messages for Anthropic.
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
-	fn into_anthropic_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
+	fn into_anthropic_request_parts(_model_iden: ModelIden, chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -297,7 +297,8 @@ impl AnthropicAdapter {
 					});
 
 					if let Some(description) = tool.description {
-						tool_value.x_insert("description", description);
+						// TODO: need to handle error
+						let _ = tool_value.x_insert("description", description);
 					}
 					tool_value
 				})

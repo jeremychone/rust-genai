@@ -18,6 +18,7 @@ impl ToolResponse {
 }
 
 /// Getters
+#[allow(unused)]
 impl ToolResponse {
 	fn tool_call_id(&self) -> &str {
 		&self.call_id

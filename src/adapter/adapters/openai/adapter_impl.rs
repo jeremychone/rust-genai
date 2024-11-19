@@ -3,7 +3,7 @@ use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	MessageContent, MetaUsage, Tool, ToolCall,
+	MessageContent, MetaUsage, ToolCall,
 };
 use crate::webc::WebResponse;
 use crate::{ClientConfig, ModelIden};
@@ -142,7 +142,7 @@ impl OpenAIAdapter {
 		});
 
 		if let Some(tools) = tools {
-			payload.x_insert("/tools", tools);
+			payload.x_insert("/tools", tools)?;
 		}
 
 		// -- Add options
@@ -223,9 +223,9 @@ impl OpenAIAdapter {
 	fn into_openai_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 
-		/// NOTE: For now system_messages is use to fix an issue with the Ollama compatibility layer that does not support multiple system messages.
-		///       So, when ollama, it will concatenate the system message into a single one at the beginning
-		/// NOTE: This might be fixed now, so, we could remove this.
+		// NOTE: For now system_messages is use to fix an issue with the Ollama compatibility layer that does not support multiple system messages.
+		//       So, when ollama, it will concatenate the system message into a single one at the beginning
+		// NOTE: This might be fixed now, so, we could remove this.
 		let mut system_messages: Vec<String> = Vec::new();
 
 		let ollama_variant = matches!(model_iden.adapter_kind, AdapterKind::Ollama);
@@ -358,6 +358,7 @@ fn parse_tool_call(raw_tool_call: Value) -> Result<ToolCall> {
 	#[derive(Deserialize)]
 	struct IterimToolFnCall {
 		id: String,
+		#[allow(unused)]
 		#[serde(rename = "type")]
 		r#type: String,
 		function: IterimFunction,

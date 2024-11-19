@@ -97,7 +97,7 @@ impl ChatRequest {
 			.chain(self.messages.iter().filter_map(|message| match message.role {
 				ChatRole::System => match message.content {
 					MessageContent::Text(ref content) => Some(content.as_str()),
-					/// If system content is not text, then, we do not add it for now.
+					// If system content is not text, then, we do not add it for now.
 					_ => None,
 				},
 				_ => None,
