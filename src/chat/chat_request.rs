@@ -45,6 +45,15 @@ impl ChatRequest {
 			tools: None,
 		}
 	}
+
+	/// Create a new request from messages
+	pub fn from_messages(messages: Vec<ChatMessage>) -> Self {
+		Self {
+			system: None,
+			messages,
+			tools: None,
+		}
+	}
 }
 
 /// Chainable Setters
@@ -58,6 +67,11 @@ impl ChatRequest {
 	/// Append a message to the request.
 	pub fn append_message(mut self, msg: impl Into<ChatMessage>) -> Self {
 		self.messages.push(msg.into());
+		self
+	}
+
+	pub fn append_messages(mut self, messages: Vec<ChatMessage>) -> Self {
+		self.messages.extend(messages);
 		self
 	}
 
