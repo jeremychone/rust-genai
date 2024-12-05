@@ -5,6 +5,7 @@
 //! Note 1: In the future, we will probably allow setting the client
 //! Note 2: Extracting it from the `ChatRequest` object allows for better reusability of each component.
 
+use std::ops::Deref;
 use crate::chat::chat_req_response_format::ChatResponseFormat;
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +38,9 @@ pub struct ChatOptions {
 	///
 	/// NOTE: More response formats are coming soon.
 	pub response_format: Option<ChatResponseFormat>,
+
+	/// Specifies sequences used as end marker when generating text
+	pub stop_sequences: Vec<String>
 }
 
 /// Chainable Setters
@@ -163,6 +167,13 @@ impl ChatOptionsSet<'_, '_> {
 			None => None,
 			_ => Some(false),
 		}
+	}
+
+	pub fn stop_sequences(&self) -> &[String] {
+		self.chat
+			.map(|chat| chat.stop_sequences.deref())
+			.or_else(|| self.client.map(|client| client.stop_sequences.deref()))
+			.unwrap_or_else(|| &[])
 	}
 }
 

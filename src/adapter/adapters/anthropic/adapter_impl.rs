@@ -94,6 +94,10 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("temperature", temperature)?;
 		}
 
+		if options_set.stop_sequences().len() > 0 {
+			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
+		}
+
 		let max_tokens = options_set.max_tokens().unwrap_or_else(|| {
 			if model_iden.model_name.contains("3-5") {
 				MAX_TOKENS_8K
