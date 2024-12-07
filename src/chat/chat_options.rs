@@ -163,6 +163,13 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.response_format.as_ref()))
 	}
 
+	pub fn stop_sequences(&self) -> &[String] {
+		self.chat
+			.map(|chat| chat.stop_sequences.deref())
+			.or_else(|| self.client.map(|client| client.stop_sequences.deref()))
+			.unwrap_or(&[])
+	}
+
 	/// Returns true only if there is a ChatResponseFormat::JsonMode
 	#[deprecated(note = "Use .response_format()")]
 	#[allow(unused)]
@@ -172,13 +179,6 @@ impl ChatOptionsSet<'_, '_> {
 			None => None,
 			_ => Some(false),
 		}
-	}
-
-	pub fn stop_sequences(&self) -> &[String] {
-		self.chat
-			.map(|chat| chat.stop_sequences.deref())
-			.or_else(|| self.client.map(|client| client.stop_sequences.deref()))
-			.unwrap_or(&[])
 	}
 }
 

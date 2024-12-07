@@ -182,15 +182,19 @@ impl OpenAIAdapter {
 			payload["response_format"] = response_format;
 		}
 
-		// --
+		// -- Add supported ChatOptions
 		if stream & options_set.capture_usage().unwrap_or(false) {
 			payload.x_insert("stream_options", json!({"include_usage": true}))?;
 		}
 
-		// -- Add supported ChatOptions
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("temperature", temperature)?;
 		}
+
+		if !options_set.stop_sequences().is_empty() {
+			payload.x_insert("stop", options_set.stop_sequences())?;
+		}
+
 		if let Some(max_tokens) = options_set.max_tokens() {
 			payload.x_insert("max_tokens", max_tokens)?;
 		}
