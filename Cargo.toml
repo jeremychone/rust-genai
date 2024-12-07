@@ -30,3 +30,6 @@ bytes = "1.6"
 # -- Others
 derive_more = { version = "1.0.0", features = ["from", "display"] }
 value-ext = "0.0.3" # JC Authored. Early release (API might change). Be cautious when using in other projects.
+
+[dev-dependencies]
+serial_test = "3.2.0"

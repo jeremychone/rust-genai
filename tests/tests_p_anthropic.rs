@@ -2,6 +2,7 @@ mod support;
 
 use crate::support::common_tests;
 use genai::resolver::AuthData;
+use serial_test::serial;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
@@ -13,16 +14,19 @@ const MODEL: &str = "claude-3-haiku-20240307";
 // region:    --- Chat
 
 #[tokio::test]
+// #[serial(anthropic)]
 async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL).await
 }
 
 #[tokio::test]
+// #[serial(anthropic)]
 async fn test_chat_temperature_ok() -> Result<()> {
 	common_tests::common_test_chat_temperature_ok(MODEL).await
 }
 
 #[tokio::test]
+// #[serial(anthropic)]
 async fn test_chat_json_mode_ok() -> Result<()> {
 	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
 }
@@ -32,16 +36,19 @@ async fn test_chat_json_mode_ok() -> Result<()> {
 // region:    --- Chat Stream Tests
 
 #[tokio::test]
+#[serial(anthropic)]
 async fn test_chat_stream_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_stream_simple_ok(MODEL).await
 }
 
 #[tokio::test]
+#[serial(anthropic)]
 async fn test_chat_stream_capture_content_ok() -> Result<()> {
 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
 #[tokio::test]
+#[serial(anthropic)]
 async fn test_chat_stream_capture_all_ok() -> Result<()> {
 	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
 }
@@ -51,11 +58,13 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 // region:    --- Tool Tests
 
 #[tokio::test]
+#[serial(anthropic)]
 async fn test_tool_simple_ok() -> Result<()> {
 	common_tests::common_test_tool_simple_ok(MODEL, false).await
 }
 
 #[tokio::test]
+// #[serial(anthropic)]
 async fn test_tool_full_flow_ok() -> Result<()> {
 	common_tests::common_test_tool_full_flow_ok(MODEL, false).await
 }
@@ -65,6 +74,7 @@ async fn test_tool_full_flow_ok() -> Result<()> {
 // region:    --- Resolver Tests
 
 #[tokio::test]
+#[serial(anthropic)]
 async fn test_resolver_auth_ok() -> Result<()> {
 	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("ANTHROPIC_API_KEY")).await
 }
