@@ -84,12 +84,15 @@ impl Adapter for CohereAdapter {
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("temperature", temperature)?;
 		}
+
 		if !options_set.stop_sequences().is_empty() {
 			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
 		}
+
 		if let Some(max_tokens) = options_set.max_tokens() {
 			payload.x_insert("max_tokens", max_tokens)?;
 		}
+
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("p", top_p)?;
 		}

@@ -12,16 +12,18 @@ Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **
 
 ```toml
 # cargo.toml
-genai = "=0.1.12" # Version lock for `0.1.x`
+genai = "=0.1.13" # Version lock for `0.1.x`
 ```
 
 <br />
 
 The goal of this library is to provide a common and ergonomic single API to many generative AI Providers, such as OpenAI, Anthropic, Cohere, Ollama.
 
-- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.12"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
+- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.13"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
+
+Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **GenAI** for multi-AI capabilities.
 
 [Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [MetaUsage](#metausage)
 
@@ -132,6 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
 ## Thanks
 
+- Thanks to [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
 - Thanks to [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
 - Thanks to [@tusharmath](https://github.com/tusharmath) for make webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
 - Thanks to [@giangndm](https://github.com/giangndm) for make stream is send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)

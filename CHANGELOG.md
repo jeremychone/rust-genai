@@ -1,9 +1,15 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.12"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.13"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-12-07 - `0.1.13`
+
+- `+` add stop_sequences support cohere - 
+- `+` stop_sequences - for openai, ollama, groq, gemini, cochere
+- `+` stop_sequences - for anthropic (thanks [@semtexzv](https://github.com/semtexzv))
 
 ## 2024-11-18 - `0.1.12`
 
