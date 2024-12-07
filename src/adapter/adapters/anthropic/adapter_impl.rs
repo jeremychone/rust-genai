@@ -94,7 +94,7 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("temperature", temperature)?;
 		}
 
-		if options_set.stop_sequences().len() > 0 {
+		if !options_set.stop_sequences().is_empty() {
 			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
 		}
 
