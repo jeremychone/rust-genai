@@ -75,6 +75,11 @@ impl ChatOptions {
 		self
 	}
 
+	pub fn with_stop_sequences(mut self, values: Vec<String>) -> Self {
+		self.stop_sequences = values;
+		self
+	}
+
 	/// Set the `json_mode` for this request.
 	///
 	/// IMPORTANT: This is deprecated now; use `with_response_format(ChatResponseFormat::JsonMode)`

@@ -167,6 +167,29 @@ pub async fn common_test_chat_temperature_ok(model: &str) -> Result<()> {
 	Ok(())
 }
 
+pub async fn common_test_chat_stop_sequences_ok(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = ChatRequest::from_user("What is the capital of England?");
+	let chat_options = ChatOptions::default().with_stop_sequences(vec!["London".to_string()]);
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
+
+	let ai_content_lower = chat_res
+		.content_text_as_str()
+		.ok_or("Should have a AI response")?
+		.to_lowercase();
+
+	// -- Check
+	assert!(!ai_content_lower.is_empty(), "Content should not be empty");
+	assert!(
+		!ai_content_lower.contains("london"),
+		"Content should not contain 'London'"
+	);
+
+	Ok(())
+}
 // endregion: --- Chat
 
 // region:    --- Chat Stream Tests
