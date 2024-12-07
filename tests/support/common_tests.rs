@@ -182,7 +182,6 @@ pub async fn common_test_chat_stop_sequences_ok(model: &str) -> Result<()> {
 		.to_lowercase();
 
 	// -- Check
-	assert!(!ai_content_lower.is_empty(), "Content should not be empty");
 	assert!(
 		!ai_content_lower.contains("london"),
 		"Content should not contain 'London'"

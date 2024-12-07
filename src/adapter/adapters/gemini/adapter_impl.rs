@@ -104,6 +104,11 @@ impl Adapter for GeminiAdapter {
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("/generationConfig/temperature", temperature)?;
 		}
+
+		if !options_set.stop_sequences().is_empty() {
+			payload.x_insert("/generationConfig/stopSequences", options_set.stop_sequences())?;
+		}
+
 		if let Some(max_tokens) = options_set.max_tokens() {
 			payload.x_insert("/generationConfig/maxOutputTokens", max_tokens)?;
 		}
