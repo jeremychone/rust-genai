@@ -36,6 +36,39 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 	Ok(())
 }
 
+pub async fn common_test_chat_multi_system_ok(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (deactivate to see the differences)
+		ChatMessage::system("Be very concise"),
+		ChatMessage::system("Explain with bullet points"),
+		ChatMessage::user("Why is the sky blue?"),
+	])
+	.with_system("And end with 'Thank you'");
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	assert!(
+		!get_option_value!(chat_res.content).is_empty(),
+		"Content should not be empty"
+	);
+	let usage = chat_res.usage;
+	let input_tokens = get_option_value!(usage.input_tokens);
+	let output_tokens = get_option_value!(usage.output_tokens);
+	let total_tokens = get_option_value!(usage.total_tokens);
+
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+	assert!(
+		total_tokens == input_tokens + output_tokens,
+		"total_tokens should be equal to input_tokens + output_tokens"
+	);
+
+	Ok(())
+}
+
 /// Test with JSON mode enabled. This is not a structured output test.
 /// - test_token: This is to avoid checking the token (due to an Ollama bug when in JSON mode, no token is returned)
 pub async fn common_test_chat_json_mode_ok(model: &str, test_token: bool) -> Result<()> {

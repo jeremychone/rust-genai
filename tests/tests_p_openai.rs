@@ -15,6 +15,11 @@ async fn test_chat_simple_ok() -> Result<()> {
 }
 
 #[tokio::test]
+async fn test_chat_multi_system_ok() -> Result<()> {
+	common_tests::common_test_chat_multi_system_ok(MODEL).await
+}
+
+#[tokio::test]
 async fn test_chat_json_mode_ok() -> Result<()> {
 	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
 }

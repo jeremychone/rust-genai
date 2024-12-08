@@ -224,23 +224,12 @@ impl OpenAIAdapter {
 	/// Takes the genai ChatMessages and builds the OpenAIChatRequestParts
 	/// - `genai::ChatRequest.system`, if present, is added as the first message with role 'system'.
 	/// - All messages get added with the corresponding roles (tools are not supported for now)
-	fn into_openai_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
+	fn into_openai_request_parts(_model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
-
-		// NOTE: For now system_messages is use to fix an issue with the Ollama compatibility layer that does not support multiple system messages.
-		//       So, when ollama, it will concatenate the system message into a single one at the beginning
-		// NOTE: This might be fixed now, so, we could remove this.
-		let mut system_messages: Vec<String> = Vec::new();
-
-		let ollama_variant = matches!(model_iden.adapter_kind, AdapterKind::Ollama);
 
 		// -- Process the system
 		if let Some(system_msg) = chat_req.system {
-			if ollama_variant {
-				system_messages.push(system_msg)
-			} else {
-				messages.push(json!({"role": "system", "content": system_msg}));
-			}
+			messages.push(json!({"role": "system", "content": system_msg}));
 		}
 
 		// -- Process the messages
@@ -250,14 +239,7 @@ impl OpenAIAdapter {
 				// For now, system and tool messages go to the system
 				ChatRole::System => {
 					if let MessageContent::Text(content) = msg.content {
-						// NOTE: Ollama does not support multiple system messages
-
-						// See note in the function comment
-						if ollama_variant {
-							system_messages.push(content);
-						} else {
-							messages.push(json!({"role": "system", "content": content}))
-						}
+						messages.push(json!({"role": "system", "content": content}))
 					}
 					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
@@ -303,12 +285,6 @@ impl OpenAIAdapter {
 					// TODO: Probably need to trace/warn that this will be ignored
 				}
 			}
-		}
-
-		// -- Finalize the system messages ollama case
-		if !system_messages.is_empty() {
-			let system_message = system_messages.join("\n");
-			messages.insert(0, json!({"role": "system", "content": system_message}));
 		}
 
 		// -- Process the tools

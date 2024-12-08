@@ -7,7 +7,8 @@
 
 ## 2024-12-07 - `0.1.13`
 
-- `+` add stop_sequences support cohere - 
+- `.` ollama - removed workaround for multi-system lack of support (for old ollama)
+- `+` add stop_sequences support cohere
 - `+` stop_sequences - for openai, ollama, groq, gemini, cochere
 - `+` stop_sequences - for anthropic (thanks [@semtexzv](https://github.com/semtexzv))
 
