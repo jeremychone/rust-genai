@@ -14,7 +14,7 @@ pub struct OllamaAdapter;
 
 // The OpenAI Compatibility base URL
 const BASE_URL: &str = "http://localhost:11434/v1/";
-const OLLAMA_BASE_URL: &str = "http://localhost:11434/api/";
+// const OLLAMA_BASE_URL: &str = "http://localhost:11434/api/";
 
 /// Note: For now, it uses the OpenAI compatibility layer
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
@@ -24,9 +24,10 @@ impl Adapter for OllamaAdapter {
 		None
 	}
 
-	/// Note: For now, it returns empty as it should probably make a request to the Ollama server
+	/// Note 1: For now, this adapter is the only one making a full request to the ollama server
+	/// Note 2: Will the OpenAI API (https://platform.openai.com/docs/api-reference/models/list)
 	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		let url = format!("{OLLAMA_BASE_URL}tags");
+		let url = format!("{BASE_URL}models");
 
 		// TODO: Need to get the WebClient from the client.
 		let web_c = crate::webc::WebClient::default();
@@ -37,9 +38,9 @@ impl Adapter for OllamaAdapter {
 
 		let mut models: Vec<String> = Vec::new();
 
-		if let Value::Array(models_value) = res.body.x_take("models")? {
+		if let Value::Array(models_value) = res.body.x_take("data")? {
 			for mut model in models_value {
-				let model_name: String = model.x_take("model")?;
+				let model_name: String = model.x_take("id")?;
 				models.push(model_name);
 			}
 		} else {

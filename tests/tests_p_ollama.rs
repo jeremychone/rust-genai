@@ -69,6 +69,7 @@ async fn test_resolver_auth_ok() -> Result<()> {
 
 // region:    --- List
 
+/// NOTE this test assume the "llama3.1:8b" is present.
 #[tokio::test]
 async fn test_list_models() -> Result<()> {
 	common_tests::common_test_list_models(AdapterKind::Ollama, "llama3.1:8b").await
