@@ -5,10 +5,12 @@
 
 // region:    --- Modules
 
+mod auth_data;
 mod auth_resolver;
 mod error;
 mod model_mapper;
 
+pub use auth_data::*;
 pub use auth_resolver::*;
 pub use error::{Error, Result};
 pub use model_mapper::*;
