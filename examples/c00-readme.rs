@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			continue;
 		}
 
-		let adapter_kind = client.resolve_model_iden(model)?.adapter_kind;
+		let adapter_kind = client.resolve_service_target(model)?.model.adapter_kind;
 
 		println!("\n===== MODEL: {model} ({adapter_kind}) =====");
 

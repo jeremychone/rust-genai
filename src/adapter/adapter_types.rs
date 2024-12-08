@@ -1,24 +1,30 @@
 use crate::adapter::AdapterKind;
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::Result;
 use crate::{ClientConfig, ModelIden};
+use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::Value;
 
 pub trait Adapter {
-	fn default_key_env_name(kind: AdapterKind) -> Option<&'static str>;
+	// #[deprecated(note = "use default_auth")]
+	// fn default_key_env_name(kind: AdapterKind) -> Option<&'static str>;
+
+	fn default_auth(kind: AdapterKind) -> AuthData;
+
+	fn default_endpoint(kind: AdapterKind) -> Endpoint;
 
 	// NOTE: Adapter is a crate trait, so it is acceptable to use async fn here.
 	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>>;
 
 	/// The base service URL for this AdapterKind for the given service type.
 	/// NOTE: For some services, the URL will be further updated in the to_web_request_data method.
-	fn get_service_url(model_iden: ModelIden, service_type: ServiceType) -> String;
+	fn get_service_url(model_iden: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String;
 
 	/// To be implemented by Adapters.
 	fn to_web_request_data(
-		model_iden: ModelIden,
+		service_target: ServiceTarget,
 		config_set: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,

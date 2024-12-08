@@ -51,12 +51,12 @@ impl AdapterKind {
 }
 
 /// Utilities
-impl AdapterKind {
-	/// Get the default key environment variable name for the adapter kind.
-	pub fn default_key_env_name(&self) -> Option<&'static str> {
-		AdapterDispatcher::default_key_env_name(*self)
-	}
-}
+// impl AdapterKind {
+// 	/// Get the default key environment variable name for the adapter kind.
+// 	pub fn default_key_env_name(&self) -> Option<&'static str> {
+// 		AdapterDispatcher::default_key_env_name(*self)
+// 	}
+// }
 
 /// From Model implementations
 impl AdapterKind {

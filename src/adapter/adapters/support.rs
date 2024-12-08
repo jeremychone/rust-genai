@@ -2,7 +2,16 @@
 //! It should be private to the `crate::adapter::adapters` module.
 
 use crate::chat::{ChatOptionsSet, MetaUsage};
+use crate::resolver::AuthData;
 use crate::ModelIden;
+use crate::{Error, Result};
+
+pub fn get_api_key(auth: AuthData, model: &ModelIden) -> Result<String> {
+	auth.single_key_value().map_err(|resolver_error| Error::Resolver {
+		model_iden: model.clone(),
+		resolver_error,
+	})
+}
 
 // region:    --- StreamerChatOptions
 

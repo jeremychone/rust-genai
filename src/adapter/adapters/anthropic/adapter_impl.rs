@@ -1,21 +1,20 @@
+use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
-use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 	ToolCall,
 };
+use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::Result;
 use crate::{ClientConfig, ModelIden};
+use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
 
 pub struct AnthropicAdapter;
-
-const BASE_URL: &str = "https://api.anthropic.com/v1/";
 
 // NOTE: For Anthropic, the max_tokens must be specified.
 //       To avoid surprises, the default value for genai is the maximum for a given model.
@@ -32,8 +31,13 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for AnthropicAdapter {
-	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		Some("ANTHROPIC_API_KEY")
+	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+		const BASE_URL: &str = "https://api.anthropic.com/v1/";
+		Endpoint::from_static(BASE_URL)
+	}
+
+	fn default_auth(kind: AdapterKind) -> AuthData {
+		AuthData::from_env("ANTHROPIC_API_KEY")
 	}
 
 	/// Note: For now, it returns the common models (see above)
@@ -41,40 +45,47 @@ impl Adapter for AnthropicAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(_model_iden: ModelIden, service_type: ServiceType) -> String {
+	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+		let base_url = endpoint.base_url();
 		match service_type {
-			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}messages"),
+			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}messages"),
 		}
 	}
 
 	fn to_web_request_data(
-		model_iden: ModelIden,
+		target: ServiceTarget,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let model_name = model_iden.model_name.clone();
+		let ServiceTarget { endpoint, auth, model } = target;
 
-		let stream = matches!(service_type, ServiceType::ChatStream);
-		let url = Self::get_service_url(model_iden.clone(), service_type);
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
 
-		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key(model_iden.clone(), client_config)?;
+		// -- url
+		let url = Self::get_service_url(&model, service_type, endpoint);
 
+		// -- headers
 		let headers = vec![
 			// headers
-			("x-api-key".to_string(), api_key.to_string()),
+			("x-api-key".to_string(), api_key),
 			("anthropic-version".to_string(), ANTRHOPIC_VERSION.to_string()),
 		];
 
+		let model_name = model.model_name.clone();
+
+		// -- Parts
 		let AnthropicRequestParts {
 			system,
 			messages,
 			tools,
-		} = Self::into_anthropic_request_parts(model_iden.clone(), chat_req)?;
+		} = Self::into_anthropic_request_parts(model, chat_req)?;
 
 		// -- Build the basic payload
+
+		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"model": model_name.to_string(),
 			"messages": messages,
@@ -99,7 +110,7 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		let max_tokens = options_set.max_tokens().unwrap_or_else(|| {
-			if model_iden.model_name.contains("3-5") {
+			if model_name.contains("3-5") {
 				MAX_TOKENS_8K
 			} else {
 				MAX_TOKENS_4K

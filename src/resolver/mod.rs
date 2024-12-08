@@ -7,11 +7,13 @@
 
 mod auth_data;
 mod auth_resolver;
+mod endpoint;
 mod error;
 mod model_mapper;
 
 pub use auth_data::*;
 pub use auth_resolver::*;
+pub use endpoint::*;
 pub use error::{Error, Result};
 pub use model_mapper::*;
 

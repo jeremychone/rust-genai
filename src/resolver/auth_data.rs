@@ -36,7 +36,7 @@ impl AuthData {
 /// Getters
 impl AuthData {
 	/// Get the single value from the `AuthData`.
-	pub fn single_value(&self) -> Result<String> {
+	pub fn single_key_value(&self) -> Result<String> {
 		match self {
 			AuthData::FromEnv(env_name) => {
 				// Get value from the environment name.

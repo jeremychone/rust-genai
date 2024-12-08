@@ -6,23 +6,35 @@ use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
-use crate::Result;
 use crate::{ClientConfig, ModelIden};
+use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
+use crate::resolver::{AuthData, Endpoint};
 
 pub struct AdapterDispatcher;
 
 impl Adapter for AdapterDispatcher {
-	fn default_key_env_name(kind: AdapterKind) -> Option<&'static str> {
+	fn default_endpoint(kind: AdapterKind) -> Endpoint {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::default_key_env_name(kind),
-			AdapterKind::Anthropic => AnthropicAdapter::default_key_env_name(kind),
-			AdapterKind::Cohere => CohereAdapter::default_key_env_name(kind),
-			AdapterKind::Ollama => OllamaAdapter::default_key_env_name(kind),
-			AdapterKind::Gemini => GeminiAdapter::default_key_env_name(kind),
-			AdapterKind::Groq => GroqAdapter::default_key_env_name(kind),
+			AdapterKind::OpenAI => OpenAIAdapter::default_endpoint(kind),
+			AdapterKind::Anthropic => AnthropicAdapter::default_endpoint(kind),
+			AdapterKind::Cohere => CohereAdapter::default_endpoint(kind),
+			AdapterKind::Ollama => OllamaAdapter::default_endpoint(kind),
+			AdapterKind::Gemini => GeminiAdapter::default_endpoint(kind),
+			AdapterKind::Groq => GroqAdapter::default_endpoint(kind),
+		}
+	}
+
+	fn default_auth(kind: AdapterKind) -> AuthData {
+		match kind {
+			AdapterKind::OpenAI => OpenAIAdapter::default_auth(kind),
+			AdapterKind::Anthropic => AnthropicAdapter::default_auth(kind),
+			AdapterKind::Cohere => CohereAdapter::default_auth(kind),
+			AdapterKind::Ollama => OllamaAdapter::default_auth(kind),
+			AdapterKind::Gemini => GeminiAdapter::default_auth(kind),
+			AdapterKind::Groq => GroqAdapter::default_auth(kind),
 		}
 	}
 
@@ -37,42 +49,43 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn get_service_url(model_iden: ModelIden, service_type: ServiceType) -> String {
-		match model_iden.adapter_kind {
-			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model_iden, service_type),
-			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(model_iden, service_type),
-			AdapterKind::Cohere => CohereAdapter::get_service_url(model_iden, service_type),
-			AdapterKind::Ollama => OllamaAdapter::get_service_url(model_iden, service_type),
-			AdapterKind::Gemini => GeminiAdapter::get_service_url(model_iden, service_type),
-			AdapterKind::Groq => GroqAdapter::get_service_url(model_iden, service_type),
+	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+		match model.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Cohere => CohereAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Ollama => OllamaAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Gemini => GeminiAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Groq => GroqAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
 
 	fn to_web_request_data(
-		model_iden: ModelIden,
+		target: ServiceTarget,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		match model_iden.adapter_kind {
+		let adapter_kind = &target.model.adapter_kind;
+		match adapter_kind {
 			AdapterKind::OpenAI => {
-				OpenAIAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
+				OpenAIAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Anthropic => {
-				AnthropicAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
+				AnthropicAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Cohere => {
-				CohereAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
+				CohereAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Ollama => {
-				OllamaAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
+				OllamaAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Gemini => {
-				GeminiAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
+				GeminiAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
 			}
 			AdapterKind::Groq => {
-				GroqAdapter::to_web_request_data(model_iden, client_config, service_type, chat_req, options_set)
+				GroqAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
 			}
 		}
 	}

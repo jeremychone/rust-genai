@@ -1,12 +1,13 @@
+use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::gemini::GeminiStreamer;
-use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
 	MessageContent, MetaUsage,
 };
+use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{ClientConfig, ModelIden};
+use crate::{ClientConfig, ModelIden, ServiceTarget};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
@@ -14,7 +15,6 @@ use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;
 
-const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
 const MODELS: &[&str] = &[
 	"gemini-1.5-pro",
 	"gemini-1.5-flash",
@@ -29,8 +29,13 @@ const MODELS: &[&str] = &[
 //   -X POST 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 
 impl Adapter for GeminiAdapter {
-	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		Some("GEMINI_API_KEY")
+	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+		const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
+		Endpoint::from_static(BASE_URL)
+	}
+
+	fn default_auth(kind: AdapterKind) -> AuthData {
+		AuthData::from_env("GEMINI_API_KEY")
 	}
 
 	/// Note: For now, this returns the common models (see above)
@@ -38,39 +43,47 @@ impl Adapter for GeminiAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(_model_iden: ModelIden, service_type: ServiceType) -> String {
+	/// NOTE: As Google Gemini has decided to put their API_KEY in the URL,
+	///       this will return the URL without the API_KEY in it. The API_KEY will need to be added by the caller.
+	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+		let base_url = endpoint.base_url();
+		let model_name = model.model_name.clone();
 		match service_type {
-			ServiceType::Chat | ServiceType::ChatStream => BASE_URL.to_string(),
+			ServiceType::Chat => format!("{base_url}models/{model_name}:generateContent"),
+			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent"),
 		}
 	}
 
 	fn to_web_request_data(
-		model_iden: ModelIden,
+		target: ServiceTarget,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key(model_iden.clone(), client_config)?;
+		let ServiceTarget { endpoint, auth, model } = target;
 
-		// For Gemini, the service URL returned is just the base URL
-		// since the model and API key are part of the URL (see below)
-		let url = Self::get_service_url(model_iden.clone(), service_type);
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
 
+		// -- url
+		// NOTE: Somehow, Google decided to put the API key in the URL.
+		//       This should be considered an antipattern from a security point of view
+		//       even if it is done by the well respected Google. Everybody can make mistake once in a while.
 		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
-		let model_name = &*model_iden.model_name;
-		let url = match service_type {
-			ServiceType::Chat => format!("{url}models/{model_name}:generateContent?key={api_key}"),
-			ServiceType::ChatStream => format!("{url}models/{model_name}:streamGenerateContent?key={api_key}"),
-		};
+		let url = Self::get_service_url(&model, service_type, endpoint);
+		let url = format!("{url}?key={api_key}");
 
-		let headers = vec![];
+		// -- parts
+		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(model, chat_req)?;
 
-		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(model_iden, chat_req)?;
-
+		// -- Playload
 		let mut payload = json!({
 			"contents": contents,
 		});
+
+		// -- headers (empty for gemini, since API_KEY is in url)
+		let headers = vec![];
 
 		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
 		//       Right now, it is omitted (since the spec states it can only be "user" or "model")

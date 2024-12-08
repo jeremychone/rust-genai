@@ -1,11 +1,12 @@
+use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::cohere::CohereStreamer;
-use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
+use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{ClientConfig, ModelIden};
+use crate::{ClientConfig, ModelIden, ServiceTarget};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
@@ -13,7 +14,6 @@ use value_ext::JsonValueExt;
 
 pub struct CohereAdapter;
 
-const BASE_URL: &str = "https://api.cohere.com/v1/";
 const MODELS: &[&str] = &[
 	"command-r-plus",
 	"command-r",
@@ -24,8 +24,13 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for CohereAdapter {
-	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		Some("COHERE_API_KEY")
+	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+		const BASE_URL: &str = "https://api.cohere.com/v1/";
+		Endpoint::from_static(BASE_URL)
+	}
+
+	fn default_auth(kind: AdapterKind) -> AuthData {
+		AuthData::from_env("COHERE_API_KEY")
 	}
 
 	/// Note: For now, it returns the common ones (see above)
@@ -33,40 +38,45 @@ impl Adapter for CohereAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(_model_iden: ModelIden, service_type: ServiceType) -> String {
+	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+		let base_url = endpoint.base_url();
 		match service_type {
-			ServiceType::Chat | ServiceType::ChatStream => format!("{BASE_URL}chat"),
+			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}chat"),
 		}
 	}
 
 	fn to_web_request_data(
-		model_iden: ModelIden,
+		target: ServiceTarget,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let model_name = model_iden.model_name.clone();
-
-		let stream = matches!(service_type, ServiceType::ChatStream);
-
-		let url = Self::get_service_url(model_iden.clone(), service_type);
+		let ServiceTarget { endpoint, auth, model } = target;
 
 		// -- api_key (this Adapter requires it)
-		let api_key = get_api_key(model_iden.clone(), client_config)?;
+		let api_key = get_api_key(auth, &model)?;
 
+		// -- url
+		let url = Self::get_service_url(&model, service_type, endpoint);
+
+		// -- headers
 		let headers = vec![
 			// headers
 			("Authorization".to_string(), format!("Bearer {api_key}")),
 		];
 
+		let model_name = model.model_name.clone();
+
+		// -- parts
 		let CohereChatRequestParts {
 			preamble,
 			message,
 			chat_history,
-		} = Self::into_cohere_request_parts(model_iden, chat_req)?;
+		} = Self::into_cohere_request_parts(model, chat_req)?;
 
 		// -- Build the basic payload
+		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"model": model_name.to_string(),
 			"message": message,

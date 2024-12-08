@@ -3,8 +3,9 @@
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelIden};
+use crate::{ClientConfig, ModelIden, ServiceTarget};
 use crate::{Error, Result};
 use reqwest::RequestBuilder;
 use serde_json::Value;
@@ -12,22 +13,29 @@ use value_ext::JsonValueExt;
 
 pub struct OllamaAdapter;
 
-// The OpenAI Compatibility base URL
-const BASE_URL: &str = "http://localhost:11434/v1/";
-// const OLLAMA_BASE_URL: &str = "http://localhost:11434/api/";
-
 /// Note: For now, it uses the OpenAI compatibility layer
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
 ///       Since the base Ollama API supports `application/x-ndjson` for streaming, whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
-	fn default_key_env_name(_kind: AdapterKind) -> Option<&'static str> {
-		None
+	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+		const BASE_URL: &str = "http://localhost:11434/v1/";
+		Endpoint::from_static(BASE_URL)
+	}
+
+	fn default_auth(kind: AdapterKind) -> AuthData {
+		AuthData::from_single("ollama")
 	}
 
 	/// Note 1: For now, this adapter is the only one making a full request to the ollama server
-	/// Note 2: Will the OpenAI API (https://platform.openai.com/docs/api-reference/models/list)
+	/// Note 2: Will the OpenAI API to talk to Ollam server (https://platform.openai.com/docs/api-reference/models/list)
+	///
+	/// TODO: This will use the default endpoint.
+	///       Later, we might add another function with a endpoint, so the the user can give an custom endpoint.
 	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		let url = format!("{BASE_URL}models");
+		// FIXME: This is harcoded to the default endpoint, should take endpoint as Argument
+		let endpoint = Self::default_endpoint(adapter_kind);
+		let base_url = endpoint.base_url();
+		let url = format!("{base_url}models");
 
 		// TODO: Need to get the WebClient from the client.
 		let web_c = crate::webc::WebClient::default();
@@ -51,20 +59,18 @@ impl Adapter for OllamaAdapter {
 		Ok(models)
 	}
 
-	fn get_service_url(model_iden: ModelIden, service_type: ServiceType) -> String {
-		OpenAIAdapter::util_get_service_url(model_iden, service_type, BASE_URL)
+	fn get_service_url(model_iden: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+		OpenAIAdapter::util_get_service_url(model_iden, service_type, endpoint)
 	}
 
 	fn to_web_request_data(
-		model_iden: ModelIden,
+		target: ServiceTarget,
 		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
-		options_set: ChatOptionsSet<'_, '_>,
+		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let url = Self::get_service_url(model_iden.clone(), service_type);
-
-		OpenAIAdapter::util_to_web_request_data(model_iden, client_config, chat_req, service_type, options_set, url)
+		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)
 	}
 
 	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {

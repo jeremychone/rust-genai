@@ -1,5 +1,8 @@
+use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind};
 use crate::chat::ChatOptions;
-use crate::resolver::{AuthResolver, ModelMapper};
+use crate::client::ServiceTarget;
+use crate::resolver::{AuthResolver, Endpoint, ModelMapper};
+use crate::{Error, ModelIden, Result};
 
 /// The Client configuration used in the configuration builder stage.
 #[derive(Debug, Default, Clone)]
@@ -45,5 +48,39 @@ impl ClientConfig {
 	/// Get a reference to the ChatOptions, if they exist.
 	pub fn chat_options(&self) -> Option<&ChatOptions> {
 		self.chat_options.as_ref()
+	}
+}
+
+/// Resolvers
+impl ClientConfig {
+	pub fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
+		// -- Resolve the Model first
+		let model = match self.model_mapper() {
+			Some(model_mapper) => model_mapper.map_model(model.clone()),
+			None => Ok(model.clone()),
+		}
+		.map_err(|resolver_error| Error::Resolver {
+			model_iden: model.clone(),
+			resolver_error,
+		})?;
+
+		// -- Get the auth
+		let auth = self
+			.auth_resolver()
+			.map(|auth_resolver| {
+				auth_resolver.resolve(model.clone()).map_err(|resolver_error| Error::Resolver {
+					model_iden: model.clone(),
+					resolver_error,
+				})
+			})
+			.transpose()? // return error if there is an error on auth resolver
+			.flatten()
+			.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind)); // flatten the two options
+
+		// -- Get the default endpoint
+		// For now, just get the default endpoint, the `resolve_target` will allow to override it
+		let endpoint = AdapterDispatcher::default_endpoint(model.adapter_kind);
+
+		Ok(ServiceTarget { model, auth, endpoint })
 	}
 }

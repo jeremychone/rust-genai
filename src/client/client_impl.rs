@@ -1,11 +1,16 @@
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
-use crate::client::Client;
-use crate::{Error, ModelIden, Result};
+use crate::{Client, Error, ModelIden, Result, ServiceTarget};
 
 /// Public AI Functions
 impl Client {
 	/// Returns all the model names for a given adapter kind.
+	///
+	/// IMPORTANT:
+	/// - Besides the Ollama adapter, this will only look at a hardcoded static list of names for now.
+	/// - For Ollama, it will currently make a live request to the default host/port (http://localhost:11434/v1/).
+	/// - This function will eventually change to either take an endpoint or have another function to allow a custom endpoint.
+	///
 	/// Notes:
 	/// - Since genai only supports Chat for now, the adapter implementation should attempt to remove the non-chat models.
 	/// - Later, as genai adds more capabilities, we will have a `model_names(adapter_kind, Option<&[Skill]>)`
@@ -15,29 +20,25 @@ impl Client {
 		Ok(models)
 	}
 
-	/// Resolves the adapter kind for a given model name.
-	/// Note: This does not use the `all_model_names` function to find a match, but instead relies on hardcoded matching rules.
-	///       This strategy makes the library more flexible as it does not require updates
-	///       when the AI Provider adds new models (assuming they follow a consistent naming pattern).
-	///
-	/// See [AdapterKind::from_model]
-	///
-	/// [AdapterKind::from_model]: crate::adapter::AdapterKind::from_model
-	pub fn resolve_model_iden(&self, model_name: &str) -> Result<ModelIden> {
+	/// Return the default model for a model_name str.
+	/// This is used before
+	pub fn default_model(&self, model_name: &str) -> Result<ModelIden> {
 		// -- First get the default ModelInfo
 		let adapter_kind = AdapterKind::from_model(model_name)?;
 		let model_iden = ModelIden::new(adapter_kind, model_name);
-
-		// -- Execute the optional model_mapper
-		let model_iden = if let Some(model_mapper) = self.config().model_mapper() {
-			model_mapper
-				.map_model(model_iden.clone())
-				.map_err(|cause| Error::ModelMapperFailed { model_iden, cause })?
-		} else {
-			model_iden
-		};
-
 		Ok(model_iden)
+	}
+
+	#[deprecated(note = "use `client.resolve_service_target(model_name)")]
+	pub fn resolve_model_iden(&self, model_name: &str) -> Result<ModelIden> {
+		let model = self.default_model(model_name)?;
+		let target = self.config().resolve_service_target(model)?;
+		Ok(target.model)
+	}
+
+	pub fn resolve_service_target(&self, model_name: &str) -> Result<ServiceTarget> {
+		let model = self.default_model(model_name)?;
+		self.config().resolve_service_target(model)
 	}
 
 	/// Executes a chat.
@@ -48,30 +49,27 @@ impl Client {
 		// options not implemented yet
 		options: Option<&ChatOptions>,
 	) -> Result<ChatResponse> {
-		let model_iden = self.resolve_model_iden(model)?;
-
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_options());
 
-		let WebRequestData { headers, payload, url } = AdapterDispatcher::to_web_request_data(
-			model_iden.clone(),
-			self.config(),
-			ServiceType::Chat,
-			chat_req,
-			options_set,
-		)?;
+		let model = self.default_model(model)?;
+		let target = self.config().resolve_service_target(model)?;
+		let model = target.model.clone();
+
+		let WebRequestData { headers, payload, url } =
+			AdapterDispatcher::to_web_request_data(target, self.config(), ServiceType::Chat, chat_req, options_set)?;
 
 		let web_res =
 			self.web_client()
 				.do_post(&url, &headers, payload)
 				.await
 				.map_err(|webc_error| Error::WebModelCall {
-					model_iden: model_iden.clone(),
+					model_iden: model.clone(),
 					webc_error,
 				})?;
 
-		let chat_res = AdapterDispatcher::to_chat_response(model_iden, web_res)?;
+		let chat_res = AdapterDispatcher::to_chat_response(model, web_res)?;
 
 		Ok(chat_res)
 	}
@@ -83,14 +81,16 @@ impl Client {
 		chat_req: ChatRequest, // options not implemented yet
 		options: Option<&ChatOptions>,
 	) -> Result<ChatStreamResponse> {
-		let model_iden = self.resolve_model_iden(model)?;
-
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_options());
 
+		let model = self.default_model(model)?;
+		let target = self.config().resolve_service_target(model)?;
+		let model = target.model.clone();
+
 		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
-			model_iden.clone(),
+			target,
 			self.config(),
 			ServiceType::ChatStream,
 			chat_req,
@@ -101,11 +101,11 @@ impl Client {
 			.web_client()
 			.new_req_builder(&url, &headers, payload)
 			.map_err(|webc_error| Error::WebModelCall {
-				model_iden: model_iden.clone(),
+				model_iden: model.clone(),
 				webc_error,
 			})?;
 
-		let res = AdapterDispatcher::to_chat_stream(model_iden, reqwest_builder, options_set)?;
+		let res = AdapterDispatcher::to_chat_stream(model, reqwest_builder, options_set)?;
 
 		Ok(res)
 	}
