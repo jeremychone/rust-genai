@@ -5,9 +5,11 @@
 
 // region:    --- Modules
 
+mod asserts;
 mod helpers;
 mod seeders;
 
+pub use asserts::*;
 pub use helpers::*;
 pub use seeders::*;
 

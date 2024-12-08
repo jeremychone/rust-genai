@@ -1,6 +1,7 @@
 mod support;
 
 use crate::support::common_tests;
+use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
@@ -81,3 +82,12 @@ async fn test_resolver_auth_ok() -> Result<()> {
 }
 
 // endregion: --- Resolver Tests
+
+// region:    --- List
+
+#[tokio::test]
+async fn test_list_models() -> Result<()> {
+	common_tests::common_test_list_models(AdapterKind::OpenAI, "gpt-4o").await
+}
+
+// endregion: --- List

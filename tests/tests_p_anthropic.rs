@@ -1,6 +1,7 @@
 mod support;
 
 use crate::support::common_tests;
+use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 use serial_test::serial;
 
@@ -90,3 +91,12 @@ async fn test_resolver_auth_ok() -> Result<()> {
 }
 
 // endregion: --- Resolver Tests
+
+// region:    --- List
+
+#[tokio::test]
+async fn test_list_models() -> Result<()> {
+	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-3-5-sonnet-20241022").await
+}
+
+// endregion: --- List

@@ -1,5 +1,6 @@
 use crate::get_option_value;
-use crate::support::{extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple, Result};
+use crate::support::{assert_contains, extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple, Result};
+use genai::adapter::AdapterKind;
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, JsonSpec, Tool, ToolResponse};
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
@@ -222,6 +223,7 @@ pub async fn common_test_chat_stop_sequences_ok(model: &str) -> Result<()> {
 
 	Ok(())
 }
+
 // endregion: --- Chat
 
 // region:    --- Chat Stream Tests
@@ -401,3 +403,19 @@ pub async fn common_test_resolver_auth_ok(model: &str, auth_data: AuthData) -> R
 }
 
 // endregion: --- With Resolvers
+
+// region:    --- List
+
+pub async fn common_test_list_models(adapter_kind: AdapterKind, contains: &str) -> Result<()> {
+	let client = Client::default();
+
+	// -- Exec
+	let models = client.all_model_names(adapter_kind).await?;
+
+	// -- Check
+	assert_contains(&models, contains);
+
+	Ok(())
+}
+
+// endregion: --- List
