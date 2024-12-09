@@ -1,7 +1,7 @@
-use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind};
+use crate::adapter::{Adapter, AdapterDispatcher};
 use crate::chat::ChatOptions;
 use crate::client::ServiceTarget;
-use crate::resolver::{AuthResolver, Endpoint, ModelMapper, ServiceTargetResolver};
+use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result};
 
 /// The Client configuration used in the configuration builder stage.

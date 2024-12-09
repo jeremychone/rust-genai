@@ -73,6 +73,7 @@ impl futures::Stream for OpenAIStreamer {
 							model_iden: self.options.model_iden.clone(),
 							serde_error,
 						})?;
+
 					let first_choice: Option<Value> = message_data.x_take("/choices/0").ok();
 
 					// If we have a first choice, then it's a normal message
@@ -80,15 +81,29 @@ impl futures::Stream for OpenAIStreamer {
 						// If finish_reason exists, it's the end of this choice.
 						// Since we support only a single choice, we can proceed,
 						// as there might be other messages, and the last one contains data: `[DONE]`
-						if let Some(_finish_reason) = first_choice.x_take::<Option<String>>("finish_reason")? {
+						// NOTE: xAI have no `finish_reason` when not finished, so, need to just account for both null/absent
+						if let Ok(_finish_reason) = first_choice.x_take::<String>("finish_reason") {
 							// NOTE: For Groq, the usage is captured when finish_reason indicates stopping, and in the `/x_groq/usage`
-							if matches!(adapter_kind, AdapterKind::Groq) && self.options.capture_usage {
-								let usage = message_data
-									.x_take("/x_groq/usage")
-									.map(OpenAIAdapter::into_usage)
-									.unwrap_or_default(); // permissive for now
-								self.captured_data.usage = Some(usage)
+							if self.options.capture_usage {
+								match adapter_kind {
+									AdapterKind::Groq => {
+										let usage = message_data
+											.x_take("/x_groq/usage")
+											.map(OpenAIAdapter::into_usage)
+											.unwrap_or_default(); // permissive for now
+										self.captured_data.usage = Some(usage)
+									}
+									AdapterKind::Xai => {
+										let usage = message_data
+											.x_take("usage")
+											.map(OpenAIAdapter::into_usage)
+											.unwrap_or_default();
+										self.captured_data.usage = Some(usage)
+									}
+									_ => (), // do nothing, will be captured the OpenAi way
+								}
 							}
+
 							continue;
 						}
 						// If there is no finish_reason but there is some content, we can get the delta content and send the Internal Stream Event
@@ -112,14 +127,15 @@ impl futures::Stream for OpenAIStreamer {
 					}
 					// -- Usage message
 					else {
-						// If it's not Groq, then the usage is captured at the end when choices are empty or null
-
+						// If it's not Groq or xAI, then the usage is captured at the end when choices are empty or null
 						if !matches!(adapter_kind, AdapterKind::Groq)
-							&& self.captured_data.usage.is_none()
+							&& !matches!(adapter_kind, AdapterKind::Xai)
+							&& self.captured_data.usage.is_none() // this might be redundant
 							&& self.options.capture_usage
 						{
-							let usage = message_data.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default(); // permissive for now
-							self.captured_data.usage = Some(usage); // permissive for now
+							// permissive for now
+							let usage = message_data.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
+							self.captured_data.usage = Some(usage);
 						}
 					}
 				}

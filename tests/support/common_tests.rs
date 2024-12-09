@@ -274,6 +274,7 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<(
 
 	// -- Check captured_content
 	let captured_content = get_option_value!(stream_end.captured_content);
+
 	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
 
 	Ok(())

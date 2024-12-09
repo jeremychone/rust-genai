@@ -19,6 +19,8 @@ pub enum AdapterKind {
 	Gemini,
 	/// Used for the Groq adapter. Behind the scenes, it uses the OpenAI adapter logic with the necessary Groq differences (e.g., usage).
 	Groq,
+	/// For xAI
+	Xai,
 	// Note: Variants will probably be suffixed
 	// AnthropicBedrock,
 }
@@ -34,6 +36,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Gemini => "Gemini",
 			AdapterKind::Groq => "Groq",
+			AdapterKind::Xai => "xAi",
 		}
 	}
 
@@ -46,6 +49,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Gemini => "gemini",
 			AdapterKind::Groq => "groq",
+			AdapterKind::Xai => "xai",
 		}
 	}
 }
@@ -79,6 +83,8 @@ impl AdapterKind {
 			Ok(Self::Cohere)
 		} else if model.starts_with("gemini") {
 			Ok(Self::Gemini)
+		} else if model.starts_with("grok") {
+			Ok(Self::Xai)
 		} else if GROQ_MODELS.contains(&model) {
 			return Ok(Self::Groq);
 		}

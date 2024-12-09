@@ -11,6 +11,7 @@ use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
+use crate::adapter::xai::XaiAdapter;
 use crate::resolver::{AuthData, Endpoint};
 
 pub struct AdapterDispatcher;
@@ -24,6 +25,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Ollama => OllamaAdapter::default_endpoint(kind),
 			AdapterKind::Gemini => GeminiAdapter::default_endpoint(kind),
 			AdapterKind::Groq => GroqAdapter::default_endpoint(kind),
+			AdapterKind::Xai => XaiAdapter::default_endpoint(kind),
 		}
 	}
 
@@ -35,6 +37,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Ollama => OllamaAdapter::default_auth(kind),
 			AdapterKind::Gemini => GeminiAdapter::default_auth(kind),
 			AdapterKind::Groq => GroqAdapter::default_auth(kind),
+			AdapterKind::Xai => XaiAdapter::default_auth(kind),
 		}
 	}
 
@@ -46,6 +49,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
 			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind).await,
 			AdapterKind::Groq => GroqAdapter::all_model_names(kind).await,
+			AdapterKind::Xai => XaiAdapter::all_model_names(kind).await,
 		}
 	}
 
@@ -57,6 +61,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Gemini => GeminiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Groq => GroqAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Xai => XaiAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
 
@@ -87,6 +92,9 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Groq => {
 				GroqAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
 			}
+			AdapterKind::Xai => {
+				XaiAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
+			}
 		}
 	}
 
@@ -98,6 +106,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response),
 			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response),
 		}
 	}
 
@@ -113,6 +122,7 @@ impl Adapter for AdapterDispatcher {
 			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
 	}
 }
