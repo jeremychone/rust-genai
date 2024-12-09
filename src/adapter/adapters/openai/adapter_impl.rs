@@ -3,7 +3,7 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	MessageContent, MetaUsage, ToolCall,
+	MessageContent, MetaUsage, ToolCall, ContentPart, ImageSource
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -250,10 +250,26 @@ impl OpenAIAdapter {
 					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
 				ChatRole::User => {
-					if let MessageContent::Text(content) = msg.content {
-						messages.push(json! ({"role": "user", "content": content}));
-					}
-					// TODO: Probably need to warn if it is a ToolCalls type of content
+					let content = match msg.content {
+						MessageContent::Text(content) => json!(content),
+						MessageContent::Parts(parts) => {
+							json!(parts.iter().map(|part| match part {
+								ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
+								ContentPart::Image(location) => match location {
+									ImageLocation::Url(url) => json!({"type": "image_url", "image_url": url.clone()}),
+									ImageLocation::Base64 {..} => todo!("Missing B64 implementation!"),
+								}
+							}).collect::<Vec<Value>>())
+						},
+						// Use `match` instead of `if let`. This will allow to future-proof this
+						// implementation in case some new message content types would appear,
+						// this way library would not compile if not all methods are implemented
+						// continue would allow to gracefully skip pushing unserializable message
+						// TODO: Probably need to warn if it is a ToolCalls type of content
+						MessageContent::ToolCalls(_) => continue,
+						MessageContent::ToolResponses(_) => continue,
+					};
+					messages.push(json! ({"role": "user", "content": content}));
 				}
 
 				ChatRole::Assistant => match msg.content {

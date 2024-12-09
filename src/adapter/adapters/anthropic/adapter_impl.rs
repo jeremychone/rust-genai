@@ -3,7 +3,7 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
-	ToolCall,
+	ToolCall, ContentPart, ImageLocation,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -236,10 +236,35 @@ impl AnthropicAdapter {
 					// TODO: Needs to trace/warn that other type are not supported
 				}
 				ChatRole::User => {
-					if let MessageContent::Text(content) = msg.content {
-						messages.push(json! ({"role": "user", "content": content}))
-					}
-					// TODO: Needs to trace/warn that other type are not supported
+					let content = match msg.content {
+						MessageContent::Text(content) => json!(content),
+						MessageContent::Parts(parts) => {
+							json!(parts.iter().map(|part| match part {
+								ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
+								ContentPart::Image(location) => match location {
+									ImageLocation::Url(_) => {
+										todo!("Anthropic doesn't support images from URL")
+									},
+									ImageLocation::Base64 {content, mime} => json!({
+					                    "type": "image",
+					                    "source": {
+					                        "type": "base64",
+					                        "media_type": mime,
+					                        "data": content,
+					                    },
+					                }),
+								}
+							}).collect::<Vec<Value>>())
+						},
+						// Use `match` instead of `if let`. This will allow to future-proof this
+						// implementation in case some new message content types would appear,
+						// this way library would not compile if not all methods are implemented
+						// continue would allow to gracefully skip pushing unserializable message
+						// TODO: Probably need to warn if it is a ToolCalls type of content
+						MessageContent::ToolCalls(_) => continue,
+						MessageContent::ToolResponses(_) => continue,
+					};
+					messages.push(json! ({"role": "user", "content": content}));
 				}
 				ChatRole::Assistant => {
 					//
@@ -266,6 +291,7 @@ impl AnthropicAdapter {
 							}));
 						}
 						// TODO: Probably need to trace/warn that this will be ignored
+						MessageContent::Parts(_) => (),
 						MessageContent::ToolResponses(_) => (),
 					}
 				}
