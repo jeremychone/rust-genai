@@ -27,12 +27,12 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for OpenAIAdapter {
-	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
+	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.openai.com/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(_kind: AdapterKind) -> AuthData {
+	fn default_auth() -> AuthData {
 		AuthData::from_env("OPENAI_API_KEY")
 	}
 

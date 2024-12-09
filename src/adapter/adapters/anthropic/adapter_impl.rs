@@ -31,12 +31,12 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for AnthropicAdapter {
-	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
+	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.anthropic.com/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(_kind: AdapterKind) -> AuthData {
+	fn default_auth() -> AuthData {
 		AuthData::from_env("ANTHROPIC_API_KEY")
 	}
 

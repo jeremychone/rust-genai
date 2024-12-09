@@ -17,12 +17,12 @@ pub struct OllamaAdapter;
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
 ///       Since the base Ollama API supports `application/x-ndjson` for streaming, whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
-	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
+	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "http://localhost:11434/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(_kind: AdapterKind) -> AuthData {
+	fn default_auth() -> AuthData {
 		AuthData::from_single("ollama")
 	}
 
@@ -33,7 +33,7 @@ impl Adapter for OllamaAdapter {
 	///       Later, we might add another function with a endpoint, so the the user can give an custom endpoint.
 	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
 		// FIXME: This is harcoded to the default endpoint, should take endpoint as Argument
-		let endpoint = Self::default_endpoint(adapter_kind);
+		let endpoint = Self::default_endpoint();
 		let base_url = endpoint.base_url();
 		let url = format!("{base_url}models");
 

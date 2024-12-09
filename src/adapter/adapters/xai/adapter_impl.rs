@@ -13,12 +13,12 @@ pub(in crate::adapter) const MODELS: &[&str] = &["grok-beta"];
 
 // The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
 impl Adapter for XaiAdapter {
-	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
+	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.x.ai/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(_kind: AdapterKind) -> AuthData {
+	fn default_auth() -> AuthData {
 		AuthData::from_env("XAI_API_KEY")
 	}
 

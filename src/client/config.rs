@@ -1,4 +1,4 @@
-use crate::adapter::{Adapter, AdapterDispatcher};
+use crate::adapter::AdapterDispatcher;
 use crate::chat::ChatOptions;
 use crate::client::ServiceTarget;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};

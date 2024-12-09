@@ -14,34 +14,39 @@ use super::groq::GroqAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::resolver::{AuthData, Endpoint};
 
+/// A construct that allows dispatching calls to the Adapters.
+///
+/// Note 1: This struct does not need to implement the Adapter trait, as some of its methods take the adapter_kind as a parameter.
+///
+/// Note 2: This struct might be renamed to avoid confusion with the traditional Rust dispatcher pattern.
 pub struct AdapterDispatcher;
 
-impl Adapter for AdapterDispatcher {
-	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+impl AdapterDispatcher {
+	pub fn default_endpoint(kind: AdapterKind) -> Endpoint {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::default_endpoint(kind),
-			AdapterKind::Anthropic => AnthropicAdapter::default_endpoint(kind),
-			AdapterKind::Cohere => CohereAdapter::default_endpoint(kind),
-			AdapterKind::Ollama => OllamaAdapter::default_endpoint(kind),
-			AdapterKind::Gemini => GeminiAdapter::default_endpoint(kind),
-			AdapterKind::Groq => GroqAdapter::default_endpoint(kind),
-			AdapterKind::Xai => XaiAdapter::default_endpoint(kind),
+			AdapterKind::OpenAI => OpenAIAdapter::default_endpoint(),
+			AdapterKind::Anthropic => AnthropicAdapter::default_endpoint(),
+			AdapterKind::Cohere => CohereAdapter::default_endpoint(),
+			AdapterKind::Ollama => OllamaAdapter::default_endpoint(),
+			AdapterKind::Gemini => GeminiAdapter::default_endpoint(),
+			AdapterKind::Groq => GroqAdapter::default_endpoint(),
+			AdapterKind::Xai => XaiAdapter::default_endpoint(),
 		}
 	}
 
-	fn default_auth(kind: AdapterKind) -> AuthData {
+	pub fn default_auth(kind: AdapterKind) -> AuthData {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::default_auth(kind),
-			AdapterKind::Anthropic => AnthropicAdapter::default_auth(kind),
-			AdapterKind::Cohere => CohereAdapter::default_auth(kind),
-			AdapterKind::Ollama => OllamaAdapter::default_auth(kind),
-			AdapterKind::Gemini => GeminiAdapter::default_auth(kind),
-			AdapterKind::Groq => GroqAdapter::default_auth(kind),
-			AdapterKind::Xai => XaiAdapter::default_auth(kind),
+			AdapterKind::OpenAI => OpenAIAdapter::default_auth(),
+			AdapterKind::Anthropic => AnthropicAdapter::default_auth(),
+			AdapterKind::Cohere => CohereAdapter::default_auth(),
+			AdapterKind::Ollama => OllamaAdapter::default_auth(),
+			AdapterKind::Gemini => GeminiAdapter::default_auth(),
+			AdapterKind::Groq => GroqAdapter::default_auth(),
+			AdapterKind::Xai => XaiAdapter::default_auth(),
 		}
 	}
 
-	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
+	pub async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::all_model_names(kind).await,
 			AdapterKind::Anthropic => AnthropicAdapter::all_model_names(kind).await,
@@ -53,7 +58,7 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	pub fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
 		match model.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(model, service_type, endpoint),
@@ -65,7 +70,7 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn to_web_request_data(
+	pub fn to_web_request_data(
 		target: ServiceTarget,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
@@ -85,7 +90,7 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
+	pub fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 		match model_iden.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_iden, web_response),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_iden, web_response),
@@ -97,7 +102,7 @@ impl Adapter for AdapterDispatcher {
 		}
 	}
 
-	fn to_chat_stream(
+	pub fn to_chat_stream(
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,

@@ -29,12 +29,12 @@ const MODELS: &[&str] = &[
 //   -X POST 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 
 impl Adapter for GeminiAdapter {
-	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
+	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(_kind: AdapterKind) -> AuthData {
+	fn default_auth() -> AuthData {
 		AuthData::from_env("GEMINI_API_KEY")
 	}
 

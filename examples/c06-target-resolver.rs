@@ -1,10 +1,8 @@
-//! This example demonstrates how to use a custom ServiceTargetResolver which gives full control of the final
-//! mapping for Endpoint, Model/AdapterKind, and Auth
+//! This example demonstrates how to use a custom ServiceTargetResolver which gives full control over the final
+//! mapping for Endpoint, Model/AdapterKind, and Auth.
 //!
 //! IMPORTANT - Here we are using xAI as an example of a custom ServiceTarget.
-//!             It works with regular chat using the basic OpenAIAdapter,
-//!             but for streaming, xAI does not follow OpenAI's specifications.
-//!             Therefore, below we use regular chat, and this crate provides an XaiAdapter.
+//!             However, there is now an XaiAdapter, which gets activated on `starts_with("grok")`.
 
 use genai::adapter::AdapterKind;
 use genai::chat::{ChatMessage, ChatRequest};

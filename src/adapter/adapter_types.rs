@@ -11,9 +11,9 @@ pub trait Adapter {
 	// #[deprecated(note = "use default_auth")]
 	// fn default_key_env_name(kind: AdapterKind) -> Option<&'static str>;
 
-	fn default_auth(kind: AdapterKind) -> AuthData;
+	fn default_auth() -> AuthData;
 
-	fn default_endpoint(kind: AdapterKind) -> Endpoint;
+	fn default_endpoint() -> Endpoint;
 
 	// NOTE: Adapter is a crate trait, so it is acceptable to use async fn here.
 	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>>;
