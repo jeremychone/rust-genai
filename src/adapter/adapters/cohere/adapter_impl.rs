@@ -6,8 +6,8 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{ClientConfig, ModelIden, ServiceTarget};
 use crate::{Error, Result};
+use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
@@ -24,12 +24,12 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for CohereAdapter {
-	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://api.cohere.com/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(kind: AdapterKind) -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		AuthData::from_env("COHERE_API_KEY")
 	}
 
@@ -38,7 +38,7 @@ impl Adapter for CohereAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
 		let base_url = endpoint.base_url();
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}chat"),
@@ -47,7 +47,6 @@ impl Adapter for CohereAdapter {
 
 	fn to_web_request_data(
 		target: ServiceTarget,
-		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,

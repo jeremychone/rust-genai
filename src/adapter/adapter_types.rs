@@ -2,7 +2,7 @@ use crate::adapter::AdapterKind;
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelIden};
+use crate::ModelIden;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::Value;
@@ -25,7 +25,6 @@ pub trait Adapter {
 	/// To be implemented by Adapters.
 	fn to_web_request_data(
 		service_target: ServiceTarget,
-		config_set: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,

@@ -5,8 +5,8 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelIden, ServiceTarget};
 use crate::{Error, Result};
+use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::Value;
 use value_ext::JsonValueExt;
@@ -17,12 +17,12 @@ pub struct OllamaAdapter;
 ///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
 ///       Since the base Ollama API supports `application/x-ndjson` for streaming, whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
-	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "http://localhost:11434/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(kind: AdapterKind) -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		AuthData::from_single("ollama")
 	}
 
@@ -65,7 +65,6 @@ impl Adapter for OllamaAdapter {
 
 	fn to_web_request_data(
 		target: ServiceTarget,
-		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,

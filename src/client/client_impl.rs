@@ -58,7 +58,7 @@ impl Client {
 		let model = target.model.clone();
 
 		let WebRequestData { headers, payload, url } =
-			AdapterDispatcher::to_web_request_data(target, self.config(), ServiceType::Chat, chat_req, options_set)?;
+			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)?;
 
 		let web_res =
 			self.web_client()
@@ -89,13 +89,8 @@ impl Client {
 		let target = self.config().resolve_service_target(model)?;
 		let model = target.model.clone();
 
-		let WebRequestData { url, headers, payload } = AdapterDispatcher::to_web_request_data(
-			target,
-			self.config(),
-			ServiceType::ChatStream,
-			chat_req,
-			options_set.clone(),
-		)?;
+		let WebRequestData { url, headers, payload } =
+			AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
 
 		let reqwest_builder = self
 			.web_client()

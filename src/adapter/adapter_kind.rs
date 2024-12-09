@@ -1,5 +1,4 @@
 use super::groq::MODELS as GROQ_MODELS;
-use crate::adapter::{Adapter, AdapterDispatcher};
 use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};

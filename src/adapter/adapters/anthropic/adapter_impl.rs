@@ -7,7 +7,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelIden};
+use crate::ModelIden;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -31,12 +31,12 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for AnthropicAdapter {
-	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://api.anthropic.com/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(kind: AdapterKind) -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		AuthData::from_env("ANTHROPIC_API_KEY")
 	}
 
@@ -45,7 +45,7 @@ impl Adapter for AnthropicAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
 		let base_url = endpoint.base_url();
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}messages"),
@@ -54,7 +54,6 @@ impl Adapter for AnthropicAdapter {
 
 	fn to_web_request_data(
 		target: ServiceTarget,
-		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,

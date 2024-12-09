@@ -3,7 +3,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelIden};
+use crate::ModelIden;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -13,12 +13,12 @@ pub(in crate::adapter) const MODELS: &[&str] = &["grok-beta"];
 
 // The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
 impl Adapter for XaiAdapter {
-	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://api.x.ai/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(kind: AdapterKind) -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		AuthData::from_env("XAI_API_KEY")
 	}
 
@@ -32,7 +32,6 @@ impl Adapter for XaiAdapter {
 
 	fn to_web_request_data(
 		target: ServiceTarget,
-		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,

@@ -7,8 +7,8 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelIden, ServiceTarget};
 use crate::{Error, Result};
+use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde::Deserialize;
@@ -27,12 +27,12 @@ const MODELS: &[&str] = &[
 ];
 
 impl Adapter for OpenAIAdapter {
-	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://api.openai.com/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(kind: AdapterKind) -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		AuthData::from_env("OPENAI_API_KEY")
 	}
 
@@ -47,7 +47,6 @@ impl Adapter for OpenAIAdapter {
 
 	fn to_web_request_data(
 		target: ServiceTarget,
-		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,

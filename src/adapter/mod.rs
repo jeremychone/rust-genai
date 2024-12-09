@@ -9,8 +9,6 @@
 
 // region:    --- Modules
 
-mod support;
-
 mod adapter_kind;
 mod adapter_types;
 mod adapters;

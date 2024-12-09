@@ -7,8 +7,8 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{ClientConfig, ModelIden, ServiceTarget};
 use crate::{Error, Result};
+use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
@@ -29,12 +29,12 @@ const MODELS: &[&str] = &[
 //   -X POST 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 
 impl Adapter for GeminiAdapter {
-	fn default_endpoint(kind: AdapterKind) -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth(kind: AdapterKind) -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		AuthData::from_env("GEMINI_API_KEY")
 	}
 
@@ -56,7 +56,6 @@ impl Adapter for GeminiAdapter {
 
 	fn to_web_request_data(
 		target: ServiceTarget,
-		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,

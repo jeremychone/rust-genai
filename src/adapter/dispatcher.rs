@@ -6,7 +6,7 @@ use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::webc::WebResponse;
-use crate::{ClientConfig, ModelIden};
+use crate::ModelIden;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -67,34 +67,21 @@ impl Adapter for AdapterDispatcher {
 
 	fn to_web_request_data(
 		target: ServiceTarget,
-		client_config: &ClientConfig,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let adapter_kind = &target.model.adapter_kind;
 		match adapter_kind {
-			AdapterKind::OpenAI => {
-				OpenAIAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
-			}
+			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Anthropic => {
-				AnthropicAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
+				AnthropicAdapter::to_web_request_data(target, service_type, chat_req, options_set)
 			}
-			AdapterKind::Cohere => {
-				CohereAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
-			}
-			AdapterKind::Ollama => {
-				OllamaAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
-			}
-			AdapterKind::Gemini => {
-				GeminiAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
-			}
-			AdapterKind::Groq => {
-				GroqAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
-			}
-			AdapterKind::Xai => {
-				XaiAdapter::to_web_request_data(target, client_config, service_type, chat_req, options_set)
-			}
+			AdapterKind::Cohere => CohereAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Groq => GroqAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Xai => XaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 		}
 	}
 

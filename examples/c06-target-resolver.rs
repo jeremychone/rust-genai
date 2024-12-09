@@ -7,9 +7,8 @@
 //!             Therefore, below we use regular chat, and this crate provides an XaiAdapter.
 
 use genai::adapter::AdapterKind;
-use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::resolver::{AuthData, AuthResolver, Endpoint, ServiceTargetResolver};
+use genai::resolver::{AuthData, Endpoint, ServiceTargetResolver};
 use genai::{Client, ModelIden, ServiceTarget};
 
 const MODEL: &str = "grok-beta";
@@ -25,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// -- Build an auth_resolver and the AdapterConfig
 	let target_resolver = ServiceTargetResolver::from_resolver_fn(
 		|service_target: ServiceTarget| -> Result<ServiceTarget, genai::resolver::Error> {
-			let ServiceTarget { endpoint, auth, model } = service_target;
+			let ServiceTarget { model, .. } = service_target;
 			let endpoint = Endpoint::from_static("https://api.x.ai/v1/");
 			let auth = AuthData::from_env("XAI_API_KEY");
 			let model = ModelIden::new(AdapterKind::OpenAI, model.model_name);
