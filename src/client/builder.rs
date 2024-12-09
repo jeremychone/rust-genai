@@ -1,5 +1,8 @@
 use crate::chat::ChatOptions;
-use crate::resolver::{AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, ModelMapper};
+use crate::resolver::{
+	AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, IntoServiceTargetResolverFn, ModelMapper,
+	ServiceTargetResolver,
+};
 use crate::webc::WebClient;
 use crate::{Client, ClientConfig};
 use std::sync::Arc;
@@ -53,6 +56,19 @@ impl ClientBuilder {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
 		let auth_resolver = AuthResolver::from_resolver_fn(auth_resolver_fn);
 		client_config.auth_resolver = Some(auth_resolver);
+		self
+	}
+
+	pub fn with_service_target_resolver(mut self, target_resolver: ServiceTargetResolver) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.service_target_resolver = Some(target_resolver);
+		self
+	}
+
+	pub fn with_service_target_resolver_fn(mut self, target_resolver_fn: impl IntoServiceTargetResolverFn) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		let target_resolver = ServiceTargetResolver::from_resolver_fn(target_resolver_fn);
+		client_config.service_target_resolver = Some(target_resolver);
 		self
 	}
 
