@@ -1,9 +1,17 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.13"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.14"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-12-08 - `0.1.14`
+
+- `+` adapter - xAI adapter
+- `+` **ServiceTargetResolver** added (support for **custom endpoint**) (checkout [examples/c06-starget-resolver.rs](examples/c06-target-resolver.rs))
+- `.` ollama - now use openai v1 api to list models
+- `.` test - add test for Client::all_model_names
+- `*` major internal refactor
 
 ## 2024-12-07 - `0.1.13`
 

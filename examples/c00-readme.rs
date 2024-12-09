@@ -10,6 +10,7 @@ const MODEL_COHERE: &str = "command-light";
 const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
 const MODEL_GROQ: &str = "gemma-7b-it";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
+const MODEL_XAI: &str = "grok-beta";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
@@ -20,6 +21,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_COHERE, "COHERE_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
 	(MODEL_GROQ, "GROQ_API_KEY"),
+	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_OLLAMA, ""),
 ];
 

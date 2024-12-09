@@ -12,14 +12,14 @@ Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **
 
 ```toml
 # cargo.toml
-genai = "=0.1.13" # Version lock for `0.1.x`
+genai = "=0.1.14" # Version lock for `0.1.x`
 ```
 
 <br />
 
-The goal of this library is to provide a common and ergonomic single API to many generative AI Providers, such as OpenAI, Anthropic, Cohere, Ollama.
+Provides a common and ergonomic single API to many generative AI Providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, ....
 
-- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.13"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
+- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.14"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
 
@@ -42,6 +42,7 @@ const MODEL_COHERE: &str = "command-light";
 const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
 const MODEL_GROQ: &str = "gemma-7b-it";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
+const MODEL_XAI: &str = "grok-beta";
 
 // NOTE: Those are the default environment keys for each AI Adapter Type.
 //       Can be customized, see `examples/c02-auth.rs`
@@ -52,6 +53,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
     (MODEL_COHERE, "COHERE_API_KEY"),
     (MODEL_GEMINI, "GEMINI_API_KEY"),
     (MODEL_GROQ, "GROQ_API_KEY"),
+    (MODEL_XAI, "XAI_API_KEY"),
     (MODEL_OLLAMA, ""),
 ];
 
