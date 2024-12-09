@@ -11,6 +11,10 @@ pub struct XaiAdapter;
 
 pub(in crate::adapter) const MODELS: &[&str] = &["grok-beta"];
 
+impl XaiAdapter {
+	pub const API_KEY_DEFAULT_ENV_NAME: &str = "XAI_API_KEY";
+}
+
 // The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
 impl Adapter for XaiAdapter {
 	fn default_endpoint() -> Endpoint {
@@ -19,7 +23,7 @@ impl Adapter for XaiAdapter {
 	}
 
 	fn default_auth() -> AuthData {
-		AuthData::from_env("XAI_API_KEY")
+		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {

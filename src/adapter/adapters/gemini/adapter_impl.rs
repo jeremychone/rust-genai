@@ -28,6 +28,10 @@ const MODELS: &[&str] = &[
 //   -d '{"contents":[{"parts":[{"text":"Explain how AI works"}]}]}' \
 //   -X POST 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
 
+impl GeminiAdapter {
+	pub const API_KEY_DEFAULT_ENV_NAME: &str = "GEMINI_API_KEY";
+}
+
 impl Adapter for GeminiAdapter {
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
@@ -35,7 +39,7 @@ impl Adapter for GeminiAdapter {
 	}
 
 	fn default_auth() -> AuthData {
-		AuthData::from_env("GEMINI_API_KEY")
+		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
 	/// Note: For now, this returns the common models (see above)

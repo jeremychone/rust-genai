@@ -23,6 +23,10 @@ const MODELS: &[&str] = &[
 	"command-light-nightly",
 ];
 
+impl CohereAdapter {
+	pub const API_KEY_DEFAULT_ENV_NAME: &str = "COHERE_API_KEY";
+}
+
 impl Adapter for CohereAdapter {
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.cohere.com/v1/";
@@ -30,7 +34,7 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn default_auth() -> AuthData {
-		AuthData::from_env("COHERE_API_KEY")
+		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
 	/// Note: For now, it returns the common ones (see above)

@@ -26,6 +26,10 @@ const MODELS: &[&str] = &[
 	"o1-mini",
 ];
 
+impl OpenAIAdapter {
+	pub const API_KEY_DEFAULT_ENV_NAME: &str = "OPENAI_API_KEY";
+}
+
 impl Adapter for OpenAIAdapter {
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.openai.com/v1/";
@@ -33,7 +37,7 @@ impl Adapter for OpenAIAdapter {
 	}
 
 	fn default_auth() -> AuthData {
-		AuthData::from_env("OPENAI_API_KEY")
+		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
 	/// Note: Currently returns the common models (see above)

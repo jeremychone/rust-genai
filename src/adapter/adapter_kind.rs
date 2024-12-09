@@ -1,4 +1,10 @@
 use super::groq::MODELS as GROQ_MODELS;
+use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::cohere::CohereAdapter;
+use crate::adapter::gemini::GeminiAdapter;
+use crate::adapter::groq::GroqAdapter;
+use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::xai::XaiAdapter;
 use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -54,12 +60,20 @@ impl AdapterKind {
 }
 
 /// Utilities
-// impl AdapterKind {
-// 	/// Get the default key environment variable name for the adapter kind.
-// 	pub fn default_key_env_name(&self) -> Option<&'static str> {
-// 		AdapterDispatcher::default_key_env_name(*self)
-// 	}
-// }
+impl AdapterKind {
+	/// Get the default key environment variable name for the adapter kind.
+	pub fn default_key_env_name(&self) -> Option<&'static str> {
+		match self {
+			AdapterKind::OpenAI => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Anthropic => Some(AnthropicAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Ollama => None,
+		}
+	}
+}
 
 /// From Model implementations
 impl AdapterKind {

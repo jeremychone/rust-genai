@@ -30,6 +30,10 @@ const MODELS: &[&str] = &[
 	"claude-3-haiku-20240307",
 ];
 
+impl AnthropicAdapter {
+	pub const API_KEY_DEFAULT_ENV_NAME: &str = "ANTHROPIC_API_KEY";
+}
+
 impl Adapter for AnthropicAdapter {
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.anthropic.com/v1/";
@@ -37,7 +41,7 @@ impl Adapter for AnthropicAdapter {
 	}
 
 	fn default_auth() -> AuthData {
-		AuthData::from_env("ANTHROPIC_API_KEY")
+		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
 	/// Note: For now, it returns the common models (see above)
