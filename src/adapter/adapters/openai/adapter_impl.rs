@@ -256,7 +256,7 @@ impl OpenAIAdapter {
 							json!(parts.iter().map(|part| match part {
 								ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
 								ContentPart::Image(location) => match location {
-									ImageLocation::Url(url) => json!({"type": "image_url", "image_url": url.clone()}),
+									ImageLocation::Url(url) => json!({"type": "image_url", "image_url": {"url": url.clone()}}),
 									ImageLocation::Base64 {..} => todo!("Missing B64 implementation!"),
 								}
 							}).collect::<Vec<Value>>())
