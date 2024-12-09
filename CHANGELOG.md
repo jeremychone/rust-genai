@@ -1,9 +1,13 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.14"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.15"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2024-12-08 - `0.1.15`
+
+- `+` add back AdapterKind::default_key_env_name
 
 ## 2024-12-08 - `0.1.14`
 
