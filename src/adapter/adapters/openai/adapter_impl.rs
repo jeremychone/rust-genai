@@ -257,7 +257,10 @@ impl OpenAIAdapter {
 								ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
 								ContentPart::Image(location) => match location {
 									ImageLocation::Url(url) => json!({"type": "image_url", "image_url": {"url": url.clone()}}),
-									ImageLocation::Base64 {..} => todo!("Missing B64 implementation!"),
+									ImageLocation::Base64 {content, mime} => {
+										let image_url = format!("data:{mime},{content}");
+										json!({"type": "image_url", "image_url": {"url": image_url}})
+									},
 								}
 							}).collect::<Vec<Value>>())
 						},
