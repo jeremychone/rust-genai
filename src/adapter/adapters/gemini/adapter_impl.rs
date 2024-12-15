@@ -1,5 +1,5 @@
+use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::gemini::GeminiStreamer;
-use crate::adapter::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
