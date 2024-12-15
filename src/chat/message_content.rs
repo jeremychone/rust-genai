@@ -2,8 +2,6 @@ use crate::chat::{ToolCall, ToolResponse};
 use derive_more::derive::From;
 use serde::{Deserialize, Serialize};
 
-/// Currently, it only supports Text,
-/// but the goal is to support multi-part message content (see below)
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum MessageContent {
 	/// Text content
@@ -122,7 +120,11 @@ impl From<Vec<ContentPart>> for MessageContent {
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum ContentPart {
 	Text(String),
-	Image(ImageLocation),
+	Image {
+		content: String,
+		content_type: String,
+		source: ImageSource,
+	},
 }
 
 // region:    --- Froms
@@ -137,14 +139,11 @@ impl<'a> From<&'a str> for ContentPart {
 
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
-pub enum ImageLocation {
-	Url(String),
-	Base64{
-		content: String,
-		mime: String,
-	},
+pub enum ImageSource {
+	Url,
+	Base64
 
-	// Not `Local` location, this would require handling errors like "file not found" etc.
+	// No `Local` location, this would require handling errors like "file not found" etc.
 	// Such file can be easily provided by user as Base64, also can implement convenient
 	// TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
 }

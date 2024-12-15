@@ -1,4 +1,4 @@
-use genai::chat::{ChatMessage, ChatRequest, ContentPart, ImageLocation, Tool};
+use genai::chat::{ChatMessage, ChatRequest, ContentPart, ImageSource, Tool};
 use serde_json::json;
 
 pub fn seed_chat_req_simple() -> ChatRequest {
@@ -15,10 +15,11 @@ pub fn seed_chat_req_with_image() -> ChatRequest {
 		ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user(vec![
 			ContentPart::from("What is in this image?"),
-			ImageLocation::Base64 {
+			ContentPart::Image {
 				content: "BASE64 ENCODED IMAGE".to_string(),
-				mime: "image/png".to_string(),
-			}.into(),
+				content_type:"image/png".to_string(),
+				source: ImageSource::Base64,
+			}
 		]),
 	])
 }
