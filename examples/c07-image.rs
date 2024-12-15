@@ -10,15 +10,17 @@ const MODEL: &str = "gpt-4o-mini";
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::default();
 
+	let question = "What is in this picture?";
+
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(
 		vec![
-			ContentPart::Text("What is in this picture?"),
+			ContentPart::Text(question.to_string()),
 			ContentPart::Image {
-				content: "IMAGE ENCODE BASE64".to_string(),
+				content: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg".to_string(),
 				content_type: "image/png".to_string(),
-				source: ImageSource::Base64,
+				source: ImageSource::Url,
 			}
 		]
 	));
