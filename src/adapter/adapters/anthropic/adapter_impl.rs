@@ -3,7 +3,7 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
-	ToolCall, ContentPart, ImageLocation,
+	ToolCall, ContentPart, ImageSource,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -241,19 +241,19 @@ impl AnthropicAdapter {
 						MessageContent::Parts(parts) => {
 							json!(parts.iter().map(|part| match part {
 								ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-								ContentPart::Image(location) => match location {
-									ImageLocation::Url(_) => {
-										todo!("Anthropic doesn't support images from URL")
-									},
-									ImageLocation::Base64 {content, mime} => json!({
+								ContentPart::Image{content, content_type, source} => {
+									match source {
+										ImageSource::Url => todo!("Anthropic doesn't support images from URL, need to handle it gracefully"),
+										ImageSource::Base64 => json!({
 					                    "type": "image",
 					                    "source": {
 					                        "type": "base64",
-					                        "media_type": mime,
+					                        "media_type": content_type,
 					                        "data": content,
 					                    },
 					                }),
-								}
+									}
+								},
 							}).collect::<Vec<Value>>())
 						},
 						// Use `match` instead of `if let`. This will allow to future-proof this

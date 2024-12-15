@@ -255,13 +255,15 @@ impl OpenAIAdapter {
 						MessageContent::Parts(parts) => {
 							json!(parts.iter().map(|part| match part {
 								ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-								ContentPart::Image(location) => match location {
-									ImageLocation::Url(url) => json!({"type": "image_url", "image_url": {"url": url.clone()}}),
-									ImageLocation::Base64 {content, mime} => {
-										let image_url = format!("data:{mime},{content}");
-										json!({"type": "image_url", "image_url": {"url": image_url}})
-									},
-								}
+								ContentPart::Image{content, content_type, source} => {
+									match source {
+										ImageSource::Url => json!({"type": "image_url", "image_url": {"url": content}}),
+										ImageSource::Base64 => {
+											let image_url = format!("data:{content_type};base64,{content}");
+											json!({"type": "image_url", "image_url": {"url": image_url}})
+										},
+									}
+								},
 							}).collect::<Vec<Value>>())
 						},
 						// Use `match` instead of `if let`. This will allow to future-proof this
@@ -294,6 +296,7 @@ impl OpenAIAdapter {
 						messages.push(json! ({"role": "assistant", "tool_calls": tool_calls}))
 					}
 					// TODO: Probably need to trace/warn that this will be ignored
+					MessageContent::Parts(_) => (),
 					MessageContent::ToolResponses(_) => (),
 				},
 
