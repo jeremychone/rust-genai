@@ -257,16 +257,12 @@ impl OpenAIAdapter {
 								.iter()
 								.map(|part| match part {
 									ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-									ContentPart::Image {
-										content,
-										content_type,
-										source,
-									} => {
+									ContentPart::Image { content_type, source } => {
 										match source {
-											ImageSource::Url => {
-												json!({"type": "image_url", "image_url": {"url": content}})
+											ImageSource::Url(url) => {
+												json!({"type": "image_url", "image_url": {"url": url}})
 											}
-											ImageSource::Base64 => {
+											ImageSource::Base64(content) => {
 												let image_url = format!("data:{content_type};base64,{content}");
 												json!({"type": "image_url", "image_url": {"url": image_url}})
 											}

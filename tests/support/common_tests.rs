@@ -352,7 +352,7 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> Result<()> {
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text("What is in this picture?"),
-		ContentPart::from_image_b64("image/jpeg", get_b64_duck()?),
+		ContentPart::from_image_base64("image/jpeg", get_b64_duck()?),
 	]));
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 

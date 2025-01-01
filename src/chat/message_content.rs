@@ -113,11 +113,7 @@ impl From<Vec<ContentPart>> for MessageContent {
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum ContentPart {
 	Text(String),
-	Image {
-		content: String,
-		content_type: String,
-		source: ImageSource,
-	},
+	Image { content_type: String, source: ImageSource },
 }
 
 /// Constructors
@@ -126,19 +122,17 @@ impl ContentPart {
 		ContentPart::Text(text.into())
 	}
 
-	pub fn from_image_b64(content_type: impl Into<String>, content: impl Into<String>) -> ContentPart {
+	pub fn from_image_base64(content_type: impl Into<String>, content: impl Into<String>) -> ContentPart {
 		ContentPart::Image {
-			content: content.into(),
 			content_type: content_type.into(),
-			source: ImageSource::Base64,
+			source: ImageSource::Base64(content.into()),
 		}
 	}
 
 	pub fn from_image_url(content_type: impl Into<String>, url: impl Into<String>) -> ContentPart {
 		ContentPart::Image {
-			content: url.into(),
 			content_type: content_type.into(),
-			source: ImageSource::Url,
+			source: ImageSource::Url(url.into()),
 		}
 	}
 }
@@ -153,10 +147,11 @@ impl<'a> From<&'a str> for ContentPart {
 
 // endregion: --- Froms
 
-#[derive(Debug, Clone, Serialize, Deserialize, From)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ImageSource {
-	Url,
-	Base64, // No `Local` location, this would require handling errors like "file not found" etc.
-	        // Such file can be easily provided by user as Base64, also can implement convenient
-	        // TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
+	Url(String),
+	Base64(String),
+	// No `Local` location, this would require handling errors like "file not found" etc.
+	// Such file can be easily provided by user as Base64, also can implement convenient
+	// TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
 }

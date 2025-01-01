@@ -3,7 +3,7 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	MessageContent, MetaUsage, ContentPart, ImageSource
+	ContentPart, ImageSource, MessageContent, MetaUsage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -21,7 +21,7 @@ const MODELS: &[&str] = &[
 	"gemini-1.5-flash-8b",
 	"gemini-1.0-pro",
 	"gemini-1.5-flash-latest",
-	"gemini-2.0-flash-exp"
+	"gemini-2.0-flash-exp",
 ];
 
 // curl \
@@ -225,31 +225,34 @@ impl GeminiAdapter {
 						});
 					};
 					systems.push(content)
-				},
+				}
 				ChatRole::User => {
 					let content = match msg.content {
 						MessageContent::Text(content) => json!([{"text": content}]),
 						MessageContent::Parts(parts) => {
-							json!(parts.iter().map(|part| match part {
-								ContentPart::Text(text) => json!({"text": text.clone()}),
-								ContentPart::Image{content, content_type, source} => {
-									match source {
-										ImageSource::Url => json!({
-											"file_data": {
-												"mime_type": content_type,
-								                "file_uri": content
-											}
-								        }),
-										ImageSource::Base64 => json!({
-							                "inline_data": {
-								                "mime_type": content_type,
-								                "data": content
-							                }
-							            }),
+							json!(parts
+								.iter()
+								.map(|part| match part {
+									ContentPart::Text(text) => json!({"text": text.clone()}),
+									ContentPart::Image { content_type, source } => {
+										match source {
+											ImageSource::Url(url) => json!({
+												"file_data": {
+													"mime_type": content_type,
+													"file_uri": url
+												}
+											}),
+											ImageSource::Base64(content) => json!({
+												"inline_data": {
+													"mime_type": content_type,
+													"data": content
+												}
+											}),
+										}
 									}
-								},
-							}).collect::<Vec<Value>>())
-						},
+								})
+								.collect::<Vec<Value>>())
+						}
 						// Use `match` instead of `if let`. This will allow to future-proof this
 						// implementation in case some new message content types would appear,
 						// this way library would not compile if not all methods are implemented
@@ -260,7 +263,7 @@ impl GeminiAdapter {
 					};
 
 					contents.push(json!({"role": "user", "parts": content}));
-				},
+				}
 				ChatRole::Assistant => {
 					let MessageContent::Text(content) = msg.content else {
 						return Err(Error::MessageContentTypeNotSupported {
@@ -269,7 +272,7 @@ impl GeminiAdapter {
 						});
 					};
 					contents.push(json!({"role": "model", "parts": [{"text": content}]}))
-				},
+				}
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
 						model_iden,
