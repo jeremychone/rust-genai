@@ -331,12 +331,8 @@ pub async fn common_test_chat_image_url_ok(model: &str) -> Result<()> {
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
-		ContentPart::Text("What is in this picture?".to_string()),
-		ContentPart::Image {
-			content: IMAGE_URL_JPG_DUCK.to_string(),
-			content_type: "image/jpeg".to_string(),
-			source: ImageSource::Url,
-		},
+		ContentPart::from_text("What is in this picture?"),
+		ContentPart::from_image_url("image/jpeg", IMAGE_URL_JPG_DUCK),
 	]));
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
@@ -355,12 +351,8 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> Result<()> {
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
-		ContentPart::Text("What is in this picture?".to_string()),
-		ContentPart::Image {
-			content: get_b64_duck()?,
-			content_type: "image/jpeg".to_string(),
-			source: ImageSource::Base64,
-		},
+		ContentPart::from_text("What is in this picture?"),
+		ContentPart::from_image_b64("image/jpeg", get_b64_duck()?),
 	]));
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 

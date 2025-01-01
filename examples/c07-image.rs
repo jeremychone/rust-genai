@@ -1,7 +1,7 @@
 //! This example demonstrates how to properly attach image to the conversations
 
 use genai::chat::printer::print_chat_stream;
-use genai::chat::{ChatMessage, ChatRequest, ContentPart, ImageSource};
+use genai::chat::{ChatMessage, ChatRequest, ContentPart};
 use genai::Client;
 
 const MODEL: &str = "gpt-4o-mini";
@@ -16,12 +16,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
-		ContentPart::Text(question.to_string()),
-		ContentPart::Image {
-			content: IMAGE_URL.to_string(),
-			content_type: "image/jpg".to_string(),
-			source: ImageSource::Url,
-		},
+		ContentPart::from_text(question),
+		ContentPart::from_image_url("image/jpg", IMAGE_URL),
 	]));
 
 	println!("\n--- Question:\n{question}");

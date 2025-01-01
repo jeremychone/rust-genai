@@ -120,6 +120,29 @@ pub enum ContentPart {
 	},
 }
 
+/// Constructors
+impl ContentPart {
+	pub fn from_text(text: impl Into<String>) -> ContentPart {
+		ContentPart::Text(text.into())
+	}
+
+	pub fn from_image_b64(content_type: impl Into<String>, content: impl Into<String>) -> ContentPart {
+		ContentPart::Image {
+			content: content.into(),
+			content_type: content_type.into(),
+			source: ImageSource::Base64,
+		}
+	}
+
+	pub fn from_image_url(content_type: impl Into<String>, url: impl Into<String>) -> ContentPart {
+		ContentPart::Image {
+			content: url.into(),
+			content_type: content_type.into(),
+			source: ImageSource::Url,
+		}
+	}
+}
+
 // region:    --- Froms
 
 impl<'a> From<&'a str> for ContentPart {
