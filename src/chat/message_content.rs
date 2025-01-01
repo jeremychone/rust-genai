@@ -27,7 +27,9 @@ impl MessageContent {
 	}
 
 	/// Create a new MessageContent from provided content parts
-	pub fn from_parts(parts: impl Into<Vec<ContentPart>>) -> Self { MessageContent::Parts(parts.into()) }
+	pub fn from_parts(parts: impl Into<Vec<ContentPart>>) -> Self {
+		MessageContent::Parts(parts.into())
+	}
 
 	/// Create a new MessageContent with the ToolCalls variant
 	pub fn from_tool_calls(tool_calls: Vec<ToolCall>) -> Self {
@@ -39,17 +41,12 @@ impl MessageContent {
 impl MessageContent {
 	/// Returns the MessageContent as &str, only if it is MessageContent::Text
 	/// Otherwise, it returns None.
-	/// NOTE: As of now, it always returns Some(..) because MessageContent has only the Text variant.
-	///       However, this is in preparation for future expansions.
+	///
+	/// NOTE: When multi parts content, this will return None and won't concatenate the text parts.
 	pub fn text_as_str(&self) -> Option<&str> {
 		match self {
 			MessageContent::Text(content) => Some(content.as_str()),
-			MessageContent::Parts(parts) => {
-				Some(parts.iter().filter_map(|part| match part {
-					ContentPart::Text(content) => Some(content.clone()),
-					_ => None,
-				}).collect::<Vec<String>>().join("\n").leak()) // TODO revisit this, should we leak &str?
-			},
+			MessageContent::Parts(_) => None,
 			MessageContent::ToolCalls(_) => None,
 			MessageContent::ToolResponses(_) => None,
 		}
@@ -58,17 +55,11 @@ impl MessageContent {
 	/// Consumes the MessageContent and returns it as &str,
 	/// only if it is MessageContent::Text; otherwise, it returns None.
 	///
-	/// NOTE: As of now, it always returns Some(..) because MessageContent has only the Text variant.
-	///       However, this is in preparation for future expansions.
+	/// NOTE: When multi parts content, this will return None and won't concatenate the text parts.
 	pub fn text_into_string(self) -> Option<String> {
 		match self {
 			MessageContent::Text(content) => Some(content),
-			MessageContent::Parts(parts) => {
-				Some(parts.into_iter().filter_map(|part| match part {
-					ContentPart::Text(content) => Some(content),
-					_ => None,
-				}).collect::<Vec<String>>().join("\n"))
-			},
+			MessageContent::Parts(_) => None,
 			MessageContent::ToolCalls(_) => None,
 			MessageContent::ToolResponses(_) => None,
 		}
@@ -112,7 +103,9 @@ impl From<ToolResponse> for MessageContent {
 }
 
 impl From<Vec<ContentPart>> for MessageContent {
-	fn from(parts: Vec<ContentPart>) -> Self { MessageContent::Parts(parts) }
+	fn from(parts: Vec<ContentPart>) -> Self {
+		MessageContent::Parts(parts)
+	}
 }
 
 // endregion: --- Froms
@@ -137,13 +130,10 @@ impl<'a> From<&'a str> for ContentPart {
 
 // endregion: --- Froms
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum ImageSource {
 	Url,
-	Base64
-
-	// No `Local` location, this would require handling errors like "file not found" etc.
-	// Such file can be easily provided by user as Base64, also can implement convenient
-	// TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
+	Base64, // No `Local` location, this would require handling errors like "file not found" etc.
+	        // Such file can be easily provided by user as Base64, also can implement convenient
+	        // TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
 }

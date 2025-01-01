@@ -9,10 +9,6 @@ keywords = ["generative-ai","openai","chatgpt","gemini","ollama"]
 homepage = "https://github.com/jeremychone/rust-genai"
 repository = "https://github.com/jeremychone/rust-genai"
 
-[[example]]
-name = "images"
-path = "examples/c07-image.rs"
-
 [lints.rust]
 unsafe_code = "forbid"
 # unused = { level = "allow", priority = -1 } # For exploratory dev.
