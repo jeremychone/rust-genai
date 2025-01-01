@@ -6,6 +6,7 @@
 // region:    --- Modules
 
 mod asserts;
+mod data;
 mod helpers;
 mod seeders;
 

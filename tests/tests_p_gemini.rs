@@ -8,6 +8,9 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 
 const MODEL: &str = "gemini-1.5-flash-latest";
 
+#[allow(dead_code)]
+const MODEL_FOR_IMAGE: &str = "gemini-2.0-flash-exp";
+
 // region:    --- Chat
 
 #[tokio::test]
@@ -55,6 +58,20 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- Image Tests
+
+// NOTE: Gemini does not seem to support URL
+// #[tokio::test]
+// async fn test_chat_image_url_ok() -> Result<()> {
+// 	common_tests::common_test_chat_image_url_ok(MODEL_FOR_IMAGE).await
+// }
+
+#[tokio::test]
+async fn test_chat_image_b64_ok() -> Result<()> {
+	common_tests::common_test_chat_image_b64_ok(MODEL_FOR_IMAGE).await
+}
+// endregion: --- Image Test
 
 // region:    --- Resolver Tests
 

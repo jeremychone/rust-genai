@@ -33,3 +33,4 @@ value-ext = "0.0.3" # JC Authored. Early release (API might change). Be cautious
 
 [dev-dependencies]
 serial_test = "3.2.0"
+base64 = "0.21.0"  # Check for the latest version

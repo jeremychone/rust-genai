@@ -3,7 +3,7 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	MessageContent, MetaUsage, ToolCall, ContentPart, ImageSource
+	ContentPart, ImageSource, MessageContent, MetaUsage, ToolCall,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -253,19 +253,28 @@ impl OpenAIAdapter {
 					let content = match msg.content {
 						MessageContent::Text(content) => json!(content),
 						MessageContent::Parts(parts) => {
-							json!(parts.iter().map(|part| match part {
-								ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-								ContentPart::Image{content, content_type, source} => {
-									match source {
-										ImageSource::Url => json!({"type": "image_url", "image_url": {"url": content}}),
-										ImageSource::Base64 => {
-											let image_url = format!("data:{content_type};base64,{content}");
-											json!({"type": "image_url", "image_url": {"url": image_url}})
-										},
+							json!(parts
+								.iter()
+								.map(|part| match part {
+									ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
+									ContentPart::Image {
+										content,
+										content_type,
+										source,
+									} => {
+										match source {
+											ImageSource::Url => {
+												json!({"type": "image_url", "image_url": {"url": content}})
+											}
+											ImageSource::Base64 => {
+												let image_url = format!("data:{content_type};base64,{content}");
+												json!({"type": "image_url", "image_url": {"url": image_url}})
+											}
+										}
 									}
-								},
-							}).collect::<Vec<Value>>())
-						},
+								})
+								.collect::<Vec<Value>>())
+						}
 						// Use `match` instead of `if let`. This will allow to future-proof this
 						// implementation in case some new message content types would appear,
 						// this way library would not compile if not all methods are implemented

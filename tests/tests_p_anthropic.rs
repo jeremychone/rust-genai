@@ -66,6 +66,23 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 }
 // endregion: --- Chat Stream Tests
 
+// region:    --- Image Tests
+
+// NOTE: For now disable these tests as they failed. Needs to be resolved.
+
+// Anthropic does not support image URL
+// #[tokio::test]
+// async fn test_chat_image_url_ok() -> Result<()> {
+// 	common_tests::common_test_chat_image_url_ok(MODEL).await
+// }
+
+#[tokio::test]
+async fn test_chat_image_b64_ok() -> Result<()> {
+	common_tests::common_test_chat_image_b64_ok(MODEL).await
+}
+
+// endregion: --- Image Test
+
 // region:    --- Tool Tests
 
 #[tokio::test]

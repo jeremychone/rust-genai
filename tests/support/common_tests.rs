@@ -1,7 +1,10 @@
 use crate::get_option_value;
+use crate::support::data::{get_b64_duck, IMAGE_URL_JPG_DUCK};
 use crate::support::{assert_contains, extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple, Result};
 use genai::adapter::AdapterKind;
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, JsonSpec, Tool, ToolResponse};
+use genai::chat::{
+	ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool, ToolResponse,
+};
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
 use serde_json::{json, Value};
@@ -317,6 +320,58 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- Images
+
+pub async fn common_test_chat_image_url_ok(model: &str) -> Result<()> {
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
+	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
+	chat_req = chat_req.append_message(ChatMessage::user(vec![
+		ContentPart::Text("What is in this picture?".to_string()),
+		ContentPart::Image {
+			content: IMAGE_URL_JPG_DUCK.to_string(),
+			content_type: "image/jpeg".to_string(),
+			source: ImageSource::Url,
+		},
+	]));
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.content_text_as_str().ok_or("Should have text result")?;
+	assert_contains(res, "duck");
+
+	Ok(())
+}
+
+pub async fn common_test_chat_image_b64_ok(model: &str) -> Result<()> {
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
+	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
+	chat_req = chat_req.append_message(ChatMessage::user(vec![
+		ContentPart::Text("What is in this picture?".to_string()),
+		ContentPart::Image {
+			content: get_b64_duck()?,
+			content_type: "image/jpeg".to_string(),
+			source: ImageSource::Base64,
+		},
+	]));
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.content_text_as_str().ok_or("Should have text result")?;
+	assert_contains(res, "duck");
+
+	Ok(())
+}
+
+// endregion: --- Images
 
 // region:    --- Tools
 
