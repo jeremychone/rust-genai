@@ -1,6 +1,6 @@
 [package]
 name = "genai"
-version = "0.1.16"
+version = "0.1.17-WIP"
 edition = "2021"
 rust-version = "1.79"
 license = "MIT OR Apache-2.0"
