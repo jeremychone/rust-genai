@@ -1,6 +1,7 @@
 use crate::chat::{ToolCall, ToolResponse};
 use derive_more::derive::From;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum MessageContent {
@@ -122,7 +123,7 @@ impl ContentPart {
 		ContentPart::Text(text.into())
 	}
 
-	pub fn from_image_base64(content_type: impl Into<String>, content: impl Into<String>) -> ContentPart {
+	pub fn from_image_base64(content_type: impl Into<String>, content: impl Into<Arc<str>>) -> ContentPart {
 		ContentPart::Image {
 			content_type: content_type.into(),
 			source: ImageSource::Base64(content.into()),
@@ -149,9 +150,18 @@ impl<'a> From<&'a str> for ContentPart {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ImageSource {
+	/// For model/services that support URL as input
+	/// NOTE: Few AI services support this.
 	Url(String),
-	Base64(String),
-	// No `Local` location, this would require handling errors like "file not found" etc.
-	// Such file can be easily provided by user as Base64, also can implement convenient
-	// TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
+
+	/// The base64 string of the image
+	///
+	/// Note: Here we use an Arc<str> to avoid cloning large amounts of data when cloning a ChatRequest.
+	///       The overhead is minimal compared to cloning relatively large data.
+	///       The downside is that it will be an Arc even when used only once, but for this particular data type, the net benefit is positive.
+	Base64(Arc<str>),
 }
+
+// No `Local` location, this would require handling errors like "file not found" etc.
+// Such file can be easily provided by user as Base64, also can implement convenient
+// TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
