@@ -1,11 +1,19 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.15"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.16"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
-## 2024-12-08 - `0.1.15`
+
+## 2025-01-02 - [v0.1.16](https://github.com/jeremychone/rust-genai/compare/v0.1.15...v0.1.16)
+
+- `.` MessageContent::text_into_string/str return None when Parts (to avoid leak)
+- `^` Image support - Add Test, Image update, API Update (constructors, ImageSource variants with data)
+- `+` Image Support - Initial (Thanks to [@AdamStrojek](https://github.com/AdamStrojek))
+  - For OpenAI, Gemini, Anthropic. (Only OpenAI supports URL images, others require base64)
+
+## 2024-12-08 - [v0.1.15](https://github.com/jeremychone/rust-genai/compare/v0.1.14...v0.1.15)
 
 - `+` add back AdapterKind::default_key_env_name
 
