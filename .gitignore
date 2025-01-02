@@ -45,6 +45,8 @@ out/
 *.png
 *.bmp
 
+!tests/data/*.jpg
+
 # -- Nodejs
 node_modules/
 !.mocharc.yaml
