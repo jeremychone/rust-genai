@@ -90,7 +90,7 @@ pub enum Error {
 	#[from]
 	JsonValueExt(JsonValueExtError),
 	ReqwestEventSource(reqwest_eventsource::Error),
-	// Note: will probably need to remvoe this one to give more context
+	// Note: will probably need to remove this one to provide more context
 	#[from]
 	SerdeJson(serde_json::Error),
 }
