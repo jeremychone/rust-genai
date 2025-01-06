@@ -223,7 +223,7 @@ impl CohereAdapter {
 			};
 
 			match msg.role {
-				// For now, system and tool go to the system
+				// For now, system and tool messages go to the system
 				ChatRole::System => systems.push(content),
 				ChatRole::User => chat_history.push(json! ({"role": "USER", "content": content})),
 				ChatRole::Assistant => chat_history.push(json! ({"role": "CHATBOT", "content": content})),

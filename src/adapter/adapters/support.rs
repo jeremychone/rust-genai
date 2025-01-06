@@ -1,4 +1,4 @@
-//! This support model is for common constructs and utilities for all of the adapter implementations.
+//! This support module is for common constructs and utilities for all the adapter implementations.
 //! It should be private to the `crate::adapter::adapters` module.
 
 use crate::chat::{ChatOptionsSet, MetaUsage};

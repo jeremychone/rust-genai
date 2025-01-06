@@ -29,7 +29,7 @@ impl Client {
 		Ok(model_iden)
 	}
 
-	#[deprecated(note = "use `client.resolve_service_target(model_name)")]
+	#[deprecated(note = "use `client.resolve_service_target(model_name)`")]
 	pub fn resolve_model_iden(&self, model_name: &str) -> Result<ModelIden> {
 		let model = self.default_model(model_name)?;
 		let target = self.config().resolve_service_target(model)?;

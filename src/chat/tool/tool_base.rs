@@ -7,10 +7,10 @@ pub struct Tool {
 	/// e.g., `get_weather`
 	pub name: String,
 
-	/// The description of the tool which will be used by the LLM to understand the context/usage of this tool
+	/// The description of the tool that will be used by the LLM to understand the context/usage of this tool
 	pub description: Option<String>,
 
-	/// The json-schema for the parameters
+	/// The JSON schema for the parameters
 	/// e.g.,
 	/// ```json
 	/// json!({
@@ -27,7 +27,7 @@ pub struct Tool {
 	///    "unit": {
 	///        "type": "string",
 	///        "enum": ["C", "F"],
-	///        "description": "The temperature unit of the country. C for Celsius, and F for Fahrenheit"
+	///        "description": "The temperature unit for the country. C for Celsius, and F for Fahrenheit"
 	///    }
 	/// },
 	/// "required": ["city", "country", "unit"],

@@ -327,7 +327,7 @@ impl OpenAIAdapter {
 				.map(|tool| {
 					// TODO: Need to handle the error correctly
 					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
-					// NOTE: Right now, low probability, so, we just return null if cannto to value.
+					// NOTE: Right now, low probability, so, we just return null if cannot convert to value.
 					json!({
 						"type": "function",
 						"function": {
@@ -387,7 +387,7 @@ fn parse_tool_call(raw_tool_call: Value) -> Result<ToolCall> {
 
 	let fn_name = iterim.function.name;
 
-	// For now support Object only, and parse the eventual string as a json value.
+	// For now, support Object only, and parse the eventual string as a json value.
 	// Eventually, we might check pricing
 	let fn_arguments = match iterim.function.arguments {
 		Value::Object(obj) => Value::Object(obj),

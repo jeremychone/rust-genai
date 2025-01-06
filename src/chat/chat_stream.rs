@@ -58,14 +58,14 @@ impl Stream for ChatStream {
 /// The normalized chat stream event for any provider when calling `Client::exec`.
 #[derive(Debug, From, Serialize, Deserialize)]
 pub enum ChatStreamEvent {
-	/// Represents the start of the stream. First event.
+	/// Represents the start of the stream. The first event.
 	Start,
 
-	/// Represents each chunk response. Currently only contains text content.
+	/// Represents each chunk response. Currently, it only contains text content.
 	Chunk(StreamChunk),
 
 	/// Represents the end of the stream.
-	/// Will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`.
+	/// It will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`.
 	End(StreamEnd),
 }
 

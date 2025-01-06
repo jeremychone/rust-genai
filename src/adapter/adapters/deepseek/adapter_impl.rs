@@ -15,7 +15,7 @@ impl DeepSeekAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "DEEPSEEK_API_KEY";
 }
 
-// The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
+// The DeepSeek API adapter is modeled after the OpenAI adapter, as the DeepSeek API is compatible with the OpenAI API.
 impl Adapter for DeepSeekAdapter {
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.deepseek.com/v1/";

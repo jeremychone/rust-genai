@@ -4,7 +4,7 @@ use crate::ClientBuilder;
 use std::sync::Arc;
 
 /// genai Client for executing AI requests to any providers.
-/// Build with:
+/// Built with:
 /// - `ClientBuilder::default()...build()`
 /// - or `Client::builder()`, which is equivalent to `ClientBuilder::default()...build()`
 #[derive(Debug, Clone)]

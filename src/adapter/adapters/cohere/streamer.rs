@@ -71,7 +71,7 @@ impl futures::Stream for CohereStreamer {
 								"stream-start" => InterStreamEvent::Start,
 								"text-generation" => {
 									if let Some(content) = cohere_message.text {
-										// Add to the captured_content if chat options allow it
+										// Add to the captured content if chat options allow it
 										if self.options.capture_content {
 											match self.captured_data.content {
 												Some(ref mut c) => c.push_str(&content),
@@ -110,7 +110,7 @@ impl futures::Stream for CohereStreamer {
 
 									InterStreamEvent::End(inter_stream_end)
 								}
-								_ => continue, // Skip the "Other" event
+								_ => continue, // Skip the "other" event
 							};
 
 							return Poll::Ready(Some(Ok(inter_event)));

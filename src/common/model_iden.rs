@@ -5,7 +5,7 @@ use crate::ModelName;
 
 /// Holds the adapter kind and model name in an efficient, clonable way.
 ///
-/// This struct is used to represent the association between an adapter kind
+/// This struct represents the association between an adapter kind
 /// and a model name, allowing for easy conversion and instantiation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelIden {

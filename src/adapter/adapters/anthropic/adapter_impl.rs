@@ -22,7 +22,7 @@ pub struct AnthropicAdapter;
 const MAX_TOKENS_8K: u32 = 8192;
 const MAX_TOKENS_4K: u32 = 4096;
 
-const ANTRHOPIC_VERSION: &str = "2023-06-01";
+const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
 	"claude-3-5-sonnet-20241022",
 	"claude-3-5-haiku-20241022",
@@ -74,7 +74,7 @@ impl Adapter for AnthropicAdapter {
 		let headers = vec![
 			// headers
 			("x-api-key".to_string(), api_key),
-			("anthropic-version".to_string(), ANTRHOPIC_VERSION.to_string()),
+			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		];
 
 		let model_name = model.model_name.clone();
@@ -135,17 +135,17 @@ impl Adapter for AnthropicAdapter {
 		let usage = body.x_take("usage").map(Self::into_usage).unwrap_or_default();
 
 		// -- Capture the content
-		// NOTE: Anthropic support a list of content of multitypes but not the ChatResponse
+		// NOTE: Anthropic supports a list of content of multiple types but not the ChatResponse
 		//       So, the strategy is to:
 		//       - List all of the content and capture the text and tool_use
-		//       - If there is one or more tool_use, this will take precedence and MessageContent support tool_call list
+		//       - If there is one or more tool_use, this will take precedence and MessageContent will support tool_call list
 		//       - Otherwise, the text is concatenated
 		// NOTE: We need to see if the multiple content type text happens and why. If not, we can probably simplify this by just capturing the first one.
 		//       Eventually, ChatResponse will have `content: Option<Vec<MessageContent>>` for the multi parts (with images and such)
 		let content_items: Vec<Value> = body.x_take("content")?;
 
 		let mut text_content: Vec<String> = Vec::new();
-		// Note: here tool_calls is probably the exception, so, not creating the vector if not needed
+		// Note: here tool_calls is probably the exception, so not creating the vector if not needed
 		let mut tool_calls: Option<Vec<ToolCall>> = None;
 
 		for mut item in content_items {
@@ -228,12 +228,12 @@ impl AnthropicAdapter {
 		// -- Process the messages
 		for msg in chat_req.messages {
 			match msg.role {
-				// for now, system and tool messages go to system
+				// for now, system and tool messages go to the system
 				ChatRole::System => {
 					if let MessageContent::Text(content) = msg.content {
 						systems.push(content)
 					}
-					// TODO: Needs to trace/warn that other type are not supported
+					// TODO: Needs to trace/warn that other types are not supported
 				}
 				ChatRole::User => {
 					let content = match msg.content {
@@ -261,7 +261,7 @@ impl AnthropicAdapter {
 						}
 						// Use `match` instead of `if let`. This will allow to future-proof this
 						// implementation in case some new message content types would appear,
-						// this way library would not compile if not all methods are implemented
+						// this way the library would not compile if not all methods are implemented
 						// continue would allow to gracefully skip pushing unserializable message
 						// TODO: Probably need to warn if it is a ToolCalls type of content
 						MessageContent::ToolCalls(_) => continue,
@@ -311,7 +311,7 @@ impl AnthropicAdapter {
 							})
 							.collect::<Vec<Value>>();
 
-						// FIXME: MessageContent::ToolResponse should be MessageContent::ToolResponses (even if openAI does require multi Tool message)
+						// FIXME: MessageContent::ToolResponse should be MessageContent::ToolResponses (even if OpenAI does require multi Tool message)
 						messages.push(json!({
 							"role": "user",
 							"content": tool_responses
@@ -337,7 +337,7 @@ impl AnthropicAdapter {
 				.map(|tool| {
 					// TODO: Need to handle the error correctly
 					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
-					// NOTE: Right now, low probability, so, we just return null if cannto to value.
+					// NOTE: Right now, low probability, so we just return null if cannot convert to value.
 					let mut tool_value = json!({
 						"name": tool.name,
 						"input_schema": tool.schema,

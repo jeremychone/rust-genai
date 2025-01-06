@@ -19,7 +19,7 @@ pub struct WebStream {
 	reqwest_builder: Option<RequestBuilder>,
 	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>> + Send>>>,
 	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>> + Send>>>,
-	// If a poll was a partial message, then we kept the previous part
+	// If a poll was a partial message, then we keep the previous part
 	partial_message: Option<String>,
 	// If a poll retrieved multiple messages, we keep them to be sent in the next poll
 	remaining_messages: Option<VecDeque<String>>,
@@ -206,7 +206,7 @@ fn new_with_pretty_json_array(
 		messages.push(array_end.to_string());
 	}
 
-	// -- Return the buf response
+	// -- Return the buff response
 	let first_message = if !messages.is_empty() {
 		Some(messages[0].to_string())
 	} else {

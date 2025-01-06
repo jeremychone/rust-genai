@@ -1,6 +1,6 @@
 //! ChatOptions allows customization of a chat request.
 //! - It can be provided at the `client::exec_chat(..)` level as an argument,
-//! - or set in the client config `client_config.with_chat_options(..)` to be used as default for all requests
+//! - or set in the client config `client_config.with_chat_options(..)` to be used as the default for all requests
 //!
 //! Note 1: In the future, we will probably allow setting the client
 //! Note 2: Extracting it from the `ChatRequest` object allows for better reusability of each component.
@@ -9,7 +9,7 @@ use crate::chat::chat_req_response_format::ChatResponseFormat;
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
-/// Chat Options that are taken into account for any `Client::exec...` calls.
+/// Chat Options that are considered for any `Client::exec...` calls.
 ///
 /// A fallback `ChatOptions` can also be set at the `Client` during the client builder phase
 /// ``
@@ -39,7 +39,7 @@ pub struct ChatOptions {
 	/// NOTE: More response formats are coming soon.
 	pub response_format: Option<ChatResponseFormat>,
 
-	/// Specifies sequences used as end marker when generating text
+	/// Specifies sequences used as end markers when generating text
 	pub stop_sequences: Vec<String>,
 }
 

@@ -13,7 +13,7 @@ pub struct GeminiStreamer {
 	options: StreamerOptions,
 
 	// -- Set by the poll_next
-	/// Flag to not poll the EventSource after a MessageStop event
+	/// Flag to not poll the EventSource after a MessageStop event.
 	done: bool,
 	captured_data: StreamerCapturedData,
 }
@@ -41,7 +41,7 @@ impl futures::Stream for GeminiStreamer {
 		while let Poll::Ready(item) = Pin::new(&mut self.inner).poll_next(cx) {
 			match item {
 				Some(Ok(raw_message)) => {
-					// This is the message sent by the WebStream in PrettyJsonArray mode
+					// This is the message sent by the WebStream in PrettyJsonArray mode.
 					// - `[` document start
 					// - `{...}` block
 					// - `]` document end
@@ -93,10 +93,10 @@ impl futures::Stream for GeminiStreamer {
 									}
 								}
 
-								// NOTE: Apparently in the Gemini API, all events have cumulative usage
+								// NOTE: Apparently in the Gemini API, all events have cumulative usage,
 								//       meaning each message seems to include the tokens for all previous streams.
 								//       Thus, we do not need to add it; we only need to replace captured_data.usage with the latest one.
-								//       See https://twitter.com/jeremychone/status/1813734565967802859 for potential additional information
+								//       See https://twitter.com/jeremychone/status/1813734565967802859 for potential additional information.
 								if self.options.capture_usage {
 									self.captured_data.usage = Some(usage);
 								}

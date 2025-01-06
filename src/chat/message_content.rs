@@ -15,7 +15,7 @@ pub enum MessageContent {
 	#[from]
 	ToolCalls(Vec<ToolCall>),
 
-	/// Tool call Responses
+	/// Tool call responses
 	#[from]
 	ToolResponses(Vec<ToolResponse>),
 }
@@ -43,7 +43,7 @@ impl MessageContent {
 	/// Returns the MessageContent as &str, only if it is MessageContent::Text
 	/// Otherwise, it returns None.
 	///
-	/// NOTE: When multi parts content, this will return None and won't concatenate the text parts.
+	/// NOTE: When multi-part content is present, this will return None and won't concatenate the text parts.
 	pub fn text_as_str(&self) -> Option<&str> {
 		match self {
 			MessageContent::Text(content) => Some(content.as_str()),
@@ -56,7 +56,7 @@ impl MessageContent {
 	/// Consumes the MessageContent and returns it as &str,
 	/// only if it is MessageContent::Text; otherwise, it returns None.
 	///
-	/// NOTE: When multi parts content, this will return None and won't concatenate the text parts.
+	/// NOTE: When multi-part content is present, this will return None and won't concatenate the text parts.
 	pub fn text_into_string(self) -> Option<String> {
 		match self {
 			MessageContent::Text(content) => Some(content),
@@ -66,7 +66,7 @@ impl MessageContent {
 		}
 	}
 
-	/// Checks if the text content or the tools calls is empty.
+	/// Checks if the text content or the tool calls are empty.
 	pub fn is_empty(&self) -> bool {
 		match self {
 			MessageContent::Text(content) => content.is_empty(),
@@ -150,18 +150,18 @@ impl<'a> From<&'a str> for ContentPart {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ImageSource {
-	/// For model/services that support URL as input
+	/// For models/services that support URL as input
 	/// NOTE: Few AI services support this.
 	Url(String),
 
 	/// The base64 string of the image
 	///
-	/// Note: Here we use an Arc<str> to avoid cloning large amounts of data when cloning a ChatRequest.
+	/// NOTE: Here we use an Arc<str> to avoid cloning large amounts of data when cloning a ChatRequest.
 	///       The overhead is minimal compared to cloning relatively large data.
 	///       The downside is that it will be an Arc even when used only once, but for this particular data type, the net benefit is positive.
 	Base64(Arc<str>),
 }
 
-// No `Local` location, this would require handling errors like "file not found" etc.
-// Such file can be easily provided by user as Base64, also can implement convenient
-// TryFrom<File> to Base64 version. All LLMs accepts local Images only as Base64
+// No `Local` location; this would require handling errors like "file not found" etc.
+// Such a file can be easily provided by the user as Base64, and we can implement a convenient
+// TryFrom<File> to Base64 version. All LLMs accept local images only as Base64.

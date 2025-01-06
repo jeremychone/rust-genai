@@ -79,7 +79,7 @@ impl futures::Stream for AnthropicStreamer {
 						}
 						// -- END MESSAGE
 						"message_stop" => {
-							// Make sure we do not poll the EventSource anymore on the next poll.
+							// Ensure we do not poll the EventSource anymore on the next poll.
 							// NOTE: This way, the last MessageStop event is still sent,
 							//       but then, on the next poll, it will be stopped.
 							self.done = true;
@@ -142,7 +142,7 @@ impl AnthropicStreamer {
 			};
 
 			// -- Capture/Add the eventual input_tokens
-			// NOTE: Permissive on this one, if error, treat as nonexistent (for now)
+			// NOTE: Permissive on this one; if an error occurs, treat it as nonexistent (for now)
 			if let Ok(input_tokens) = data.x_get::<i32>(input_path) {
 				let val = self
 					.captured_data

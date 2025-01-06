@@ -1,4 +1,4 @@
-//! The Adapter layer allows adapting client requests/responses to various AI Providers.
+//! The Adapter layer allows adapting client requests/responses to various AI providers.
 //! Currently, it employs a static dispatch pattern with the `Adapter` trait and `AdapterDispatcher` implementation.
 //! Adapter implementations are organized by adapter type under the `adapters` submodule.
 //!

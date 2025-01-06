@@ -112,7 +112,7 @@ async fn print_chat_stream_inner(
 //         making the main crate error aware of the different error types would be unnecessary.
 //
 // Note 2: This Printer Error is not wrapped in the main crate error because the printer
-//         functions are not used by any other crate function (they are more of a debug utility)
+//         functions are not used by any other crate functions (they are more of a debug utility)
 
 use derive_more::From;
 

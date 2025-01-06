@@ -82,7 +82,7 @@ impl futures::Stream for OpenAIStreamer {
 						// If finish_reason exists, it's the end of this choice.
 						// Since we support only a single choice, we can proceed,
 						// as there might be other messages, and the last one contains data: `[DONE]`
-						// NOTE: xAI have no `finish_reason` when not finished, so, need to just account for both null/absent
+						// NOTE: xAI has no `finish_reason` when not finished, so, need to just account for both null/absent
 						if let Ok(_finish_reason) = first_choice.x_take::<String>("finish_reason") {
 							// NOTE: For Groq, the usage is captured when finish_reason indicates stopping, and in the `/x_groq/usage`
 							if self.options.capture_usage {
@@ -101,7 +101,7 @@ impl futures::Stream for OpenAIStreamer {
 											.unwrap_or_default();
 										self.captured_data.usage = Some(usage)
 									}
-									_ => (), // do nothing, will be captured the OpenAi way
+									_ => (), // do nothing, will be captured the OpenAI way
 								}
 							}
 

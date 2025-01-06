@@ -5,7 +5,7 @@ use serde_json::Value;
 /// The chat response format for the ChatRequest for structured output.
 /// This will be taken into consideration only if the provider supports it.
 ///
-/// > Note: Currently, the AI Providers will not report an error if not supported. It will just be ignored.
+/// > Note: Currently, the AI Providers do not report an error if not supported; it will just be ignored.
 /// >       This may change in the future.
 #[derive(Debug, Clone, From, Serialize, Deserialize)]
 pub enum ChatResponseFormat {
@@ -21,10 +21,10 @@ pub enum ChatResponseFormat {
 /// The JSON specification for the structured output format.
 #[derive(Debug, Clone, From, Serialize, Deserialize)]
 pub struct JsonSpec {
-	/// The name of the spec. Mostly used by OpenAI.
+	/// The name of the specification. Mostly used by OpenAI.
 	/// IMPORTANT: With OpenAI, this cannot contain any spaces or special characters besides `-` and `_`.
 	pub name: String,
-	/// The description of the JSON spec. Mostly used by OpenAI adapters (future).
+	/// The description of the JSON specification. Mostly used by OpenAI adapters (future).
 	/// NOTE: Currently ignored in the OpenAI adapter.
 	pub description: Option<String>,
 

@@ -17,7 +17,7 @@ use crate::resolver::{AuthData, Endpoint};
 
 /// A construct that allows dispatching calls to the Adapters.
 ///
-/// Note 1: This struct does not need to implement the Adapter trait, as some of its methods take the adapter_kind as a parameter.
+/// Note 1: This struct does not need to implement the Adapter trait, as some of its methods take the adapter kind as a parameter.
 ///
 /// Note 2: This struct might be renamed to avoid confusion with the traditional Rust dispatcher pattern.
 pub struct AdapterDispatcher;
@@ -118,7 +118,7 @@ impl AdapterDispatcher {
 			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
-			AdapterKind::Ollama => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Ollama => OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),

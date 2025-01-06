@@ -1,5 +1,5 @@
 //! Resolvers are hooks that library users can set to customize aspects of the library's default behavior.
-//! A good example for now is the AuthResolver, which provides the authentication data (e.g., api_key).
+//! A good example is the AuthResolver, which provides the authentication data (e.g., api_key).
 //!
 //! Eventually, the library will have more resolvers.
 

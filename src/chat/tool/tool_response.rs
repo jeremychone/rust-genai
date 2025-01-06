@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolResponse {
 	pub call_id: String,
-	// for now, just string (would probably be serialized json)
+	// For now, just a string (would probably be serialized JSON)
 	pub content: String,
 }
 
-/// constructor
+/// Constructor
 impl ToolResponse {
 	pub fn new(tool_call_id: impl Into<String>, content: impl Into<String>) -> Self {
 		Self {

@@ -1,4 +1,4 @@
-//! Internal stream event types that serve as an intermediary between the provider event and the GenAI stream event.
+//! Internal stream event types that serve as intermediaries between the provider event and the GenAI stream event.
 //!
 //! This allows for flexibility if we want to capture events across providers that do not need to
 //! be reflected in the public ChatStream event.

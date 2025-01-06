@@ -109,7 +109,7 @@ impl AdapterKind {
 		} else if GROQ_MODELS.contains(&model) {
 			return Ok(Self::Groq);
 		}
-		// for now, fallback to Ollama
+		// For now, fallback to Ollama
 		else {
 			Ok(Self::Ollama)
 		}

@@ -1,5 +1,5 @@
 //! A `ServiceTargetResolver` is responsible for returning the `ServiceTarget`.
-//! It allows users to customize/override the service target properties.
+//! It allows users to customize or override the service target properties.
 //! 
 //! It can take the following forms:
 //! - Contains a fixed service target value,

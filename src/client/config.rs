@@ -17,7 +17,7 @@ pub struct ClientConfig {
 impl ClientConfig {
 	/// Set the AuthResolver for the ClientConfig.
 	/// Note: This will be called before the `service_target_resolver`, and if registered
-	///       the `service_target_resolver` will get this new value.
+	///       the `service_target_resolver` will receive this new value.
 	pub fn with_auth_resolver(mut self, auth_resolver: AuthResolver) -> Self {
 		self.auth_resolver = Some(auth_resolver);
 		self
@@ -25,7 +25,7 @@ impl ClientConfig {
 
 	/// Set the ModelMapper for the ClientConfig.
 	/// Note: This will be called before the `service_target_resolver`, and if registered
-	///       the `service_target_resolver` will get this new value.
+	///       the `service_target_resolver` will receive this new value.
 	pub fn with_model_mapper(mut self, model_mapper: ModelMapper) -> Self {
 		self.model_mapper = Some(model_mapper);
 		self
@@ -33,8 +33,8 @@ impl ClientConfig {
 
 	/// Set the ServiceTargetResolver for this client config.
 	///
-	/// A ServiceTargetResolver is the last step before execution allowing the users full
-	/// control of the resolved Endpoint, AuthData, and ModelIden
+	/// A ServiceTargetResolver is the last step before execution, allowing the users full
+	/// control of the resolved Endpoint, AuthData, and ModelIden.
 	pub fn with_service_target_resolver(mut self, service_target_resolver: ServiceTargetResolver) -> Self {
 		self.service_target_resolver = Some(service_target_resolver);
 		self
@@ -91,12 +91,12 @@ impl ClientConfig {
 					resolver_error,
 				})
 			})
-			.transpose()? // return error if there is an error on auth resolver
+			.transpose()? // return an error if there is an error with the auth resolver
 			.flatten()
 			.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind)); // flatten the two options
 
 		// -- Get the default endpoint
-		// For now, just get the default endpoint, the `resolve_target` will allow to override it
+		// For now, just get the default endpoint; the `resolve_target` will allow overriding it.
 		let endpoint = AdapterDispatcher::default_endpoint(model.adapter_kind);
 
 		// -- Resolve the service_target

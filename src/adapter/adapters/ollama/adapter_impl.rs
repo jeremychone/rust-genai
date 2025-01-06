@@ -26,13 +26,13 @@ impl Adapter for OllamaAdapter {
 		AuthData::from_single("ollama")
 	}
 
-	/// Note 1: For now, this adapter is the only one making a full request to the ollama server
-	/// Note 2: Will the OpenAI API to talk to Ollam server (https://platform.openai.com/docs/api-reference/models/list)
+	/// Note 1: For now, this adapter is the only one making a full request to the Ollama server
+	/// Note 2: Use the OpenAI API to communicate with the Ollama server (https://platform.openai.com/docs/api-reference/models/list)
 	///
 	/// TODO: This will use the default endpoint.
-	///       Later, we might add another function with a endpoint, so the the user can give an custom endpoint.
+	///       Later, we might add another function with an endpoint, so the user can provide a custom endpoint.
 	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		// FIXME: This is harcoded to the default endpoint, should take endpoint as Argument
+		// FIXME: This is hardcoded to the default endpoint; it should take the endpoint as an argument.
 		let endpoint = Self::default_endpoint();
 		let base_url = endpoint.base_url();
 		let url = format!("{base_url}models");

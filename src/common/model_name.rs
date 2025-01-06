@@ -22,7 +22,7 @@ impl From<ModelName> for String {
 }
 
 // NOTE: Below we avoid the `T: Into<String>` blanket implementation because
-//       it would prevent us from having the `From<ModelName> for String` as `ModelName`
+//       it would prevent us from having the `From<ModelName> for String` implementation since `ModelName`
 //       also implements `T: Into<String>` from its deref to `&str`
 
 impl From<String> for ModelName {
