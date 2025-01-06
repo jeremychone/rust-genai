@@ -7,34 +7,18 @@ use crate::ModelIden;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
-pub struct GroqAdapter;
+pub struct DeepSeekAdapter;
 
-pub(in crate::adapter) const MODELS: &[&str] = &[
-	"llama-3.2-90b-vision-preview",
-	"llama-3.2-11b-vision-preview",
-	"llama-3.2-3b-preview",
-	"llama-3.2-1b-preview",
-	"llama-3.1-405b-reasoning",
-	"llama-3.1-70b-versatile",
-	"llama-3.1-8b-instant",
-	"mixtral-8x7b-32768",
-	"gemma2-9b-it",
-	"gemma-7b-it", // deprecated
-	"llama3-groq-70b-8192-tool-use-preview",
-	"llama3-groq-8b-8192-tool-use-preview",
-	"llama3-8b-8192",
-	"llama3-70b-8192",
-	// "whisper-large-v3", // This is not a chat completion model
-];
+pub(in crate::adapter) const MODELS: &[&str] = &["deepseek-chat"];
 
-impl GroqAdapter {
-	pub const API_KEY_DEFAULT_ENV_NAME: &str = "GROQ_API_KEY";
+impl DeepSeekAdapter {
+	pub const API_KEY_DEFAULT_ENV_NAME: &str = "DEEPSEEK_API_KEY";
 }
 
 // The Groq API adapter is modeled after the OpenAI adapter, as the Groq API is compatible with the OpenAI API.
-impl Adapter for GroqAdapter {
+impl Adapter for DeepSeekAdapter {
 	fn default_endpoint() -> Endpoint {
-		const BASE_URL: &str = "https://api.groq.com/openai/v1/";
+		const BASE_URL: &str = "https://api.deepseek.com/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 

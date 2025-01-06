@@ -25,6 +25,14 @@ Provides a common and ergonomic single API to many generative AI Providers, such
 
 Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **GenAI** for multi-AI capabilities.
 
+## Key Features
+
+- Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek (Direct chat and stream) (see [examples/c00-readme.rs](examples/c00-readme.rs))  
+- Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))  
+- Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))  
+- Model Alias (see [examples/c05-model-names.rs](examples/c05-model-names.rs))  
+- Custom Endpoint, Auth, and Model Identifier (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))  
+
 [Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [MetaUsage](#metausage)
 
 ## Examples
@@ -32,29 +40,33 @@ Check out [devai.run](https://devai.run), the **Iterate to Automate** command-li
 [examples/c00-readme.rs](examples/c00-readme.rs)
 
 ```rust
+//! Base examples demonstrating the core capabilities of genai
+
 use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
 
-const MODEL_OPENAI: &str = "gpt-4o-mini";
+const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 const MODEL_COHERE: &str = "command-light";
 const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
-const MODEL_GROQ: &str = "gemma-7b-it";
+const MODEL_GROQ: &str = "llama3-8b-8192";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 const MODEL_XAI: &str = "grok-beta";
+const MODEL_DEEPSEEK: &str = "deepseek-chat";
 
-// NOTE: Those are the default environment keys for each AI Adapter Type.
-//       Can be customized, see `examples/c02-auth.rs`
+// NOTE: These are the default environment keys for each AI Adapter Type.
+//       They can be customized; see `examples/c02-auth.rs`
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
-    // -- de/activate models/providers
-    (MODEL_OPENAI, "OPENAI_API_KEY"),
-    (MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
-    (MODEL_COHERE, "COHERE_API_KEY"),
-    (MODEL_GEMINI, "GEMINI_API_KEY"),
-    (MODEL_GROQ, "GROQ_API_KEY"),
-    (MODEL_XAI, "XAI_API_KEY"),
-    (MODEL_OLLAMA, ""),
+	// -- De/activate models/providers
+	(MODEL_OPENAI, "OPENAI_API_KEY"),
+	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
+	(MODEL_COHERE, "COHERE_API_KEY"),
+	(MODEL_GEMINI, "GEMINI_API_KEY"),
+	(MODEL_GROQ, "GROQ_API_KEY"),
+	(MODEL_XAI, "XAI_API_KEY"),
+	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
+	(MODEL_OLLAMA, ""),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
@@ -65,47 +77,47 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - model in Groq models   -> Groq
 //  - For anything else      -> Ollama
 //
-// Can be customized, see `examples/c03-kind.rs`
+// This can be customized; see `examples/c03-kind.rs`
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let question = "Why is the sky red?";
+	let question = "Why is the sky red?";
 
-    let chat_req = ChatRequest::new(vec![
-        // -- Messages (de/activate to see the differences)
-        ChatMessage::system("Answer in one sentence"),
-        ChatMessage::user(question),
-    ]);
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (de/activate to see the differences)
+		ChatMessage::system("Answer in one sentence"),
+		ChatMessage::user(question),
+	]);
 
-    let client = Client::default();
+	let client = Client::default();
 
-    let print_options = PrintChatStreamOptions::from_print_events(false);
+	let print_options = PrintChatStreamOptions::from_print_events(false);
 
-    for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
-        // Skip if does not have the environment name set
-        if !env_name.is_empty() && std::env::var(env_name).is_err() {
-            println!("===== Skipping model: {model} (env var not set: {env_name})");
-            continue;
-        }
+	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
+		// Skip if the environment name is not set
+		if !env_name.is_empty() && std::env::var(env_name).is_err() {
+			println!("===== Skipping model: {model} (env var not set: {env_name})");
+			continue;
+		}
 
-        let adapter_kind = client.resolve_model_iden(model)?.adapter_kind;
+		let adapter_kind = client.resolve_service_target(model)?.model.adapter_kind;
 
-        println!("\n===== MODEL: {model} ({adapter_kind}) =====");
+		println!("\n===== MODEL: {model} ({adapter_kind}) =====");
 
-        println!("\n--- Question:\n{question}");
+		println!("\n--- Question:\n{question}");
 
-        println!("\n--- Answer:");
-        let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
-        println!("{}", chat_res.content_text_as_str().unwrap_or("NO ANSWER"));
+		println!("\n--- Answer:");
+		let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+		println!("{}", chat_res.content_text_as_str().unwrap_or("NO ANSWER"));
 
-        println!("\n--- Answer: (streaming)");
-        let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
-        print_chat_stream(chat_res, Some(&print_options)).await?;
+		println!("\n--- Answer: (streaming)");
+		let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
+		print_chat_stream(chat_res, Some(&print_options)).await?;
 
-        println!();
-    }
+		println!();
+	}
 
-    Ok(())
+	Ok(())
 }
 ```
 
@@ -117,6 +129,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c03-kind.rs](examples/c03-kind.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
 - [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per request level.
 - [examples/c05-model-names.rs](examples/c05-model-names.rs) - Show how to get model names per AdapterKind.
+- [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs) - For custom Auth, EndPoint, and Model.
+- [examples/c07-image.rs](examples/c07-image.rs) - Image Analysis support
 
 <br />
 <a href="https://www.youtube.com/playlist?list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube_JC_AI_Playlist-Video?style=flat&logo=youtube&color=%23ff0000"></a>

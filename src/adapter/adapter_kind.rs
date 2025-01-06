@@ -1,6 +1,7 @@
 use super::groq::MODELS as GROQ_MODELS;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
+use crate::adapter::deepseek::DeepSeekAdapter;
 use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::GroqAdapter;
 use crate::adapter::openai::OpenAIAdapter;
@@ -26,6 +27,8 @@ pub enum AdapterKind {
 	Groq,
 	/// For xAI
 	Xai,
+	/// For DeepSeek
+	DeepSeek,
 	// Note: Variants will probably be suffixed
 	// AnthropicBedrock,
 }
@@ -42,6 +45,7 @@ impl AdapterKind {
 			AdapterKind::Gemini => "Gemini",
 			AdapterKind::Groq => "Groq",
 			AdapterKind::Xai => "xAi",
+			AdapterKind::DeepSeek => "DeepSeek",
 		}
 	}
 
@@ -55,6 +59,7 @@ impl AdapterKind {
 			AdapterKind::Gemini => "gemini",
 			AdapterKind::Groq => "groq",
 			AdapterKind::Xai => "xai",
+			AdapterKind::DeepSeek => "DeepSeek",
 		}
 	}
 }
@@ -70,6 +75,7 @@ impl AdapterKind {
 			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 		}
 	}
@@ -98,6 +104,8 @@ impl AdapterKind {
 			Ok(Self::Gemini)
 		} else if model.starts_with("grok") {
 			Ok(Self::Xai)
+		} else if model.starts_with("deepseek") {
+			Ok(Self::DeepSeek)
 		} else if GROQ_MODELS.contains(&model) {
 			return Ok(Self::Groq);
 		}

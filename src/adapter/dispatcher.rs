@@ -11,6 +11,7 @@ use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
+use crate::adapter::deepseek::DeepSeekAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::resolver::{AuthData, Endpoint};
 
@@ -31,6 +32,7 @@ impl AdapterDispatcher {
 			AdapterKind::Gemini => GeminiAdapter::default_endpoint(),
 			AdapterKind::Groq => GroqAdapter::default_endpoint(),
 			AdapterKind::Xai => XaiAdapter::default_endpoint(),
+			AdapterKind::DeepSeek => DeepSeekAdapter::default_endpoint(),
 		}
 	}
 
@@ -43,6 +45,7 @@ impl AdapterDispatcher {
 			AdapterKind::Gemini => GeminiAdapter::default_auth(),
 			AdapterKind::Groq => GroqAdapter::default_auth(),
 			AdapterKind::Xai => XaiAdapter::default_auth(),
+			AdapterKind::DeepSeek => DeepSeekAdapter::default_auth(),
 		}
 	}
 
@@ -55,6 +58,7 @@ impl AdapterDispatcher {
 			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind).await,
 			AdapterKind::Groq => GroqAdapter::all_model_names(kind).await,
 			AdapterKind::Xai => XaiAdapter::all_model_names(kind).await,
+			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind).await,
 		}
 	}
 
@@ -67,6 +71,7 @@ impl AdapterDispatcher {
 			AdapterKind::Gemini => GeminiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Groq => GroqAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Xai => XaiAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::DeepSeek => DeepSeekAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
 
@@ -87,6 +92,7 @@ impl AdapterDispatcher {
 			AdapterKind::Gemini => GeminiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Groq => GroqAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 		}
 	}
 
@@ -99,6 +105,7 @@ impl AdapterDispatcher {
 			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response),
 			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response),
 			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response),
 		}
 	}
 
@@ -115,6 +122,7 @@ impl AdapterDispatcher {
 			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
 	}
 }

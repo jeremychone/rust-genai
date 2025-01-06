@@ -66,7 +66,6 @@ impl futures::Stream for OpenAIStreamer {
 					}
 
 					// -- Other Content Messages
-					let adapter_kind = self.options.model_iden.adapter_kind;
 					// Parse to get the choice
 					let mut message_data: Value =
 						serde_json::from_str(&message.data).map_err(|serde_error| Error::StreamParse {
@@ -75,6 +74,8 @@ impl futures::Stream for OpenAIStreamer {
 						})?;
 
 					let first_choice: Option<Value> = message_data.x_take("/choices/0").ok();
+
+					let adapter_kind = self.options.model_iden.adapter_kind;
 
 					// If we have a first choice, then it's a normal message
 					if let Some(mut first_choice) = first_choice {
@@ -93,7 +94,7 @@ impl futures::Stream for OpenAIStreamer {
 											.unwrap_or_default(); // permissive for now
 										self.captured_data.usage = Some(usage)
 									}
-									AdapterKind::Xai => {
+									AdapterKind::Xai | AdapterKind::DeepSeek => {
 										let usage = message_data
 											.x_take("usage")
 											.map(OpenAIAdapter::into_usage)
@@ -127,9 +128,10 @@ impl futures::Stream for OpenAIStreamer {
 					}
 					// -- Usage message
 					else {
-						// If it's not Groq or xAI, then the usage is captured at the end when choices are empty or null
+						// If it's not Groq, xAI, DeepSeek the usage is captured at the end when choices are empty or null
 						if !matches!(adapter_kind, AdapterKind::Groq)
 							&& !matches!(adapter_kind, AdapterKind::Xai)
+							&& !matches!(adapter_kind, AdapterKind::DeepSeek)
 							&& self.captured_data.usage.is_none() // this might be redundant
 							&& self.options.capture_usage
 						{
