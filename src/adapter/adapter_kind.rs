@@ -59,7 +59,7 @@ impl AdapterKind {
 			AdapterKind::Gemini => "gemini",
 			AdapterKind::Groq => "groq",
 			AdapterKind::Xai => "xai",
-			AdapterKind::DeepSeek => "DeepSeek",
+			AdapterKind::DeepSeek => "deepseek",
 		}
 	}
 }
