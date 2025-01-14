@@ -35,7 +35,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - model in Groq models   -> Groq
 //  - For anything else      -> Ollama
 //
-// This can be customized; see `examples/c03-kind.rs`
+// This can be customized; see `examples/c03-mapper.rs`
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
