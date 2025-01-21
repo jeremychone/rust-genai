@@ -9,7 +9,7 @@ use reqwest::RequestBuilder;
 
 pub struct DeepSeekAdapter;
 
-pub(in crate::adapter) const MODELS: &[&str] = &["deepseek-chat"];
+pub(in crate::adapter) const MODELS: &[&str] = &["deepseek-chat", "deepseek-reasoner"];
 
 impl DeepSeekAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "DEEPSEEK_API_KEY";

@@ -10,6 +10,7 @@ use reqwest::RequestBuilder;
 pub struct GroqAdapter;
 
 pub(in crate::adapter) const MODELS: &[&str] = &[
+	"llama-3.3-70b-versatile",
 	"llama-3.2-90b-vision-preview",
 	"llama-3.2-11b-vision-preview",
 	"llama-3.2-3b-preview",

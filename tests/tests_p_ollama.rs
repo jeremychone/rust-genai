@@ -6,7 +6,7 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-const MODEL: &str = "phi3:latest";
+const MODEL: &str = "deepseek-coder:1.3b"; // phi3:latest
 
 // region:    --- Chat
 

@@ -1,9 +1,8 @@
-use super::groq::MODELS as GROQ_MODELS;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
-use crate::adapter::deepseek::DeepSeekAdapter;
+use crate::adapter::deepseek::{self, DeepSeekAdapter};
 use crate::adapter::gemini::GeminiAdapter;
-use crate::adapter::groq::GroqAdapter;
+use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::Result;
@@ -104,9 +103,9 @@ impl AdapterKind {
 			Ok(Self::Gemini)
 		} else if model.starts_with("grok") {
 			Ok(Self::Xai)
-		} else if model.starts_with("deepseek") {
+		} else if deepseek::MODELS.contains(&model) {
 			Ok(Self::DeepSeek)
-		} else if GROQ_MODELS.contains(&model) {
+		} else if groq::MODELS.contains(&model) {
 			return Ok(Self::Groq);
 		}
 		// For now, fallback to Ollama

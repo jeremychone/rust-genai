@@ -6,6 +6,7 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
+// deepseek-reasoner (note: Does not support json output and streaming - or different streaming -)
 const MODEL: &str = "deepseek-chat";
 
 // region:    --- Chat
@@ -20,6 +21,7 @@ async fn test_chat_multi_system_ok() -> Result<()> {
 	common_tests::common_test_chat_multi_system_ok(MODEL).await
 }
 
+/// NOTE: deepseek-reasonner does not support Json Output (2025-01-21)
 #[tokio::test]
 async fn test_chat_json_mode_ok() -> Result<()> {
 	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
@@ -38,6 +40,8 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 // endregion: --- Chat
 
 // region:    --- Chat Stream Tests
+
+/// NOTE: deepseek-reasonner does not support Json Output (2025-01-21)
 
 #[tokio::test]
 async fn test_chat_stream_simple_ok() -> Result<()> {
