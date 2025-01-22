@@ -11,8 +11,6 @@ pub struct GroqAdapter;
 
 pub(in crate::adapter) const MODELS: &[&str] = &[
 	"llama-3.3-70b-versatile",
-	"llama-3.2-90b-vision-preview",
-	"llama-3.2-11b-vision-preview",
 	"llama-3.2-3b-preview",
 	"llama-3.2-1b-preview",
 	"llama-3.1-405b-reasoning",
@@ -24,6 +22,12 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"llama3-8b-8192",
 	"llama-guard-3-8b",
 	"llama3-70b-8192",
+	// -- preview
+	"llama-3.3-70b-specdec",
+	"llama-3.2-1b-preview",
+	"llama-3.2-3b-preview",
+	"llama-3.2-11b-vision-preview",
+	"llama-3.2-90b-vision-preview",
 	// "whisper-large-v3", // This is not a chat completion model
 ];
 
