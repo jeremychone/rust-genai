@@ -1,6 +1,6 @@
 # genai - Multi-AI Providers Library for Rust.
 
-Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **Gemini**,  **Cohere** (more to come)
+Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **DeepSeek**, **Gemini**,  **Cohere** (more to come)
 
 <div align="center">
 
@@ -12,14 +12,14 @@ Currently supports natively: **Ollama**, **OpenAI**, **Anthropic**, **groq**, **
 
 ```toml
 # cargo.toml
-genai = "=0.1.17" # Version lock for `0.1.x`
+genai = "=0.1.18" # Version lock for `0.1.x`
 ```
 
 <br />
 
 Provides a common and ergonomic single API to many generative AI Providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, ....
 
-- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.17"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
+- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.18"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
 
 - **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
 

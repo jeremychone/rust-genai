@@ -1,9 +1,17 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 > **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.17"`.
+> - Make sure to **lock** your version, e.g., `genai = "=0.1.18"`.
 > - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2025-01-21 - [v0.1.18](https://github.com/jeremychone/rust-genai/compare/v0.1.17...v0.1.18)
+
+- `^` ollama - add deepseek support (by making deepseek.com model names fixed for now)
+  - for now `deepseek-chat`, `deepseek-reasoning`
+- `.` groq - Update groq model names
+- `.` fix links to c03 examples (#37)
+- `-` Fix AdapterKind::as_lower_str for deepseek
 
 ## 2025-01-06 - [v0.1.17](https://github.com/jeremychone/rust-genai/compare/v0.1.16...v0.1.17)
 
