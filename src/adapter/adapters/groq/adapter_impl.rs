@@ -20,9 +20,8 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"mixtral-8x7b-32768",
 	"gemma2-9b-it",
 	"gemma-7b-it", // deprecated
-	"llama3-groq-70b-8192-tool-use-preview",
-	"llama3-groq-8b-8192-tool-use-preview",
 	"llama3-8b-8192",
+	"llama-guard-3-8b",
 	"llama3-70b-8192",
 	// "whisper-large-v3", // This is not a chat completion model
 ];
