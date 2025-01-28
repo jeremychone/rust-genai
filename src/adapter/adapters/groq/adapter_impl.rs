@@ -23,6 +23,7 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"llama-guard-3-8b",
 	"llama3-70b-8192",
 	// -- preview
+	"deepseek-r1-distill-llama-70b",
 	"llama-3.3-70b-specdec",
 	"llama-3.2-1b-preview",
 	"llama-3.2-3b-preview",

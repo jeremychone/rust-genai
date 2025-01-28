@@ -8,6 +8,7 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 
 // Note: In groq, the llama3.1 or gemma models fail to produce JSON without a proposed schema.
 //       With the "tool-use" groq version, it will work correctly.
+// Works with: "deepseek-r1-distill-llama-70b" (does not support json mode)
 const MODEL: &str = "llama3-8b-8192";
 
 // region:    --- Chat
