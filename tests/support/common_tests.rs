@@ -227,6 +227,38 @@ pub async fn common_test_chat_stop_sequences_ok(model: &str) -> Result<()> {
 	Ok(())
 }
 
+pub async fn common_test_chat_reasoner_ok(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = seed_chat_req_simple();
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	assert!(
+		!get_option_value!(chat_res.content).is_empty(),
+		"Content should not be empty"
+	);
+	assert!(
+		!get_option_value!(chat_res.reasoning_content).is_empty(),
+		"Reasoning should not be empty"
+	);
+
+	// check tokens
+	let usage = chat_res.usage;
+	let input_tokens = get_option_value!(usage.input_tokens);
+	let output_tokens = get_option_value!(usage.output_tokens);
+	let total_tokens = get_option_value!(usage.total_tokens);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+	assert!(
+		total_tokens == input_tokens + output_tokens,
+		"total_tokens should be equal to input_tokens + output_tokens"
+	);
+
+	Ok(())
+}
+
 // endregion: --- Chat
 
 // region:    --- Chat Stream Tests

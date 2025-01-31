@@ -13,6 +13,9 @@ pub struct ChatResponse {
 	/// The eventual content of the chat response
 	pub content: Option<MessageContent>,
 
+	/// The eventual reasoning content,
+	pub reasoning_content: Option<String>,
+
 	/// The Model Identifier (AdapterKind/ModelName) used for this request.
 	/// > NOTE: This might be different from the request model if changed by the ModelMapper
 	pub model_iden: ModelIden,

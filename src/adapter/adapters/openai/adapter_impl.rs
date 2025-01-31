@@ -65,26 +65,33 @@ impl Adapter for OpenAIAdapter {
 		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
 
 		// -- Capture the content
-		let content = if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
+		let (content, reasoning_content) = if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
 			if let Some(content) = first_choice
 				.x_take::<Option<String>>("/message/content")?
 				.map(MessageContent::from)
 			{
-				Some(content)
+				// For now very permissive.
+				let reasoning_content = first_choice
+					.x_take::<Option<String>>("/message/reasoning_content")
+					.ok()
+					.flatten();
+				(Some(content), reasoning_content)
 			} else {
-				first_choice
+				let content = first_choice
 					.x_take("/message/tool_calls")
 					.ok()
 					.map(parse_tool_calls)
 					.transpose()?
-					.map(MessageContent::from_tool_calls)
+					.map(MessageContent::from_tool_calls);
+				(content, None)
 			}
 		} else {
-			None
+			(None, None)
 		};
 
 		Ok(ChatResponse {
 			content,
+			reasoning_content,
 			model_iden,
 			usage,
 		})

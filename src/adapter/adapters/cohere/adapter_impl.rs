@@ -130,6 +130,7 @@ impl Adapter for CohereAdapter {
 
 		Ok(ChatResponse {
 			content,
+			reasoning_content: None,
 			model_iden,
 			usage,
 		})

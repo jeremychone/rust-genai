@@ -174,6 +174,7 @@ impl Adapter for AnthropicAdapter {
 
 		Ok(ChatResponse {
 			content,
+			reasoning_content: None,
 			model_iden,
 			usage,
 		})

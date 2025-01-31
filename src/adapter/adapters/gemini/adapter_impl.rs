@@ -146,6 +146,7 @@ impl Adapter for GeminiAdapter {
 
 		Ok(ChatResponse {
 			content,
+			reasoning_content: None,
 			model_iden,
 			usage,
 		})
