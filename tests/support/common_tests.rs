@@ -227,22 +227,26 @@ pub async fn common_test_chat_stop_sequences_ok(model: &str) -> Result<()> {
 	Ok(())
 }
 
-pub async fn common_test_chat_reasoner_ok(model: &str) -> Result<()> {
+pub async fn common_test_chat_reasoning_ok(model: &str, normalize_reasoning_content: bool) -> Result<()> {
 	// -- Setup & Fixtures
-	let client = Client::default();
+	let client = if normalize_reasoning_content {
+		Client::builder()
+			.with_chat_options(ChatOptions::default().with_normalize_reasoning_content(true))
+			.build()
+	} else {
+		Client::default()
+	};
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
-	assert!(
-		!get_option_value!(chat_res.content).is_empty(),
-		"Content should not be empty"
-	);
+	chat_res.content_text_as_str();
+	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
 	assert!(
 		!get_option_value!(chat_res.reasoning_content).is_empty(),
-		"Reasoning should not be empty"
+		"response reasoning_content should not be empty"
 	);
 
 	// check tokens

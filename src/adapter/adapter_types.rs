@@ -31,7 +31,11 @@ pub trait Adapter {
 	) -> Result<WebRequestData>;
 
 	/// To be implemented by Adapters.
-	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse>;
+	fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse>;
 
 	/// To be implemented by Adapters.
 	fn to_chat_stream(

@@ -41,6 +41,10 @@ pub struct ChatOptions {
 
 	/// Specifies sequences used as end markers when generating text
 	pub stop_sequences: Vec<String>,
+
+	/// Denote if the content should be parsed to extract eventual `<think>...</think>` content
+	/// into `ChatResponse.reasoning_content`
+	pub normalize_reasoning_content: Option<bool>,
 }
 
 /// Chainable Setters
@@ -77,6 +81,11 @@ impl ChatOptions {
 
 	pub fn with_stop_sequences(mut self, values: Vec<String>) -> Self {
 		self.stop_sequences = values;
+		self
+	}
+
+	pub fn with_normalize_reasoning_content(mut self, value: bool) -> Self {
+		self.normalize_reasoning_content = Some(value);
 		self
 	}
 
@@ -168,6 +177,12 @@ impl ChatOptionsSet<'_, '_> {
 			.map(|chat| chat.stop_sequences.deref())
 			.or_else(|| self.client.map(|client| client.stop_sequences.deref()))
 			.unwrap_or(&[])
+	}
+
+	pub fn normalize_reasoning_content(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.normalize_reasoning_content)
+			.or_else(|| self.client.and_then(|client| client.normalize_reasoning_content))
 	}
 
 	/// Returns true only if there is a ChatResponseFormat::JsonMode

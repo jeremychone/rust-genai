@@ -38,8 +38,8 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_chat_reasoner_ok() -> Result<()> {
-	common_tests::common_test_chat_reasoner_ok(MODEL).await
+async fn test_chat_reasoning_ok() -> Result<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL, false).await
 }
 // endregion: --- Chat
 

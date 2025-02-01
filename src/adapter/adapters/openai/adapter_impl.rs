@@ -58,7 +58,11 @@ impl Adapter for OpenAIAdapter {
 		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)
 	}
 
-	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
 		// -- Capture the usage
@@ -66,15 +70,20 @@ impl Adapter for OpenAIAdapter {
 
 		// -- Capture the content
 		let (content, reasoning_content) = if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
-			if let Some(content) = first_choice
-				.x_take::<Option<String>>("/message/content")?
-				.map(MessageContent::from)
-			{
-				// For now very permissive.
-				let reasoning_content = first_choice
+			if let Some(mut content) = first_choice.x_take::<Option<String>>("/message/content")? {
+				// "Standard" attempt to get the reasoning_content
+				let mut reasoning_content = first_choice
 					.x_take::<Option<String>>("/message/reasoning_content")
 					.ok()
 					.flatten();
+
+				// If not reasoning_content, but
+				if reasoning_content.is_none() && options_set.normalize_reasoning_content().unwrap_or_default() {
+					(content, reasoning_content) = extract_think(content);
+				}
+
+				let content = MessageContent::from(content);
+
 				(Some(content), reasoning_content)
 			} else {
 				let content = first_choice
@@ -355,6 +364,35 @@ impl OpenAIAdapter {
 }
 
 // region:    --- Support
+
+fn extract_think(content: String) -> (String, Option<String>) {
+	let start_tag = "<think>";
+	let end_tag = "</think>";
+
+	if let Some(start) = content.find(start_tag) {
+		if let Some(end) = content[start + start_tag.len()..].find(end_tag) {
+			let start_pos = start;
+			let end_pos = start + start_tag.len() + end;
+
+			let think_content = &content[start_pos + start_tag.len()..end_pos];
+			let think_content = think_content.trim();
+
+			// Extract parts of the original content without cloning until necessary
+			let before_think = &content[..start_pos];
+			let after_think = &content[end_pos + end_tag.len()..];
+
+			// Remove a leading newline in `after_think` if it starts with '\n'
+			let after_think = after_think.trim_start();
+
+			// Construct the final cleaned content in one allocation
+			let cleaned_content = format!("{}{}", before_think, after_think);
+
+			return (cleaned_content, Some(think_content.to_string()));
+		}
+	}
+
+	(content, None)
+}
 
 struct OpenAIRequestParts {
 	messages: Vec<Value>,

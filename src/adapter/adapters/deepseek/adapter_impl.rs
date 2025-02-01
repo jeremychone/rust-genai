@@ -43,8 +43,12 @@ impl Adapter for DeepSeekAdapter {
 		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)
 	}
 
-	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
-		OpenAIAdapter::to_chat_response(model_iden, web_response)
+	fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse> {
+		OpenAIAdapter::to_chat_response(model_iden, web_response, options_set)
 	}
 
 	fn to_chat_stream(

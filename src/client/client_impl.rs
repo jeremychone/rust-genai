@@ -58,7 +58,7 @@ impl Client {
 		let model = target.model.clone();
 
 		let WebRequestData { headers, payload, url } =
-			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)?;
+			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
 
 		let web_res =
 			self.web_client()
@@ -69,7 +69,7 @@ impl Client {
 					webc_error,
 				})?;
 
-		let chat_res = AdapterDispatcher::to_chat_response(model, web_res)?;
+		let chat_res = AdapterDispatcher::to_chat_response(model, web_res, options_set)?;
 
 		Ok(chat_res)
 	}

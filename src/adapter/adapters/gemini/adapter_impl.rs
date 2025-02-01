@@ -137,7 +137,11 @@ impl Adapter for GeminiAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		_options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse> {
 		let WebResponse { body, .. } = web_response;
 
 		let gemini_response = Self::body_to_gemini_chat_response(&model_iden.clone(), body)?;

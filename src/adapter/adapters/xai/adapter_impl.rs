@@ -43,8 +43,12 @@ impl Adapter for XaiAdapter {
 		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)
 	}
 
-	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
-		OpenAIAdapter::to_chat_response(model_iden, web_response)
+	fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		chat_options: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse> {
+		OpenAIAdapter::to_chat_response(model_iden, web_response, chat_options)
 	}
 
 	fn to_chat_stream(

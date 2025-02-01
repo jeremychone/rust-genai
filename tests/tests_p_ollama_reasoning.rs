@@ -6,7 +6,8 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-const MODEL: &str = "llama3.2:3b"; // phi3:latest
+// NOTE: Sometimes the 1.5b does not provide the reasoning, switch to 8b if that occurs.
+const MODEL: &str = "deepseek-r1:1.5b"; // "deepseek-r1:8b"
 
 // region:    --- Chat
 
@@ -35,6 +36,11 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
 }
 
+/// Note: Unfortunately, sometime, the 1.5b does not provide reasoning.
+#[tokio::test]
+async fn test_chat_reasoning_ok() -> Result<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL, true).await
+}
 // endregion: --- Chat
 
 // region:    --- Chat Stream Tests

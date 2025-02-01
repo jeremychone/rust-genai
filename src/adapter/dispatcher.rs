@@ -96,16 +96,20 @@ impl AdapterDispatcher {
 		}
 	}
 
-	pub fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
+	pub fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse> {
 		match model_iden.adapter_kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_iden, web_response),
-			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_iden, web_response),
-			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response),
-			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response),
-			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response),
-			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response),
-			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response),
-			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response),
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
 	}
 

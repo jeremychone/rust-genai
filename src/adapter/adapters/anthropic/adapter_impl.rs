@@ -128,7 +128,11 @@ impl Adapter for AnthropicAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
+	fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		_chat_options: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
 		// -- Capture the usage

@@ -6,7 +6,9 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-const MODEL: &str = "llama3.2:3b"; // phi3:latest
+// Note: In groq, the llama3.1 or gemma models fail to produce JSON without a proposed schema.
+//       With the "tool-use" groq version, it will work correctly.
+const MODEL: &str = "deepseek-r1-distill-llama-70b";
 
 // region:    --- Chat
 
@@ -22,7 +24,7 @@ async fn test_chat_multi_system_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat_json_mode_ok() -> Result<()> {
-	common_tests::common_test_chat_json_mode_ok(MODEL, false).await
+	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
 }
 
 #[tokio::test]
@@ -33,6 +35,11 @@ async fn test_chat_temperature_ok() -> Result<()> {
 #[tokio::test]
 async fn test_chat_stop_sequences_ok() -> Result<()> {
 	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
+}
+
+#[tokio::test]
+async fn test_chat_reasoning_ok() -> Result<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL, true).await
 }
 
 // endregion: --- Chat
@@ -49,12 +56,10 @@ async fn test_chat_stream_capture_content_ok() -> Result<()> {
 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
-// /// COMMENTED FOR NOW AS OLLAMA OpenAI Compatibility Layer does not support
-// /// usage tokens when streaming. See https://github.com/ollama/ollama/issues/4448
-// #[tokio::test]
-// async fn test_chat_stream_capture_all_ok() -> Result<()> {
-// 	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
-// }
+#[tokio::test]
+async fn test_chat_stream_capture_all_ok() -> Result<()> {
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
+}
 
 // endregion: --- Chat Stream Tests
 
@@ -62,17 +67,16 @@ async fn test_chat_stream_capture_content_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_resolver_auth_ok() -> Result<()> {
-	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_single("ollama")).await
+	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("GROQ_API_KEY")).await
 }
 
 // endregion: --- Resolver Tests
 
 // region:    --- List
 
-/// NOTE this test assume the "llama3.1:8b" is present.
 #[tokio::test]
 async fn test_list_models() -> Result<()> {
-	common_tests::common_test_list_models(AdapterKind::Ollama, "llama3.1:8b").await
+	common_tests::common_test_list_models(AdapterKind::Groq, "llama-3.1-70b-versatile").await
 }
 
 // endregion: --- List
