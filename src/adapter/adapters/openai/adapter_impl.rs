@@ -3,7 +3,7 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, MetaUsage, ToolCall,
+	ContentPart, ImageSource, MessageContent, MetaUsage, ReasoningEffort, ToolCall,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -22,7 +22,8 @@ const MODELS: &[&str] = &[
 	//
 	"gpt-4o",
 	"gpt-4o-mini",
-	"o1-preview",
+	"o3-mini",
+	"o1",
 	"o1-mini",
 ];
 
@@ -143,6 +144,8 @@ impl OpenAIAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
+		let model_name = &model.model_name;
+		let adapter_kind = model.adapter_kind;
 
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
@@ -158,15 +161,36 @@ impl OpenAIAdapter {
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
+		// -- compute reasoning_effort and eventual trimmed model_name
+		// For now, just for openai AdapterKind
+		let (reasoning_effort, model_name): (Option<ReasoningEffort>, &str) =
+			if matches!(adapter_kind, AdapterKind::OpenAI) {
+				let (reasoning_effort, model_name) = options_set
+					.reasoning_effort()
+					.cloned()
+					.map(|v| (Some(v), model_name.as_ref()))
+					.unwrap_or_else(|| ReasoningEffort::from_model_name(model_name));
+
+				(reasoning_effort, model_name)
+			} else {
+				(None, model_name.as_ref())
+			};
+
 		// -- Build the basic payload
-		let model_name = model.model_name.to_string();
-		let OpenAIRequestParts { messages, tools } = Self::into_openai_request_parts(model, chat_req)?;
+
+		let OpenAIRequestParts { messages, tools } = Self::into_openai_request_parts(&model, chat_req)?;
 		let mut payload = json!({
 			"model": model_name,
 			"messages": messages,
 			"stream": stream
 		});
 
+		// -- Set reasoning effort
+		if let Some(reasoning_effort) = reasoning_effort {
+			payload.x_insert("reasoning_effort", reasoning_effort.to_lower_str())?;
+		}
+
+		// -- Tools
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
 		}
@@ -246,7 +270,7 @@ impl OpenAIAdapter {
 	/// Takes the genai ChatMessages and builds the OpenAIChatRequestParts
 	/// - `genai::ChatRequest.system`, if present, is added as the first message with role 'system'.
 	/// - All messages get added with the corresponding roles (tools are not supported for now)
-	fn into_openai_request_parts(_model_iden: ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
+	fn into_openai_request_parts(_model_iden: &ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 
 		// -- Process the system

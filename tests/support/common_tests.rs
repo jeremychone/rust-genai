@@ -22,10 +22,9 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
-	assert!(
-		!get_option_value!(chat_res.content).is_empty(),
-		"Content should not be empty"
-	);
+	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
 	let usage = chat_res.usage;
 	let input_tokens = get_option_value!(usage.input_tokens);
 	let output_tokens = get_option_value!(usage.output_tokens);

@@ -13,7 +13,7 @@ impl std::fmt::Display for ModelName {
 	}
 }
 
-// -- Froms
+// region:    --- Froms
 
 impl From<ModelName> for String {
 	fn from(model_name: ModelName) -> Self {
@@ -51,3 +51,5 @@ impl Deref for ModelName {
 		&self.0
 	}
 }
+
+// endregion: --- Froms

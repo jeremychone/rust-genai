@@ -82,18 +82,27 @@ impl AdapterKind {
 
 /// From Model implementations
 impl AdapterKind {
-	/// A very simplistic default mapper for now.
-	///  - starts_with "gpt"      -> OpenAI
-	///  - starts_with "claude"   -> Anthropic
-	///  - starts_with "command"  -> Cohere
-	///  - starts_with "gemini"   -> Gemini
-	///  - model in Groq models   -> Groq
-	///  - For anything else      -> Ollama
+	/// This is a default static mapping from model names to AdapterKind.
+	///
+	/// When more control is needed, the `ServiceTypeResolver` can be used
+	/// to map a model name to any adapter and endpoint.
+	///
+	///  - OpenAI     - starts_with "gpt", "o3", "o1", "chatgpt"
+	///  - Anthropic  - starts_with "claude"
+	///  - Cohere     - starts_with "command"
+	///  - Gemini     - starts_with "gemini"
+	///  - Groq       - model in Groq models
+	///  - DeepSeek   - model in DeepSeek models (deepseek.com)
+	///  - Ollama     - For anything else
 	///
 	/// Note: At this point, this will never fail as the fallback is the Ollama adapter.
 	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
-		if model.starts_with("gpt") || model.starts_with("chatgpt") || model.starts_with("o1-") {
+		if model.starts_with("gpt")
+			|| model.starts_with("o3-")
+			|| model.starts_with("o1-")
+			|| model.starts_with("chatgpt")
+		{
 			Ok(Self::OpenAI)
 		} else if model.starts_with("claude") {
 			Ok(Self::Anthropic)

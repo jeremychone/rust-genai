@@ -42,9 +42,12 @@ pub struct ChatOptions {
 	/// Specifies sequences used as end markers when generating text
 	pub stop_sequences: Vec<String>,
 
+	// -- Reasoning options
 	/// Denote if the content should be parsed to extract eventual `<think>...</think>` content
 	/// into `ChatResponse.reasoning_content`
 	pub normalize_reasoning_content: Option<bool>,
+
+	pub reasoning_effort: Option<ReasoningEffort>,
 }
 
 /// Chainable Setters
@@ -89,6 +92,19 @@ impl ChatOptions {
 		self
 	}
 
+	/// Set the `response_format` for this request.
+	pub fn with_response_format(mut self, res_format: impl Into<ChatResponseFormat>) -> Self {
+		self.response_format = Some(res_format.into());
+		self
+	}
+
+	pub fn with_reasoning_effort(mut self, value: ReasoningEffort) -> Self {
+		self.reasoning_effort = Some(value);
+		self
+	}
+
+	// -- Deprecated
+
 	/// Set the `json_mode` for this request.
 	///
 	/// IMPORTANT: This is deprecated now; use `with_response_format(ChatResponseFormat::JsonMode)`
@@ -104,13 +120,49 @@ impl ChatOptions {
 		}
 		self
 	}
+}
 
-	/// Set the `response_format` for this request.
-	pub fn with_response_format(mut self, res_format: impl Into<ChatResponseFormat>) -> Self {
-		self.response_format = Some(res_format.into());
-		self
+// region:    --- ReasoningEffort
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ReasoningEffort {
+	Low,
+	Medium,
+	High,
+}
+
+impl ReasoningEffort {
+	pub fn to_lower_str(&self) -> &'static str {
+		match self {
+			ReasoningEffort::Low => "low",
+			ReasoningEffort::Medium => "medium",
+			ReasoningEffort::High => "high",
+		}
+	}
+
+	pub fn from_lower_str(name: &str) -> Option<Self> {
+		match name {
+			"low" => Some(ReasoningEffort::Low),
+			"medium" => Some(ReasoningEffort::Medium),
+			"high" => Some(ReasoningEffort::High),
+			_ => None,
+		}
+	}
+
+	/// If the model_name ends with the lowercase string of a ReasoningEffort variant, return the ReasoningEffort and the trimmed model_name.
+	/// Otherwise, return the model_name as is.
+	/// Returns (reasoning_effort, model_name)
+	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
+		if let Some((prefix, last)) = model_name.rsplit_once('-') {
+			if let Some(effort) = ReasoningEffort::from_lower_str(last) {
+				return (Some(effort), prefix);
+			}
+		}
+		(None, model_name)
 	}
 }
+
+// endregion: --- ReasoningEffort
 
 // region:    --- ChatOptionsSet
 
@@ -159,7 +211,6 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.capture_usage))
 	}
 
-	#[allow(unused)] // for now, until implemented
 	pub fn capture_content(&self) -> Option<bool> {
 		self.chat
 			.and_then(|chat| chat.capture_content)
@@ -183,6 +234,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.normalize_reasoning_content)
 			.or_else(|| self.client.and_then(|client| client.normalize_reasoning_content))
+	}
+
+	pub fn reasoning_effort(&self) -> Option<&ReasoningEffort> {
+		self.chat
+			.and_then(|chat| chat.reasoning_effort.as_ref())
+			.or_else(|| self.client.and_then(|client| client.reasoning_effort.as_ref()))
 	}
 
 	/// Returns true only if there is a ChatResponseFormat::JsonMode
