@@ -1,9 +1,24 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
-> **IMPORTANT:** `0.1.x` will still have some breaking changes in patches.
-> - Make sure to **lock** your version, e.g., `genai = "=0.1.19"`.
-> - Version `0.2.x` will follow semver more strictly.
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2025-02-02 - [v0.1.20](https://github.com/jeremychone/rust-genai/compare/v0.1.19...v0.1.20)
+
+- `+` `reasoning_content` normalization
+  - `deepseek-reasoner` (DeepSeekR1) from response `reasoning_content`
+  - For #Ollama/@GroqInc with `ChatOptions` `normalize_reasoning_content: true`, `reasoning_content` will be populated from the `<string>` content.
+
+- `^` `deepseek-reasoner` (DeepSeekR1) support for stream reasoning content.
+  - With `ChatOptions` `capture_reasoning_content` to capture/concatenate reasoning chunk stream events.
+
+- `+` **o3mini** with `reasoning_effort` low/medium/high, and `o3-mini-low` (medium/high) model aliases with corresponding reasoning effort.
+
+- `!` API CHANGE (minor) - normalize to `usage.prompt_tokens` `usage.completion_tokens`
+  - `usage.prompt_tokens` replaces `usage.input_tokens` and `usage.completion_tokens` replaces `usage.output_tokens`
+  - Both `.input_tokens` and `.output_tokens` are still present in `MetaUsage` (though they do not get serialized to JSON)
+
+- `+` Added support for `usage.prompt_tokens_details` and `usage.completion_tokens_details`
+
 
 ## 2025-01-27 - [v0.1.19](https://github.com/jeremychone/rust-genai/compare/v0.1.18...v0.1.19)
 

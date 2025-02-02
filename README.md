@@ -1,6 +1,6 @@
-# genai - Multi-AI Providers Library for Rust.
+# genai - Multi-AI Providers Library for Rust
 
-Currently supports natively: **DeepSeek** (deepseek.com & Groq),  **OpenAI**, **Anthropic**, **groq**, **Ollama**, **Gemini**, **Cohere** (more to come)
+Currently supports natively: **DeepSeek** (deepseek.com & Groq), **OpenAI**, **Anthropic**, **Groq**, **Ollama**, **Gemini**, **Cohere** (more to come)
 
 <div align="center">
 
@@ -17,16 +17,13 @@ genai = "=0.1.19" # Version lock for `0.1.x`
 
 <br />
 
-Provides a common and ergonomic single API to many generative AI Providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, ....
+Provides a common and ergonomic single API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-- **IMPORTANT 1** `0.1.x` will still have some breaking changes in patches, so make sure to **lock** your version, e.g., `genai = "=0.1.19"`. In short, `0.1.x` can be considered "beta releases." Version `0.2.x` will follow semver more strictly.
-
-- **IMPORTANT 2** `genai` is focused on normalizing chat completion APIs across AI providers and is not intended to be a full representation of a given AI provider. For this, there are excellent libraries such as [async-openai](https://crates.io/search?q=async-openai) for OpenAI and [ollama-rs](https://crates.io/crates/ollama-rs) for Ollama.
-
-Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **GenAI** for multi-AI capabilities.
+Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **genai** for multi-AI capabilities.
 
 ## Key Features
 
+- DeepSeekR1 support, with `reasoning_content` (and stream support) + DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek (Direct chat and stream) (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
@@ -128,8 +125,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data (i.e., for api_key) per adapter kind.
 - [examples/c03-mapper.rs](examples/c03-mapper.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
 - [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per request level.
-- [examples/c05-model-names.rs](examples/c05-model-names.rs) - Show how to get model names per AdapterKind.
-- [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs) - For custom Auth, EndPoint, and Model.
+- [examples/c05-model-names.rs](examples/c05-model-names.rs) - Shows how to get model names per AdapterKind.
+- [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs) - For custom Auth, Endpoint, and Model.
 - [examples/c07-image.rs](examples/c07-image.rs) - Image Analysis support
 
 <br />
@@ -155,17 +152,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Thanks to [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
 - Thanks to [@tusharmath](https://github.com/tusharmath) for make webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
 - Thanks to [@giangndm](https://github.com/giangndm) for make stream is send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
-- Thanks to [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement groq completions
+- Thanks to [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
 
 
 ## Library Focus:
 
-- Focuses on standardizing chat completion APIs across major AI Services.
+- Focuses on standardizing chat completion APIs across major AI services.
 
 - Native implementation, meaning no per-service SDKs.
-    - Reason: While there are some variations between all of the various APIs, they all follow the same pattern and high-level flow and constructs. Managing the differences at a lower layer is actually simpler and more cumulative accross services than doing sdks gymnastic.
+    - Reason: While there are some variations between all of the various APIs, they all follow the same pattern and high-level flow and constructs. Managing the differences at a lower layer is actually simpler and more cumulative across services than doing SDKs gymnastics.
 
-- Prioritizes ergonomics and commonality, with depth being secondary. (If you require complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); they are both excellent and easy to use.)
+- Prioritizes ergonomics and commonality, with depth being secondary. (If you require a complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); they are both excellent and easy to use.)
 
 - Initially, this library will mostly focus on text chat API (images, or even function calling in the first stage).
 
@@ -175,23 +172,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## ChatOptions
 
-| Property      | OpenAI        | Anthropic                   | Ollama        | Groq          | Gemini `generationConfig.` | Cohere        |
-|---------------|---------------|-----------------------------|---------------|---------------|----------------------------|---------------|
-| `temperature` | `temperature` | `temperature`               | `temperature` | `temperature` | `temperature`              | `temperature` |
-| `max_tokens`  | `max_tokens`  | `max_tokens` (default 1024) | `max_tokens`  | `max_tokens`  | `maxOutputTokens`          | `max_tokens`  |
-| `top_p`       | `top_p`       | `top_p`                     | `top_p`       | `top_p`       | `topP`                     | `p`           |
+- **(1)** - **OpenAI compatibles** notes
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI
+
+| Property      | OpenAI Compatibles (*1) | Anthropic                   | Gemini `generationConfig.` | Cohere        |
+|---------------|-------------------------|-----------------------------|----------------------------|---------------|
+| `temperature` | `temperature`           | `temperature`               | `temperature`              | `temperature` |
+| `max_tokens`  | `max_tokens`            | `max_tokens` (default 1024) | `maxOutputTokens`          | `max_tokens`  |
+| `top_p`       | `top_p`                 | `top_p`                     | `topP`                     | `p`           |
 
 ## MetaUsage
 
-| Property        | OpenAI <br />`usage.` | Ollama <br />`usage.`   | Groq `x_groq.usage.` | Anthropic `usage.`      | Gemini `usageMetadata.`    | Cohere `meta.tokens.` |
-|-----------------|-----------------------|-------------------------|----------------------|-------------------------|----------------------------|-----------------------|
-| `input_tokens`  | `prompt_tokens`       | `prompt_tokens` (1)     | `prompt_tokens`      | `input_tokens` (added)  | `promptTokenCount` (2)     | `input_tokens`        |
-| `output_tokens` | `completion_tokens`   | `completion_tokens` (1) | `completion_tokens`  | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
-| `total_tokens`  | `total_tokens`        | `total_tokens` (1)      | `completion_tokens`  | (computed)              | `totalTokenCount`  (2)     | (computed)            |
+| Property                    | OpenAI Compatibles (1)      | Anthropic `usage.`      | Gemini `usageMetadata.`    | Cohere `meta.tokens.` |
+|-----------------------------|-----------------------------|-------------------------|----------------------------|-----------------------|
+| `prompt_tokens`             | `prompt_tokens`             | `input_tokens` (added)  | `promptTokenCount` (2)     | `input_tokens`        |
+| `completion_tokens`         | `completion_tokens`         | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
+| `total_tokens`              | `total_tokens`              | (computed)              | `totalTokenCount`  (2)     | (computed)            |
+| `prompt_tokens_details`     | `prompt_tokens_details`     | N/A for now             | N/A for now                | N/A for now           |
+| `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
 
-> **Note (1)**: At this point, `Ollama` does not emit input/output tokens when streaming due to the Ollama OpenAI compatibility layer limitation. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
 
-> **Note (2)** Right now, with [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not really clear if the usage for each event is cumulative or needs to be added. Currently, it appears to be cumulative (i.e., the last message has the total amount of input, output, and total tokens), so that will be the assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
+- **(1)** - **OpenAI compatibles** notes
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI
+	- For **Groq**, the property `x_groq.usage.`  
+	- At this point, **Ollama** does not emit input/output tokens when streaming due to the Ollama OpenAI compatibility layer limitation. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
+	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider (or None)
+
+- **(2)**: **Gemini** tokens
+	- Right now, with [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not really clear if the usage for each event is cumulative or needs to be added. Currently, it appears to be cumulative (i.e., the last message has the total amount of input, output, and total tokens), so that will be the assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
 
 
 ## Notes on Possible Direction
@@ -199,7 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Will add more data on ChatResponse and ChatStream, especially metadata about usage.
 - Add vision/image support to chat messages and responses.
 - Add function calling support to chat messages and responses.
-- Add `embbed` and `embbed_batch`
+- Add `embed` and `embed_batch`
 - Add the AWS Bedrock variants (e.g., Mistral, and Anthropic). Most of the work will be on "interesting" token signature scheme (without having to drag big SDKs, might be below feature).
 - Add the Google VertexAI variants.
 - (might) add the Azure OpenAI variant (not sure yet).
@@ -209,4 +217,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - crates.io: [crates.io/crates/genai](https://crates.io/crates/genai)
 - GitHub: [github.com/jeremychone/rust-genai](https://github.com/jeremychone/rust-genai)
-- Sponsored by [BriteSnow](https://britesnow.com) (Jeremy Chones's consulting company)
+- Sponsored by [BriteSnow](https://britesnow.com) (Jeremy Chone's consulting company)
