@@ -1,6 +1,6 @@
 mod support;
 
-use crate::support::common_tests;
+use crate::support::{common_tests, Check};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 use serial_test::serial;
@@ -17,7 +17,7 @@ const MODEL: &str = "claude-3-haiku-20240307";
 #[tokio::test]
 #[serial(anthropic)]
 async fn test_chat_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_simple_ok(MODEL).await
+	common_tests::common_test_chat_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -40,7 +40,7 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 #[tokio::test]
 #[serial(anthropic)]
 async fn test_chat_json_mode_ok() -> Result<()> {
-	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
+	common_tests::common_test_chat_json_mode_ok(MODEL, Some(Check::USAGE)).await
 }
 
 // endregion: --- Chat
@@ -50,7 +50,7 @@ async fn test_chat_json_mode_ok() -> Result<()> {
 #[tokio::test]
 #[serial(anthropic)]
 async fn test_chat_stream_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -62,7 +62,7 @@ async fn test_chat_stream_capture_content_ok() -> Result<()> {
 #[tokio::test]
 #[serial(anthropic)]
 async fn test_chat_stream_capture_all_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
 }
 // endregion: --- Chat Stream Tests
 

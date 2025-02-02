@@ -106,6 +106,7 @@ impl futures::Stream for CohereStreamer {
 									let inter_stream_end = InterStreamEnd {
 										captured_usage,
 										captured_content: self.captured_data.content.take(),
+										captured_reasoning_content: self.captured_data.reasoning_content.take(),
 									};
 
 									InterStreamEvent::End(inter_stream_end)

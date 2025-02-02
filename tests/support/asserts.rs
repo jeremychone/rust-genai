@@ -1,3 +1,5 @@
+//! Some assert convenient functions
+
 use std::convert::Into;
 use std::fmt::Formatter;
 

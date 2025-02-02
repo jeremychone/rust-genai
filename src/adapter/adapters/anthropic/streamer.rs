@@ -101,6 +101,7 @@ impl futures::Stream for AnthropicStreamer {
 							let inter_stream_end = InterStreamEnd {
 								captured_usage,
 								captured_content: self.captured_data.content.take(),
+								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							};
 
 							// TODO: Need to capture the data as needed

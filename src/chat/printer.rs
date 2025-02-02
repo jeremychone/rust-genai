@@ -53,6 +53,7 @@ async fn print_chat_stream_inner(
 	let print_events = options.and_then(|o| o.print_events).unwrap_or_default();
 
 	let mut first_chunk = true;
+	let mut first_reasoning_chunk = true;
 
 	while let Some(Ok(stream_event)) = stream.next().await {
 		let (event_info, content) = {
@@ -71,6 +72,18 @@ async fn print_chat_stream_inner(
 						first_chunk = false;
 						(
 							Some("\n-- ChatStreamEvent::Chunk (concatenated):\n".to_string()),
+							Some(content),
+						)
+					} else {
+						(None, Some(content))
+					}
+				}
+
+				ChatStreamEvent::ReasoningChunk(StreamChunk { content }) => {
+					if print_events && first_reasoning_chunk {
+						first_reasoning_chunk = false;
+						(
+							Some("\n-- ChatStreamEvent::ReasoningChunk (concatenated):\n".to_string()),
 							Some(content),
 						)
 					} else {

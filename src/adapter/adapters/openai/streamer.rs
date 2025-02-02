@@ -51,6 +51,7 @@ impl futures::Stream for OpenAIStreamer {
 						self.done = true;
 
 						// -- Build the usage and captured_content
+						// TODO: Needs to clarify wh for usage we do not adopt the same strategy from captured content below
 						let captured_usage = if self.options.capture_usage {
 							self.captured_data.usage.take()
 						} else {
@@ -60,6 +61,7 @@ impl futures::Stream for OpenAIStreamer {
 						let inter_stream_end = InterStreamEnd {
 							captured_usage,
 							captured_content: self.captured_data.content.take(),
+							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 						};
 
 						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
@@ -79,6 +81,7 @@ impl futures::Stream for OpenAIStreamer {
 
 					// If we have a first choice, then it's a normal message
 					if let Some(mut first_choice) = first_choice {
+						// -- Finish Reason
 						// If finish_reason exists, it's the end of this choice.
 						// Since we support only a single choice, we can proceed,
 						// as there might be other messages, and the last one contains data: `[DONE]`
@@ -107,6 +110,7 @@ impl futures::Stream for OpenAIStreamer {
 
 							continue;
 						}
+						// -- Content
 						// If there is no finish_reason but there is some content, we can get the delta content and send the Internal Stream Event
 						else if let Some(content) = first_choice.x_take::<Option<String>>("/delta/content")? {
 							// Add to the captured_content if chat options allow it
@@ -119,6 +123,21 @@ impl futures::Stream for OpenAIStreamer {
 
 							// Return the Event
 							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
+						}
+						// -- Reasoning Content
+						else if let Some(reasoning_content) =
+							first_choice.x_take::<Option<String>>("/delta/reasoning_content")?
+						{
+							// Add to the captured_content if chat options allow it
+							if self.options.capture_reasoning_content {
+								match self.captured_data.reasoning_content {
+									Some(ref mut c) => c.push_str(&reasoning_content),
+									None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
+								}
+							}
+
+							// Return the Event
+							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(reasoning_content))));
 						}
 						// If we do not have content, then log a trace message
 						else {

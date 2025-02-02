@@ -40,6 +40,9 @@ impl Stream for ChatStream {
 				let chat_event = match event {
 					InterStreamEvent::Start => ChatStreamEvent::Start,
 					InterStreamEvent::Chunk(content) => ChatStreamEvent::Chunk(StreamChunk { content }),
+					InterStreamEvent::ReasoningChunk(content) => {
+						ChatStreamEvent::ReasoningChunk(StreamChunk { content })
+					}
 					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 				};
 				Poll::Ready(Some(Ok(chat_event)))
@@ -56,13 +59,16 @@ impl Stream for ChatStream {
 // region:    --- ChatStreamEvent
 
 /// The normalized chat stream event for any provider when calling `Client::exec`.
-#[derive(Debug, From, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ChatStreamEvent {
 	/// Represents the start of the stream. The first event.
 	Start,
 
-	/// Represents each chunk response. Currently, it only contains text content.
+	/// Represents each content chunk. Currently, it only contains text content.
 	Chunk(StreamChunk),
+
+	/// Represents the reasoning_content chunk.
+	ReasoningChunk(StreamChunk),
 
 	/// Represents the end of the stream.
 	/// It will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`.
@@ -80,11 +86,17 @@ pub struct StreamChunk {
 /// StreamEnd content, with the eventual `.captured_usage` and `.captured_content`.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StreamEnd {
-	/// The eventual captured UsageMeta.
+	/// The eventual captured usage metadata.
+	/// Note: This requires the ChatOptions `capture_usage` flag to be set to true.
 	pub captured_usage: Option<MetaUsage>,
 
-	/// The optional captured full content.
+	/// The eventual captured full content.
+	/// Note: This requires the ChatOptions `capture_content` flag to be set to true.
 	pub captured_content: Option<MessageContent>,
+
+	/// The eventual captured
+	/// Note: This requires the ChatOptions `capture_reasoning` flag to be set to true.
+	pub captured_reasoning_content: Option<String>,
 }
 
 impl From<InterStreamEnd> for StreamEnd {
@@ -92,6 +104,7 @@ impl From<InterStreamEnd> for StreamEnd {
 		StreamEnd {
 			captured_usage: inter_end.captured_usage,
 			captured_content: inter_end.captured_content.map(MessageContent::from),
+			captured_reasoning_content: inter_end.captured_reasoning_content,
 		}
 	}
 }

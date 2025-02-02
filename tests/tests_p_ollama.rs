@@ -12,7 +12,7 @@ const MODEL: &str = "llama3.2:3b"; // phi3:latest
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_simple_ok(MODEL).await
+	common_tests::common_test_chat_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -22,7 +22,8 @@ async fn test_chat_multi_system_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat_json_mode_ok() -> Result<()> {
-	common_tests::common_test_chat_json_mode_ok(MODEL, false).await
+	// Note: Ollama does not capture Uage when JSON mode.
+	common_tests::common_test_chat_json_mode_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -41,7 +42,7 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat_stream_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]

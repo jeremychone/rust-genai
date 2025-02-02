@@ -1,11 +1,13 @@
 mod support;
 
-use crate::support::common_tests;
+use crate::support::{common_tests, Check};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
+// NOTE: For now (2025-02-02), use two models as Google models are severely rate limited for tier 1
+//       and increasing the project tier does not seem trivial.
 const MODEL: &str = "gemini-1.5-flash-latest";
 
 #[allow(dead_code)]
@@ -15,7 +17,7 @@ const MODEL_FOR_IMAGE: &str = "gemini-2.0-flash-exp";
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_simple_ok(MODEL).await
+	common_tests::common_test_chat_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -25,7 +27,7 @@ async fn test_chat_multi_system_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat_json_structured_ok() -> Result<()> {
-	common_tests::common_test_chat_json_structured_ok(MODEL, true).await
+	common_tests::common_test_chat_json_structured_ok(MODEL, Some(Check::USAGE)).await
 }
 
 #[tokio::test]
@@ -44,7 +46,7 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat_stream_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -54,7 +56,7 @@ async fn test_chat_stream_capture_content_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat_stream_capture_all_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
 }
 
 // endregion: --- Chat Stream Tests

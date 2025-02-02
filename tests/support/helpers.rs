@@ -1,4 +1,5 @@
 use super::Result;
+use bitflags::parser::to_writer;
 use genai::chat::{ChatStream, ChatStreamEvent, StreamEnd};
 use tokio_stream::StreamExt;
 
@@ -26,14 +27,85 @@ macro_rules! get_option_value {
 	};
 }
 
-pub async fn extract_stream_end(mut chat_stream: ChatStream) -> Result<StreamEnd> {
+// region:    --- Check Flags
+
+bitflags::bitflags! {
+	#[derive(Clone)]
+	pub struct Check: u8 {
+		/// Check if the
+		const REASONING       = 0b00000001;
+		const USAGE           = 0b00000010;
+	}
+}
+
+// Custom Debug Implementation Using `to_writer`
+impl std::fmt::Debug for Check {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let mut buffer = String::new();
+		to_writer(self, &mut buffer).unwrap();
+		write!(f, "{}", buffer)
+	}
+}
+
+pub fn contains_checks(checks: Option<Check>, matching_check: Check) -> bool {
+	let Some(checks) = checks else { return false };
+
+	checks.contains(matching_check)
+}
+
+// Function to validate flags
+pub fn validate_checks(checks: Option<Check>, valid_flags: Check) -> Result<()> {
+	let Some(checks) = checks else { return Ok(()) };
+
+	let unsupported = checks - valid_flags;
+	if !unsupported.is_empty() {
+		return Err(format!("Unsupported flags passed for this test: {:?}", unsupported).into());
+	}
+
+	Ok(())
+}
+
+// endregion: --- Check Flags
+
+// region:    --- Stream Support
+
+pub struct StreamExtract {
+	// The stream end event
+	pub stream_end: StreamEnd,
+
+	// The extracted text content (does not need to have capture ChatOptions)
+	pub content: Option<String>,
+
+	pub reasoning_content: Option<String>,
+}
+
+pub async fn extract_stream_end(mut chat_stream: ChatStream) -> Result<StreamExtract> {
 	let mut stream_end: Option<StreamEnd> = None;
+
+	let mut content: Vec<String> = Vec::new();
+	let mut reasoning_content: Vec<String> = Vec::new();
+
 	while let Some(Ok(stream_event)) = chat_stream.next().await {
-		if let ChatStreamEvent::End(end_evt) = stream_event {
-			stream_end = Some(end_evt);
-			break;
+		match stream_event {
+			ChatStreamEvent::Start => (), // nothing to do
+			ChatStreamEvent::Chunk(s_chunk) => content.push(s_chunk.content),
+			ChatStreamEvent::ReasoningChunk(s_chunk) => reasoning_content.push(s_chunk.content),
+			ChatStreamEvent::End(s_end) => {
+				stream_end = Some(s_end);
+				break;
+			}
 		}
 	}
 
-	stream_end.ok_or("Should have a StreamEnd event".into())
+	let stream_end = stream_end.ok_or("Should have a StreamEnd event")?;
+	let content = (!content.is_empty()).then(|| content.join(""));
+	let reasoning_content = (!reasoning_content.is_empty()).then(|| reasoning_content.join(""));
+
+	Ok(StreamExtract {
+		stream_end,
+		content,
+		reasoning_content,
+	})
 }
+
+// endregion: --- Stream Support

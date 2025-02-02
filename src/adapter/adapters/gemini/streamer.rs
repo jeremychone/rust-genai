@@ -51,6 +51,7 @@ impl futures::Stream for GeminiStreamer {
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: self.captured_data.usage.take(),
 								captured_content: self.captured_data.content.take(),
+								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							};
 
 							InterStreamEvent::End(inter_stream_end)

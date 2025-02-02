@@ -1,6 +1,9 @@
 use crate::get_option_value;
 use crate::support::data::{get_b64_duck, IMAGE_URL_JPG_DUCK};
-use crate::support::{assert_contains, extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple, Result};
+use crate::support::{
+	assert_contains, contains_checks, extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple,
+	validate_checks, Check, Result, StreamExtract,
+};
 use genai::adapter::AdapterKind;
 use genai::chat::{
 	ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool, ToolResponse,
@@ -13,7 +16,9 @@ use value_ext::JsonValueExt;
 
 // region:    --- Chat
 
-pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
+pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> Result<()> {
+	validate_checks(checks.clone(), Check::REASONING)?;
+
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = seed_chat_req_simple();
@@ -21,20 +26,34 @@ pub async fn common_test_chat_simple_ok(model: &str) -> Result<()> {
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
-	// -- Check
+	// -- Check Content
 	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
 	assert!(!content.trim().is_empty(), "Content should not be empty");
 
-	let usage = chat_res.usage;
+	// -- Check Usage
+	let usage = &chat_res.usage;
 	let input_tokens = get_option_value!(usage.input_tokens);
 	let output_tokens = get_option_value!(usage.output_tokens);
 	let total_tokens = get_option_value!(usage.total_tokens);
-
 	assert!(total_tokens > 0, "total_tokens should be > 0");
 	assert!(
 		total_tokens == input_tokens + output_tokens,
 		"total_tokens should be equal to input_tokens + output_tokens"
 	);
+
+	// -- Check Reasoning Content
+	if contains_checks(checks, Check::REASONING) {
+		let reasoning_content = chat_res
+			.reasoning_content
+			.as_deref()
+			.ok_or("extract_stream_end SHOULD have extracted some reasoning_content")?;
+		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
+		// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.
+		assert!(
+			reasoning_content.len() > content.len(),
+			"Reasoning content should be > than the content"
+		);
+	}
 
 	Ok(())
 }
@@ -74,7 +93,9 @@ pub async fn common_test_chat_multi_system_ok(model: &str) -> Result<()> {
 
 /// Test with JSON mode enabled. This is not a structured output test.
 /// - test_token: This is to avoid checking the token (due to an Ollama bug when in JSON mode, no token is returned)
-pub async fn common_test_chat_json_mode_ok(model: &str, test_token: bool) -> Result<()> {
+pub async fn common_test_chat_json_mode_ok(model: &str, checks: Option<Check>) -> Result<()> {
+	validate_checks(checks.clone(), Check::USAGE)?;
+
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = ChatRequest::new(vec![
@@ -99,7 +120,7 @@ Reply in a JSON format."#,
 
 	// -- Check
 	// Ensure tokens are still counted
-	if test_token {
+	if contains_checks(checks, Check::USAGE) {
 		// Ollama does not send back token usage when in JSON mode
 		let usage = &chat_res.usage;
 		let total_tokens = get_option_value!(usage.total_tokens);
@@ -118,7 +139,9 @@ Reply in a JSON format."#,
 
 /// Test with JSON mode enabled. This is not a structured output test.
 /// - test_token: This is to avoid checking the token (due to an Ollama bug when in JSON mode, no token is returned)
-pub async fn common_test_chat_json_structured_ok(model: &str, test_token: bool) -> Result<()> {
+pub async fn common_test_chat_json_structured_ok(model: &str, checks: Option<Check>) -> Result<()> {
+	validate_checks(checks.clone(), Check::USAGE)?;
+
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = ChatRequest::new(vec![
@@ -164,7 +187,7 @@ Reply in a JSON format."#,
 
 	// -- Check
 	// Ensure tokens are still counted
-	if test_token {
+	if contains_checks(checks, Check::USAGE) {
 		// Ollama does not send back token usage when in JSON mode
 		let usage = &chat_res.usage;
 		let total_tokens = get_option_value!(usage.total_tokens);
@@ -226,29 +249,30 @@ pub async fn common_test_chat_stop_sequences_ok(model: &str) -> Result<()> {
 	Ok(())
 }
 
-pub async fn common_test_chat_reasoning_ok(model: &str, normalize_reasoning_content: bool) -> Result<()> {
+pub async fn common_test_chat_reasoning_normalize_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
-	let client = if normalize_reasoning_content {
-		Client::builder()
-			.with_chat_options(ChatOptions::default().with_normalize_reasoning_content(true))
-			.build()
-	} else {
-		Client::default()
-	};
+	let client = Client::builder()
+		.with_chat_options(ChatOptions::default().with_normalize_reasoning_content(true))
+		.build();
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
-	// -- Check
+	// -- Check Content
 	chat_res.content_text_as_str();
 	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Reasoning Content
+	let reasoning_content = chat_res.reasoning_content.as_deref().ok_or("Should have reasoning_content")?;
+	assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
 	assert!(
-		!get_option_value!(chat_res.reasoning_content).is_empty(),
-		"response reasoning_content should not be empty"
+		reasoning_content.len() > content.len(),
+		"reasoning_content should be > than the content"
 	);
 
-	// check tokens
+	// -- Check Usage
 	let usage = chat_res.usage;
 	let input_tokens = get_option_value!(usage.input_tokens);
 	let output_tokens = get_option_value!(usage.output_tokens);
@@ -266,7 +290,9 @@ pub async fn common_test_chat_reasoning_ok(model: &str, normalize_reasoning_cont
 
 // region:    --- Chat Stream Tests
 
-pub async fn common_test_chat_stream_simple_ok(model: &str) -> Result<()> {
+pub async fn common_test_chat_stream_simple_ok(model: &str, checks: Option<Check>) -> Result<()> {
+	validate_checks(checks.clone(), Check::REASONING)?;
+
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = seed_chat_req_simple();
@@ -274,10 +300,16 @@ pub async fn common_test_chat_stream_simple_ok(model: &str) -> Result<()> {
 	// -- Exec
 	let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
 
-	// -- Check StreamEnd
-	let stream_end = extract_stream_end(chat_res.stream).await?;
+	// -- Extract Stream content
+	let StreamExtract {
+		stream_end,
+		content,
+		reasoning_content,
+	} = extract_stream_end(chat_res.stream).await?;
+	let content = content.ok_or("extract_stream_end SHOULD have extracted some content")?;
 
 	// -- Check no meta_usage and captured_content
+	assert!(!content.is_empty(), "Content streamed should not be empty");
 	assert!(
 		stream_end.captured_usage.is_none(),
 		"StreamEnd should not have any meta_usage"
@@ -287,9 +319,23 @@ pub async fn common_test_chat_stream_simple_ok(model: &str) -> Result<()> {
 		"StreamEnd should not have any captured_content"
 	);
 
+	// -- Check Reasoning Content
+	if contains_checks(checks, Check::REASONING) {
+		let reasoning_content =
+			reasoning_content.ok_or("extract_stream_end SHOULD have extracted some reasoning_content")?;
+		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
+		// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.
+		assert!(
+			reasoning_content.len() > content.len(),
+			"Reasoning content should be > than the content"
+		);
+	}
+
 	Ok(())
 }
 
+/// Check that the capture content flag does the capture
+/// NOTE: When checking for reasoning, the captured_reasoning_content should be None in this function
 pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::builder()
@@ -300,8 +346,12 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<(
 	// -- Exec
 	let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
 
-	// -- Check StreamEnd
-	let stream_end = extract_stream_end(chat_res.stream).await?;
+	// -- Extract Stream content
+	let StreamExtract {
+		stream_end,
+		content,
+		reasoning_content,
+	} = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check meta_usage
 	// Should be None as not captured
@@ -312,24 +362,41 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> Result<(
 
 	// -- Check captured_content
 	let captured_content = get_option_value!(stream_end.captured_content);
-
 	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
+
+	// -- Check Reasoning Content
+	// Should always be none, as it was not instructed to be captured.
+	assert!(
+		stream_end.captured_reasoning_content.is_none(),
+		"The captured_reasoning_content should be None"
+	);
 
 	Ok(())
 }
 
-pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
+pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<Check>) -> Result<()> {
+	validate_checks(checks.clone(), Check::REASONING)?;
+
 	// -- Setup & Fixtures
 	let client = Client::builder()
-		.with_chat_options(ChatOptions::default().with_capture_usage(true).with_capture_content(true))
+		.with_chat_options(
+			ChatOptions::default()
+				.with_capture_usage(true)
+				.with_capture_content(true)
+				.with_capture_reasoning_content(true),
+		)
 		.build();
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
 	let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
 
-	// -- Check StreamEnd
-	let stream_end = extract_stream_end(chat_res.stream).await?;
+	// -- Extract Stream content
+	let StreamExtract {
+		stream_end,
+		content,
+		reasoning_content,
+	} = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check meta_usage
 	let meta_usage = get_option_value!(stream_end.captured_usage);
@@ -349,7 +416,21 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str) -> Result<()> {
 
 	// -- Check captured_content
 	let captured_content = get_option_value!(stream_end.captured_content);
+	let captured_content = captured_content.text_as_str().ok_or("Captured content should have a text")?;
 	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
+
+	// -- Check Reasoning Content
+	if contains_checks(checks, Check::REASONING) {
+		let reasoning_content = stream_end
+			.captured_reasoning_content
+			.ok_or("captured_reasoning_content SHOULD have extracted some reasoning_content")?;
+		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
+		// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.
+		assert!(
+			reasoning_content.len() > captured_content.len(),
+			"Reasoning content should be > than the content"
+		);
+	}
 
 	Ok(())
 }

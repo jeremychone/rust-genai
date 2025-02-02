@@ -24,6 +24,10 @@ pub struct ChatOptions {
 	/// Will be used for this request if the Adapter/provider supports it.
 	pub top_p: Option<f64>,
 
+	/// Specifies sequences used as end markers when generating text
+	pub stop_sequences: Vec<String>,
+
+	// -- Stream Options
 	/// (for streaming only) Capture the meta usage when in stream mode
 	/// `StreamEnd` event payload will contain `captured_usage`
 	/// > Note: Will capture the `MetaUsage`
@@ -33,14 +37,15 @@ pub struct ChatOptions {
 	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_content`
 	pub capture_content: Option<bool>,
 
+	/// (for streaming only) Capture/concatenate the full message content from all content chunks
+	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_reasoning_content`
+	pub capture_reasoning_content: Option<bool>,
+
 	/// Specifies the response format for a chat request.
 	/// - `ChatResponseFormat::JsonMode` is for OpenAI-like API usage, where the user must specify in the prompt that they want a JSON format response.
 	///
 	/// NOTE: More response formats are coming soon.
 	pub response_format: Option<ChatResponseFormat>,
-
-	/// Specifies sequences used as end markers when generating text
-	pub stop_sequences: Vec<String>,
 
 	// -- Reasoning options
 	/// Denote if the content should be parsed to extract eventual `<think>...</think>` content
@@ -79,6 +84,12 @@ impl ChatOptions {
 	/// Set the `capture_content` for this request.
 	pub fn with_capture_content(mut self, value: bool) -> Self {
 		self.capture_content = Some(value);
+		self
+	}
+
+	/// Set the `capture_reasoning_content` for this request.
+	pub fn with_capture_reasoning_content(mut self, value: bool) -> Self {
+		self.capture_reasoning_content = Some(value);
 		self
 	}
 
@@ -205,6 +216,13 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.top_p))
 	}
 
+	pub fn stop_sequences(&self) -> &[String] {
+		self.chat
+			.map(|chat| chat.stop_sequences.deref())
+			.or_else(|| self.client.map(|client| client.stop_sequences.deref()))
+			.unwrap_or(&[])
+	}
+
 	pub fn capture_usage(&self) -> Option<bool> {
 		self.chat
 			.and_then(|chat| chat.capture_usage)
@@ -217,17 +235,16 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.capture_content))
 	}
 
+	pub fn capture_reasoning_content(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.capture_reasoning_content)
+			.or_else(|| self.client.and_then(|client| client.capture_reasoning_content))
+	}
+
 	pub fn response_format(&self) -> Option<&ChatResponseFormat> {
 		self.chat
 			.and_then(|chat| chat.response_format.as_ref())
 			.or_else(|| self.client.and_then(|client| client.response_format.as_ref()))
-	}
-
-	pub fn stop_sequences(&self) -> &[String] {
-		self.chat
-			.map(|chat| chat.stop_sequences.deref())
-			.or_else(|| self.client.map(|client| client.stop_sequences.deref()))
-			.unwrap_or(&[])
 	}
 
 	pub fn normalize_reasoning_content(&self) -> Option<bool> {

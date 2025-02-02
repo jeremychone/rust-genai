@@ -1,6 +1,6 @@
 mod support;
 
-use crate::support::common_tests;
+use crate::support::{common_tests, Check};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
@@ -13,7 +13,7 @@ const MODEL: &str = "deepseek-reasoner";
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_simple_ok(MODEL).await
+	common_tests::common_test_chat_simple_ok(MODEL, Some(Check::REASONING)).await
 }
 
 #[tokio::test]
@@ -38,8 +38,8 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_chat_reasoning_ok() -> Result<()> {
-	common_tests::common_test_chat_reasoning_ok(MODEL, false).await
+async fn test_chat_reasoning_normalize_ok() -> Result<()> {
+	common_tests::common_test_chat_reasoning_normalize_ok(MODEL).await
 }
 // endregion: --- Chat
 
@@ -47,20 +47,20 @@ async fn test_chat_reasoning_ok() -> Result<()> {
 
 // NOTE: genai does not support deepseek-reasonner stream yet.
 
-// #[tokio::test]
-// async fn test_chat_stream_simple_ok() -> Result<()> {
-// 	common_tests::common_test_chat_stream_simple_ok(MODEL).await
-// }
+#[tokio::test]
+async fn test_chat_stream_simple_ok() -> Result<()> {
+	common_tests::common_test_chat_stream_simple_ok(MODEL, Some(Check::REASONING)).await
+}
 
-// #[tokio::test]
-// async fn test_chat_stream_capture_content_ok() -> Result<()> {
-// 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
-// }
+#[tokio::test]
+async fn test_chat_stream_capture_content_ok() -> Result<()> {
+	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
+}
 
-// #[tokio::test]
-// async fn test_chat_stream_capture_all_ok() -> Result<()> {
-// 	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
-// }
+#[tokio::test]
+async fn test_chat_stream_capture_all_ok() -> Result<()> {
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL, Some(Check::REASONING)).await
+}
 
 // endregion: --- Chat Stream Tests
 

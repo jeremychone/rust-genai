@@ -17,16 +17,18 @@ pub fn get_api_key(auth: AuthData, model: &ModelIden) -> Result<String> {
 
 #[derive(Debug)]
 pub struct StreamerOptions {
-	pub capture_content: bool,
 	pub capture_usage: bool,
+	pub capture_reasoning_content: bool,
+	pub capture_content: bool,
 	pub model_iden: ModelIden,
 }
 
 impl StreamerOptions {
 	pub fn new(model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
-			capture_content: options_set.capture_content().unwrap_or(false),
 			capture_usage: options_set.capture_usage().unwrap_or(false),
+			capture_content: options_set.capture_content().unwrap_or(false),
+			capture_reasoning_content: options_set.capture_reasoning_content().unwrap_or(false),
 			model_iden,
 		}
 	}
@@ -40,6 +42,7 @@ impl StreamerOptions {
 pub struct StreamerCapturedData {
 	pub usage: Option<MetaUsage>,
 	pub content: Option<String>,
+	pub reasoning_content: Option<String>,
 }
 
 // endregion: --- Streamer Captured Data

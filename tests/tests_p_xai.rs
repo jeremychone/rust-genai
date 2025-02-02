@@ -16,7 +16,7 @@ const MODEL: &str = "grok-beta";
 #[tokio::test]
 #[serial(xai)]
 async fn test_chat_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_simple_ok(MODEL).await
+	common_tests::common_test_chat_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -57,7 +57,7 @@ async fn test_chat_temperature_ok() -> Result<()> {
 #[tokio::test]
 #[serial(xai)]
 async fn test_chat_stream_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
@@ -69,7 +69,7 @@ async fn test_chat_stream_capture_content_ok() -> Result<()> {
 #[tokio::test]
 #[serial(xai)]
 async fn test_chat_stream_capture_all_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
 }
 
 // endregion: --- Chat Stream Tests

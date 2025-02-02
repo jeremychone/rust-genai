@@ -14,6 +14,9 @@ pub struct InterStreamEnd {
 
 	// When `ChatOptions..capture_content == true`
 	pub captured_content: Option<String>,
+
+	// When `ChatOptions..capture_reasoning_content == true`
+	pub captured_reasoning_content: Option<String>,
 }
 
 /// Intermediary StreamEvent
@@ -21,5 +24,6 @@ pub struct InterStreamEnd {
 pub enum InterStreamEvent {
 	Start,
 	Chunk(String),
+	ReasoningChunk(String),
 	End(InterStreamEnd),
 }
