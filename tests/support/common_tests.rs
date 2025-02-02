@@ -32,13 +32,14 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> R
 
 	// -- Check Usage
 	let usage = &chat_res.usage;
-	let input_tokens = get_option_value!(usage.input_tokens);
-	let output_tokens = get_option_value!(usage.output_tokens);
+
+	let prompt_tokens = get_option_value!(usage.prompt_tokens);
+	let completion_tokens = get_option_value!(usage.completion_tokens);
 	let total_tokens = get_option_value!(usage.total_tokens);
 	assert!(total_tokens > 0, "total_tokens should be > 0");
 	assert!(
-		total_tokens == input_tokens + output_tokens,
-		"total_tokens should be equal to input_tokens + output_tokens"
+		total_tokens == prompt_tokens + completion_tokens,
+		"total_tokens should be equal to prompt_token + comletion_token"
 	);
 
 	// -- Check Reasoning Content
@@ -78,14 +79,14 @@ pub async fn common_test_chat_multi_system_ok(model: &str) -> Result<()> {
 		"Content should not be empty"
 	);
 	let usage = chat_res.usage;
-	let input_tokens = get_option_value!(usage.input_tokens);
-	let output_tokens = get_option_value!(usage.output_tokens);
+	let prompt_tokens = get_option_value!(usage.prompt_tokens);
+	let completion_tokens = get_option_value!(usage.completion_tokens);
 	let total_tokens = get_option_value!(usage.total_tokens);
 
 	assert!(total_tokens > 0, "total_tokens should be > 0");
 	assert!(
-		total_tokens == input_tokens + output_tokens,
-		"total_tokens should be equal to input_tokens + output_tokens"
+		total_tokens == prompt_tokens + completion_tokens,
+		"total_tokens should be equal to prompt_tokens + completion_tokens"
 	);
 
 	Ok(())
@@ -274,13 +275,13 @@ pub async fn common_test_chat_reasoning_normalize_ok(model: &str) -> Result<()> 
 
 	// -- Check Usage
 	let usage = chat_res.usage;
-	let input_tokens = get_option_value!(usage.input_tokens);
-	let output_tokens = get_option_value!(usage.output_tokens);
+	let prompt_tokens = get_option_value!(usage.prompt_tokens);
+	let completion_tokens = get_option_value!(usage.completion_tokens);
 	let total_tokens = get_option_value!(usage.total_tokens);
 	assert!(total_tokens > 0, "total_tokens should be > 0");
 	assert!(
-		total_tokens == input_tokens + output_tokens,
-		"total_tokens should be equal to input_tokens + output_tokens"
+		total_tokens == prompt_tokens + completion_tokens,
+		"total_tokens should be equal to prompt_token + completion_tokens"
 	);
 
 	Ok(())
@@ -402,12 +403,12 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	let meta_usage = get_option_value!(stream_end.captured_usage);
 
 	assert!(
-		get_option_value!(meta_usage.input_tokens) > 0,
-		"input_tokens should be > 0"
+		get_option_value!(meta_usage.prompt_tokens) > 0,
+		"prompt_token should be > 0"
 	);
 	assert!(
-		get_option_value!(meta_usage.output_tokens) > 0,
-		"output_tokens should be > 0"
+		get_option_value!(meta_usage.completion_tokens) > 0,
+		"completion_tokens should be > 0"
 	);
 	assert!(
 		get_option_value!(meta_usage.total_tokens) > 0,

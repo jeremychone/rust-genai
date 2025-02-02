@@ -22,6 +22,7 @@ tokio-stream = "0.1"
 # -- Json
 serde = { version = "1", features = ["derive", "rc"] } # Opted to rc for Arc<T> serialization
 serde_json = "1"
+serde_with = "3.12.0"
 # -- Web
 reqwest = {version = "0.12", features = ["json"]}
 reqwest-eventsource = "0.6"
@@ -29,9 +30,9 @@ eventsource-stream = "0.2"
 bytes = "1.6"
 # -- Others
 derive_more = { version = "1.0.0", features = ["from", "display"] }
-value-ext = "0.0.3" # JC Authored. Early release (API might change). Be cautious when using in other projects.
+value-ext = "0.1.1" 
 
 [dev-dependencies]
 serial_test = "3.2.0"
-base64 = "0.21.0"  # Check for the latest version
+base64 = "0.22.0"  # Check for the latest version
 bitflags = "2.8.0"

@@ -88,9 +88,10 @@ impl futures::Stream for AnthropicStreamer {
 							let captured_usage = if self.options.capture_usage {
 								self.captured_data.usage.take().map(|mut usage| {
 									// Compute the total if any of input/output are not null
-									if usage.input_tokens.is_some() || usage.output_tokens.is_some() {
-										usage.total_tokens =
-											Some(usage.input_tokens.unwrap_or(0) + usage.output_tokens.unwrap_or(0));
+									if usage.prompt_tokens.is_some() || usage.completion_tokens.is_some() {
+										usage.total_tokens = Some(
+											usage.prompt_tokens.unwrap_or(0) + usage.completion_tokens.unwrap_or(0),
+										);
 									}
 									usage
 								})
@@ -149,7 +150,7 @@ impl AnthropicStreamer {
 					.captured_data
 					.usage
 					.get_or_insert(MetaUsage::default())
-					.input_tokens
+					.prompt_tokens
 					.get_or_insert(0);
 				*val += input_tokens;
 			}
@@ -159,7 +160,7 @@ impl AnthropicStreamer {
 					.captured_data
 					.usage
 					.get_or_insert(MetaUsage::default())
-					.output_tokens
+					.completion_tokens
 					.get_or_insert(0);
 				*val += output_tokens;
 			}

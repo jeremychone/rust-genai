@@ -203,20 +203,35 @@ impl Adapter for AnthropicAdapter {
 
 impl AnthropicAdapter {
 	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
-		let input_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
-		let output_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
+		let prompt_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
+		let completion_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
 
 		// Compute total_tokens
-		let total_tokens = if input_tokens.is_some() || output_tokens.is_some() {
-			Some(input_tokens.unwrap_or(0) + output_tokens.unwrap_or(0))
+		let total_tokens = if prompt_tokens.is_some() || completion_tokens.is_some() {
+			Some(prompt_tokens.unwrap_or(0) + completion_tokens.unwrap_or(0))
 		} else {
 			None
 		};
 
+		// legacy
+		let input_tokens = prompt_tokens;
+		let output_tokens = prompt_tokens;
+
+		#[allow(deprecated)]
 		MetaUsage {
+			prompt_tokens,
+			// for now, None for Anthropic
+			prompt_tokens_details: None,
+
+			completion_tokens,
+			// for now, None for Anthropic
+			completion_tokens_details: None,
+
+			total_tokens,
+
+			// -- Legacy
 			input_tokens,
 			output_tokens,
-			total_tokens,
 		}
 	}
 

@@ -196,13 +196,29 @@ impl GeminiAdapter {
 	}
 
 	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
-		let input_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
-		let output_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
+		let prompt_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
+		let completion_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
 		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
+
+		// legacy
+		let input_tokens = prompt_tokens;
+		let output_tokens = prompt_tokens;
+
+		#[allow(deprecated)]
 		MetaUsage {
+			prompt_tokens,
+			// for now, None for Gemini
+			prompt_tokens_details: None,
+
+			completion_tokens,
+			// for now, None for Gemini
+			completion_tokens_details: None,
+
+			total_tokens,
+
+			// -- Legacy
 			input_tokens,
 			output_tokens,
-			total_tokens,
 		}
 	}
 

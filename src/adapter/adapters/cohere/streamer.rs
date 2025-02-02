@@ -91,10 +91,10 @@ impl futures::Stream for CohereStreamer {
 											.map(CohereAdapter::into_usage)
 											.map(|mut usage| {
 												// Compute the total if any of input/output are not null
-												if usage.input_tokens.is_some() || usage.output_tokens.is_some() {
+												if usage.prompt_tokens.is_some() || usage.completion_tokens.is_some() {
 													usage.total_tokens = Some(
-														usage.input_tokens.unwrap_or(0)
-															+ usage.output_tokens.unwrap_or(0),
+														usage.prompt_tokens.unwrap_or(0)
+															+ usage.completion_tokens.unwrap_or(0),
 													);
 												}
 												usage

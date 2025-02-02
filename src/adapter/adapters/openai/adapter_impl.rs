@@ -256,15 +256,17 @@ impl OpenAIAdapter {
 	}
 
 	/// Note: Needs to be called from super::streamer as well
-	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
-		let input_tokens: Option<i32> = usage_value.x_take("prompt_tokens").ok();
-		let output_tokens: Option<i32> = usage_value.x_take("completion_tokens").ok();
-		let total_tokens: Option<i32> = usage_value.x_take("total_tokens").ok();
-		MetaUsage {
-			input_tokens,
-			output_tokens,
-			total_tokens,
-		}
+	#[allow(deprecated)]
+	pub(super) fn into_usage(usage_value: Value) -> MetaUsage {
+		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
+		// TODO: Should have some tracing.
+		let mut usage: MetaUsage = serde_json::from_value(usage_value).unwrap_or_default();
+
+		// Legacy support
+		usage.input_tokens = usage.prompt_tokens;
+		usage.output_tokens = usage.completion_tokens;
+
+		usage
 	}
 
 	/// Takes the genai ChatMessages and builds the OpenAIChatRequestParts
