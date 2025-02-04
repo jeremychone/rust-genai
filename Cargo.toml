@@ -1,6 +1,6 @@
 [package]
 name = "genai"
-version = "0.1.20-WIP"
+version = "0.1.20"
 edition = "2021"
 rust-version = "1.79"
 license = "MIT OR Apache-2.0"
@@ -29,7 +29,7 @@ reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
 bytes = "1.6"
 # -- Others
-derive_more = { version = "1.0.0", features = ["from", "display"] }
+derive_more = { version = "2", features = ["from", "display"] }
 value-ext = "0.1.1" 
 
 [dev-dependencies]

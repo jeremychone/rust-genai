@@ -1,6 +1,5 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{MessageContent, MetaUsage};
-use derive_more::From;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;

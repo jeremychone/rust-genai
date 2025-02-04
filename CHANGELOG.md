@@ -2,7 +2,7 @@
 
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
-## 2025-02-02 - [v0.1.20](https://github.com/jeremychone/rust-genai/compare/v0.1.19...v0.1.20)
+## 2025-02-03 - [v0.1.20](https://github.com/jeremychone/rust-genai/compare/v0.1.19...v0.1.20)
 
 - `+` `reasoning_content` normalization
   - `deepseek-reasoner` (DeepSeekR1) from response `reasoning_content`
