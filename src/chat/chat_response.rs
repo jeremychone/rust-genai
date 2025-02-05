@@ -106,18 +106,18 @@ pub struct MetaUsage {
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PromptTokensDetails {
-	cached_tokens: Option<i32>,
-	audio_tokens: Option<i32>,
+	pub cached_tokens: Option<i32>,
+	pub audio_tokens: Option<i32>,
 }
 
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionTokensDetails {
-	accepted_prediction_tokens: Option<i32>,
-	rejected_prediction_tokens: Option<i32>,
-	reasoning_tokens: Option<i32>,
-	audio_tokens: Option<i32>,
+	pub accepted_prediction_tokens: Option<i32>,
+	pub rejected_prediction_tokens: Option<i32>,
+	pub reasoning_tokens: Option<i32>,
+	pub audio_tokens: Option<i32>,
 }
 
 // endregion: --- MetaUsage
