@@ -12,7 +12,7 @@ Currently supports natively: **DeepSeek** (deepseek.com & Groq), **OpenAI**, **A
 
 ```toml
 # cargo.toml
-genai = "=0.1.19" # Version lock for `0.1.x`
+genai = "0.1.21"
 ```
 
 <br />

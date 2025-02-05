@@ -2,6 +2,10 @@
 
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
+## 2025-02-04 - [v0.1.21](https://github.com/jeremychone/rust-genai/compare/v0.1.20...v0.1.21)
+
+- `-` usage - make the details properties public
+
 ## 2025-02-03 - [v0.1.20](https://github.com/jeremychone/rust-genai/compare/v0.1.19...v0.1.20)
 
 - `+` `reasoning_content` normalization
