@@ -102,12 +102,12 @@ pub async fn common_test_chat_json_mode_ok(model: &str, checks: Option<Check>) -
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
 		ChatMessage::system(
-			r#"Turn the user content into the most probable JSON content. 
+			r#"Turn the user content into the most probable JSON content.
 Reply in a JSON format."#,
 		),
 		ChatMessage::user(
 			r#"
-| Model          | Maker    
+| Model          | Maker
 | gpt-4o	       | OpenAI
 | gpt-4o-mini	   | OpenAI
 | llama-3.1-70B  | Meta
@@ -148,12 +148,12 @@ pub async fn common_test_chat_json_structured_ok(model: &str, checks: Option<Che
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (de/activate to see the differences)
 		ChatMessage::system(
-			r#"Turn the user content into the most probable JSON content. 
+			r#"Turn the user content into the most probable JSON content.
 Reply in a JSON format."#,
 		),
 		ChatMessage::user(
 			r#"
-| Model          | Maker    
+| Model          | Maker
 | gpt-4o	       | OpenAI
 | gpt-4o-mini	   | OpenAI
 | llama-3.1-70B  | Meta
@@ -508,7 +508,6 @@ pub async fn common_test_tool_simple_ok(model: &str, complete_check: bool) -> Re
 }
 
 /// `complete_check` if for LLMs that are better at giving back the unit and weather.
-///                  
 pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
@@ -531,8 +530,12 @@ pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) ->
 	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 
 	// -- Check
-	let content = chat_res.content_text_as_str().ok_or("Last response should be message")?;
-	assert!(content.contains("Paris"), "Should contain 'Paris'");
+	let content = chat_res
+		.content_text_as_str()
+		.ok_or("Last response should be message")?
+		.to_lowercase(); // lowercase because some models send "Sunny" and not "sunny"
+
+	assert!(content.contains("paris"), "Should contain 'Paris'");
 	assert!(content.contains("32"), "Should contain '32'");
 	if complete_check {
 		// Note: Not all LLM will output the weather (e.g. Anthropic Haiku)

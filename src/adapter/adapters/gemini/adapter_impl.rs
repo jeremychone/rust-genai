@@ -3,12 +3,11 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, MetaUsage,
+	ContentPart, ImageSource, MessageContent, MetaUsage, Tool, ToolCall,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{Error, Result};
-use crate::{ModelIden, ServiceTarget};
+use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
@@ -80,7 +79,11 @@ impl Adapter for GeminiAdapter {
 		let url = format!("{url}?key={api_key}");
 
 		// -- parts
-		let GeminiChatRequestParts { system, contents } = Self::into_gemini_request_parts(model, chat_req)?;
+		let GeminiChatRequestParts {
+			system,
+			contents,
+			tools,
+		} = Self::into_gemini_request_parts(model, chat_req)?;
 
 		// -- Playload
 		let mut payload = json!({
@@ -98,6 +101,16 @@ impl Adapter for GeminiAdapter {
 				"systemInstruction",
 				json!({
 					"parts": [ { "text": system }]
+				}),
+			)?;
+		}
+
+		// -- Tools
+		if let Some(tools) = tools {
+			payload.x_insert(
+				"tools",
+				json!({
+					"function_declarations": tools
 				}),
 			)?;
 		}
@@ -146,7 +159,12 @@ impl Adapter for GeminiAdapter {
 
 		let gemini_response = Self::body_to_gemini_chat_response(&model_iden.clone(), body)?;
 		let GeminiChatResponse { content, usage } = gemini_response;
-		let content = content.map(MessageContent::from);
+
+		let content = match content {
+			Some(GeminiChatContent::Text(content)) => Some(MessageContent::from_text(content)),
+			Some(GeminiChatContent::ToolCall(tool_call)) => Some(MessageContent::from_tool_calls(vec![tool_call])),
+			None => None,
+		};
 
 		Ok(ChatResponse {
 			content,
@@ -186,13 +204,23 @@ impl GeminiAdapter {
 			});
 		}
 
-		let content = body.x_take::<Value>("/candidates/0/content/parts/0/text")?;
+		let mut response = body.x_take::<Value>("/candidates/0/content/parts/0")?;
+		let content = match response.x_take::<Value>("functionCall") {
+			Ok(f) => Some(GeminiChatContent::ToolCall(ToolCall {
+				call_id: f.x_get("name").unwrap_or("".to_string()), // TODO: Handle this, gemini does not return the call_id
+				fn_name: f.x_get("name").unwrap_or("".to_string()),
+				fn_arguments: f.x_get("args").unwrap_or(Value::Null),
+			})),
+			Err(_) => response
+				.x_take::<Value>("text")
+				.ok()
+				.map(|v| v.as_str().map(String::from))
+				.flatten()
+				.map(GeminiChatContent::Text),
+		};
 		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
 
-		Ok(GeminiChatResponse {
-			content: content.as_str().map(String::from),
-			usage,
-		})
+		Ok(GeminiChatResponse { content, usage })
 	}
 
 	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
@@ -275,31 +303,106 @@ impl GeminiAdapter {
 								})
 								.collect::<Vec<Value>>())
 						}
-						// Use `match` instead of `if let`. This will allow to future-proof this
-						// implementation in case some new message content types would appear,
-						// this way library would not compile if not all methods are implemented
-						// continue would allow to gracefully skip pushing unserializable message
-						// TODO: Probably need to warn if it is a ToolCalls type of content
-						MessageContent::ToolCalls(_) => continue,
-						MessageContent::ToolResponses(_) => continue,
+						MessageContent::ToolCalls(tool_calls) => {
+							json!(tool_calls
+								.into_iter()
+								.map(|tool_call| {
+									json!({
+										"functionCall": {
+											"name": tool_call.fn_name,
+											"args": tool_call.fn_arguments,
+										}
+									})
+								})
+								.collect::<Vec<Value>>())
+						}
+						MessageContent::ToolResponses(tool_responses) => {
+							json!(tool_responses
+								.into_iter()
+								.map(|tool_response| {
+									json!({
+										"functionResponse": {
+											"name": tool_response.call_id,
+											"response": {
+												"name": tool_response.call_id,
+												"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+											}
+										}
+									})
+								})
+								.collect::<Vec<Value>>())
+						}
 					};
 
 					contents.push(json!({"role": "user", "parts": content}));
 				}
 				ChatRole::Assistant => {
-					let MessageContent::Text(content) = msg.content else {
-						return Err(Error::MessageContentTypeNotSupported {
-							model_iden,
-							cause: "Only MessageContent::Text supported for this model (for now)",
-						});
+					match msg.content {
+						MessageContent::Text(content) => {
+							contents.push(json!({"role": "model", "parts": [{"text": content}]}))
+						}
+						MessageContent::ToolCalls(tool_calls) => contents.push(json!({
+							"role": "model",
+							"parts": tool_calls
+								.into_iter()
+								.map(|tool_call| {
+									json!({
+										"functionCall": {
+											"name": tool_call.fn_name,
+											"args": tool_call.fn_arguments,
+										}
+									})
+								})
+								.collect::<Vec<Value>>()
+						})),
+						_ => {
+							return Err(Error::MessageContentTypeNotSupported {
+								model_iden,
+								cause: "Only MessageContent::Text and MessageContent::ToolCalls supported for this model (for now)",
+							});
+						}
 					};
-					contents.push(json!({"role": "model", "parts": [{"text": content}]}))
 				}
 				ChatRole::Tool => {
-					return Err(Error::MessageRoleNotSupported {
-						model_iden,
-						role: ChatRole::Tool,
-					})
+					let content = match msg.content {
+						MessageContent::ToolCalls(tool_calls) => {
+							json!(tool_calls
+								.into_iter()
+								.map(|tool_call| {
+									json!({
+										"functionCall": {
+											"name": tool_call.fn_name,
+											"args": tool_call.fn_arguments,
+										}
+									})
+								})
+								.collect::<Vec<Value>>())
+						}
+						MessageContent::ToolResponses(tool_responses) => {
+							json!(tool_responses
+								.into_iter()
+								.map(|tool_response| {
+									json!({
+										"functionResponse": {
+											"name": tool_response.call_id,
+											"response": {
+												"name": tool_response.call_id,
+												"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+											}
+										}
+									})
+								})
+								.collect::<Vec<Value>>())
+						}
+						_ => {
+							return Err(Error::MessageContentTypeNotSupported {
+								model_iden,
+								cause: "ChatRole::Tool can only be MessageContent::ToolCall or MessageContent::ToolResponse"
+							});
+						}
+					};
+
+					contents.push(json!({"role": "user", "parts": content}));
 				}
 			}
 		}
@@ -310,21 +413,49 @@ impl GeminiAdapter {
 			None
 		};
 
-		Ok(GeminiChatRequestParts { system, contents })
+		let tools = chat_req.tools.map(|tools| {
+			tools
+				.into_iter()
+				.map(|tool| {
+					// TODO: Need to handle the error correctly
+					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
+					// NOTE: Right now, low probability, so, we just return null if cannot convert to value.
+					json!({
+						"name": tool.name,
+						"description": tool.description,
+						"parameters": tool.schema,
+					})
+				})
+				.collect::<Vec<Value>>()
+		});
+
+		Ok(GeminiChatRequestParts {
+			system,
+			contents,
+			tools,
+		})
 	}
 }
 
 // struct Gemini
 
 pub(super) struct GeminiChatResponse {
-	pub content: Option<String>,
+	pub content: Option<GeminiChatContent>,
 	pub usage: MetaUsage,
+}
+
+pub(super) enum GeminiChatContent {
+	Text(String),
+	ToolCall(ToolCall),
 }
 
 struct GeminiChatRequestParts {
 	system: Option<String>,
 	/// The chat history (user and assistant, except for the last user message which is a message)
 	contents: Vec<Value>,
+
+	/// The tools to use
+	tools: Option<Vec<Value>>,
 }
 
 // endregion: --- Support
