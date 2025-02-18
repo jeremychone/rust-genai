@@ -8,7 +8,7 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 
 // NOTE: For now (2025-02-02), use two models as Google models are severely rate limited for tier 1
 //       and increasing the project tier does not seem trivial.
-const MODEL: &str = "gemini-1.5-flash-latest";
+const MODEL: &str = "gemini-2.0-flash";
 
 #[allow(dead_code)]
 const MODEL_FOR_IMAGE: &str = "gemini-2.0-flash-exp";
@@ -74,6 +74,19 @@ async fn test_chat_image_b64_ok() -> Result<()> {
 	common_tests::common_test_chat_image_b64_ok(MODEL_FOR_IMAGE).await
 }
 // endregion: --- Image Test
+
+// region:    --- Tool Tests
+
+#[tokio::test]
+async fn test_tool_simple_ok() -> Result<()> {
+	common_tests::common_test_tool_simple_ok(MODEL, true).await
+}
+
+#[tokio::test]
+async fn test_tool_full_flow_ok() -> Result<()> {
+	common_tests::common_test_tool_full_flow_ok(MODEL, true).await
+}
+// endregion: --- Tool Tests
 
 // region:    --- Resolver Tests
 

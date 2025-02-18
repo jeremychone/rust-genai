@@ -8,6 +8,8 @@ use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use super::GeminiChatContent;
+
 pub struct GeminiStreamer {
 	inner: WebStream,
 	options: StreamerOptions,
@@ -85,7 +87,7 @@ impl futures::Stream for GeminiStreamer {
 							let GeminiChatResponse { content, usage } = gemini_response;
 
 							// -- Send Chunk event
-							if let Some(content) = content {
+							if let Some(GeminiChatContent::Text(content)) = content {
 								// Capture content
 								if self.options.capture_content {
 									match self.captured_data.content {
