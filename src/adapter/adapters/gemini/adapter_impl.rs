@@ -3,7 +3,7 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, MetaUsage, Tool, ToolCall,
+	ContentPart, ImageSource, MessageContent, MetaUsage, ToolCall,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -214,8 +214,7 @@ impl GeminiAdapter {
 			Err(_) => response
 				.x_take::<Value>("text")
 				.ok()
-				.map(|v| v.as_str().map(String::from))
-				.flatten()
+				.and_then(|v| v.as_str().map(String::from))
 				.map(GeminiChatContent::Text),
 		};
 		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
