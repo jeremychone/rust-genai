@@ -21,6 +21,18 @@ Provides a common and ergonomic single API to many generative AI providers, such
 
 Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **genai** for multi-AI capabilities.
 
+## Thanks
+
+- [@GustavoWidman](https://github.com/GustavoWidman) for the intial gemini tool/function support!! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
+- [@AdamStrojek](https://github.com/AdamStrojek) for initial image support [PR #36](https://github.com/jeremychone/rust-genai/pull/36)
+- [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
+- [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
+- [@tusharmath](https://github.com/tusharmath) for make webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
+- [@giangndm](https://github.com/giangndm) for make stream is send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
+- [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
+
+
+
 ## Key Features
 
 - DeepSeekR1 support, with `reasoning_content` (and stream support) + DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
@@ -144,16 +156,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     - [(part 1/3) Module, Error, constructors/builders](https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
     - [(part 2/3) Extension Traits, Project Files, Versioning](https://www.youtube.com/watch?v=LRfDAZfo00o&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
     - [(part 3/3) When to Async? Project Files, Versioning strategy](https://www.youtube.com/watch?v=93SS3VGsKx4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q)
-
-## Thanks
-
-- Thanks to [@AdamStrojek](https://github.com/AdamStrojek) for initial image support [PR #36](https://github.com/jeremychone/rust-genai/pull/36)
-- Thanks to [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
-- Thanks to [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
-- Thanks to [@tusharmath](https://github.com/tusharmath) for make webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
-- Thanks to [@giangndm](https://github.com/giangndm) for make stream is send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
-- Thanks to [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
-
 
 ## Library Focus:
 
