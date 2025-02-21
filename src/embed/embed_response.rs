@@ -33,7 +33,7 @@ impl EmbedResponse {
 	/// Returns the first embedding object of the list as `&EmbeddingObject` if it exists.
 	/// Otherwise, returns None
 	pub fn first_embedding(&self) -> Option<&EmbeddingObject> {
-		self.embeddings.iter().next()
+		self.embeddings.first()
 	}
 
 	/// Consumes the EmbedResponse and returns the first embedding object of the list
