@@ -9,6 +9,7 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 // NOTE: For now (2025-02-02), use two models as Google models are severely rate limited for tier 1
 //       and increasing the project tier does not seem trivial.
 const MODEL: &str = "gemini-2.0-flash";
+const EMBEDDING_MODEL: &str = "text-embedding-004";
 
 #[allow(dead_code)]
 const MODEL_FOR_IMAGE: &str = "gemini-2.0-flash-exp";
@@ -105,3 +106,17 @@ async fn test_list_models() -> Result<()> {
 }
 
 // endregion: --- List
+
+// region:    --- Embed
+
+#[tokio::test]
+async fn test_embed_single() -> Result<()> {
+	common_tests::test_embed_single(EMBEDDING_MODEL, AdapterKind::Gemini).await
+}
+
+#[tokio::test]
+async fn test_embed_multiple() -> Result<()> {
+	common_tests::test_embed_multiple(EMBEDDING_MODEL, AdapterKind::Gemini).await
+}
+
+// endregion: --- Embed

@@ -15,6 +15,7 @@ pub use error::{Error, Result};
 // -- Public Modules
 pub mod adapter;
 pub mod chat;
+pub mod embed;
 pub mod resolver;
 pub mod webc;
 

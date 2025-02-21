@@ -6,8 +6,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{Error, Result};
-use crate::{ModelIden, ServiceTarget};
+use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
@@ -47,6 +46,13 @@ impl Adapter for CohereAdapter {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}chat"),
 		}
+	}
+
+	/// We have not implemented embedding for Cohere yet
+	fn get_embed_url(_model_iden: &ModelIden, _endpoint: Endpoint) -> Option<String> {
+		println!("Cohere embedding not implemented yet.");
+
+		None
 	}
 
 	fn to_web_request_data(
@@ -153,6 +159,34 @@ impl Adapter for CohereAdapter {
 			model_iden,
 			stream: chat_stream,
 		})
+	}
+
+	fn embed(
+		service_target: ServiceTarget,
+		_embed_req: crate::embed::SingleEmbedRequest,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotImplemented {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn embed_batch(
+		service_target: ServiceTarget,
+		_embed_req: crate::embed::BatchEmbedRequest,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotImplemented {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn to_embed_response(
+		model_iden: ModelIden,
+		_web_response: WebResponse,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		Err(Error::EmbeddingNotImplemented { model_iden })
 	}
 }
 

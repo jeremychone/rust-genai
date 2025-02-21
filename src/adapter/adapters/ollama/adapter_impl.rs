@@ -5,8 +5,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{Error, Result};
-use crate::{ModelIden, ServiceTarget};
+use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::Value;
 use value_ext::JsonValueExt;
@@ -63,6 +62,12 @@ impl Adapter for OllamaAdapter {
 		OpenAIAdapter::util_get_service_url(model_iden, service_type, endpoint)
 	}
 
+	/// We have not implemented embedding for Ollama yet
+	fn get_embed_url(_model_iden: &ModelIden, _endpoint: Endpoint) -> Option<String> {
+		println!("Ollama embedding not implemented yet");
+		None
+	}
+
 	fn to_web_request_data(
 		target: ServiceTarget,
 		service_type: ServiceType,
@@ -86,5 +91,33 @@ impl Adapter for OllamaAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+	}
+
+	fn embed(
+		service_target: ServiceTarget,
+		_embed_req: crate::embed::SingleEmbedRequest,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotImplemented {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn embed_batch(
+		service_target: ServiceTarget,
+		_embed_req: crate::embed::BatchEmbedRequest,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotImplemented {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn to_embed_response(
+		model_iden: ModelIden,
+		_web_response: WebResponse,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		Err(Error::EmbeddingNotImplemented { model_iden })
 	}
 }

@@ -3,8 +3,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::ModelIden;
-use crate::{Result, ServiceTarget};
+use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 pub struct DeepSeekAdapter;
@@ -34,6 +33,11 @@ impl Adapter for DeepSeekAdapter {
 		OpenAIAdapter::util_get_service_url(model, service_type, endpoint)
 	}
 
+	/// DeepSeek does not support embedding
+	fn get_embed_url(_: &ModelIden, _: Endpoint) -> Option<String> {
+		None
+	}
+
 	fn to_web_request_data(
 		target: ServiceTarget,
 		service_type: ServiceType,
@@ -57,5 +61,33 @@ impl Adapter for DeepSeekAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+	}
+
+	fn embed(
+		service_target: ServiceTarget,
+		_: crate::embed::SingleEmbedRequest,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotSupported {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn embed_batch(
+		service_target: ServiceTarget,
+		_: crate::embed::BatchEmbedRequest,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotSupported {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn to_embed_response(
+		model_iden: ModelIden,
+		_: WebResponse,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		Err(Error::EmbeddingNotSupported { model_iden })
 	}
 }

@@ -5,9 +5,10 @@ use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
 	ContentPart, ImageSource, MessageContent, MetaUsage, ToolCall,
 };
+use crate::embed::EmbedResponse;
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{Error, ModelIden, Result, ServiceTarget};
+use crate::{embed, Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
@@ -56,6 +57,13 @@ impl Adapter for GeminiAdapter {
 			ServiceType::Chat => format!("{base_url}models/{model_name}:generateContent"),
 			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent"),
 		}
+	}
+
+	fn get_embed_url(model: &ModelIden, endpoint: Endpoint) -> Option<String> {
+		let base_url = endpoint.base_url();
+		let model_name = model.model_name.clone();
+
+		Some(format!("{base_url}models/{model_name}:embedContent"))
 	}
 
 	fn to_web_request_data(
@@ -186,6 +194,143 @@ impl Adapter for GeminiAdapter {
 		Ok(ChatStreamResponse {
 			model_iden,
 			stream: chat_stream,
+		})
+	}
+
+	fn embed(
+		service_target: ServiceTarget,
+		embed_req: crate::embed::SingleEmbedRequest,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		let ServiceTarget { model, auth, endpoint } = service_target;
+		let model_name = &model.model_name;
+
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
+
+		// -- url
+		let url = Self::get_embed_url(&model, endpoint).ok_or(Error::EmbeddingNotSupported {
+			model_iden: model.clone(),
+		})?;
+		let url = format!("{url}?key={api_key}");
+
+		// -- headers (empty for gemini, since API_KEY is in url)
+		let headers = vec![];
+
+		let mut payload = json!({
+			"model": format!("models/{model_name}"),
+			"content": {
+				"parts": [{
+					"text": embed_req.document
+				}]
+			},
+		});
+
+		if let Some(dimensions) = options_set.dimensions() {
+			payload.x_insert("outputDimensionality", dimensions)?;
+		}
+
+		Ok(WebRequestData { url, headers, payload })
+	}
+
+	fn embed_batch(
+		service_target: ServiceTarget,
+		embed_req: crate::embed::BatchEmbedRequest,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		let ServiceTarget { model, auth, endpoint } = service_target;
+		let model_name = &model.model_name;
+
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
+
+		// -- url
+		let url = Self::get_embed_url(&model, endpoint)
+			.ok_or(Error::EmbeddingNotSupported {
+				model_iden: model.clone(),
+			})?
+			// todo: this might not be the best way to do this
+			.replace("embedContent", "batchEmbedContents");
+		let url = format!("{url}?key={api_key}");
+
+		// -- headers (empty for gemini, since API_KEY is in url)
+		let headers = vec![];
+
+		let payload = json!({
+			"requests": embed_req
+				.documents
+				.into_iter()
+				.filter_map(|document| {
+					let mut request = json!({
+						"model": format!("models/{model_name}"),
+						"content": {
+							"parts": [{
+								"text": document
+							}]
+						}
+					});
+
+					if let Some(dimensions) = options_set.dimensions() {
+						request.x_insert("outputDimensionality", dimensions).ok()?;
+					}
+
+					Some(request)
+				})
+				.collect::<Vec<Value>>()
+		});
+
+		Ok(WebRequestData { url, headers, payload })
+	}
+
+	fn to_embed_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		let WebResponse { mut body, .. } = web_response;
+
+		// -- Capture the usage (Gemini does not return usage)
+		let usage = embed::MetaUsage::default();
+
+		// -- Capture the content, assume single embedding first
+		let single_embedding = body
+			.x_take("embedding")
+			.map(|mut embedding: Value| {
+				let embedding = embedding.x_take("values").ok()?;
+
+				// Gemini does not return the index
+				Some(embed::EmbeddingObject { index: None, embedding })
+			})
+			.ok()
+			.flatten();
+
+		if let Some(single_embedding) = single_embedding {
+			let embeddings = vec![single_embedding];
+
+			return Ok(EmbedResponse {
+				embeddings,
+				usage,
+				model_iden,
+			});
+		}
+
+		// -- Capture the content, assume batch embedding or error if all goes wrong
+		let embeddings = body.x_take("embeddings").map(|embeddings: Vec<Value>| {
+			embeddings
+				.into_iter()
+				.filter_map(|mut embedding: Value| {
+					let embedding = embedding.x_take("values").ok()?;
+
+					// Gemini does not return the index
+					Some(embed::EmbeddingObject { index: None, embedding })
+				})
+				.collect::<Vec<embed::EmbeddingObject>>()
+		})?;
+
+		Ok(EmbedResponse {
+			embeddings,
+			usage,
+			model_iden,
 		})
 	}
 }

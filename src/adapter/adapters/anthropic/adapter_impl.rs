@@ -7,8 +7,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::ModelIden;
-use crate::{Result, ServiceTarget};
+use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
@@ -54,6 +53,11 @@ impl Adapter for AnthropicAdapter {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}messages"),
 		}
+	}
+
+	/// Anthropic does not support embedding
+	fn get_embed_url(_: &ModelIden, _: Endpoint) -> Option<String> {
+		None
 	}
 
 	fn to_web_request_data(
@@ -196,6 +200,34 @@ impl Adapter for AnthropicAdapter {
 			model_iden,
 			stream: chat_stream,
 		})
+	}
+
+	fn embed(
+		service_target: ServiceTarget,
+		_: crate::embed::SingleEmbedRequest,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotSupported {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn embed_batch(
+		service_target: ServiceTarget,
+		_: crate::embed::BatchEmbedRequest,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(Error::EmbeddingNotSupported {
+			model_iden: service_target.model,
+		})
+	}
+
+	fn to_embed_response(
+		model_iden: ModelIden,
+		_: WebResponse,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		Err(Error::EmbeddingNotSupported { model_iden })
 	}
 }
 

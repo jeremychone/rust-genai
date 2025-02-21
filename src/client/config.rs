@@ -1,6 +1,7 @@
 use crate::adapter::AdapterDispatcher;
 use crate::chat::ChatOptions;
 use crate::client::ServiceTarget;
+use crate::embed::EmbedOptions;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result};
 
@@ -11,6 +12,7 @@ pub struct ClientConfig {
 	pub(super) service_target_resolver: Option<ServiceTargetResolver>,
 	pub(super) model_mapper: Option<ModelMapper>,
 	pub(super) chat_options: Option<ChatOptions>,
+	pub(super) embed_options: Option<EmbedOptions>,
 }
 
 /// Chainable setters related to the ClientConfig.
@@ -45,6 +47,12 @@ impl ClientConfig {
 		self.chat_options = Some(options);
 		self
 	}
+
+	/// Set the default embed request options for the ClientConfig.
+	pub fn with_embed_options(mut self, options: EmbedOptions) -> Self {
+		self.embed_options = Some(options);
+		self
+	}
 }
 
 /// Getters for the fields of ClientConfig (as references).
@@ -66,6 +74,11 @@ impl ClientConfig {
 	/// Get a reference to the ChatOptions, if they exist.
 	pub fn chat_options(&self) -> Option<&ChatOptions> {
 		self.chat_options.as_ref()
+	}
+
+	/// Get a reference to the EmbedOptions, if they exist.
+	pub fn embed_options(&self) -> Option<&EmbedOptions> {
+		self.embed_options.as_ref()
 	}
 }
 

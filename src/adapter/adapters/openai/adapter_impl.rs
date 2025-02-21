@@ -5,10 +5,10 @@ use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
 	ContentPart, ImageSource, MessageContent, MetaUsage, ReasoningEffort, ToolCall,
 };
+use crate::embed::{self, BatchEmbedRequest, EmbedOptionsSet, EmbedResponse, SingleEmbedRequest};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{Error, Result};
-use crate::{ModelIden, ServiceTarget};
+use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde::Deserialize;
@@ -48,6 +48,10 @@ impl Adapter for OpenAIAdapter {
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
 		Self::util_get_service_url(model, service_type, endpoint)
+	}
+
+	fn get_embed_url(model_iden: &ModelIden, endpoint: Endpoint) -> Option<String> {
+		Some(Self::util_get_embed_url(model_iden, endpoint))
 	}
 
 	fn to_web_request_data(
@@ -121,6 +125,112 @@ impl Adapter for OpenAIAdapter {
 			stream: chat_stream,
 		})
 	}
+
+	fn embed(
+		service_target: ServiceTarget,
+		embed_req: SingleEmbedRequest,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		let ServiceTarget { model, auth, endpoint } = service_target;
+		let model_name = &model.model_name;
+
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
+
+		// -- url
+		let url = AdapterDispatcher::get_embed_url(&model, endpoint).ok_or(Error::EmbeddingNotSupported {
+			model_iden: model.clone(),
+		})?;
+
+		// -- headers
+		let headers = vec![
+			// headers
+			("Authorization".to_string(), format!("Bearer {api_key}")),
+		];
+
+		let mut payload = json!({
+			"model": model_name,
+			"input": embed_req.document,
+		});
+
+		if let Some(dimensions) = options_set.dimensions() {
+			payload.x_insert("dimensions", dimensions)?;
+		}
+
+		Ok(WebRequestData { url, headers, payload })
+	}
+
+	fn embed_batch(
+		service_target: ServiceTarget,
+		embed_req: BatchEmbedRequest,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		let ServiceTarget { model, auth, endpoint } = service_target;
+		let model_name = &model.model_name;
+
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
+
+		// -- url
+		let url = AdapterDispatcher::get_embed_url(&model, endpoint).ok_or(Error::EmbeddingNotSupported {
+			model_iden: model.clone(),
+		})?;
+
+		// -- headers
+		let headers = vec![
+			// headers
+			("Authorization".to_string(), format!("Bearer {api_key}")),
+		];
+
+		let mut payload = json!({
+			"model": model_name,
+			"input": embed_req.documents,
+		});
+
+		if let Some(dimensions) = options_set.dimensions() {
+			payload.x_insert("dimensions", dimensions)?;
+		}
+
+		Ok(WebRequestData { url, headers, payload })
+	}
+
+	fn to_embed_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		_: EmbedOptionsSet<'_, '_>,
+	) -> Result<EmbedResponse> {
+		let WebResponse { mut body, .. } = web_response;
+
+		// -- Capture the usage
+		let usage = body.x_take("usage").map(|mut usage: Value| {
+			let prompt_tokens: Option<i32> = usage.x_take("prompt_tokens").ok();
+			let total_tokens: Option<i32> = usage.x_take("total_tokens").ok();
+
+			embed::MetaUsage {
+				prompt_tokens,
+				total_tokens,
+			}
+		})?;
+
+		// -- Capture the content
+		let embeddings = body.x_take("data").map(|embeddings: Vec<Value>| {
+			embeddings
+				.into_iter()
+				.filter_map(|mut embedding: Value| {
+					let index = embedding.x_take("index").ok();
+					let embedding = embedding.x_take("embedding").ok()?;
+
+					Some(embed::EmbeddingObject { index, embedding })
+				})
+				.collect::<Vec<embed::EmbeddingObject>>()
+		})?;
+
+		Ok(EmbedResponse {
+			embeddings,
+			usage,
+			model_iden,
+		})
+	}
 }
 
 /// Support functions for other adapters that share OpenAI APIs
@@ -135,6 +245,12 @@ impl OpenAIAdapter {
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}chat/completions"),
 		}
+	}
+
+	pub(in crate::adapter::adapters) fn util_get_embed_url(_model: &ModelIden, default_endpoint: Endpoint) -> String {
+		let base_url = default_endpoint.base_url();
+
+		format!("{base_url}embeddings")
 	}
 
 	pub(in crate::adapter::adapters) fn util_to_web_request_data(
