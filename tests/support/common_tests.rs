@@ -592,20 +592,9 @@ pub async fn common_test_list_models(adapter_kind: AdapterKind, contains: &str) 
 
 // region:    --- Embed
 
-pub async fn test_embed_single(model: &str, target: AdapterKind) -> Result<()> {
+pub async fn test_embed_single(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
-	let model_mapper = ModelMapper::from_mapper_fn(
-		move |model_iden: ModelIden| -> std::result::Result<ModelIden, genai::resolver::Error> {
-			let ModelIden { model_name, .. } = model_iden;
-
-			Ok(ModelIden {
-				adapter_kind: target,
-				model_name,
-			})
-		},
-	);
-
-	let client = Client::builder().with_model_mapper(model_mapper).build();
+	let client = Client::default();
 
 	let embed_req = seed_embed_req_single();
 
@@ -618,20 +607,9 @@ pub async fn test_embed_single(model: &str, target: AdapterKind) -> Result<()> {
 	Ok(())
 }
 
-pub async fn test_embed_multiple(model: &str, target: AdapterKind) -> Result<()> {
+pub async fn test_embed_multiple(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
-	let model_mapper = ModelMapper::from_mapper_fn(
-		move |model_iden: ModelIden| -> std::result::Result<ModelIden, genai::resolver::Error> {
-			let ModelIden { model_name, .. } = model_iden;
-
-			Ok(ModelIden {
-				adapter_kind: target,
-				model_name,
-			})
-		},
-	);
-
-	let client = Client::builder().with_model_mapper(model_mapper).build();
+	let client = Client::default();
 
 	let embed_req = seed_embed_req_batch();
 	let document_count = embed_req.documents.len();

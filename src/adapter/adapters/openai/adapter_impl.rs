@@ -18,13 +18,21 @@ use value_ext::JsonValueExt;
 pub struct OpenAIAdapter;
 
 // Latest models
-const MODELS: &[&str] = &[
+pub(in crate::adapter) const MODELS: &[&str] = &[
 	//
 	"gpt-4o",
 	"gpt-4o-mini",
 	"o3-mini",
 	"o1",
 	"o1-mini",
+];
+
+// Embedding models
+pub(in crate::adapter) const EMBEDDING_MODELS: &[&str] = &[
+	//
+	"text-embedding-ada-002",
+	"text-embedding-3-small",
+	"text-embedding-3-large",
 ];
 
 impl OpenAIAdapter {

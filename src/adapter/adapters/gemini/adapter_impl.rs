@@ -15,13 +15,24 @@ use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;
 
-const MODELS: &[&str] = &[
+pub(in crate::adapter) const MODELS: &[&str] = &[
 	"gemini-2.0-flash",
+	"gemini-2.0-pro-exp-02-05",
+	"gemini-2.0-flash-thinking-exp-01-21",
+	"learnlm-1.5-pro-experimental",
+	"gemini-2.0-flash-lite-preview-02-05",
 	"gemini-1.5-pro",
 	"gemini-1.5-flash",
 	"gemini-1.5-flash-8b",
 	"gemini-1.0-pro",
 	"gemini-1.5-flash-latest",
+];
+
+// Embedding models
+pub(in crate::adapter) const EMBEDDING_MODELS: &[&str] = &[
+	//
+	"text-embedding-001",
+	"text-embedding-004",
 ];
 
 // curl \

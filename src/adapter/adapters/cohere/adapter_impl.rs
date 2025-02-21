@@ -13,7 +13,7 @@ use value_ext::JsonValueExt;
 
 pub struct CohereAdapter;
 
-const MODELS: &[&str] = &[
+pub(in crate::adapter) const MODELS: &[&str] = &[
 	"command-r-plus",
 	"command-r",
 	"command",

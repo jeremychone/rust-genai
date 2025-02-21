@@ -22,7 +22,7 @@ const MAX_TOKENS_8K: u32 = 8192;
 const MAX_TOKENS_4K: u32 = 4096;
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-const MODELS: &[&str] = &[
+pub(in crate::adapter) const MODELS: &[&str] = &[
 	"claude-3-5-sonnet-20241022",
 	"claude-3-5-haiku-20241022",
 	"claude-3-opus-20240229",

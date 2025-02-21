@@ -9,6 +9,8 @@ use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
+use super::{anthropic, cohere, gemini, openai, xai};
+
 /// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AdapterKind {
@@ -98,19 +100,24 @@ impl AdapterKind {
 	/// Note: At this point, this will never fail as the fallback is the Ollama adapter.
 	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
-		if model.starts_with("gpt")
+		if openai::MODELS.contains(&model)
+			|| openai::EMBEDDING_MODELS.contains(&model)
+			|| model.starts_with("gpt")
 			|| model.starts_with("o3-")
 			|| model.starts_with("o1-")
 			|| model.starts_with("chatgpt")
 		{
 			Ok(Self::OpenAI)
-		} else if model.starts_with("claude") {
+		} else if anthropic::MODELS.contains(&model) || model.starts_with("claude") {
 			Ok(Self::Anthropic)
-		} else if model.starts_with("command") {
+		} else if cohere::MODELS.contains(&model) || model.starts_with("command") {
 			Ok(Self::Cohere)
-		} else if model.starts_with("gemini") {
+		} else if gemini::MODELS.contains(&model)
+			|| gemini::EMBEDDING_MODELS.contains(&model)
+			|| model.starts_with("gemini")
+		{
 			Ok(Self::Gemini)
-		} else if model.starts_with("grok") {
+		} else if xai::MODELS.contains(&model) || model.starts_with("grok") {
 			Ok(Self::Xai)
 		} else if deepseek::MODELS.contains(&model) {
 			Ok(Self::DeepSeek)
