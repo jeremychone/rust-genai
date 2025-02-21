@@ -7,6 +7,7 @@ use genai::resolver::AuthData;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 const MODEL: &str = "llama3.2:3b"; // phi3:latest
+const EMBEDDING_MODEL: &str = "nomic-embed-text";
 
 // region:    --- Chat
 
@@ -77,3 +78,17 @@ async fn test_list_models() -> Result<()> {
 }
 
 // endregion: --- List
+
+// region:    --- Embed
+
+#[tokio::test]
+async fn test_embed_single() -> Result<()> {
+	common_tests::test_embed_single(EMBEDDING_MODEL).await
+}
+
+#[tokio::test]
+async fn test_embed_multiple() -> Result<()> {
+	common_tests::test_embed_multiple(EMBEDDING_MODEL).await
+}
+
+// endregion: --- Embed
