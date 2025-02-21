@@ -89,10 +89,10 @@ impl AdapterKind {
 	/// When more control is needed, the `ServiceTypeResolver` can be used
 	/// to map a model name to any adapter and endpoint.
 	///
-	///  - OpenAI     - starts_with "gpt", "o3", "o1", "chatgpt"
-	///  - Anthropic  - starts_with "claude"
-	///  - Cohere     - starts_with "command"
-	///  - Gemini     - starts_with "gemini"
+	///  - OpenAI     - model in OpenAI models or starts_with "gpt", "o3", "o1", "chatgpt"
+	///  - Anthropic  - model in Anthropic models or starts_with "claude"
+	///  - Cohere     - model in Cohere models or starts_with "command"
+	///  - Gemini     - model in Gemini models or starts_with "gemini"
 	///  - Groq       - model in Groq models
 	///  - DeepSeek   - model in DeepSeek models (deepseek.com)
 	///  - Ollama     - For anything else
