@@ -37,6 +37,14 @@ pub enum Error {
 		info: &'static str,
 	},
 
+	// -- Embedding
+	EmbeddingNotSupported {
+		model_iden: ModelIden,
+	},
+	EmbeddingNotImplemented {
+		model_iden: ModelIden,
+	},
+
 	// -- Auth
 	RequiresApiKey {
 		model_iden: ModelIden,

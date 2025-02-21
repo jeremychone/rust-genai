@@ -1,4 +1,5 @@
 use genai::chat::{ChatMessage, ChatRequest, ContentPart, ImageSource, Tool};
+use genai::embed::{BatchEmbedRequest, SingleEmbedRequest};
 use serde_json::json;
 
 pub fn seed_chat_req_simple() -> ChatRequest {
@@ -6,6 +7,18 @@ pub fn seed_chat_req_simple() -> ChatRequest {
 		// -- Messages (deactivate to see the differences)
 		ChatMessage::system("Answer in one sentence"),
 		ChatMessage::user("Why is the sky blue?"),
+	])
+}
+
+pub fn seed_embed_req_single() -> SingleEmbedRequest {
+	SingleEmbedRequest::new("This should be a single embed request")
+}
+
+pub fn seed_embed_req_batch() -> BatchEmbedRequest {
+	BatchEmbedRequest::new(vec![
+		"This should be a batch embed request",
+		"There should be three documents in total",
+		"This is the third one",
 	])
 }
 
