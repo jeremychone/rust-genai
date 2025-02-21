@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 pub struct EmbedOptions {
 	/// Will be used for this request if the Adapter/provider supports it.
 	pub dimensions: Option<u32>,
+	pub input_type: Option<String>,
 }
 
 /// Chainable Setters
@@ -22,6 +23,10 @@ impl EmbedOptions {
 	/// Set the `temperature` for this request.
 	pub fn with_dimensions(mut self, value: u32) -> Self {
 		self.dimensions = Some(value);
+		self
+	}
+	pub fn with_input_type(mut self, value: String) -> Self {
+		self.input_type = Some(value);
 		self
 	}
 }
@@ -53,6 +58,11 @@ impl EmbedOptionsSet<'_, '_> {
 		self.embed
 			.and_then(|chat| chat.dimensions)
 			.or_else(|| self.client.and_then(|client| client.dimensions))
+	}
+	pub fn input_type(&self) -> Option<&str> {
+		self.embed
+			.and_then(|chat| chat.input_type.as_deref())
+			.or_else(|| self.client.and_then(|client| client.input_type.as_deref()))
 	}
 }
 

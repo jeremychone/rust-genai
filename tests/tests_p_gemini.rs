@@ -111,12 +111,12 @@ async fn test_list_models() -> Result<()> {
 
 #[tokio::test]
 async fn test_embed_single() -> Result<()> {
-	common_tests::test_embed_single(EMBEDDING_MODEL).await
+	common_tests::test_embed_single(EMBEDDING_MODEL, None).await
 }
 
 #[tokio::test]
 async fn test_embed_multiple() -> Result<()> {
-	common_tests::test_embed_multiple(EMBEDDING_MODEL).await
+	common_tests::test_embed_multiple(EMBEDDING_MODEL, None).await
 }
 
 // endregion: --- Embed

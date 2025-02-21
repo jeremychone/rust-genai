@@ -110,7 +110,10 @@ impl AdapterKind {
 			Ok(Self::OpenAI)
 		} else if anthropic::MODELS.contains(&model) || model.starts_with("claude") {
 			Ok(Self::Anthropic)
-		} else if cohere::MODELS.contains(&model) || model.starts_with("command") {
+		} else if cohere::MODELS.contains(&model)
+			|| cohere::EMBEDDING_MODELS.contains(&model)
+			|| model.starts_with("command")
+		{
 			Ok(Self::Cohere)
 		} else if gemini::MODELS.contains(&model)
 			|| gemini::EMBEDDING_MODELS.contains(&model)

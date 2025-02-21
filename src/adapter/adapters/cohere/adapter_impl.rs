@@ -4,9 +4,10 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
 };
+use crate::embed::EmbedResponse;
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{Error, ModelIden, Result, ServiceTarget};
+use crate::{embed, Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{json, Value};
 use value_ext::JsonValueExt;
@@ -20,6 +21,15 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"command-nightly",
 	"command-light",
 	"command-light-nightly",
+];
+pub(in crate::adapter) const EMBEDDING_MODELS: &[&str] = &[
+	"embed-english-v3.0",
+	"embed-multilingual-v3.0",
+	"embed-english-light-v3.0",
+	"embed-multilingual-light-v3.0",
+	"mbed-english-v2.0",
+	"embed-english-light-v2.0",
+	"embed-multilingual-v2.0",
 ];
 
 impl CohereAdapter {
@@ -49,10 +59,10 @@ impl Adapter for CohereAdapter {
 	}
 
 	/// We have not implemented embedding for Cohere yet
-	fn get_embed_url(_model_iden: &ModelIden, _endpoint: Endpoint) -> Option<String> {
-		println!("Cohere embedding not implemented yet.");
+	fn get_embed_url(_model_iden: &ModelIden, endpoint: Endpoint) -> Option<String> {
+		let base_url = endpoint.base_url();
 
-		None
+		Some(format!("{base_url}embed"))
 	}
 
 	fn to_web_request_data(
@@ -163,30 +173,106 @@ impl Adapter for CohereAdapter {
 
 	fn embed(
 		service_target: ServiceTarget,
-		_embed_req: crate::embed::SingleEmbedRequest,
-		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+		embed_req: crate::embed::SingleEmbedRequest,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		Err(Error::EmbeddingNotImplemented {
-			model_iden: service_target.model,
-		})
+		let ServiceTarget { model, auth, endpoint } = service_target;
+		let model_name = &model.model_name;
+
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
+
+		// -- url
+		let url = Self::get_embed_url(&model, endpoint).ok_or(Error::EmbeddingNotSupported {
+			model_iden: model.clone(),
+		})?;
+
+		// -- headers
+		let headers = vec![
+			// headers
+			("Authorization".to_string(), format!("Bearer {api_key}")),
+		];
+
+		let payload = json!({
+			"model": model_name,
+			"texts": [embed_req.document],
+			"input_type": options_set.input_type().unwrap_or("search_document"),
+		});
+
+		// Cohere does not support custom embedding dimensions
+		// if let Some(dimensions) = options_set.dimensions() {
+		// 	payload.x_insert("dimensions", dimensions)?;
+		// }
+
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn embed_batch(
 		service_target: ServiceTarget,
-		_embed_req: crate::embed::BatchEmbedRequest,
-		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+		embed_req: crate::embed::BatchEmbedRequest,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		Err(Error::EmbeddingNotImplemented {
-			model_iden: service_target.model,
-		})
+		let ServiceTarget { model, auth, endpoint } = service_target;
+		let model_name = &model.model_name;
+
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
+
+		// -- url
+		let url = Self::get_embed_url(&model, endpoint).ok_or(Error::EmbeddingNotSupported {
+			model_iden: model.clone(),
+		})?;
+
+		// -- headers
+		let headers = vec![
+			// headers
+			("Authorization".to_string(), format!("Bearer {api_key}")),
+		];
+
+		let payload = json!({
+			"model": model_name,
+			"texts": embed_req.documents,
+			"input_type": options_set.input_type().unwrap_or("search_document"),
+		});
+
+		// Cohere does not support custom embedding dimensions
+		// if let Some(dimensions) = options_set.dimensions() {
+		// 	payload.x_insert("dimensions", dimensions)?;
+		// }
+
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn to_embed_response(
 		model_iden: ModelIden,
-		_web_response: WebResponse,
-		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+		web_response: WebResponse,
+		_: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::embed::EmbedResponse> {
-		Err(Error::EmbeddingNotImplemented { model_iden })
+		let WebResponse { mut body, .. } = web_response;
+
+		// -- Capture the usage
+		let usage = body.x_take("/meta/billed_units").map(|mut usage: Value| {
+			let prompt_tokens: Option<i32> = usage.x_take("input_tokens").ok();
+
+			embed::MetaUsage {
+				prompt_tokens,
+				total_tokens: None,
+			}
+		})?;
+
+		// -- Capture the content
+		let embeddings = body.x_take("embeddings").map(|embeddings: Vec<Vec<f64>>| {
+			embeddings
+				.into_iter()
+				.filter_map(|embedding: Vec<f64>| Some(embed::EmbeddingObject { index: None, embedding }))
+				.collect::<Vec<embed::EmbeddingObject>>()
+		})?;
+
+		Ok(EmbedResponse {
+			embeddings,
+			usage,
+			model_iden,
+		})
 	}
 }
 

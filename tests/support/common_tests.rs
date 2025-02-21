@@ -8,6 +8,7 @@ use genai::adapter::AdapterKind;
 use genai::chat::{
 	ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool, ToolResponse,
 };
+use genai::embed::EmbedOptions;
 use genai::resolver::{
 	AuthData, AuthResolver, AuthResolverFn, Endpoint, IntoAuthResolverFn, ModelMapper, ServiceTargetResolver,
 };
@@ -592,14 +593,14 @@ pub async fn common_test_list_models(adapter_kind: AdapterKind, contains: &str) 
 
 // region:    --- Embed
 
-pub async fn test_embed_single(model: &str) -> Result<()> {
+pub async fn test_embed_single(model: &str, options: Option<&EmbedOptions>) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 
 	let embed_req = seed_embed_req_single();
 
 	// -- Exec
-	let embed_res = client.exec_embed(model, embed_req, None).await?;
+	let embed_res = client.exec_embed(model, embed_req, options).await?;
 
 	// -- Check
 	assert!(!embed_res.embeddings().is_empty(), "Should have embeddings");
@@ -607,7 +608,7 @@ pub async fn test_embed_single(model: &str) -> Result<()> {
 	Ok(())
 }
 
-pub async fn test_embed_multiple(model: &str) -> Result<()> {
+pub async fn test_embed_multiple(model: &str, options: Option<&EmbedOptions>) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 
@@ -615,7 +616,7 @@ pub async fn test_embed_multiple(model: &str) -> Result<()> {
 	let document_count = embed_req.documents.len();
 
 	// -- Exec
-	let embed_res = client.exec_embed_batch(model, embed_req, None).await?;
+	let embed_res = client.exec_embed_batch(model, embed_req, options).await?;
 
 	// -- Check
 	assert!(!embed_res.embeddings().is_empty(), "Should have embeddings");

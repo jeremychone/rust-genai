@@ -91,7 +91,7 @@ impl Adapter for GroqAdapter {
 		_embed_req: crate::embed::SingleEmbedRequest,
 		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		Err(Error::EmbeddingNotImplemented {
+		Err(Error::EmbeddingNotSupported {
 			model_iden: service_target.model,
 		})
 	}
@@ -101,7 +101,7 @@ impl Adapter for GroqAdapter {
 		_embed_req: crate::embed::BatchEmbedRequest,
 		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		Err(Error::EmbeddingNotImplemented {
+		Err(Error::EmbeddingNotSupported {
 			model_iden: service_target.model,
 		})
 	}
@@ -111,6 +111,6 @@ impl Adapter for GroqAdapter {
 		_web_response: WebResponse,
 		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::embed::EmbedResponse> {
-		Err(Error::EmbeddingNotImplemented { model_iden })
+		Err(Error::EmbeddingNotSupported { model_iden })
 	}
 }
