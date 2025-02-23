@@ -1,4 +1,5 @@
 use crate::chat::ChatOptions;
+use crate::embed::EmbedOptions;
 use crate::resolver::{
 	AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, IntoServiceTargetResolverFn, ModelMapper,
 	ServiceTargetResolver,
@@ -41,6 +42,15 @@ impl ClientBuilder {
 	pub fn with_chat_options(mut self, options: ChatOptions) -> Self {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
 		client_config.chat_options = Some(options);
+		self
+	}
+
+	/// Set the EmbedOptions for the ClientConfig of this ClientBuilder.
+	/// This will create the ClientConfig if it is not present.
+	/// Otherwise, it will just set the `client_config.embed_options`.
+	pub fn with_embed_options(mut self, options: EmbedOptions) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.embed_options = Some(options);
 		self
 	}
 

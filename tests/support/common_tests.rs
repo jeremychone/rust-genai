@@ -2,14 +2,17 @@ use crate::get_option_value;
 use crate::support::data::{get_b64_duck, IMAGE_URL_JPG_DUCK};
 use crate::support::{
 	assert_contains, contains_checks, extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple,
-	validate_checks, Check, Result, StreamExtract,
+	seed_embed_req_batch, seed_embed_req_single, validate_checks, Check, Result, StreamExtract,
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
 	ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool, ToolResponse,
 };
-use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
-use genai::{Client, ClientConfig, ModelIden};
+use genai::embed::EmbedOptions;
+use genai::resolver::{
+	AuthData, AuthResolver, AuthResolverFn, Endpoint, IntoAuthResolverFn, ModelMapper, ServiceTargetResolver,
+};
+use genai::{Client, ClientConfig, ModelIden, ServiceTarget};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use value_ext::JsonValueExt;
@@ -587,3 +590,43 @@ pub async fn common_test_list_models(adapter_kind: AdapterKind, contains: &str) 
 }
 
 // endregion: --- List
+
+// region:    --- Embed
+
+pub async fn test_embed_single(model: &str, options: Option<&EmbedOptions>) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+
+	let embed_req = seed_embed_req_single();
+
+	// -- Exec
+	let embed_res = client.exec_embed(model, embed_req, options).await?;
+
+	// -- Check
+	assert!(!embed_res.embeddings().is_empty(), "Should have embeddings");
+
+	Ok(())
+}
+
+pub async fn test_embed_multiple(model: &str, options: Option<&EmbedOptions>) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+
+	let embed_req = seed_embed_req_batch();
+	let document_count = embed_req.documents.len();
+
+	// -- Exec
+	let embed_res = client.exec_embed_batch(model, embed_req, options).await?;
+
+	// -- Check
+	assert!(!embed_res.embeddings().is_empty(), "Should have embeddings");
+	assert_eq!(
+		embed_res.embeddings().len(),
+		document_count,
+		"Should have the same number of embeddings"
+	);
+
+	Ok(())
+}
+
+// endregion: --- Embed

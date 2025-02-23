@@ -1,5 +1,6 @@
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::embed::{BatchEmbedRequest, EmbedOptions, EmbedOptionsSet, EmbedResponse, SingleEmbedRequest};
 use crate::{Client, Error, ModelIden, Result, ServiceTarget};
 
 /// Public AI Functions
@@ -101,6 +102,70 @@ impl Client {
 			})?;
 
 		let res = AdapterDispatcher::to_chat_stream(model, reqwest_builder, options_set)?;
+
+		Ok(res)
+	}
+
+	/// Executes a single embedding request.
+	pub async fn exec_embed(
+		&self,
+		model: &str,
+		embed_req: SingleEmbedRequest,
+		options: Option<&EmbedOptions>,
+	) -> Result<EmbedResponse> {
+		let options_set = EmbedOptionsSet::default()
+			.with_embed_options(options)
+			.with_client_options(self.config().embed_options());
+
+		let model = self.default_model(model)?;
+		let target = self.config().resolve_service_target(model)?;
+		let model = target.model.clone();
+
+		let WebRequestData { url, headers, payload } =
+			AdapterDispatcher::embed(target, embed_req, options_set.clone())?;
+
+		let web_res =
+			self.web_client()
+				.do_post(&url, &headers, payload)
+				.await
+				.map_err(|webc_error| Error::WebModelCall {
+					model_iden: model.clone(),
+					webc_error,
+				})?;
+
+		let res = AdapterDispatcher::to_embed_response(model, web_res, options_set)?;
+
+		Ok(res)
+	}
+
+	/// Executes a batch embedding request.
+	pub async fn exec_embed_batch(
+		&self,
+		model: &str,
+		embed_req: BatchEmbedRequest,
+		options: Option<&EmbedOptions>,
+	) -> Result<EmbedResponse> {
+		let options_set = EmbedOptionsSet::default()
+			.with_embed_options(options)
+			.with_client_options(self.config().embed_options());
+
+		let model = self.default_model(model)?;
+		let target = self.config().resolve_service_target(model)?;
+		let model = target.model.clone();
+
+		let WebRequestData { url, headers, payload } =
+			AdapterDispatcher::embed_batch(target, embed_req, options_set.clone())?;
+
+		let web_res =
+			self.web_client()
+				.do_post(&url, &headers, payload)
+				.await
+				.map_err(|webc_error| Error::WebModelCall {
+					model_iden: model.clone(),
+					webc_error,
+				})?;
+
+		let res = AdapterDispatcher::to_embed_response(model, web_res, options_set)?;
 
 		Ok(res)
 	}

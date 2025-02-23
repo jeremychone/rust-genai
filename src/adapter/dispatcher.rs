@@ -5,9 +5,9 @@ use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::embed::{BatchEmbedRequest, EmbedOptionsSet, EmbedResponse, SingleEmbedRequest};
 use crate::webc::WebResponse;
-use crate::ModelIden;
-use crate::{Result, ServiceTarget};
+use crate::{ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
@@ -75,6 +75,19 @@ impl AdapterDispatcher {
 		}
 	}
 
+	pub fn get_embed_url(model: &ModelIden, endpoint: Endpoint) -> Option<String> {
+		match model.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::get_embed_url(model, endpoint),
+			AdapterKind::Anthropic => AnthropicAdapter::get_embed_url(model, endpoint),
+			AdapterKind::Cohere => CohereAdapter::get_embed_url(model, endpoint),
+			AdapterKind::Ollama => OllamaAdapter::get_embed_url(model, endpoint),
+			AdapterKind::Gemini => GeminiAdapter::get_embed_url(model, endpoint),
+			AdapterKind::Groq => GroqAdapter::get_embed_url(model, endpoint),
+			AdapterKind::Xai => XaiAdapter::get_embed_url(model, endpoint),
+			AdapterKind::DeepSeek => DeepSeekAdapter::get_embed_url(model, endpoint),
+		}
+	}
+
 	pub fn to_web_request_data(
 		target: ServiceTarget,
 		service_type: ServiceType,
@@ -127,6 +140,57 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+		}
+	}
+
+	pub fn embed(
+		service_target: ServiceTarget,
+		embed_req: SingleEmbedRequest,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		match service_target.model.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::embed(service_target, embed_req, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::embed(service_target, embed_req, options_set),
+			AdapterKind::Cohere => CohereAdapter::embed(service_target, embed_req, options_set),
+			AdapterKind::Ollama => OllamaAdapter::embed(service_target, embed_req, options_set),
+			AdapterKind::Gemini => GeminiAdapter::embed(service_target, embed_req, options_set),
+			AdapterKind::Groq => GroqAdapter::embed(service_target, embed_req, options_set),
+			AdapterKind::Xai => XaiAdapter::embed(service_target, embed_req, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::embed(service_target, embed_req, options_set),
+		}
+	}
+
+	pub fn embed_batch(
+		service_target: ServiceTarget,
+		embed_req: BatchEmbedRequest,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		match service_target.model.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::embed_batch(service_target, embed_req, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::embed_batch(service_target, embed_req, options_set),
+			AdapterKind::Cohere => CohereAdapter::embed_batch(service_target, embed_req, options_set),
+			AdapterKind::Ollama => OllamaAdapter::embed_batch(service_target, embed_req, options_set),
+			AdapterKind::Gemini => GeminiAdapter::embed_batch(service_target, embed_req, options_set),
+			AdapterKind::Groq => GroqAdapter::embed_batch(service_target, embed_req, options_set),
+			AdapterKind::Xai => XaiAdapter::embed_batch(service_target, embed_req, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::embed_batch(service_target, embed_req, options_set),
+		}
+	}
+
+	pub fn to_embed_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<EmbedResponse> {
+		match model_iden.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Ollama => OllamaAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Groq => GroqAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Xai => XaiAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_response(model_iden, web_response, options_set),
 		}
 	}
 }
