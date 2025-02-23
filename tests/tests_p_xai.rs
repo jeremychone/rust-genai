@@ -30,7 +30,7 @@ async fn test_chat_multi_system_ok() -> Result<()> {
 // async fn test_chat_json_mode_ok() -> Result<()> {
 // 	common_tests::common_test_chat_json_mode_ok(MODEL, true).await
 // }
-
+//
 /// NOTE - Disable for now, not supported by xAI as of 2024-12-08
 // #[tokio::test]
 // async fn test_chat_json_structured_ok() -> Result<()> {
