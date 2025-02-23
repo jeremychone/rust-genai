@@ -2,6 +2,15 @@
 
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
+## 2025-02-22 - [v0.1.22](https://github.com/jeremychone/rust-genai/compare/v0.1.21...v0.1.22)
+
+- `+` Tool - Add support Gemini for tool calls and responses (thanks to - [@GustavoWidman](https://github.com/GustavoWidman) - [PR #41](https://github.com/jeremychone/rust-genai/pull/41))
+
+- `*` reqwest - Use rustls-tls now (can add feature later if needed) 
+
+- `.` tokio - narrow tokio features 
+
+
 ## 2025-02-04 - [v0.1.21](https://github.com/jeremychone/rust-genai/compare/v0.1.20...v0.1.21)
 
 - `-` usage - make the details properties public

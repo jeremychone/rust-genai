@@ -12,7 +12,7 @@ Currently supports natively: **DeepSeek** (deepseek.com & Groq), **OpenAI**, **A
 
 ```toml
 # cargo.toml
-genai = "0.1.21"
+genai = "0.1.22"
 ```
 
 <br />
@@ -58,7 +58,7 @@ use genai::Client;
 const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 const MODEL_COHERE: &str = "command-light";
-const MODEL_GEMINI: &str = "gemini-1.5-flash-latest";
+const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "llama3-8b-8192";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 const MODEL_XAI: &str = "grok-beta";
