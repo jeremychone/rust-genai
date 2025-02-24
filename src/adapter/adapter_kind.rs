@@ -9,6 +9,8 @@ use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
+use super::{anthropic, cohere, gemini, openai, xai};
+
 /// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AdapterKind {
@@ -87,10 +89,10 @@ impl AdapterKind {
 	/// When more control is needed, the `ServiceTypeResolver` can be used
 	/// to map a model name to any adapter and endpoint.
 	///
-	///  - OpenAI     - starts_with "gpt", "o3", "o1", "chatgpt"
-	///  - Anthropic  - starts_with "claude"
-	///  - Cohere     - starts_with "command"
-	///  - Gemini     - starts_with "gemini"
+	///  - OpenAI     - model in OpenAI models or starts_with "gpt", "o3", "o1", "chatgpt"
+	///  - Anthropic  - model in Anthropic models or starts_with "claude"
+	///  - Cohere     - model in Cohere models or starts_with "command"
+	///  - Gemini     - model in Gemini models or starts_with "gemini"
 	///  - Groq       - model in Groq models
 	///  - DeepSeek   - model in DeepSeek models (deepseek.com)
 	///  - Ollama     - For anything else
@@ -98,19 +100,27 @@ impl AdapterKind {
 	/// Note: At this point, this will never fail as the fallback is the Ollama adapter.
 	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
-		if model.starts_with("gpt")
+		if openai::MODELS.contains(&model)
+			|| openai::EMBEDDING_MODELS.contains(&model)
+			|| model.starts_with("gpt")
 			|| model.starts_with("o3-")
 			|| model.starts_with("o1-")
 			|| model.starts_with("chatgpt")
 		{
 			Ok(Self::OpenAI)
-		} else if model.starts_with("claude") {
+		} else if anthropic::MODELS.contains(&model) || model.starts_with("claude") {
 			Ok(Self::Anthropic)
-		} else if model.starts_with("command") {
+		} else if cohere::MODELS.contains(&model)
+			|| cohere::EMBEDDING_MODELS.contains(&model)
+			|| model.starts_with("command")
+		{
 			Ok(Self::Cohere)
-		} else if model.starts_with("gemini") {
+		} else if gemini::MODELS.contains(&model)
+			|| gemini::EMBEDDING_MODELS.contains(&model)
+			|| model.starts_with("gemini")
+		{
 			Ok(Self::Gemini)
-		} else if model.starts_with("grok") {
+		} else if xai::MODELS.contains(&model) || model.starts_with("grok") {
 			Ok(Self::Xai)
 		} else if deepseek::MODELS.contains(&model) {
 			Ok(Self::DeepSeek)
