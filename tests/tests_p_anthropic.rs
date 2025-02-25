@@ -8,7 +8,7 @@ use serial_test::serial;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 // 4k (cheaper)
-const MODEL: &str = "claude-3-haiku-20240307";
+const MODEL: &str = "claude-3-5-haiku-latest";
 // 8k output context
 // const MODEL: &str = "claude-3-5-haiku-20241022";
 
@@ -113,7 +113,7 @@ async fn test_resolver_auth_ok() -> Result<()> {
 
 #[tokio::test]
 async fn test_list_models() -> Result<()> {
-	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-3-5-sonnet-20241022").await
+	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-3-7-sonnet-latest").await
 }
 
 // endregion: --- List
