@@ -2,6 +2,11 @@
 
 > - API changes will be denoted as "`!` - **API CHANGE** ...."
 
+## 2025-02-25 - [v0.1.23](https://github.com/jeremychone/rust-genai/compare/v0.1.22...v0.1.23)
+
+- `-` Anthropic - ensure `claude-3-7-sonnet-latest` uses the 8k max_tokens (revert the logic, only '3-opus' and '3-haiku' get the 4k max_tokens)
+  - NOTE: I wish Anthropic max_tokens were optional, and they would take the max by default.
+
 ## 2025-02-22 - [v0.1.22](https://github.com/jeremychone/rust-genai/compare/v0.1.21...v0.1.22)
 
 - `+` Tool - Add support Gemini for tool calls and responses (thanks to - [@GustavoWidman](https://github.com/GustavoWidman) - [PR #41](https://github.com/jeremychone/rust-genai/pull/41))
