@@ -18,7 +18,11 @@ pub struct AnthropicAdapter;
 
 // NOTE: For Anthropic, the max_tokens must be specified.
 //       To avoid surprises, the default value for genai is the maximum for a given model.
-// The 3-5 models have an 8k max token limit, while the 3 models have a 4k limit.
+// Current logic:
+// - if model contains `3-opus` or `3-haiku` 4x max token limit,
+// - otherwise assume 8k model
+//
+// NOTE: Will need to add the thinking option: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking
 const MAX_TOKENS_8K: u32 = 8192;
 const MAX_TOKENS_4K: u32 = 4096;
 
@@ -113,10 +117,10 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		let max_tokens = options_set.max_tokens().unwrap_or_else(|| {
-			if model_name.contains("3-5") {
-				MAX_TOKENS_8K
-			} else {
+			if model_name.contains("3-opus") || model_name.contains("3-haiku") {
 				MAX_TOKENS_4K
+			} else {
+				MAX_TOKENS_8K
 			}
 		});
 		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic

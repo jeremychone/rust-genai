@@ -7,10 +7,10 @@ use serial_test::serial;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// 4k (cheaper)
+// "claude-3-haiku-20240307" cheapest
+// "claude-3-5-haiku-latest"
+// "claude-3-7-sonnet-latest" (fail on test_chat_json_mode_ok)
 const MODEL: &str = "claude-3-5-haiku-latest";
-// 8k output context
-// const MODEL: &str = "claude-3-5-haiku-20241022";
 
 // region:    --- Chat
 
@@ -37,6 +37,7 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
 }
 
+/// TODO: Fix/Workaround - This test for "claude-3-7-sonnet-latest" (works for other models)
 #[tokio::test]
 #[serial(anthropic)]
 async fn test_chat_json_mode_ok() -> Result<()> {
