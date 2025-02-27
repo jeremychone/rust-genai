@@ -6,12 +6,8 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// NOTE: For now (2025-02-02), use two models as Google models are severely rate limited for tier 1
-//       and increasing the project tier does not seem trivial.
+// "gemini-2.0-flash", "gemini-2.0-flash-lite" (somehow function calling work with -lite)
 const MODEL: &str = "gemini-2.0-flash";
-
-#[allow(dead_code)]
-const MODEL_FOR_IMAGE: &str = "gemini-2.0-flash-exp";
 
 // region:    --- Chat
 
@@ -66,12 +62,12 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 // NOTE: Gemini does not seem to support URL
 // #[tokio::test]
 // async fn test_chat_image_url_ok() -> Result<()> {
-// 	common_tests::common_test_chat_image_url_ok(MODEL_FOR_IMAGE).await
+// 	common_tests::common_test_chat_image_url_ok(MODEL).await
 // }
 
 #[tokio::test]
 async fn test_chat_image_b64_ok() -> Result<()> {
-	common_tests::common_test_chat_image_b64_ok(MODEL_FOR_IMAGE).await
+	common_tests::common_test_chat_image_b64_ok(MODEL).await
 }
 // endregion: --- Image Test
 

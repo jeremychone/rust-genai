@@ -10,11 +10,6 @@ Currently supports natively: **DeepSeek** (deepseek.com & Groq), **OpenAI**, **A
 
 </div>
 
-```toml
-# cargo.toml
-genai = "0.1.22"
-```
-
 <br />
 
 Provides a common and ergonomic single API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
