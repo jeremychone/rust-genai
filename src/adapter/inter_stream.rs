@@ -5,12 +5,12 @@
 //!
 //! NOTE: This might be removed at some point as it may not be needed, and we could go directly to the GenAI stream.
 
-use crate::chat::MetaUsage;
+use crate::chat::Usage;
 
 #[derive(Debug, Default)]
 pub struct InterStreamEnd {
 	// When `ChatOptions..capture_usage == true`
-	pub captured_usage: Option<MetaUsage>,
+	pub captured_usage: Option<Usage>,
 
 	// When `ChatOptions..capture_content == true`
 	pub captured_content: Option<String>,

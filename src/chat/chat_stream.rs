@@ -1,5 +1,5 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{MessageContent, MetaUsage};
+use crate::chat::{MessageContent, Usage};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
@@ -87,7 +87,7 @@ pub struct StreamChunk {
 pub struct StreamEnd {
 	/// The eventual captured usage metadata.
 	/// Note: This requires the ChatOptions `capture_usage` flag to be set to true.
-	pub captured_usage: Option<MetaUsage>,
+	pub captured_usage: Option<Usage>,
 
 	/// The eventual captured full content.
 	/// Note: This requires the ChatOptions `capture_content` flag to be set to true.

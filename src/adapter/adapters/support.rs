@@ -1,7 +1,7 @@
 //! This support module is for common constructs and utilities for all the adapter implementations.
 //! It should be private to the `crate::adapter::adapters` module.
 
-use crate::chat::{ChatOptionsSet, MetaUsage};
+use crate::chat::{ChatOptionsSet, Usage};
 use crate::resolver::AuthData;
 use crate::ModelIden;
 use crate::{Error, Result};
@@ -40,7 +40,7 @@ impl StreamerOptions {
 
 #[derive(Debug, Default)]
 pub struct StreamerCapturedData {
-	pub usage: Option<MetaUsage>,
+	pub usage: Option<Usage>,
 	pub content: Option<String>,
 	pub reasoning_content: Option<String>,
 }

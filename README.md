@@ -37,7 +37,7 @@ Check out [devai.run](https://devai.run), the **Iterate to Automate** command-li
 - Model Alias (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
 - Custom Endpoint, Auth, and Model Identifier (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
 
-[Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [MetaUsage](#metausage)
+[Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [Usage](#usage)
 
 ## Examples
 
@@ -178,7 +178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | `max_tokens`  | `max_tokens`            | `max_tokens` (default 1024) | `maxOutputTokens`          | `max_tokens`  |
 | `top_p`       | `top_p`                 | `top_p`                     | `topP`                     | `p`           |
 
-## MetaUsage
+## Usage
 
 | Property                    | OpenAI Compatibles (1)      | Anthropic `usage.`      | Gemini `usageMetadata.`    | Cohere `meta.tokens.` |
 |-----------------------------|-----------------------------|-------------------------|----------------------------|-----------------------|

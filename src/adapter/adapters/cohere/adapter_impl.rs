@@ -2,7 +2,7 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::cohere::CohereStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, MetaUsage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -167,7 +167,7 @@ impl CohereAdapter {
 	///    "output_tokens": 24
 	///  }
 	/// ```
-	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
+	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
 		let prompt_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
 		let completion_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
 
@@ -183,7 +183,7 @@ impl CohereAdapter {
 		let output_tokens = prompt_tokens;
 
 		#[allow(deprecated)]
-		MetaUsage {
+		Usage {
 			prompt_tokens,
 			// for now, None for Cohere
 			prompt_tokens_details: None,

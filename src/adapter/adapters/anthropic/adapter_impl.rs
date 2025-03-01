@@ -3,7 +3,7 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart, ImageSource,
-	MessageContent, MetaUsage, ToolCall,
+	MessageContent, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -206,7 +206,7 @@ impl Adapter for AnthropicAdapter {
 // region:    --- Support
 
 impl AnthropicAdapter {
-	pub(super) fn into_usage(mut usage_value: Value) -> MetaUsage {
+	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
 		let prompt_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
 		let completion_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
 
@@ -222,7 +222,7 @@ impl AnthropicAdapter {
 		let output_tokens = prompt_tokens;
 
 		#[allow(deprecated)]
-		MetaUsage {
+		Usage {
 			prompt_tokens,
 			// for now, None for Anthropic
 			prompt_tokens_details: None,

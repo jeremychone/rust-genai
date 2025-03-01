@@ -1,6 +1,6 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, MetaUsage};
+use crate::chat::{ChatOptionsSet, Usage};
 use crate::{Error, ModelIden, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
@@ -149,7 +149,7 @@ impl AnthropicStreamer {
 				let val = self
 					.captured_data
 					.usage
-					.get_or_insert(MetaUsage::default())
+					.get_or_insert(Usage::default())
 					.prompt_tokens
 					.get_or_insert(0);
 				*val += input_tokens;
@@ -159,7 +159,7 @@ impl AnthropicStreamer {
 				let val = self
 					.captured_data
 					.usage
-					.get_or_insert(MetaUsage::default())
+					.get_or_insert(Usage::default())
 					.completion_tokens
 					.get_or_insert(0);
 				*val += output_tokens;

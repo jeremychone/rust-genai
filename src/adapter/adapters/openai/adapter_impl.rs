@@ -3,7 +3,7 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, MetaUsage, ReasoningEffort, ToolCall,
+	ContentPart, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -257,10 +257,10 @@ impl OpenAIAdapter {
 
 	/// Note: Needs to be called from super::streamer as well
 	#[allow(deprecated)]
-	pub(super) fn into_usage(usage_value: Value) -> MetaUsage {
+	pub(super) fn into_usage(usage_value: Value) -> Usage {
 		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
 		// TODO: Should have some tracing.
-		let mut usage: MetaUsage = serde_json::from_value(usage_value).unwrap_or_default();
+		let mut usage: Usage = serde_json::from_value(usage_value).unwrap_or_default();
 
 		// Legacy support
 		usage.input_tokens = usage.prompt_tokens;
