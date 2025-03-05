@@ -1,4 +1,3 @@
-use dotenv::dotenv;
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest, Tool, ToolResponse};
 use genai::Client;
