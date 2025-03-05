@@ -32,13 +32,13 @@ impl OpenAIAdapter {
 }
 
 impl Adapter for OpenAIAdapter {
+	fn default_auth() -> AuthData {
+		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
+	}
+
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.openai.com/v1/";
 		Endpoint::from_static(BASE_URL)
-	}
-
-	fn default_auth() -> AuthData {
-		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
 	/// Note: Currently returns the common models (see above)

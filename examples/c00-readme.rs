@@ -39,6 +39,10 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	tracing_subscriber::fmt()
+		.with_max_level(tracing::Level::DEBUG)
+		.init();
+
 	let question = "Why is the sky red?";
 
 	let chat_req = ChatRequest::new(vec![

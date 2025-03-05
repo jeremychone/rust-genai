@@ -142,7 +142,7 @@ impl futures::Stream for OpenAIStreamer {
 						// If we do not have content, then log a trace message
 						else {
 							// TODO: use tracing debug
-							println!("EMPTY CHOICE CONTENT");
+							tracing::warn!("EMPTY CHOICE CONTENT");
 						}
 					}
 					// -- Usage message
@@ -161,7 +161,7 @@ impl futures::Stream for OpenAIStreamer {
 					}
 				}
 				Some(Err(err)) => {
-					println!("Error: {}", err);
+					tracing::error!("Error: {}", err);
 					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err))));
 				}
 				None => {

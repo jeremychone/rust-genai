@@ -17,13 +17,13 @@ impl DeepSeekAdapter {
 
 // The DeepSeek API adapter is modeled after the OpenAI adapter, as the DeepSeek API is compatible with the OpenAI API.
 impl Adapter for DeepSeekAdapter {
+	fn default_auth() -> AuthData {
+		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
+	}
+
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://api.deepseek.com/v1/";
 		Endpoint::from_static(BASE_URL)
-	}
-
-	fn default_auth() -> AuthData {
-		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
 	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {

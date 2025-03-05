@@ -10,6 +10,11 @@ const MODEL: &str = "gpt-4o-mini";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+	tracing_subscriber::fmt()
+		.with_max_level(tracing::Level::DEBUG)
+		.init();
+
 	let questions = &[
 		// Follow-up questions
 		"Why is the sky blue?",
