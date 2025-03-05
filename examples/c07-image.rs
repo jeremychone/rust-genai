@@ -9,6 +9,11 @@ const IMAGE_URL: &str = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+	tracing_subscriber::fmt()
+		.with_max_level(tracing::Level::DEBUG)
+		.init();
+
 	let client = Client::default();
 
 	let question = "What is in this picture?";

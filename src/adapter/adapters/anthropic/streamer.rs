@@ -110,11 +110,11 @@ impl futures::Stream for AnthropicStreamer {
 						}
 
 						"ping" => continue, // Loop to the next event
-						other => println!("UNKNOWN MESSAGE TYPE: {other}"),
+						other => tracing::warn!("UNKNOWN MESSAGE TYPE: {other}"),
 					}
 				}
 				Some(Err(err)) => {
-					println!("Error: {}", err);
+					tracing::error!("Error: {}", err);
 					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err))));
 				}
 				None => return Poll::Ready(None),
@@ -137,7 +137,7 @@ impl AnthropicStreamer {
 				("/usage/input_tokens", "/usage/output_tokens")
 			} else {
 				// TODO: Use tracing
-				println!(
+				tracing::debug!(
 					"TRACING DEBUG - Anthropic message type not supported for input/output tokens: {message_type}"
 				);
 				return Ok(()); // For now permissive

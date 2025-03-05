@@ -68,7 +68,7 @@ impl futures::Stream for GeminiStreamer {
 							}) {
 								Ok(json_block) => json_block,
 								Err(err) => {
-									eprintln!("Gemini Adapter Stream Error: {}", err);
+									tracing::error!("Gemini Adapter Stream Error: {}", err);
 									return Poll::Ready(Some(Err(err)));
 								}
 							};
@@ -79,7 +79,7 @@ impl futures::Stream for GeminiStreamer {
 								{
 									Ok(gemini_response) => gemini_response,
 									Err(err) => {
-										eprintln!("Gemini Adapter Stream Error: {}", err);
+										tracing::error!("Gemini Adapter Stream Error: {}", err);
 										return Poll::Ready(Some(Err(err)));
 									}
 								};
@@ -114,7 +114,7 @@ impl futures::Stream for GeminiStreamer {
 					return Poll::Ready(Some(Ok(inter_event)));
 				}
 				Some(Err(err)) => {
-					println!("Gemini Adapter Stream Error: {}", err);
+					tracing::error!("Gemini Adapter Stream Error: {}", err);
 					return Poll::Ready(Some(Err(Error::WebStream {
 						model_iden: self.options.model_iden.clone(),
 						cause: err.to_string(),

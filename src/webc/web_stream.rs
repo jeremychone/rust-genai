@@ -119,7 +119,7 @@ impl Stream for WebStream {
 						if let Some(candidate_message) = candidate_message {
 							// For now, we will just log this
 							if this.partial_message.is_some() {
-								println!("GENAI - WARNING - partial_message is not none");
+								tracing::warn!("GENAI - WARNING - partial_message is not none");
 							}
 							this.partial_message = Some(candidate_message);
 						}

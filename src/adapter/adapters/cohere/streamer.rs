@@ -117,13 +117,13 @@ impl futures::Stream for CohereStreamer {
 							return Poll::Ready(Some(Ok(inter_event)));
 						}
 						Err(err) => {
-							println!("Cohere Adapter Stream Error: {}", err);
+							tracing::error!("Cohere Adapter Stream Error: {}", err);
 							return Poll::Ready(Some(Err(err)));
 						}
 					}
 				}
 				Some(Err(err)) => {
-					println!("Cohere Adapter Stream Error: {}", err);
+					tracing::error!("Cohere Adapter Stream Error: {}", err);
 					return Poll::Ready(Some(Err(Error::WebStream {
 						model_iden: self.options.model_iden.clone(),
 						cause: err.to_string(),
