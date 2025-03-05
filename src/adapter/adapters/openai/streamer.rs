@@ -138,14 +138,6 @@ impl futures::Stream for OpenAIStreamer {
 
 							// Return the Event
 							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(reasoning_content))));
-						}else if let Some(tool) =
-							first_choice.x_take::<Option<String>>("/delta/tool_calls")?
-						{
-
-							// add the partial tool call to the session, and return it only when the tool call is complete!
-
-							// Return the Event
-							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk())));
 						}
 						// If we do not have content, then log a trace message
 						else {
