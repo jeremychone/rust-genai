@@ -1,6 +1,6 @@
 # genai - Multi-AI Providers Library for Rust
 
-Currently supports natively: **DeepSeek** (deepseek.com & Groq), **OpenAI**, **Anthropic**, **Groq**, **Ollama**, **Gemini**, **Cohere** (more to come)
+Currently supports natively: **DeepSeek** (deepseek.com & Groq), **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**,  **Groq**,  **Cohere** (more to come)
 
 <div align="center">
 
@@ -18,6 +18,7 @@ Check out [devai.run](https://devai.run), the **Iterate to Automate** command-li
 
 ## Thanks
 
+- [@jBernavaPrah](https://github.com/jBernavaPrah) For adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
 - [@GustavoWidman](https://github.com/GustavoWidman) for the intial gemini tool/function support!! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
 - [@AdamStrojek](https://github.com/AdamStrojek) for initial image support [PR #36](https://github.com/jeremychone/rust-genai/pull/36)
 - [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
