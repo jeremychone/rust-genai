@@ -15,10 +15,7 @@ const MODEL: &str = "gemma:2b";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::DEBUG)
-		.init();
+	tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
 	let question = "Why is the sky red?";
 

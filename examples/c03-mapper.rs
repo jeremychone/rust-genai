@@ -12,10 +12,7 @@ const MODEL: &str = "gpt-4o";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::DEBUG)
-		.init();
+	tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
 	let questions = &[
 		// follow-up questions

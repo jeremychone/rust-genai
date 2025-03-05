@@ -6,10 +6,7 @@ use genai::Client;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-	tracing_subscriber::fmt()
-		.with_max_level(tracing::Level::DEBUG)
-		.init();
+	tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
 
 	const KINDS: &[AdapterKind] = &[
 		AdapterKind::OpenAI,
