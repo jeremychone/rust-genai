@@ -1,12 +1,13 @@
 use crate::get_option_value;
 use crate::support::data::{get_b64_duck, IMAGE_URL_JPG_DUCK};
 use crate::support::{
-	assert_contains, contains_checks, extract_stream_end, seed_chat_req_simple, seed_chat_req_tool_simple,
-	validate_checks, Check, Result, StreamExtract,
+	assert_contains, contains_checks, extract_stream_end, get_big_content, seed_chat_req_simple,
+	seed_chat_req_tool_simple, validate_checks, Check, Result, StreamExtract,
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
-	ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool, ToolResponse,
+	CacheControl, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool,
+	ToolResponse,
 };
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
@@ -288,6 +289,97 @@ pub async fn common_test_chat_reasoning_normalize_ok(model: &str) -> Result<()> 
 }
 
 // endregion: --- Chat
+
+// region:    --- Chat Cache
+
+pub async fn common_test_chat_cache_simple_user_ok(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let big_content = get_big_content()?;
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (deactivate to see the differences)
+		ChatMessage::system("Give a very short summary of what each of those files are about"),
+		ChatMessage::user(big_content).with_options(CacheControl::Ephemeral),
+	]);
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check Content
+	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = &chat_res.usage;
+
+	let prompt_tokens = get_option_value!(usage.prompt_tokens);
+	let completion_tokens = get_option_value!(usage.completion_tokens);
+	let total_tokens = get_option_value!(usage.total_tokens);
+	let prompt_tokens_details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	let cache_creation_tokens = get_option_value!(prompt_tokens_details.cache_creation_tokens);
+	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+
+	assert!(
+		cache_creation_tokens > 0 || cached_tokens > 0,
+		"one of cache_creation_tokens or cached_tokens should be greater than 0"
+	);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+	assert!(
+		total_tokens >= prompt_tokens + completion_tokens,
+		"total_tokens should be greater to prompt_token + comletion_token because of the cached tokens"
+	);
+
+	Ok(())
+}
+
+pub async fn common_test_chat_cache_simple_system_ok(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let big_content = get_big_content()?;
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (deactivate to see the differences)
+		ChatMessage::system("You are a senior developer which has the following code base:"),
+		ChatMessage::system(big_content).with_options(CacheControl::Ephemeral),
+		ChatMessage::user("can you give a summary of each file (very concise)"),
+	]);
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check Content
+	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = &chat_res.usage;
+
+	let prompt_tokens = get_option_value!(usage.prompt_tokens);
+	let completion_tokens = get_option_value!(usage.completion_tokens);
+	let total_tokens = get_option_value!(usage.total_tokens);
+	let prompt_tokens_details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	let cache_creation_tokens = get_option_value!(prompt_tokens_details.cache_creation_tokens);
+	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+
+	assert!(
+		cache_creation_tokens > 0 || cached_tokens > 0,
+		"one of cache_creation_tokens or cached_tokens should be greater than 0"
+	);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+	assert!(
+		total_tokens >= prompt_tokens + completion_tokens,
+		"total_tokens should be greater to prompt_token + comletion_token because of the cached tokens"
+	);
+
+	Ok(())
+}
+
+// endregion: --- Chat Cache
 
 // region:    --- Chat Stream Tests
 

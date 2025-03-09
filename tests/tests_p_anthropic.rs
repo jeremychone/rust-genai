@@ -46,6 +46,22 @@ async fn test_chat_json_mode_ok() -> Result<()> {
 
 // endregion: --- Chat
 
+// region:    --- Chat Cache
+
+#[tokio::test]
+#[serial(anthropic)]
+async fn test_chat_cache_simple_user_ok() -> Result<()> {
+	common_tests::common_test_chat_cache_simple_user_ok(MODEL).await
+}
+
+#[tokio::test]
+#[serial(anthropic)]
+async fn test_chat_cache_simple_system_ok() -> Result<()> {
+	common_tests::common_test_chat_cache_simple_system_ok(MODEL).await
+}
+
+// endregion: --- Chat Cache
+
 // region:    --- Chat Stream Tests
 
 #[tokio::test]

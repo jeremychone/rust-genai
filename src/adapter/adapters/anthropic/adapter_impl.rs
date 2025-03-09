@@ -3,7 +3,7 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart, ImageSource,
-	MessageContent, ToolCall, Usage,
+	MessageContent, PromptTokensDetails, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -140,7 +140,8 @@ impl Adapter for AnthropicAdapter {
 		let WebResponse { mut body, .. } = web_response;
 
 		// -- Capture the usage
-		let usage = body.x_take("usage").map(Self::into_usage).unwrap_or_default();
+		let usage = body.x_take::<Value>("usage");
+		let usage = usage.map(Self::into_usage).unwrap_or_default();
 
 		// -- Capture the content
 		// NOTE: Anthropic supports a list of content of multiple types but not the ChatResponse
@@ -209,23 +210,41 @@ impl AnthropicAdapter {
 	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
 		let prompt_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
 		let completion_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
+		let cache_creation_input_tokens: i32 = usage_value.x_take("cache_creation_input_tokens").unwrap_or(0);
+		let cache_read_input_tokens: i32 = usage_value.x_take("cache_read_input_tokens").unwrap_or(0);
 
 		// Compute total_tokens
 		let total_tokens = if prompt_tokens.is_some() || completion_tokens.is_some() {
-			Some(prompt_tokens.unwrap_or(0) + completion_tokens.unwrap_or(0))
+			Some(
+				prompt_tokens.unwrap_or(0)
+					+ completion_tokens.unwrap_or(0)
+					+ cache_creation_input_tokens
+					+ cache_read_input_tokens,
+			)
+		} else {
+			None
+		};
+
+		// For now the logic is to have a Some of PromptTokensDetails if at least one of those value is not 0
+		// TODO: Needs to be normalized across adapters.
+		let prompt_tokens_details = if cache_creation_input_tokens > 0 || cache_read_input_tokens > 0 {
+			Some(PromptTokensDetails {
+				cache_creation_tokens: Some(cache_creation_input_tokens),
+				cached_tokens: Some(cache_read_input_tokens),
+				audio_tokens: None,
+			})
 		} else {
 			None
 		};
 
 		// legacy
 		let input_tokens = prompt_tokens;
-		let output_tokens = prompt_tokens;
+		let output_tokens = completion_tokens;
 
 		#[allow(deprecated)]
 		Usage {
 			prompt_tokens,
-			// for now, None for Anthropic
-			prompt_tokens_details: None,
+			prompt_tokens_details,
 
 			completion_tokens,
 			// for now, None for Anthropic
@@ -243,45 +262,54 @@ impl AnthropicAdapter {
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
 	fn into_anthropic_request_parts(_model_iden: ModelIden, chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
-		let mut systems: Vec<String> = Vec::new();
+		// (content, is_cache_control)
+		let mut systems: Vec<(String, bool)> = Vec::new();
 
+		// NOTE: For now, this means the first System cannot have a cache control
+		//       so that we do not change too much.
 		if let Some(system) = chat_req.system {
-			systems.push(system);
+			systems.push((system, false));
 		}
 
 		// -- Process the messages
 		for msg in chat_req.messages {
+			let is_cache_control = msg.options.map(|o| o.cache_control.is_some()).unwrap_or(false);
+
 			match msg.role {
 				// for now, system and tool messages go to the system
 				ChatRole::System => {
 					if let MessageContent::Text(content) = msg.content {
-						systems.push(content)
+						systems.push((content, is_cache_control))
 					}
 					// TODO: Needs to trace/warn that other types are not supported
 				}
 				ChatRole::User => {
 					let content = match msg.content {
-						MessageContent::Text(content) => json!(content),
+						MessageContent::Text(content) => apply_cache_control_to_text(is_cache_control, content),
 						MessageContent::Parts(parts) => {
-							json!(parts
+							let values = parts
 								.iter()
 								.map(|part| match part {
-									ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-									ContentPart::Image { content_type, source } => {
-										match source {
-										ImageSource::Url(_) => todo!("Anthropic doesn't support images from URL, need to handle it gracefully"),
+									ContentPart::Text(text) => json!({"type": "text", "text": text}),
+									ContentPart::Image { content_type, source } => match source {
+										ImageSource::Url(_) => todo!(
+											"Anthropic doesn't support images from URL, need to handle it gracefully"
+										),
 										ImageSource::Base64(content) => json!({
-					                    "type": "image",
-					                    "source": {
-					                        "type": "base64",
-					                        "media_type": content_type,
-					                        "data": content,
-					                    },
-					                }),
-									}
-									}
+											"type": "image",
+											"source": {
+												"type": "base64",
+												"media_type": content_type,
+												"data": content,
+											},
+										}),
+									},
 								})
-								.collect::<Vec<Value>>())
+								.collect::<Vec<Value>>();
+
+							let values = apply_cache_control_to_parts(is_cache_control, values);
+
+							json!(values)
 						}
 						// Use `match` instead of `if let`. This will allow to future-proof this
 						// implementation in case some new message content types would appear,
@@ -297,6 +325,7 @@ impl AnthropicAdapter {
 					//
 					match msg.content {
 						MessageContent::Text(content) => {
+							let content = apply_cache_control_to_text(is_cache_control, content);
 							messages.push(json! ({"role": "assistant", "content": content}))
 						}
 						MessageContent::ToolCalls(tool_calls) => {
@@ -312,6 +341,7 @@ impl AnthropicAdapter {
 									})
 								})
 								.collect::<Vec<Value>>();
+							let tool_calls = apply_cache_control_to_parts(is_cache_control, tool_calls);
 							messages.push(json! ({
 								"role": "assistant",
 								"content": tool_calls
@@ -334,7 +364,7 @@ impl AnthropicAdapter {
 								})
 							})
 							.collect::<Vec<Value>>();
-
+						let tool_responses = apply_cache_control_to_parts(is_cache_control, tool_responses);
 						// FIXME: MessageContent::ToolResponse should be MessageContent::ToolResponses (even if OpenAI does require multi Tool message)
 						messages.push(json!({
 							"role": "user",
@@ -349,7 +379,34 @@ impl AnthropicAdapter {
 		// -- Create the Anthropic system
 		// NOTE: Anthropic does not have a "role": "system", just a single optional system property
 		let system = if !systems.is_empty() {
-			Some(systems.join("\n"))
+			let mut last_cache_idx = -1;
+			// first determine the last cache control index
+			for (idx, (_, is_cache_control)) in systems.iter().enumerate() {
+				if *is_cache_control {
+					last_cache_idx = idx as i32;
+				}
+			}
+			// Now build the system multi part
+			let system: Value = if last_cache_idx > 0 {
+				let mut parts: Vec<Value> = Vec::new();
+				for (idx, (content, _)) in systems.iter().enumerate() {
+					let idx = idx as i32;
+					if idx == last_cache_idx {
+						let part = json!({"type": "text", "text": content, "cache_control": {"type": "ephemeral"}});
+						parts.push(part);
+					} else {
+						let part = json!({"type": "text", "text": content});
+						parts.push(part);
+					}
+				}
+				json!(parts)
+			} else {
+				let content_buff = systems.iter().map(|(content, _)| content.as_str()).collect::<Vec<&str>>();
+				// we add empty line in between each system
+				let content = content_buff.join("\n\n");
+				json!(content)
+			};
+			Some(system)
 		} else {
 			None
 		};
@@ -384,8 +441,34 @@ impl AnthropicAdapter {
 	}
 }
 
+/// Apply the cache control logic to a text content
+fn apply_cache_control_to_text(is_cache_control: bool, content: String) -> Value {
+	if is_cache_control {
+		let value = json!({"type": "text", "text": content, "cache_control": {"type": "ephemeral"}});
+		json!(vec![value])
+	}
+	// simple return
+	else {
+		json!(content)
+	}
+}
+
+/// Apply the cache control logic to a text content
+fn apply_cache_control_to_parts(is_cache_control: bool, parts: Vec<Value>) -> Vec<Value> {
+	let mut parts = parts;
+	if is_cache_control && !parts.is_empty() {
+		let len = parts.len();
+		if let Some(last_value) = parts.get_mut(len - 1) {
+			// NOTE: For now, if it fails, then, no cache
+			let _ = last_value.x_insert("cache_control", json!( {"type": "ephemeral"}));
+			// TODO: Should warn
+		}
+	}
+	parts
+}
+
 struct AnthropicRequestParts {
-	system: Option<String>,
+	system: Option<Value>,
 	messages: Vec<Value>,
 	tools: Option<Vec<Value>>,
 }

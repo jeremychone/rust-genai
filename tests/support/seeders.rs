@@ -1,5 +1,22 @@
+use super::Result;
 use genai::chat::{ChatMessage, ChatRequest, ContentPart, ImageSource, Tool};
 use serde_json::json;
+use simple_fs::{list_files, read_to_string};
+
+pub fn get_big_content() -> Result<String> {
+	// resolver/... about 13567 (len)
+	// it has to be that to have cache activate
+	let files = list_files("./src", Some(&["./src/resolver/**/*.rs"]), None)?;
+
+	let mut buff = String::new();
+
+	for file in files {
+		let content = read_to_string(&file)?;
+		buff.push_str(&format!("\n\n````// file: {file}\n{content}\n````\n"));
+	}
+
+	Ok(buff)
+}
 
 pub fn seed_chat_req_simple() -> ChatRequest {
 	ChatRequest::new(vec![
