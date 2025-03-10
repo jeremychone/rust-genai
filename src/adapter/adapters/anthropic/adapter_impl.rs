@@ -12,6 +12,7 @@ use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde_json::{json, Value};
+use tracing::warn;
 use value_ext::JsonValueExt;
 
 pub struct AnthropicAdapter;
@@ -280,20 +281,22 @@ impl AnthropicAdapter {
 						MessageContent::Parts(parts) => {
 							let values = parts
 								.iter()
-								.map(|part| match part {
-									ContentPart::Text(text) => json!({"type": "text", "text": text}),
+								.filter_map(|part| match part {
+									ContentPart::Text(text) => Some(json!({"type": "text", "text": text})),
 									ContentPart::Image { content_type, source } => match source {
-										ImageSource::Url(_) => todo!(
-											"Anthropic doesn't support images from URL, need to handle it gracefully"
-										),
-										ImageSource::Base64(content) => json!({
+										ImageSource::Url(_) => {
+											// TODO: Might need to return an error here.
+											warn!("Anthropic doesn't support images from URL, need to handle it gracefully");
+											None
+										}
+										ImageSource::Base64(content) => Some(json!({
 											"type": "image",
 											"source": {
 												"type": "base64",
 												"media_type": content_type,
 												"data": content,
 											},
-										}),
+										})),
 									},
 								})
 								.collect::<Vec<Value>>();

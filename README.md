@@ -195,7 +195,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | `prompt_tokens`             | `prompt_tokens`             | `input_tokens` (added)  | `promptTokenCount` (2)     | `input_tokens`        |
 | `completion_tokens`         | `completion_tokens`         | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
 | `total_tokens`              | `total_tokens`              | (computed)              | `totalTokenCount`  (2)     | (computed)            |
-| `prompt_tokens_details`     | `prompt_tokens_details`     | N/A for now             | N/A for now                | N/A for now           |
+| `prompt_tokens_details`     | `prompt_tokens_details`     | `cached/cache_creation` | N/A for now                | N/A for now           |
 | `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
 
 

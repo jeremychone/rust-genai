@@ -1,6 +1,19 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
-> - API changes will be denoted as "`!` - **API CHANGE** ...."
+
+## 2025-03-09 - [v0.2.0-rc.1](https://github.com/jeremychone/rust-genai/compare/v0.1.23...v0.2.0-rc.1)
+
+- `+` Anthropic - Support for `cache_control` at the message level
+- **API-CHANGES**
+  - `chat::MetaUsage` has been renamed to `chat::Usage`
+  - `Usage.input_tokens` to `Usage.prompt_tokens` 
+  - `Usage.prompt_tokens` to `Usage.completion_tokens`
+  - `ChatMessage` now takes an additional property, `options: MessageOptions` with and optional `cache_control` (`CacheControl::Ephemeral`)
+  	- This is for the now supported Anthropic caching scheme (which can save 90% on input tokens).
+  	- Should be relative transparent when use `ChatMessage::user...` and such. 
+  	- Unused on OpenAI APIs/Adapters as it supports it transparently.
+  	- Google/Gemini caching is not supported at this point, as it is a totally different scheme (requiring a separate request).
+
 
 ## 2025-02-25 - [v0.1.23](https://github.com/jeremychone/rust-genai/compare/v0.1.22...v0.1.23)
 
@@ -10,9 +23,7 @@
 ## 2025-02-22 - [v0.1.22](https://github.com/jeremychone/rust-genai/compare/v0.1.21...v0.1.22)
 
 - `+` Tool - Add support Gemini for tool calls and responses (thanks to - [@GustavoWidman](https://github.com/GustavoWidman) - [PR #41](https://github.com/jeremychone/rust-genai/pull/41))
-
 - `*` reqwest - Use rustls-tls now (can add feature later if needed) 
-
 - `.` tokio - narrow tokio features 
 
 
