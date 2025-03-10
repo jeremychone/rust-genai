@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 
-#[deprecated(note = "MetaUsage has been renamed to Usage. Please use Usage instead.")]
-pub type MetaUsage = Usage;
-
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
