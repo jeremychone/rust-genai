@@ -16,6 +16,20 @@ Provides a common and ergonomic single API to many generative AI providers, such
 
 Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **genai** for multi-AI capabilities.
 
+## v0.2.0.rc
+
+Main branch is now on v0.2.0.rc. GenAI will now follow semver more strictly when API changes are made (even small ones). The two upcoming changes are relatively minor, but they are still changes.
+
+- `chat::MetaUsage` has been renamed to `chat::Usage`
+- `Usage.input_tokens` to `Usage.prompt_tokens` 
+- `Usage.prompt_tokens` to `Usage.completion_tokens`
+- `ChatMessage` now takes an additional property, `options: MessageOptions` with and optional `cache_control` (`CacheControl::Ephemeral`)
+	- This is for the now supported Anthropic caching scheme (which can save 90% on input tokens).
+	- Should be relative transparent when use `ChatMessage::user...` and such. 
+	- Unused on OpenAI APIs/Adapters as it supports it transparently.
+	- Google/Gemini caching is not supported at this point, as it is a totally different scheme (requiring a separate request).
+
+
 ## Thanks
 
 - [@jBernavaPrah](https://github.com/jBernavaPrah) For adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
@@ -28,11 +42,10 @@ Check out [devai.run](https://devai.run), the **Iterate to Automate** command-li
 - [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
 
 
-
 ## Key Features
 
-- DeepSeekR1 support, with `reasoning_content` (and stream support) + DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek (Direct chat and stream) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- DeepSeekR1 support, with `reasoning_content` (and stream support) + DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
 - Model Alias (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
@@ -163,10 +176,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Prioritizes ergonomics and commonality, with depth being secondary. (If you require a complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); they are both excellent and easy to use.)
 
 - Initially, this library will mostly focus on text chat API (images, or even function calling in the first stage).
-
-- The `0.1.x` version will work, but the APIs will change in the patch version, not following semver strictly.
-
-- Version `0.2.x` will follow semver more strictly.
 
 ## ChatOptions
 

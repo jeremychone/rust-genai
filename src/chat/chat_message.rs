@@ -89,6 +89,7 @@ impl From<CacheControl> for MessageOptions {
 	}
 }
 // endregion: --- MessageOptions
+
 /// Chat roles.
 #[derive(Debug, Clone, Serialize, Deserialize, derive_more::Display)]
 #[allow(missing_docs)]
