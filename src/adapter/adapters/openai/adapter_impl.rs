@@ -260,12 +260,7 @@ impl OpenAIAdapter {
 	pub(super) fn into_usage(usage_value: Value) -> Usage {
 		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
 		// TODO: Should have some tracing.
-		let mut usage: Usage = serde_json::from_value(usage_value).unwrap_or_default();
-
-		// Legacy support
-		usage.input_tokens = usage.prompt_tokens;
-		usage.output_tokens = usage.completion_tokens;
-
+		let usage: Usage = serde_json::from_value(usage_value).unwrap_or_default();
 		usage
 	}
 

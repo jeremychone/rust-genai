@@ -219,11 +219,6 @@ impl GeminiAdapter {
 		let completion_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
 		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
 
-		// legacy
-		let input_tokens = prompt_tokens;
-		let output_tokens = prompt_tokens;
-
-		#[allow(deprecated)]
 		Usage {
 			prompt_tokens,
 			// for now, None for Gemini
@@ -234,10 +229,6 @@ impl GeminiAdapter {
 			completion_tokens_details: None,
 
 			total_tokens,
-
-			// -- Legacy
-			input_tokens,
-			output_tokens,
 		}
 	}
 

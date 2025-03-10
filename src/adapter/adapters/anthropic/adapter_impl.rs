@@ -237,11 +237,6 @@ impl AnthropicAdapter {
 			None
 		};
 
-		// legacy
-		let input_tokens = prompt_tokens;
-		let output_tokens = completion_tokens;
-
-		#[allow(deprecated)]
 		Usage {
 			prompt_tokens,
 			prompt_tokens_details,
@@ -251,10 +246,6 @@ impl AnthropicAdapter {
 			completion_tokens_details: None,
 
 			total_tokens,
-
-			// -- Legacy
-			input_tokens,
-			output_tokens,
 		}
 	}
 

@@ -20,17 +20,6 @@ pub struct Usage {
 	/// This will either be the total_tokens if returned,
 	/// or the sum of prompt/completion including the cache and cache creation tokens.
 	pub total_tokens: Option<i32>,
-
-	// -- Deprecated
-	/// The number of input tokens if returned by the API call.
-	#[deprecated(note = "Use prompt_tokens (for now it is a clone, but later will be removed)")]
-	#[serde(skip)]
-	pub input_tokens: Option<i32>,
-
-	/// The number of output tokens if returned by the API call.
-	#[deprecated(note = "Use prompt_tokens (for now it is a clone, but later will be removed)")]
-	#[serde(skip)]
-	pub output_tokens: Option<i32>,
 }
 
 #[serde_as]

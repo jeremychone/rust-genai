@@ -178,10 +178,6 @@ impl CohereAdapter {
 			None
 		};
 
-		// legacy
-		let input_tokens = prompt_tokens;
-		let output_tokens = prompt_tokens;
-
 		#[allow(deprecated)]
 		Usage {
 			prompt_tokens,
@@ -193,10 +189,6 @@ impl CohereAdapter {
 			completion_tokens_details: None,
 
 			total_tokens,
-
-			// -- Legacy
-			input_tokens,
-			output_tokens,
 		}
 	}
 
