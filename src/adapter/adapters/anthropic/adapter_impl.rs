@@ -140,6 +140,11 @@ impl Adapter for AnthropicAdapter {
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
+		// -- Capture the provider_model_iden
+		// TODO: Need to be implemented (if available), for now, just clone model_iden
+		let provider_model_name: Option<String> = body.x_remove("model").ok();
+		let provider_model_iden = model_iden.with_name_or_clone(provider_model_name);
+
 		// -- Capture the usage
 		let usage = body.x_take::<Value>("usage");
 		let usage = usage.map(Self::into_usage).unwrap_or_default();
@@ -186,6 +191,7 @@ impl Adapter for AnthropicAdapter {
 			content,
 			reasoning_content: None,
 			model_iden,
+			provider_model_iden,
 			usage,
 		})
 	}

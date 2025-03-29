@@ -66,6 +66,10 @@ impl Adapter for OpenAIAdapter {
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
+		// -- Capture the provider_model_iden
+		let provider_model_name: Option<String> = body.x_remove("model").ok();
+		let provider_model_iden = model_iden.with_name_or_clone(provider_model_name);
+
 		// -- Capture the usage
 		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
 
@@ -103,6 +107,7 @@ impl Adapter for OpenAIAdapter {
 			content,
 			reasoning_content,
 			model_iden,
+			provider_model_iden,
 			usage,
 		})
 	}

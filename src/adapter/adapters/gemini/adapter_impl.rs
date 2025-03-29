@@ -147,7 +147,12 @@ impl Adapter for GeminiAdapter {
 		web_response: WebResponse,
 		_options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
-		let WebResponse { body, .. } = web_response;
+		let WebResponse { mut body, .. } = web_response;
+
+		// -- Capture the provider_model_iden
+		// TODO: Need to be implemented (if available), for now, just clone model_iden
+		let provider_model_name: Option<String> = body.x_remove("modelVersion").ok();
+		let provider_model_iden = model_iden.with_name_or_clone(provider_model_name);
 
 		let gemini_response = Self::body_to_gemini_chat_response(&model_iden.clone(), body)?;
 		let GeminiChatResponse { content, usage } = gemini_response;
@@ -162,6 +167,7 @@ impl Adapter for GeminiAdapter {
 			content,
 			reasoning_content: None,
 			model_iden,
+			provider_model_iden,
 			usage,
 		})
 	}

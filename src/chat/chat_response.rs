@@ -16,10 +16,16 @@ pub struct ChatResponse {
 	/// The eventual reasoning content,
 	pub reasoning_content: Option<String>,
 
-	/// The Model Identifier (AdapterKind/ModelName) used for this request.
-	/// > NOTE: This might be different from the request model if changed by the ModelMapper
+	/// The resolved Model Identifier (AdapterKind/ModelName) used for this request.
+	/// > NOTE 1: This might be different from the request model if changed by the ModelMapper
+	/// > NOTE 2: This might also be different than the used_model_iden as this will be the one returned by the AI Provider for this request
 	pub model_iden: ModelIden,
 
+	/// The provider model iden. Will be `model_iden` if not returned or mapped, but can be different.
+	/// For example, `gpt-4o` model_iden might have a provider_model_iden as `gpt-4o-2024-08-06`
+	pub provider_model_iden: ModelIden,
+
+	// pub model
 	/// The eventual usage of the chat response
 	pub usage: Usage,
 }

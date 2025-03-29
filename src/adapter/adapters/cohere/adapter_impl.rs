@@ -120,6 +120,12 @@ impl Adapter for CohereAdapter {
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
+		// -- Capture the provider_model_iden
+		// TODO: Need to be implemented (if available), for now, just clone model_iden
+		// let provider_model_name: Option<String> = body.x_remove("model").ok();
+		let provider_model_name = None;
+		let provider_model_iden = model_iden.with_name_or_clone(provider_model_name);
+
 		// -- Get usage
 		let usage = body.x_take("/meta/tokens").map(Self::into_usage).unwrap_or_default();
 
@@ -136,6 +142,7 @@ impl Adapter for CohereAdapter {
 			content,
 			reasoning_content: None,
 			model_iden,
+			provider_model_iden,
 			usage,
 		})
 	}

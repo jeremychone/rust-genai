@@ -7,6 +7,7 @@ use genai::resolver::AuthData;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 const MODEL: &str = "gpt-4o-mini";
+// const MODEL: &str = "gpt-4o";
 
 // region:    --- Chat
 
