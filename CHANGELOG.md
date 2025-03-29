@@ -1,5 +1,8 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-03-29 - [v0.2.0-rc.2](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.1...v0.2.0-rc.2)
+
+- `+` Add `ChatResponse.provider_model_iden` – This will be the model returned by the provider, or a clone of the one sent if the provider does not return it or if it doesn't match.
 
 ## 2025-03-09 - [v0.2.0-rc.1](https://github.com/jeremychone/rust-genai/compare/v0.1.23...v0.2.0-rc.1)
 
@@ -13,7 +16,6 @@
   	- Should be relative transparent when use `ChatMessage::user...` and such. 
   	- Unused on OpenAI APIs/Adapters as it supports it transparently.
   	- Google/Gemini caching is not supported at this point, as it is a totally different scheme (requiring a separate request).
-
 
 ## 2025-02-25 - [v0.1.23](https://github.com/jeremychone/rust-genai/compare/v0.1.22...v0.1.23)
 
