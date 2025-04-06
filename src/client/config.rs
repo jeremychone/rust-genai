@@ -3,6 +3,7 @@ use crate::chat::ChatOptions;
 use crate::client::ServiceTarget;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result};
+use futures::FutureExt;
 
 /// The Client configuration used in the configuration builder stage.
 #[derive(Debug, Default, Clone)]
@@ -71,7 +72,7 @@ impl ClientConfig {
 
 /// Resolvers
 impl ClientConfig {
-	pub fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
+	pub async fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
 		// -- Resolve the Model first
 		let model = match self.model_mapper() {
 			Some(model_mapper) => model_mapper.map_model(model.clone()),
@@ -83,17 +84,19 @@ impl ClientConfig {
 		})?;
 
 		// -- Get the auth
-		let auth = self
-			.auth_resolver()
-			.map(|auth_resolver| {
-				auth_resolver.resolve(model.clone()).map_err(|resolver_error| Error::Resolver {
+		let auth = if let Some(auth) = self.auth_resolver() {
+			// resolve async which may be async
+			auth.resolve(model.clone())
+				.await
+				.map_err(|err| Error::Resolver {
 					model_iden: model.clone(),
-					resolver_error,
-				})
-			})
-			.transpose()? // return an error if there is an error with the auth resolver
-			.flatten()
-			.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind)); // flatten the two options
+					resolver_error: err,
+				})?
+				// default the resolver resolves to nothing
+				.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind))
+		} else {
+			AdapterDispatcher::default_auth(model.adapter_kind)
+		};
 
 		// -- Get the default endpoint
 		// For now, just get the default endpoint; the `resolve_target` will allow overriding it.

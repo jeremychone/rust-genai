@@ -1,5 +1,6 @@
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::resolver::AuthData;
 use crate::{Client, Error, ModelIden, Result, ServiceTarget};
 
 /// Public AI Functions
@@ -30,15 +31,15 @@ impl Client {
 	}
 
 	#[deprecated(note = "use `client.resolve_service_target(model_name)`")]
-	pub fn resolve_model_iden(&self, model_name: &str) -> Result<ModelIden> {
+	pub async fn resolve_model_iden(&self, model_name: &str) -> Result<ModelIden> {
 		let model = self.default_model(model_name)?;
-		let target = self.config().resolve_service_target(model)?;
+		let target = self.config().resolve_service_target(model).await?;
 		Ok(target.model)
 	}
 
-	pub fn resolve_service_target(&self, model_name: &str) -> Result<ServiceTarget> {
+	pub async fn resolve_service_target(&self, model_name: &str) -> Result<ServiceTarget> {
 		let model = self.default_model(model_name)?;
-		self.config().resolve_service_target(model)
+		self.config().resolve_service_target(model).await
 	}
 
 	/// Executes a chat.
@@ -54,7 +55,7 @@ impl Client {
 			.with_client_options(self.config().chat_options());
 
 		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model)?;
+		let target = self.config().resolve_service_target(model).await?;
 		let model = target.model.clone();
 
 		let WebRequestData { headers, payload, url } =
@@ -86,11 +87,24 @@ impl Client {
 			.with_client_options(self.config().chat_options());
 
 		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model)?;
+		let target = self.config().resolve_service_target(model).await?;
 		let model = target.model.clone();
+		let auth_data = target.auth.clone();
 
-		let WebRequestData { url, headers, payload } =
-			AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
+		let WebRequestData {
+			mut url,
+			mut headers,
+			payload,
+		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
+
+		if let AuthData::RequestOverride {
+			url: override_url,
+			headers: override_headers,
+		} = auth_data
+		{
+			url = override_url;
+			headers = override_headers;
+		};
 
 		let reqwest_builder = self
 			.web_client()

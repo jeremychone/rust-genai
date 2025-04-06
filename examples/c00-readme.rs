@@ -1,8 +1,8 @@
 //! Base examples demonstrating the core capabilities of genai
 
-use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
-use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
+use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
+use genai::chat::{ChatMessage, ChatRequest};
 
 const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			continue;
 		}
 
-		let adapter_kind = client.resolve_service_target(model)?.model.adapter_kind;
+		let adapter_kind = client.resolve_service_target(model).await?.model.adapter_kind;
 
 		println!("\n===== MODEL: {model} ({adapter_kind}) =====");
 

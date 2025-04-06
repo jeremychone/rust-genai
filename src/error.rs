@@ -1,6 +1,6 @@
 use crate::adapter::AdapterKind;
 use crate::chat::ChatRole;
-use crate::{resolver, webc, ModelIden};
+use crate::{ModelIden, resolver, webc};
 use derive_more::From;
 use value_ext::JsonValueExtError;
 
@@ -47,7 +47,6 @@ pub enum Error {
 	NoAuthData {
 		model_iden: ModelIden,
 	},
-
 	// -- ModelMapper
 	ModelMapperFailed {
 		model_iden: ModelIden,
@@ -93,6 +92,8 @@ pub enum Error {
 	// Note: will probably need to remove this one to provide more context
 	#[from]
 	SerdeJson(serde_json::Error),
+	#[from]
+	GcpAuthError(gcp_auth::Error),
 }
 
 // region:    --- Error Boilerplate
