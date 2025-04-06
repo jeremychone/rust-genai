@@ -21,11 +21,6 @@ pub enum AuthData {
 	MultiKeys(HashMap<String, String>),
 }
 
-#[derive(Clone)]
-pub enum Override {
-	GcpAccount { token: String, url: String },
-}
-
 /// Constructors
 impl AuthData {
 	/// Create a new `AuthData` from an environment variable name.
