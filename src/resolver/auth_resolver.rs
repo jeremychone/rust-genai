@@ -8,6 +8,7 @@
 
 use crate::ModelIden;
 use crate::resolver::{AuthData, Result};
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -18,6 +19,7 @@ use std::sync::Arc;
 pub enum AuthResolver {
 	/// The `AuthResolverFn` trait object.
 	ResolverFn(Arc<Box<dyn AuthResolverFn>>),
+	/// The `AuthResolverAsyncFn` trait object.
 	ResolverAsyncFn(Arc<Box<dyn AuthResolverAsyncFn>>),
 }
 
@@ -26,9 +28,8 @@ impl AuthResolver {
 	pub fn from_resolver_fn(resolver_fn: impl IntoAuthResolverFn) -> Self {
 		AuthResolver::ResolverFn(resolver_fn.into_resolver_fn())
 	}
-
 	pub fn from_resolver_async_fn(resolver_fn: impl IntoAuthResolverAsyncFn) -> Self {
-		AuthResolver::ResolverAsyncFn(resolver_fn.into_async_auth_resolver())
+		AuthResolver::ResolverAsyncFn(resolver_fn.into_resolver_fn())
 	}
 }
 
@@ -43,59 +44,6 @@ impl AuthResolver {
 }
 
 // endregion: --- AuthResolver
-
-// region:    --- AuthResolverAsyncFn
-
-pub trait AuthResolverAsyncFn: Send + Sync {
-	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>>;
-	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn>;
-}
-
-impl<F> AuthResolverAsyncFn for F
-where
-	F: Fn(ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>> + Send + Sync + Clone + 'static,
-{
-	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>> {
-		self(model_iden)
-	}
-
-	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn> {
-		Box::new(self.clone())
-	}
-}
-
-impl std::fmt::Debug for dyn AuthResolverAsyncFn {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "AuthResolverAsyncFn")
-	}
-}
-
-impl Clone for Box<dyn AuthResolverAsyncFn> {
-	fn clone(&self) -> Self {
-		self.clone_box()
-	}
-}
-
-pub trait IntoAuthResolverAsyncFn {
-	fn into_async_auth_resolver(self) -> Arc<Box<dyn AuthResolverAsyncFn>>;
-}
-
-impl IntoAuthResolverAsyncFn for Arc<Box<dyn AuthResolverAsyncFn>> {
-	fn into_async_auth_resolver(self) -> Arc<Box<dyn AuthResolverAsyncFn>> {
-		self
-	}
-}
-
-impl<F> IntoAuthResolverAsyncFn for F
-where
-	F: Fn(ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>> + Send + Sync + Clone + 'static,
-{
-	fn into_async_auth_resolver(self) -> Arc<Box<dyn AuthResolverAsyncFn>> {
-		Arc::new(Box::new(self))
-	}
-}
-
-// endregion: --- AuthResolverAsyncFn
 
 // region:    --- AuthResolverFn
 /// The `AuthResolverFn` trait object.
@@ -133,9 +81,6 @@ impl std::fmt::Debug for dyn AuthResolverFn {
 		write!(f, "AuthResolverFn")
 	}
 }
-
-// endregion: --- AuthResolverFn
-
 // region:    --- IntoAuthResolverFn
 
 /// Custom and convenient trait used in the `AuthResolver::from_resolver_fn` argument.
@@ -161,3 +106,46 @@ where
 }
 
 // endregion: --- IntoAuthResolverFn
+
+pub trait AuthResolverAsyncFn: Send + Sync {
+	/// Execute the `AuthResolverAsyncFn` to get the `AuthData`.
+	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>>;
+
+	///	Clone the trait object.
+	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn>;
+}
+
+impl<F: Send> AuthResolverAsyncFn for F
+where
+	F: AsyncFnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
+{
+	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>> {
+		let resolver = self.clone();
+		Box::pin(async { resolver(model_iden).await })
+	}
+
+	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn> {
+		Box::new(self.clone())
+	}
+}
+
+impl std::fmt::Debug for dyn AuthResolverAsyncFn {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "AuthResolverAsyncFn")
+	}
+}
+
+pub trait IntoAuthResolverAsyncFn {
+	/// Convert the argument into an `AuthResolverFn` trait object.
+	fn into_resolver_fn(self) -> Arc<Box<dyn AuthResolverAsyncFn>>;
+}
+
+// Implement `IntoAuthResolverFn` for closures.
+impl<F> IntoAuthResolverAsyncFn for F
+where
+	F: AsyncFnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
+{
+	fn into_resolver_fn(self) -> Arc<Box<dyn AuthResolverAsyncFn>> {
+		Arc::new(Box::new(self))
+	}
+}
