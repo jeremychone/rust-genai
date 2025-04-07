@@ -3,7 +3,6 @@ use crate::chat::ChatOptions;
 use crate::client::ServiceTarget;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result};
-use futures::FutureExt;
 
 /// The Client configuration used in the configuration builder stage.
 #[derive(Debug, Default, Clone)]
