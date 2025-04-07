@@ -125,11 +125,7 @@ pub trait ServiceTargetResolverAsyncFn: Send + Sync {
 
 impl<F> ServiceTargetResolverAsyncFn for F
 where
-	F: FnOnce(ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>>
-		+ Send
-		+ Sync
-		+ Clone
-		+ 'static,
+	F: Fn(ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>> + Send + Sync + Clone + 'static,
 {
 	fn exec_fn(&self, service_target: ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>> {
 		self.clone()(service_target)
@@ -170,11 +166,7 @@ impl IntoServiceTargetResolverAsyncFn for Arc<Box<dyn ServiceTargetResolverAsync
 
 impl<F> IntoServiceTargetResolverAsyncFn for F
 where
-	F: FnOnce(ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>>
-		+ Send
-		+ Sync
-		+ Clone
-		+ 'static,
+	F: Fn(ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>> + Send + Sync + Clone + 'static,
 {
 	fn into_resolver_async_fn(self) -> Arc<Box<dyn ServiceTargetResolverAsyncFn>> {
 		Arc::new(Box::new(self))
