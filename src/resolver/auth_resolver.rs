@@ -35,10 +35,7 @@ impl AuthResolver {
 impl AuthResolver {
 	pub(crate) async fn resolve(&self, model_iden: ModelIden) -> Result<Option<AuthData>> {
 		match self {
-			AuthResolver::ResolverFn(resolver_fn) => {
-				// Clone the Arc to get a new reference to the Box, then call exec_fn.
-				resolver_fn.clone().exec_fn(model_iden)
-			}
+			AuthResolver::ResolverFn(resolver_fn) => resolver_fn.exec_fn(model_iden),
 			AuthResolver::ResolverAsyncFn(resolver_fn) => resolver_fn.exec_fn(model_iden).await,
 		}
 	}
