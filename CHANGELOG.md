@@ -1,5 +1,12 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-04-06 - [v0.2.0-rc.4](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.2...v0.2.0-rc.4)
+
+- `!` **API-CHANGE** - Now `client.resolve_service_target(model)` is ASYNC, so, `client.resolve_service_target(model).await`
+- `^` `AuthResolver` - Now allow async resolver function as well as sync ones
+- `^` `ServiceTargetResolver` - Now allow async resolver function as well as sync ones
+- Now `edition = 2024`
+
 ## 2025-03-29 - [v0.2.0-rc.2](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.1...v0.2.0-rc.2)
 
 - `+` Add `ChatResponse.provider_model_iden` – This will be the model returned by the provider, or a clone of the one sent if the provider does not return it or if it doesn't match.
