@@ -1,6 +1,11 @@
 //! `genai` library - A client library for any AI provider.
 //! See [examples/c00-readme.rs](./examples/c00-readme.rs)
 
+// IMPORTANT: This branc merge the support for Aync
+//
+
+#![feature(async_fn_traits)]
+
 // region:    --- Modules
 
 mod client;

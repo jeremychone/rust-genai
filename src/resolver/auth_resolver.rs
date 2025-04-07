@@ -111,7 +111,7 @@ where
 
 pub trait AuthResolverAsyncFn: Send + Sync {
 	/// Execute the `AuthResolverAsyncFn` to get the `AuthData`.
-	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>>;
+	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>>;
 
 	/// Clone the trait object.
 	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn>;
@@ -120,8 +120,9 @@ pub trait AuthResolverAsyncFn: Send + Sync {
 impl<F: Send> AuthResolverAsyncFn for F
 where
 	F: AsyncFnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
+	F::CallOnceFuture: Send + 'static,
 {
-	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>> {
+	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>> {
 		let resolver = self.clone();
 		Box::pin(async { resolver(model_iden).await })
 	}
@@ -146,6 +147,7 @@ pub trait IntoAuthResolverAsyncFn {
 impl<F> IntoAuthResolverAsyncFn for F
 where
 	F: AsyncFnOnce(ModelIden) -> Result<Option<AuthData>> + Send + Sync + Clone + 'static,
+	F::CallOnceFuture: Send + 'static,
 {
 	fn into_resolver_fn(self) -> Arc<Box<dyn AuthResolverAsyncFn>> {
 		Arc::new(Box::new(self))
