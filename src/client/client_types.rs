@@ -1,6 +1,6 @@
+use crate::ClientBuilder;
 use crate::client::ClientConfig;
 use crate::webc::WebClient;
-use crate::ClientBuilder;
 use std::sync::Arc;
 
 /// genai Client for executing AI requests to any providers.

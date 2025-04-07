@@ -9,7 +9,7 @@ use crate::webc::{WebResponse, WebStream};
 use crate::{Error, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use value_ext::JsonValueExt;
 
 pub struct CohereAdapter;
@@ -250,7 +250,7 @@ impl CohereAdapter {
 					return Err(Error::MessageRoleNotSupported {
 						model_iden,
 						role: ChatRole::Tool,
-					})
+					});
 				}
 			}
 		}

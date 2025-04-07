@@ -1,3 +1,4 @@
+use crate::ModelIden;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -7,11 +8,10 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::ModelIden;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tracing::warn;
 use value_ext::JsonValueExt;
 
@@ -292,7 +292,9 @@ impl AnthropicAdapter {
 									ContentPart::Image { content_type, source } => match source {
 										ImageSource::Url(_) => {
 											// TODO: Might need to return an error here.
-											warn!("Anthropic doesn't support images from URL, need to handle it gracefully");
+											warn!(
+												"Anthropic doesn't support images from URL, need to handle it gracefully"
+											);
 											None
 										}
 										ImageSource::Base64(content) => Some(json!({

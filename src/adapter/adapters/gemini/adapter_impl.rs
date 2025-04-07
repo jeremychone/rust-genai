@@ -9,7 +9,7 @@ use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
 use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;
@@ -268,57 +268,63 @@ impl GeminiAdapter {
 					let content = match msg.content {
 						MessageContent::Text(content) => json!([{"text": content}]),
 						MessageContent::Parts(parts) => {
-							json!(parts
-								.iter()
-								.map(|part| match part {
-									ContentPart::Text(text) => json!({"text": text.clone()}),
-									ContentPart::Image { content_type, source } => {
-										match source {
-											ImageSource::Url(url) => json!({
-												"file_data": {
-													"mime_type": content_type,
-													"file_uri": url
-												}
-											}),
-											ImageSource::Base64(content) => json!({
-												"inline_data": {
-													"mime_type": content_type,
-													"data": content
-												}
-											}),
-										}
-									}
-								})
-								.collect::<Vec<Value>>())
-						}
-						MessageContent::ToolCalls(tool_calls) => {
-							json!(tool_calls
-								.into_iter()
-								.map(|tool_call| {
-									json!({
-										"functionCall": {
-											"name": tool_call.fn_name,
-											"args": tool_call.fn_arguments,
-										}
-									})
-								})
-								.collect::<Vec<Value>>())
-						}
-						MessageContent::ToolResponses(tool_responses) => {
-							json!(tool_responses
-								.into_iter()
-								.map(|tool_response| {
-									json!({
-										"functionResponse": {
-											"name": tool_response.call_id,
-											"response": {
-												"name": tool_response.call_id,
-												"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+							json!(
+								parts
+									.iter()
+									.map(|part| match part {
+										ContentPart::Text(text) => json!({"text": text.clone()}),
+										ContentPart::Image { content_type, source } => {
+											match source {
+												ImageSource::Url(url) => json!({
+													"file_data": {
+														"mime_type": content_type,
+														"file_uri": url
+													}
+												}),
+												ImageSource::Base64(content) => json!({
+													"inline_data": {
+														"mime_type": content_type,
+														"data": content
+													}
+												}),
 											}
 										}
 									})
-								})
-								.collect::<Vec<Value>>())
+									.collect::<Vec<Value>>()
+							)
+						}
+						MessageContent::ToolCalls(tool_calls) => {
+							json!(
+								tool_calls
+									.into_iter()
+									.map(|tool_call| {
+										json!({
+											"functionCall": {
+												"name": tool_call.fn_name,
+												"args": tool_call.fn_arguments,
+											}
+										})
+									})
+									.collect::<Vec<Value>>()
+							)
+						}
+						MessageContent::ToolResponses(tool_responses) => {
+							json!(
+								tool_responses
+									.into_iter()
+									.map(|tool_response| {
+										json!({
+											"functionResponse": {
+												"name": tool_response.call_id,
+												"response": {
+													"name": tool_response.call_id,
+													"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+												}
+											}
+										})
+									})
+									.collect::<Vec<Value>>()
+							)
 						}
 					};
 
@@ -354,38 +360,42 @@ impl GeminiAdapter {
 				ChatRole::Tool => {
 					let content = match msg.content {
 						MessageContent::ToolCalls(tool_calls) => {
-							json!(tool_calls
-								.into_iter()
-								.map(|tool_call| {
-									json!({
-										"functionCall": {
-											"name": tool_call.fn_name,
-											"args": tool_call.fn_arguments,
-										}
+							json!(
+								tool_calls
+									.into_iter()
+									.map(|tool_call| {
+										json!({
+											"functionCall": {
+												"name": tool_call.fn_name,
+												"args": tool_call.fn_arguments,
+											}
+										})
 									})
-								})
-								.collect::<Vec<Value>>())
+									.collect::<Vec<Value>>()
+							)
 						}
 						MessageContent::ToolResponses(tool_responses) => {
-							json!(tool_responses
-								.into_iter()
-								.map(|tool_response| {
-									json!({
-										"functionResponse": {
-											"name": tool_response.call_id,
-											"response": {
+							json!(
+								tool_responses
+									.into_iter()
+									.map(|tool_response| {
+										json!({
+											"functionResponse": {
 												"name": tool_response.call_id,
-												"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+												"response": {
+													"name": tool_response.call_id,
+													"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+												}
 											}
-										}
+										})
 									})
-								})
-								.collect::<Vec<Value>>())
+									.collect::<Vec<Value>>()
+							)
 						}
 						_ => {
 							return Err(Error::MessageContentTypeNotSupported {
 								model_iden,
-								cause: "ChatRole::Tool can only be MessageContent::ToolCall or MessageContent::ToolResponse"
+								cause: "ChatRole::Tool can only be MessageContent::ToolCall or MessageContent::ToolResponse",
 							});
 						}
 					};

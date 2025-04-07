@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::chat::{ChatStream, MessageContent, ToolCall, Usage};
 use crate::ModelIden;
+use crate::chat::{ChatStream, MessageContent, ToolCall, Usage};
 
 // region:    --- ChatResponse
 

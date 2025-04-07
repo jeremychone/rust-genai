@@ -1,3 +1,4 @@
+use crate::Result;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
@@ -5,7 +6,6 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
-use crate::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 

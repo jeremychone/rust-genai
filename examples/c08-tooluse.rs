@@ -1,6 +1,6 @@
+use genai::Client;
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest, Tool, ToolResponse};
-use genai::Client;
 use serde_json::json;
 
 const MODEL: &str = "gpt-4o-mini"; // or "gemini-2.0-flash" or other model supporting tool calls

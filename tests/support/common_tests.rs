@@ -1,8 +1,8 @@
 use crate::get_option_value;
-use crate::support::data::{get_b64_duck, IMAGE_URL_JPG_DUCK};
+use crate::support::data::{IMAGE_URL_JPG_DUCK, get_b64_duck};
 use crate::support::{
-	assert_contains, contains_checks, extract_stream_end, get_big_content, seed_chat_req_simple,
-	seed_chat_req_tool_simple, validate_checks, Check, Result, StreamExtract,
+	Check, Result, StreamExtract, assert_contains, contains_checks, extract_stream_end, get_big_content,
+	seed_chat_req_simple, seed_chat_req_tool_simple, validate_checks,
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
@@ -11,7 +11,7 @@ use genai::chat::{
 };
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use value_ext::JsonValueExt;
 

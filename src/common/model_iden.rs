@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::AdapterKind;
 use crate::ModelName;
+use crate::adapter::AdapterKind;
 
 /// Holds the adapter kind and model name in an efficient, clonable way.
 ///

@@ -12,7 +12,7 @@ use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use value_ext::JsonValueExt;
 
 pub struct OpenAIAdapter;
@@ -295,23 +295,25 @@ impl OpenAIAdapter {
 					let content = match msg.content {
 						MessageContent::Text(content) => json!(content),
 						MessageContent::Parts(parts) => {
-							json!(parts
-								.iter()
-								.map(|part| match part {
-									ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-									ContentPart::Image { content_type, source } => {
-										match source {
-											ImageSource::Url(url) => {
-												json!({"type": "image_url", "image_url": {"url": url}})
-											}
-											ImageSource::Base64(content) => {
-												let image_url = format!("data:{content_type};base64,{content}");
-												json!({"type": "image_url", "image_url": {"url": image_url}})
+							json!(
+								parts
+									.iter()
+									.map(|part| match part {
+										ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
+										ContentPart::Image { content_type, source } => {
+											match source {
+												ImageSource::Url(url) => {
+													json!({"type": "image_url", "image_url": {"url": url}})
+												}
+												ImageSource::Base64(content) => {
+													let image_url = format!("data:{content_type};base64,{content}");
+													json!({"type": "image_url", "image_url": {"url": image_url}})
+												}
 											}
 										}
-									}
-								})
-								.collect::<Vec<Value>>())
+									})
+									.collect::<Vec<Value>>()
+							)
 						}
 						// Use `match` instead of `if let`. This will allow to future-proof this
 						// implementation in case some new message content types would appear,
@@ -466,7 +468,7 @@ fn parse_tool_call(raw_tool_call: Value) -> Result<ToolCall> {
 		_ => {
 			return Err(Error::InvalidJsonResponseElement {
 				info: "tool call arguments is not an object",
-			})
+			});
 		}
 	};
 

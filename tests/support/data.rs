@@ -1,7 +1,7 @@
 //! Data files / constants for tests
 
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use std::fs::File;
 use std::io::Read;
 

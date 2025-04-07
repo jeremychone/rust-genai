@@ -1,8 +1,8 @@
 //! Example demonstrating how to create a conversation with GenAI.
 
+use genai::Client;
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::Client;
 
 const MODEL: &str = "gpt-4o-mini";
 

@@ -1,6 +1,6 @@
 mod support;
 
-use crate::support::{common_tests, Check};
+use crate::support::{Check, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 use serial_test::serial;

@@ -1,7 +1,7 @@
+use crate::adapter::AdapterKind;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::AdapterKind;
 use crate::chat::ChatOptionsSet;
 use crate::{Error, ModelIden, Result};
 use reqwest_eventsource::{Event, EventSource};
