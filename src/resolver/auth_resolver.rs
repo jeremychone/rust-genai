@@ -35,7 +35,7 @@ impl AuthResolver {
 impl AuthResolver {
 	pub(crate) async fn resolve(&self, model_iden: ModelIden) -> Result<Option<AuthData>> {
 		match self {
-			AuthResolver::ResolverFn(resolver_fn) => resolver_fn.exec_fn(model_iden),
+			AuthResolver::ResolverFn(resolver_fn) => resolver_fn.clone().exec_fn(model_iden),
 			AuthResolver::ResolverAsyncFn(resolver_fn) => resolver_fn.exec_fn(model_iden).await,
 		}
 	}
@@ -44,18 +44,19 @@ impl AuthResolver {
 
 // endregion: --- AuthResolver
 
-// // region:    --- AuthResolverFn
+// region:    --- AuthResolverAsyncFn
+
 pub trait AuthResolverAsyncFn: Send + Sync {
-	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>>;
+	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>>;
 	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn>;
 }
 
 impl<F> AuthResolverAsyncFn for F
 where
-	F: FnOnce(ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>> + Send + Sync + Clone + 'static,
+	F: Fn(ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>> + Send + Sync + Clone + 'static,
 {
-	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>> {
-		self.clone()(model_iden)
+	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>> {
+		self(model_iden)
 	}
 
 	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn> {
@@ -87,13 +88,16 @@ impl IntoAuthResolverAsyncFn for Arc<Box<dyn AuthResolverAsyncFn>> {
 
 impl<F> IntoAuthResolverAsyncFn for F
 where
-	F: FnOnce(ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>> + Send + Sync + Clone + 'static,
+	F: Fn(ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>> + Send>> + Send + Sync + Clone + 'static,
 {
 	fn into_async_auth_resolver(self) -> Arc<Box<dyn AuthResolverAsyncFn>> {
 		Arc::new(Box::new(self))
 	}
 }
 
+// endregion: --- AuthResolverAsyncFn
+
+// region:    --- AuthResolverFn
 /// The `AuthResolverFn` trait object.
 pub trait AuthResolverFn: Send + Sync {
 	/// Execute the `AuthResolverFn` to get the `AuthData`.

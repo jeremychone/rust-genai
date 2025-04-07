@@ -16,8 +16,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
 	// -- Create the Async Auth resolve_fn closure
 	let resolve_fn = move |model: ModelIden| -> Pin<
-		Box<dyn Future<Output = Result<Option<AuthData>, genai::resolver::Error>> + 'static>,
+		Box<dyn Future<Output = Result<Option<AuthData>, genai::resolver::Error>> + Send + 'static>,
 	> {
+		let gcp_env_name = gcp_env_name.clone();
 		Box::pin(async move {
 			let gcp_json = std::env::var(&*gcp_env_name).map_err(|_err| genai::resolver::Error::ApiKeyEnvNotFound {
 				env_name: gcp_env_name.to_string(),
