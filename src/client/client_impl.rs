@@ -41,6 +41,11 @@ impl Client {
 		self.config().resolve_service_target(model)
 	}
 
+	pub async fn resolve_service_target_async(&self, model_name: &str) -> Result<ServiceTarget> {
+		let model = self.default_model(model_name)?;
+		self.config().resolve_service_target_async(model).await
+	}
+
 	/// Executes a chat.
 	pub async fn exec_chat(
 		&self,
@@ -54,7 +59,7 @@ impl Client {
 			.with_client_options(self.config().chat_options());
 
 		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model)?;
+		let target = self.config().resolve_service_target_async(model).await?;
 		let model = target.model.clone();
 
 		let WebRequestData { headers, payload, url } =
@@ -86,7 +91,7 @@ impl Client {
 			.with_client_options(self.config().chat_options());
 
 		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model)?;
+		let target = self.config().resolve_service_target_async(model).await?;
 		let model = target.model.clone();
 
 		let WebRequestData { url, headers, payload } =

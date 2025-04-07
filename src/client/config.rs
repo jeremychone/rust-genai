@@ -1,6 +1,7 @@
 use crate::adapter::AdapterDispatcher;
 use crate::chat::ChatOptions;
 use crate::client::ServiceTarget;
+use crate::resolver::AuthData;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result};
 
@@ -69,32 +70,18 @@ impl ClientConfig {
 	}
 }
 
-/// Resolvers
 impl ClientConfig {
-	pub fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
-		// -- Resolve the Model first
-		let model = match self.model_mapper() {
+	fn resolve_model(&self, model: ModelIden) -> Result<ModelIden> {
+		match self.model_mapper() {
 			Some(model_mapper) => model_mapper.map_model(model.clone()),
 			None => Ok(model.clone()),
 		}
 		.map_err(|resolver_error| Error::Resolver {
 			model_iden: model.clone(),
 			resolver_error,
-		})?;
-
-		// -- Get the auth
-		let auth = self
-			.auth_resolver()
-			.map(|auth_resolver| {
-				auth_resolver.resolve(model.clone()).map_err(|resolver_error| Error::Resolver {
-					model_iden: model.clone(),
-					resolver_error,
-				})
-			})
-			.transpose()? // return an error if there is an error with the auth resolver
-			.flatten()
-			.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind)); // flatten the two options
-
+		})
+	}
+	fn form_target(&self, auth: AuthData, model: ModelIden) -> Result<ServiceTarget> {
 		// -- Get the default endpoint
 		// For now, just get the default endpoint; the `resolve_target` will allow overriding it.
 		let endpoint = AdapterDispatcher::default_endpoint(model.adapter_kind);
@@ -118,5 +105,47 @@ impl ClientConfig {
 		};
 
 		Ok(service_target)
+	}
+}
+
+/// Resolvers
+impl ClientConfig {
+	#[deprecated(
+		note = "this function does not support async auth closures. prefer ClientConfig.resolve_service_target_async"
+	)]
+	pub fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
+		// -- Resolve the Model first
+		let model = self.resolve_model(model)?;
+		// -- Get the auth
+		let auth = self
+			.auth_resolver()
+			.map(|auth_resolver| {
+				auth_resolver.resolve(model.clone()).map_err(|resolver_error| Error::Resolver {
+					model_iden: model.clone(),
+					resolver_error,
+				})
+			})
+			.transpose()? // return an error if there is an error with the auth resolver
+			.flatten()
+			.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind)); // flatten the two options
+
+		self.form_target(auth, model)
+	}
+
+	pub async fn resolve_service_target_async(&self, model: ModelIden) -> Result<ServiceTarget> {
+		let model = self.resolve_model(model)?;
+		let auth = if let Some(resolver) = self.auth_resolver() {
+			resolver
+				.resolve_async(model.clone())
+				.await
+				.map_err(|resolver_error| Error::Resolver {
+					model_iden: model.clone(),
+					resolver_error,
+				})?
+				.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind))
+		} else {
+			AdapterDispatcher::default_auth(model.adapter_kind)
+		};
+		self.form_target(auth, model)
 	}
 }
