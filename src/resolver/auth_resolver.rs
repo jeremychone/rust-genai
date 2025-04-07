@@ -46,6 +46,7 @@ impl AuthResolver {
 // endregion: --- AuthResolver
 
 // region:    --- AuthResolverFn
+
 /// The `AuthResolverFn` trait object.
 pub trait AuthResolverFn: Send + Sync {
 	/// Execute the `AuthResolverFn` to get the `AuthData`.
@@ -81,7 +82,6 @@ impl std::fmt::Debug for dyn AuthResolverFn {
 		write!(f, "AuthResolverFn")
 	}
 }
-// region:    --- IntoAuthResolverFn
 
 /// Custom and convenient trait used in the `AuthResolver::from_resolver_fn` argument.
 pub trait IntoAuthResolverFn {
@@ -105,7 +105,9 @@ where
 	}
 }
 
-// endregion: --- IntoAuthResolverFn
+// endregion: --- AuthResolverFn
+
+// region:    --- AuthResolverAsyncFn
 
 pub trait AuthResolverAsyncFn: Send + Sync {
 	/// Execute the `AuthResolverAsyncFn` to get the `AuthData`.
@@ -149,3 +151,5 @@ where
 		Arc::new(Box::new(self))
 	}
 }
+
+// endregion: --- AuthResolverAsyncFn
