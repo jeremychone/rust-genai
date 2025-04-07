@@ -88,7 +88,7 @@ pub enum Error {
 	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
 	#[from]
 	JsonValueExt(JsonValueExtError),
-	ReqwestEventSource(reqwest_eventsource::Error),
+	ReqwestEventSource(Box<reqwest_eventsource::Error>),
 	// Note: will probably need to remove this one to provide more context
 	#[from]
 	SerdeJson(serde_json::Error),

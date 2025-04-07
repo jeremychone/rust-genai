@@ -162,7 +162,7 @@ impl futures::Stream for OpenAIStreamer {
 				}
 				Some(Err(err)) => {
 					tracing::error!("Error: {}", err);
-					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err))));
+					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err.into()))));
 				}
 				None => {
 					return Poll::Ready(None);
