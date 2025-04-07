@@ -1,10 +1,10 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
-## 2025-04-06 - [v0.2.0-rc.4](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.2...v0.2.0-rc.4)
+## 2025-04-06 - [v0.2.0-rc.5](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.2...v0.2.0-rc.5)
 
 - `!` **API-CHANGE** - Now `client.resolve_service_target(model)` is ASYNC, so, `client.resolve_service_target(model).await`
-- `^` `AuthResolver` - Now allow async resolver function as well as sync ones
-- `^` `ServiceTargetResolver` - Now allow async resolver function as well as sync ones
+- `^` `AuthResolver` - Now allow async resolver function/closure (Fn) as well as sync ones
+- `^` `ServiceTargetResolver` - Now allow async resolver function/closure (Fn) as well as sync ones
 - Now `edition = 2024`
 
 ## 2025-03-29 - [v0.2.0-rc.2](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.1...v0.2.0-rc.2)
