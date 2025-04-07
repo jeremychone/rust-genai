@@ -15,9 +15,6 @@ pub enum Error {
 	/// The `AuthData` is not a single value.
 	ResolverAuthDataNotSingleValue,
 
-	/// Call to an external api failed
-	External(Box<dyn std::error::Error>),
-
 	/// Custom error message.
 	#[from]
 	Custom(String),

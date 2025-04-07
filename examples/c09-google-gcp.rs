@@ -25,16 +25,14 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 			env_name: "GCP_SERVICE_ACCOUNT".to_string(),
 		})?;
 		// initialize gcp account
-		let account = CustomServiceAccount::from_json(&gcp_json).map_err(|e| Error::External(Box::new(e)))?;
+		let account = CustomServiceAccount::from_json(&gcp_json).map_err(|e| Error::Custom(e.to_string()))?;
 		let scopes: &[&str] = &["https://www.googleapis.com/auth/cloud-platform"];
 		// A fresh bearer token must be requested before each request
-		let token = account.token(scopes).await.map_err(|e| Error::External(Box::new(e)))?;
+		let token = account.token(scopes).await.map_err(|e| Error::Custom(e.to_string()))?;
 		let location = std::env::var("GCP_LOCATION").unwrap_or("us-central1".to_string());
-		let project_id = account.project_id().ok_or_else(|| {
-			genai::resolver::Error::External(Box::new(gcp_auth::Error::Str(
-				"GCP Auth: Service account has no project_id",
-			)))
-		})?;
+		let project_id = account
+			.project_id()
+			.ok_or_else(|| genai::resolver::Error::Custom("GCP Auth: Service account has no project_id".to_string()))?;
 		// for url
 		let url = format!(
 			"https://{}-aiplatform.googleapis.com/v1/projects/{}/locations/{}/publishers/google/models/{}:generateContent",
