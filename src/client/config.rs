@@ -111,6 +111,7 @@ impl ClientConfig {
 			Some(service_target_resolver) => {
 				service_target_resolver
 					.resolve(service_target)
+					.await
 					.map_err(|resolver_error| Error::Resolver {
 						model_iden: model,
 						resolver_error,
