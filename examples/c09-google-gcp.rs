@@ -23,17 +23,15 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 				env_name: gcp_env_name.to_string(),
 			})?;
 			let account = CustomServiceAccount::from_json(&gcp_json)
-				.map_err(|e| genai::resolver::Error::External(Box::new(e)))?;
+				.map_err(|e| genai::resolver::Error::Custom(e.to_string()))?;
 			let scopes: &[&str] = &["https://www.googleapis.com/auth/cloud-platform"];
 			let token = account
 				.token(scopes)
 				.await
-				.map_err(|e| genai::resolver::Error::External(Box::new(e)))?;
+				.map_err(|e| genai::resolver::Error::Custom(e.to_string()))?;
 			let location = std::env::var("GCP_LOCATION").unwrap_or("us-central1".to_string());
 			let project_id = account.project_id().ok_or_else(|| {
-				genai::resolver::Error::External(Box::new(gcp_auth::Error::Str(
-					"GCP Auth: Service account has no project_id",
-				)))
+				genai::resolver::Error::Custom("GCP Auth: Service account has no project_id".to_string())
 			})?;
 			let url = format!(
 				"https://{}-aiplatform.googleapis.com/v1/projects/{}/locations/{}/publishers/google/models/{}:generateContent",

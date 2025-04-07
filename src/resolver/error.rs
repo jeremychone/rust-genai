@@ -18,9 +18,6 @@ pub enum Error {
 	/// Custom error message.
 	#[from]
 	Custom(String),
-
-	/// Error from external crate or async resolution
-	External(Box<dyn std::error::Error>),
 }
 
 // region:    --- Error Boilerplate
