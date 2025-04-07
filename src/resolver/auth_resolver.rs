@@ -111,7 +111,7 @@ pub trait AuthResolverAsyncFn: Send + Sync {
 	/// Execute the `AuthResolverAsyncFn` to get the `AuthData`.
 	fn exec_fn(&self, model_iden: ModelIden) -> Pin<Box<dyn Future<Output = Result<Option<AuthData>>>>>;
 
-	///	Clone the trait object.
+	/// Clone the trait object.
 	fn clone_box(&self) -> Box<dyn AuthResolverAsyncFn>;
 }
 

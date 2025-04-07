@@ -59,7 +59,7 @@ impl ClientBuilder {
 		self
 	}
 
-	pub fn with_auth_resolver_asyn_fn(mut self, auth_resolver_fn: impl IntoAuthResolverAsyncFn) -> Self {
+	pub fn with_auth_resolver_async_fn(mut self, auth_resolver_fn: impl IntoAuthResolverAsyncFn) -> Self {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
 		let auth_resolver = AuthResolver::from_resolver_async_fn(auth_resolver_fn);
 		client_config.auth_resolver = Some(auth_resolver);
