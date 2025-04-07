@@ -1,5 +1,6 @@
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::resolver::AuthData;
 use crate::{Client, Error, ModelIden, Result, ServiceTarget};
 
 /// Public AI Functions
@@ -62,8 +63,22 @@ impl Client {
 		let target = self.config().resolve_service_target_async(model).await?;
 		let model = target.model.clone();
 
-		let WebRequestData { headers, payload, url } =
-			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
+		let override_auth = if let AuthData::RequestOverride { url, headers } = &target.auth {
+			Some((url.to_owned(), headers.to_owned()))
+		} else {
+			None
+		};
+
+		let WebRequestData {
+			mut headers,
+			payload,
+			mut url,
+		} = AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
+
+		if let Some((override_url, override_headers)) = override_auth {
+			url = override_url;
+			headers = override_headers;
+		}
 
 		let web_res =
 			self.web_client()
@@ -91,11 +106,24 @@ impl Client {
 			.with_client_options(self.config().chat_options());
 
 		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target_async(model).await?;
-		let model = target.model.clone();
+		let target = self.config().resolve_service_target_async(model.clone()).await?;
 
-		let WebRequestData { url, headers, payload } =
-			AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
+		let override_auth = if let AuthData::RequestOverride { url, headers } = &target.auth {
+			Some((url.to_owned(), headers.to_owned()))
+		} else {
+			None
+		};
+
+		let WebRequestData {
+			mut url,
+			mut headers,
+			payload,
+		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
+
+		if let Some((override_url, override_headers)) = override_auth {
+			url = override_url;
+			headers = override_headers;
+		}
 
 		let reqwest_builder = self
 			.web_client()

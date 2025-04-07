@@ -18,6 +18,9 @@ pub enum Error {
 	/// Async auth resolvers can only be used from methods returning futures
 	UnsupportedUsageOfAsyncResolver(String),
 
+	/// Call to an external api failed
+	External(Box<dyn std::error::Error>),
+
 	/// Custom error message.
 	#[from]
 	Custom(String),

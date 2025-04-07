@@ -9,6 +9,11 @@ pub enum AuthData {
 	/// The key value itself.
 	Key(String),
 
+	RequestOverride {
+		url: String,
+		headers: Vec<(String, String)>,
+	},
+
 	/// The key names/values when a credential has multiple pieces of credential information.
 	/// This will be adapter-specific.
 	/// NOTE: Not used yet.
@@ -47,6 +52,8 @@ impl AuthData {
 			}
 			AuthData::Key(value) => Ok(value.to_string()),
 			AuthData::MultiKeys(_) => Err(Error::ResolverAuthDataNotSingleValue),
+			// use an empty key for request override
+			AuthData::RequestOverride { .. } => Ok(String::new()),
 		}
 	}
 }
@@ -61,6 +68,7 @@ impl std::fmt::Debug for AuthData {
 			AuthData::FromEnv(_env_name) => write!(f, "AuthData::FromEnv(REDACTED)"),
 			AuthData::Key(_) => write!(f, "AuthData::Single(REDACTED)"),
 			AuthData::MultiKeys(_) => write!(f, "AuthData::Multi(REDACTED)"),
+			AuthData::RequestOverride { .. } => write!(f, "AuthData::RequestOverride(REDACTED)"),
 		}
 	}
 }
