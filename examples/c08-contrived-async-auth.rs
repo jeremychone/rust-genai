@@ -1,4 +1,4 @@
-//! This example demonstrates how to use a custom authentication function to override the default AuthData resolution
+//! This example demonstrates how to use a custom async authentication function to override the default AuthData resolution
 //! for any specific adapter (which is based on environment variables).
 
 use genai::chat::printer::print_chat_stream;
@@ -17,17 +17,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	// -- Build an auth_resolver and the AdapterConfig
+	// Auth function is captured with `from_resolver_async_fn` instead of the prior `from_resolver_fn`
 	let auth_resolver = AuthResolver::from_resolver_async_fn(
-		async |model_iden: ModelIden| -> Result<Option<AuthData>, genai::resolver::Error> {
+		async |_model_iden: ModelIden| -> Result<Option<AuthData>, genai::resolver::Error> {
 			println!("Fetching auth!");
-			let ModelIden {
-				adapter_kind,
-				model_name,
-			} = model_iden;
-
+			// this could be a network call
 			tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
-			println!("\n>> Custom auth provider for {adapter_kind} (model: {model_name}) <<");
 			// This will cause it to fail if any model is not an OPEN_API_KEY
 			let key = std::env::var("OPENAI_API_KEY").map_err(|_| genai::resolver::Error::ApiKeyEnvNotFound {
 				env_name: "OPENAI_API_KEY".to_string(),
