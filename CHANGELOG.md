@@ -1,5 +1,9 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-04-16 - [v0.2.0](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.5...v0.2.0)
+
+- `.` Update version to `0.2.0`
+
 ## 2025-04-06 - [v0.2.0-rc.5](https://github.com/jeremychone/rust-genai/compare/v0.2.0-rc.2...v0.2.0-rc.5)
 
 - `!` **API-CHANGE** - Now `client.resolve_service_target(model)` is ASYNC, so, `client.resolve_service_target(model).await`

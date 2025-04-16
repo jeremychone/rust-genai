@@ -1,6 +1,8 @@
 # genai - Multi-AI Providers Library for Rust
 
-Currently supports natively: **DeepSeek** (deepseek.com & Groq), **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**,  **Groq**,  **Cohere** (more to come)
+Currently supports natively: **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**,  **Groq**, **DeepSeek** (deepseek.com & Groq),  **Cohere** (more to come)
+
+Also, allow custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
 
 <div align="center">
 
@@ -16,19 +18,18 @@ Provides a common and ergonomic single API to many generative AI providers, such
 
 Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **genai** for multi-AI capabilities.
 
-## v0.2.0.rc
+## v0.2.0 has been Released 2025-04-16
 
-Main branch is now on v0.2.0.rc. GenAI will now follow semver more strictly when API changes are made (even small ones). The two upcoming changes are relatively minor, but they are still changes.
+Here are some of the api change. Check [CHANGELOG](CHANGELOG.md) for more info
 
-- `chat::MetaUsage` has been renamed to `chat::Usage`
-- `Usage.input_tokens` to `Usage.prompt_tokens` 
-- `Usage.prompt_tokens` to `Usage.completion_tokens`
-- `ChatMessage` now takes an additional property, `options: MessageOptions` with and optional `cache_control` (`CacheControl::Ephemeral`)
-	- This is for the now supported Anthropic caching scheme (which can save 90% on input tokens).
-	- Should be relative transparent when use `ChatMessage::user...` and such. 
-	- Unused on OpenAI APIs/Adapters as it supports it transparently.
-	- Google/Gemini caching is not supported at this point, as it is a totally different scheme (requiring a separate request).
-
+- **API-CHANGES**
+  - `chat::MetaUsage` has been renamed to `chat::Usage`
+  - `Usage.input_tokens` to `Usage.prompt_tokens` 
+  - `Usage.prompt_tokens` to `Usage.completion_tokens`
+  - `ChatMessage` now takes an additional property, `options: MessageOptions` with and optional `cache_control` (`CacheControl::Ephemeral`)
+  - Now `client.resolve_service_target(model)` is ASYNC, so, `client.resolve_service_target(model).await`
+	- Note: At this point, we still cannot `AsyncFn...` traits as its support is not complete in stable (as of rust 1.86), but Auth Resolver can be async now with some Pin/Box/Future type anotation. 
+	
 
 ## Thanks
 
