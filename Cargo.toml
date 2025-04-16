@@ -34,7 +34,7 @@ derive_more = { version = "2", features = ["from", "display"] }
 value-ext = "0.1.2" 
 
 [dev-dependencies]
-simple-fs = "0.6.0-rc.2"
+simple-fs = "0.6.0-rc.6"
 tracing-subscriber = "0.3.19"
 serial_test = "3.2.0"
 base64 = "0.22.0"  # Check for the latest version
