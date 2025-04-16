@@ -99,8 +99,9 @@ impl AdapterKind {
 	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
 		if model.starts_with("gpt")
-			|| model.starts_with("o3-")
-			|| model.starts_with("o1-")
+			|| model.starts_with("o3")
+			|| model.starts_with("o4")
+			|| model.starts_with("o1")
 			|| model.starts_with("chatgpt")
 		{
 			Ok(Self::OpenAI)
