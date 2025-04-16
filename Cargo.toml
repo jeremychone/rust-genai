@@ -1,6 +1,6 @@
 [package]
 name = "genai"
-version = "0.2.1"
+version = "0.2.2-WIP"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Multi-AI Providers Library for Rust. (Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, DeepSeek, ...)"
