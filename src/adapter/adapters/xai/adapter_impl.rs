@@ -9,7 +9,8 @@ use reqwest::RequestBuilder;
 
 pub struct XaiAdapter;
 
-pub(in crate::adapter) const MODELS: &[&str] = &["grok-beta"];
+pub(in crate::adapter) const MODELS: &[&str] =
+	&["grok-3-beta", "grok-3-fast-beta", "grok-3-mini-beta", "grok-3-mini-fast-beta"];
 
 impl XaiAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "XAI_API_KEY";
