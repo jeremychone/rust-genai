@@ -1,6 +1,20 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 
+/// The normalization of the LLM Request usage
+///
+/// **Prompt tokens and cache tokens**
+///
+/// All models/providers have decoupled the prompt tokens from the cached count,
+/// meaning that the eventual cached tokens (from `PromptTokensDetails`) are not included in the prompt tokens.
+/// This is how OpenAI, Gemini, and Anthropic seem to work (documentation is sometimes not very explicit).
+///
+/// **Completion tokens and reasoning tokens**
+///
+/// In contrast to cached tokens, the reasoning tokens are included in the completion tokens.
+/// Therefore, to get the "non-reasoning tokens," one needs to calculate `usage.completion_tokens - usage.completion_tokens_details.reasoning_tokens`.
+/// This is how OpenAI, Gemini, and Anthropic seem to work (documentation is sometimes not very explicit).
+///
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]

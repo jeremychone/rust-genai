@@ -3,7 +3,7 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, ToolCall, Usage,
+	CompletionTokensDetails, ContentPart, ImageSource, MessageContent, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -148,7 +148,6 @@ impl Adapter for GeminiAdapter {
 		_options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-
 		// -- Capture the provider_model_iden
 		// TODO: Need to be implemented (if available), for now, just clone model_iden
 		let provider_model_name: Option<String> = body.x_remove("modelVersion").ok();
@@ -220,10 +219,22 @@ impl GeminiAdapter {
 		Ok(GeminiChatResponse { content, usage })
 	}
 
+	/// See gemini doc: https://ai.google.dev/api/generate-content#UsageMetadata
 	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
 		let prompt_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
 		let completion_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
 		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
+
+		let completion_tokens_details =
+			usage_value
+				.x_get_i64("thoughtsTokenCount")
+				.ok()
+				.map(|thoughts_token_count| CompletionTokensDetails {
+					accepted_prediction_tokens: None,
+					rejected_prediction_tokens: None,
+					reasoning_tokens: Some(thoughts_token_count as i32), // should be safe enough
+					audio_tokens: None,
+				});
 
 		Usage {
 			prompt_tokens,
@@ -231,8 +242,8 @@ impl GeminiAdapter {
 			prompt_tokens_details: None,
 
 			completion_tokens,
-			// for now, None for Gemini
-			completion_tokens_details: None,
+
+			completion_tokens_details,
 
 			total_tokens,
 		}

@@ -6,7 +6,7 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// "gemini-2.0-flash", "gemini-2.0-flash-001", "gemini-2.0-flash-lite" (somehow function calling work with -lite)
+// "gemini-2.0-flash", "gemini-2.0-flash-lite" (somehow function calling work with -lite)
 const MODEL: &str = "gemini-2.0-flash";
 
 // region:    --- Chat

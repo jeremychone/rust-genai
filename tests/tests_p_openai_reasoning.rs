@@ -10,9 +10,12 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 
 // NOTE: We are still splitting out the openai_reasoning test to make sure we spot any disparity.
 
-// "o3-mini" (or genai aliases "o3-mini-low", "o3-mini-medium", "o3-mini-high")
-const MODEL: &str = "o3-mini-low";
-// Note "o3-mini-low" will be interpreted with `o3-mini` with `ChatOptions::default().with_reasoning_effort(ReasoningEffort::Low)`
+// "o4-mini" (or genai aliases "o4-mini-low", "o4-mini-medium", "o4-mini-high")
+// Note "o4-mini-low" will be interpreted with `o4-mini` with `ChatOptions::default().with_reasoning_effort(ReasoningEffort::Low)`
+const MODEL: &str = "o4-mini-low";
+
+// When -low, might have no reasoning tokens when simple prompt, so using higher reasoning effort.
+const MODEL_FOR_THINKING: &str = "o4-mini-medium";
 
 // region:    --- Chat
 
@@ -20,7 +23,7 @@ const MODEL: &str = "o3-mini-low";
 async fn test_chat_simple_ok() -> Result<()> {
 	// NOTE 2025-01-31  - Reasoning_content or <think> content not supported by OpenAI at this point
 	//                    So, disabled for now
-	common_tests::common_test_chat_simple_ok(MODEL, None).await
+	common_tests::common_test_chat_simple_ok(MODEL_FOR_THINKING, Some(Check::REASONING_USAGE)).await
 }
 
 #[tokio::test]

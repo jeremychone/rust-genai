@@ -18,7 +18,7 @@ use value_ext::JsonValueExt;
 // region:    --- Chat
 
 pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> Result<()> {
-	validate_checks(checks.clone(), Check::REASONING)?;
+	validate_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE)?;
 
 	// -- Setup & Fixtures
 	let client = Client::default();
@@ -43,12 +43,22 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> R
 		"total_tokens should be equal to prompt_token + comletion_token"
 	);
 
+	// -- Check Reasoning Usage
+	if contains_checks(checks.clone(), Check::REASONING_USAGE) {
+		let reasoning_tokens = usage
+			.completion_tokens_details
+			.as_ref()
+			.and_then(|v| v.reasoning_tokens)
+			.ok_or("should have reasoning_tokens")?;
+		assert!(reasoning_tokens > 0, "reasoning_usage should be > 0");
+	}
+
 	// -- Check Reasoning Content
 	if contains_checks(checks, Check::REASONING) {
 		let reasoning_content = chat_res
 			.reasoning_content
 			.as_deref()
-			.ok_or("extract_stream_end SHOULD have extracted some reasoning_content")?;
+			.ok_or("SHOULD have extracted some reasoning_content")?;
 		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
 		// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.
 		assert!(
