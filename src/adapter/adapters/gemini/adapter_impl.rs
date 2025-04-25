@@ -3,7 +3,7 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	CompletionTokensDetails, ContentPart, ImageSource, MessageContent, ToolCall, Usage,
+	CompletionTokensDetails, ContentPart, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -100,6 +100,11 @@ impl Adapter for GeminiAdapter {
 					"parts": [ { "text": system }]
 				}),
 			)?;
+		}
+
+		// -- Reasoning Budget
+		if let Some(ReasoningEffort::Budget(budget)) = options_set.reasoning_effort() {
+			payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
 		}
 
 		// -- Tools

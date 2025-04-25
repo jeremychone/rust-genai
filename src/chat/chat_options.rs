@@ -140,18 +140,20 @@ pub enum ReasoningEffort {
 	Low,
 	Medium,
 	High,
+	Budget(u32),
 }
 
 impl ReasoningEffort {
-	pub fn to_lower_str(&self) -> &'static str {
+	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
-			ReasoningEffort::Low => "low",
-			ReasoningEffort::Medium => "medium",
-			ReasoningEffort::High => "high",
+			ReasoningEffort::Low => Some("low"),
+			ReasoningEffort::Medium => Some("medium"),
+			ReasoningEffort::High => Some("high"),
+			ReasoningEffort::Budget(_) => None,
 		}
 	}
 
-	pub fn from_lower_str(name: &str) -> Option<Self> {
+	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
@@ -165,7 +167,7 @@ impl ReasoningEffort {
 	/// Returns (reasoning_effort, model_name)
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		if let Some((prefix, last)) = model_name.rsplit_once('-') {
-			if let Some(effort) = ReasoningEffort::from_lower_str(last) {
+			if let Some(effort) = ReasoningEffort::from_keyword(last) {
 				return (Some(effort), prefix);
 			}
 		}

@@ -195,7 +195,9 @@ impl OpenAIAdapter {
 
 		// -- Set reasoning effort
 		if let Some(reasoning_effort) = reasoning_effort {
-			payload.x_insert("reasoning_effort", reasoning_effort.to_lower_str())?;
+			if let Some(keyword) = reasoning_effort.as_keyword() {
+				payload.x_insert("reasoning_effort", keyword)?;
+			}
 		}
 
 		// -- Tools
