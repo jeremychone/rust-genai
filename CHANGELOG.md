@@ -1,5 +1,9 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-04-26 - [v0.2.3](https://github.com/jeremychone/rust-genai/compare/v0.2.2...v0.2.3)
+
+- `-` gemini - fix computation of completion_tokens/reasoning_tokens to match OpenAI API way
+
 ## 2025-04-19 - [v0.2.2](https://github.com/jeremychone/rust-genai/compare/v0.2.1...v0.2.2)
 
 - `^` gemini 2.5* - Added support for completion_tokens_details.reasoning_tokens
