@@ -3,8 +3,15 @@ use serde_with::{serde_as, skip_serializing_none};
 
 /// The normalized LLM input/output token usage (based on the OpenAI API).
 ///
-/// > **NOTE:** The `prompt_tokens` and `completion_tokens` represent the total tokens for input and output.
-/// > Additionally, `prompt_tokens_details` and `completion_tokens_details` may provide more detailed information about the composition of these tokens.
+/// > **NOTE:** The `prompt_tokens` and `completion_tokens` are normalized to represent the total tokens for input and output for all models/providers.
+/// > And, `prompt_tokens_details` and `completion_tokens_details` may provide more detailed information about the composition of these tokens.
+/// >
+/// > For example: For Gemini, the `thoughts_token_count` (~reasoning_tokens) is not included
+/// > in the root `candidatesTokenCount` (~completion_tokens).
+/// > Therefore, when `thoughts_token_count` genail will do the necessary computation
+/// > to normalize it in the "OpenAI API Way,"
+/// > meaning `completion_tokens` represents the total of completion tokens (`candidatesTokenCount + thoughts_token_count`),
+/// > and the `completion_tokens_details.reasoning_tokens` will have the `thoughts_token_count`
 ///
 #[serde_as]
 #[skip_serializing_none]

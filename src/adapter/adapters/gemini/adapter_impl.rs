@@ -225,16 +225,39 @@ impl GeminiAdapter {
 		let completion_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
 		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
 
-		let completion_tokens_details =
-			usage_value
-				.x_get_i64("thoughtsTokenCount")
-				.ok()
-				.map(|thoughts_token_count| CompletionTokensDetails {
-					accepted_prediction_tokens: None,
-					rejected_prediction_tokens: None,
-					reasoning_tokens: Some(thoughts_token_count as i32), // should be safe enough
-					audio_tokens: None,
-				});
+		// IMPORTANT: For Gemini, the `thoughts_token_count` (~reasoning_tokens) is not included
+		//            in the root `candidatesTokenCount` (~completion_tokens).
+		//            Therefore, some computation is needed to normalize it in the "OpenAI API Way,"
+		//            meaning `completion_tokens` represents the total of completion tokens,
+		//            and the details provide a breakdown of the specific components.
+
+		let (completion_tokens, completion_tokens_details) =
+			match (completion_tokens, usage_value.x_get_i64("thoughtsTokenCount").ok()) {
+				(Some(c_tokens), Some(t_tokens)) => {
+					let t_tokens = t_tokens as i32; // should be safe enough
+					(
+						Some(c_tokens + t_tokens),
+						Some(CompletionTokensDetails {
+							accepted_prediction_tokens: Some(c_tokens),
+							rejected_prediction_tokens: None,
+							reasoning_tokens: Some(t_tokens),
+							audio_tokens: None,
+						}),
+					)
+				}
+				(None, Some(t_tokens)) => {
+					(
+						None,
+						Some(CompletionTokensDetails {
+							accepted_prediction_tokens: None,
+							rejected_prediction_tokens: None,
+							reasoning_tokens: Some(t_tokens as i32), // should be safe enough
+							audio_tokens: None,
+						}),
+					)
+				}
+				(c_tokens, None) => (c_tokens, None),
+			};
 
 		Usage {
 			prompt_tokens,
