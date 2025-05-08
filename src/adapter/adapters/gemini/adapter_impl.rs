@@ -14,7 +14,12 @@ use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;
 
-const MODELS: &[&str] = &["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro"];
+const MODELS: &[&str] = &[
+	"gemini-2.0-flash",
+	"gemini-2.0-flash-lite",
+	"gemini-2.5-pro-preview-05-06",
+	"gemini-1.5-pro",
+];
 
 // curl \
 //   -H 'Content-Type: application/json' \
@@ -238,7 +243,7 @@ impl GeminiAdapter {
 					(
 						Some(c_tokens + t_tokens),
 						Some(CompletionTokensDetails {
-							accepted_prediction_tokens: Some(c_tokens),
+							accepted_prediction_tokens: None,
 							rejected_prediction_tokens: None,
 							reasoning_tokens: Some(t_tokens),
 							audio_tokens: None,
