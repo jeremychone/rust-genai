@@ -266,12 +266,13 @@ impl OpenAIAdapter {
 	#[allow(deprecated)]
 	pub(super) fn into_usage(usage_value: Value) -> Usage {
 		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
-		// TODO: Should have some tracing.
 		let usage = serde_json::from_value(usage_value).map_err(|err| {
 			error!("Fail to deserilaize uage. Cause: {err}");
 			err
 		});
-		let usage: Usage = usage.unwrap_or_default();
+		let mut usage: Usage = usage.unwrap_or_default();
+		// Will set details to None if no values
+		usage.compact_details();
 		usage
 	}
 

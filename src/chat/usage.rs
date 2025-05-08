@@ -34,6 +34,23 @@ pub struct Usage {
 	pub total_tokens: Option<i32>,
 }
 
+impl Usage {
+	/// Removes empty details fields if they only contain `None` values.
+	pub fn compact_details(&mut self) {
+		if let Some(details) = &self.prompt_tokens_details {
+			if details.is_empty() {
+				self.prompt_tokens_details = None;
+			}
+		}
+
+		if let Some(details) = &self.completion_tokens_details {
+			if details.is_empty() {
+				self.completion_tokens_details = None;
+			}
+		}
+	}
+}
+
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +67,13 @@ pub struct PromptTokensDetails {
 	pub audio_tokens: Option<i32>,
 }
 
+impl PromptTokensDetails {
+	/// Checks if all fields are `None`.
+	pub fn is_empty(&self) -> bool {
+		self.cache_creation_tokens.is_none() && self.cached_tokens.is_none() && self.audio_tokens.is_none()
+	}
+}
+
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -62,4 +86,14 @@ pub struct CompletionTokensDetails {
 	pub reasoning_tokens: Option<i32>,
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
 	pub audio_tokens: Option<i32>,
+}
+
+impl CompletionTokensDetails {
+	/// Checks if all fields are `None`.
+	pub fn is_empty(&self) -> bool {
+		self.accepted_prediction_tokens.is_none()
+			&& self.rejected_prediction_tokens.is_none()
+			&& self.reasoning_tokens.is_none()
+			&& self.audio_tokens.is_none()
+	}
 }
