@@ -18,7 +18,7 @@ Provides a common and ergonomic single API to many generative AI providers, such
 
 Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **genai** for multi-AI capabilities.
 
-## v0.3.0 has been Released 2025-05-08
+## v0.3.0 - Released 2025-05-08
 
 What's new: 
 
@@ -32,7 +32,7 @@ What's new:
 
 Check [CHANGELOG](CHANGELOG.md) for more info	
 	
-## v0.2.0 has been Released 2025-04-16
+## v0.2.0 - Released 2025-04-16
 
 Here are some of the api change. Check [CHANGELOG](CHANGELOG.md) for more info
 
