@@ -13,6 +13,7 @@ use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use tracing::error;
 use value_ext::JsonValueExt;
 
 pub struct OpenAIAdapter;
@@ -266,7 +267,11 @@ impl OpenAIAdapter {
 	pub(super) fn into_usage(usage_value: Value) -> Usage {
 		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
 		// TODO: Should have some tracing.
-		let usage: Usage = serde_json::from_value(usage_value).unwrap_or_default();
+		let usage = serde_json::from_value(usage_value).map_err(|err| {
+			error!("Fail to deserilaize uage. Cause: {err}");
+			err
+		});
+		let usage: Usage = usage.unwrap_or_default();
 		usage
 	}
 
