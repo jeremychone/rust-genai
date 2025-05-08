@@ -28,6 +28,9 @@ pub enum Error {
 		cause: &'static str,
 	},
 	JsonModeWithoutInstruction,
+	ReasoningParsingError {
+		actual: String,
+	},
 
 	// -- Chat Output
 	NoChatResponse {

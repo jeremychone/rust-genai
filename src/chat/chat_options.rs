@@ -6,6 +6,7 @@
 //! Note 2: Extracting it from the `ChatRequest` object allows for better reusability of each component.
 
 use crate::chat::chat_req_response_format::ChatResponseFormat;
+use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
@@ -144,6 +145,19 @@ pub enum ReasoningEffort {
 }
 
 impl ReasoningEffort {
+	/// Returns the lowercase, static variant name.
+	/// Budget always returns "budget" regardless of the number.
+	pub fn variant_name(&self) -> &'static str {
+		match self {
+			ReasoningEffort::Low => "low",
+			ReasoningEffort::Medium => "medium",
+			ReasoningEffort::High => "high",
+			ReasoningEffort::Budget(_) => "budget",
+		}
+	}
+
+	/// Keywords are just the "high", "medium", "low",
+	/// Budget will be None
 	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
 			ReasoningEffort::Low => Some("low"),
@@ -153,6 +167,8 @@ impl ReasoningEffort {
 		}
 	}
 
+	/// Keywords are just the "high", "medium", "low",
+	/// This function will not create budget variant (no)
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
 			"low" => Some(ReasoningEffort::Low),
@@ -162,8 +178,12 @@ impl ReasoningEffort {
 		}
 	}
 
-	/// If the model_name ends with the lowercase string of a ReasoningEffort variant, return the ReasoningEffort and the trimmed model_name.
+	/// If the model_name ends with the lowercase string of a ReasoningEffort variant,
+	/// return the ReasoningEffort and the trimmed model_name.
+	///
 	/// Otherwise, return the model_name as is.
+	///
+	/// This will not create budget variant, only the keyword one
 	/// Returns (reasoning_effort, model_name)
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		if let Some((prefix, last)) = model_name.rsplit_once('-') {
@@ -172,6 +192,27 @@ impl ReasoningEffort {
 			}
 		}
 		(None, model_name)
+	}
+}
+
+impl std::fmt::Display for ReasoningEffort {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			ReasoningEffort::Low => write!(f, "low"),
+			ReasoningEffort::Medium => write!(f, "medium"),
+			ReasoningEffort::High => write!(f, "high"),
+			ReasoningEffort::Budget(n) => write!(f, "{}", n),
+		}
+	}
+}
+
+impl std::str::FromStr for ReasoningEffort {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self> {
+		Self::from_keyword(s)
+			.or_else(|| s.parse::<u32>().ok().map(Self::Budget))
+			.ok_or(Error::ReasoningParsingError { actual: s.to_string() })
 	}
 }
 
