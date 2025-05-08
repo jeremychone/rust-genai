@@ -21,6 +21,12 @@ const MODELS: &[&str] = &[
 	"gemini-1.5-pro",
 ];
 
+// Per gemini doc (https://x.com/jeremychone/status/1916501987371438372)
+const REASONING_ZERO: u32 = 0;
+const REASONING_LOW: u32 = 1000;
+const REASONING_MEDIUM: u32 = 8000;
+const REASONING_HIGH: u32 = 24000;
+
 // curl \
 //   -H 'Content-Type: application/json' \
 //   -d '{"contents":[{"parts":[{"text":"Explain how AI works"}]}]}' \
@@ -67,25 +73,59 @@ impl Adapter for GeminiAdapter {
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
-		// -- url
-		// NOTE: Somehow, Google decided to put the API key in the URL.
-		//       This should be considered an antipattern from a security point of view
-		//       even if it is done by the well respected Google. Everybody can make mistake once in a while.
-		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
-		let url = Self::get_service_url(&model, service_type, endpoint);
-		let url = format!("{url}?key={api_key}");
+		// -- Reasoning Budget
+		let (model, reasoning_effort) = match (model, options_set.reasoning_effort()) {
+			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
+			(model, None) => {
+				let model_name: &str = &model.model_name;
+				if let Some((prefix, last)) = model_name.rsplit_once('-') {
+					let reasoning = match last {
+						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
+						"low" => Some(ReasoningEffort::Budget(REASONING_LOW)),
+						"medium" => Some(ReasoningEffort::Budget(REASONING_MEDIUM)),
+						"high" => Some(ReasoningEffort::Budget(REASONING_HIGH)),
+						_ => None,
+					};
+					// create the model name if there was a `-..` reasoning suffix
+					let model = if reasoning.is_some() {
+						model.with_name_or_clone(Some(prefix.to_string()))
+					} else {
+						model
+					};
+
+					(model, reasoning)
+				} else {
+					(model, None)
+				}
+			}
+			// If reasoning effort, turn the low, medium, budget ones into Budget
+			(model, Some(effort)) => {
+				let effort = match effort {
+					ReasoningEffort::Low => ReasoningEffort::Budget(REASONING_LOW),
+					ReasoningEffort::Medium => ReasoningEffort::Budget(REASONING_MEDIUM),
+					ReasoningEffort::High => ReasoningEffort::Budget(REASONING_HIGH),
+					ReasoningEffort::Budget(budget) => ReasoningEffort::Budget(*budget),
+				};
+				(model, Some(effort))
+			}
+		};
 
 		// -- parts
 		let GeminiChatRequestParts {
 			system,
 			contents,
 			tools,
-		} = Self::into_gemini_request_parts(model, chat_req)?;
+		} = Self::into_gemini_request_parts(model.clone(), chat_req)?;
 
 		// -- Playload
 		let mut payload = json!({
 			"contents": contents,
 		});
+
+		// -- Set the reasoning effort
+		if let Some(ReasoningEffort::Budget(budget)) = reasoning_effort {
+			payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
+		}
 
 		// -- headers (empty for gemini, since API_KEY is in url)
 		let headers = vec![];
@@ -100,11 +140,6 @@ impl Adapter for GeminiAdapter {
 					"parts": [ { "text": system }]
 				}),
 			)?;
-		}
-
-		// -- Reasoning Budget
-		if let Some(ReasoningEffort::Budget(budget)) = options_set.reasoning_effort() {
-			payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
 		}
 
 		// -- Tools
@@ -148,6 +183,14 @@ impl Adapter for GeminiAdapter {
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("/generationConfig/topP", top_p)?;
 		}
+
+		// -- url
+		// NOTE: Somehow, Google decided to put the API key in the URL.
+		//       This should be considered an antipattern from a security point of view
+		//       even if it is done by the well respected Google. Everybody can make mistake once in a while.
+		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
+		let url = Self::get_service_url(&model, service_type, endpoint);
+		let url = format!("{url}?key={api_key}");
 
 		Ok(WebRequestData { url, headers, payload })
 	}

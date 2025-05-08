@@ -27,6 +27,7 @@ impl ModelIden {
 }
 
 impl ModelIden {
+	// TODO: probably need to take Option<&str>
 	pub fn with_name_or_clone(&self, new_name: Option<String>) -> ModelIden {
 		if let Some(new_name) = new_name {
 			if *self.model_name != new_name {
