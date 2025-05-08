@@ -1,5 +1,10 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-05-07 - [v0.2.4](https://github.com/jeremychone/rust-genai/compare/v0.2.3...v0.2.4)
+
+- `^` openai usage - (change) Now details properties None when 0, and usage.compact_details() to set details to None when empty.
+- `.` gemini - remove wrongly assign accepted_prediction_tokens
+
 ## 2025-04-26 - [v0.2.3](https://github.com/jeremychone/rust-genai/compare/v0.2.2...v0.2.3)
 
 - `-` gemini - fix computation of completion_tokens/reasoning_tokens to match OpenAI API way
