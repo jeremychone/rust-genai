@@ -71,7 +71,7 @@ impl Adapter for OpenAIAdapter {
 
 		// -- Capture the provider_model_iden
 		let provider_model_name: Option<String> = body.x_remove("model").ok();
-		let provider_model_iden = model_iden.with_name_or_clone(provider_model_name);
+		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
 
 		// -- Capture the usage
 		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();

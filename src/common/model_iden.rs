@@ -27,20 +27,38 @@ impl ModelIden {
 }
 
 impl ModelIden {
-	// TODO: probably need to take Option<&str>
-	pub fn with_name_or_clone(&self, new_name: Option<String>) -> ModelIden {
-		if let Some(new_name) = new_name {
-			if *self.model_name != new_name {
-				ModelIden {
-					adapter_kind: self.adapter_kind,
-					model_name: new_name.into(),
-				}
-			} else {
-				self.clone()
+	/// Creates a new `ModelIden` with the specified name, or clones the existing one if the name is the same.
+	pub fn from_name<T>(&self, new_name: T) -> ModelIden
+	where
+		T: AsRef<str> + Into<String>,
+	{
+		let new_name_ref = new_name.as_ref();
+
+		// If the names are the same, just return a clone
+		if &*self.model_name == new_name_ref {
+			self.clone()
+		} else {
+			let model_name = new_name.into();
+			ModelIden {
+				adapter_kind: self.adapter_kind,
+				model_name: model_name.into(),
 			}
+		}
+	}
+
+	/// Creates a new `ModelIden` with the specified name, or clones the existing one if the name is the same.
+	/// NOTE: Might be deprecated in favor of [`from_name`]
+	pub fn from_optional_name(&self, new_name: Option<String>) -> ModelIden {
+		if let Some(new_name) = new_name {
+			self.from_name(new_name)
 		} else {
 			self.clone()
 		}
+	}
+
+	#[deprecated(note = "use from_optional_name")]
+	pub fn with_name_or_clone(&self, new_name: Option<String>) -> ModelIden {
+		self.from_optional_name(new_name)
 	}
 }
 
