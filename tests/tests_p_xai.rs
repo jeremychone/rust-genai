@@ -89,7 +89,7 @@ async fn test_resolver_auth_ok() -> Result<()> {
 #[tokio::test]
 #[serial(xai)]
 async fn test_list_models() -> Result<()> {
-	common_tests::common_test_list_models(AdapterKind::Xai, "grok-beta").await
+	common_tests::common_test_list_models(AdapterKind::Xai, "grok-3-beta").await
 }
 
 // endregion: --- List

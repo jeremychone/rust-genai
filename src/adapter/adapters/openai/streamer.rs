@@ -97,7 +97,7 @@ impl futures::Stream for OpenAIStreamer {
 											.unwrap_or_default(); // permissive for now
 										self.captured_data.usage = Some(usage)
 									}
-									AdapterKind::Xai | AdapterKind::DeepSeek => {
+									AdapterKind::DeepSeek => {
 										let usage = message_data
 											.x_take("usage")
 											.map(OpenAIAdapter::into_usage)
@@ -149,7 +149,6 @@ impl futures::Stream for OpenAIStreamer {
 					else {
 						// If it's not Groq, xAI, DeepSeek the usage is captured at the end when choices are empty or null
 						if !matches!(adapter_kind, AdapterKind::Groq)
-							&& !matches!(adapter_kind, AdapterKind::Xai)
 							&& !matches!(adapter_kind, AdapterKind::DeepSeek)
 							&& self.captured_data.usage.is_none() // this might be redundant
 							&& self.options.capture_usage
