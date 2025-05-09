@@ -3,7 +3,8 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	CompletionTokensDetails, ContentPart, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
+	CompletionTokensDetails, ContentPart, ImageSource, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall,
+	Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -267,6 +268,7 @@ impl GeminiAdapter {
 				.and_then(|v| v.as_str().map(String::from))
 				.map(GeminiChatContent::Text),
 		};
+
 		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
 
 		Ok(GeminiChatResponse { content, usage })
@@ -274,48 +276,83 @@ impl GeminiAdapter {
 
 	/// See gemini doc: https://ai.google.dev/api/generate-content#UsageMetadata
 	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
-		let prompt_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
-		let completion_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
 		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
 
+		// -- Compute prompt tokens
+		let g_prompt_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
+		// Note: https://developers.googleblog.com/en/gemini-2-5-models-now-support-implicit-caching/
+		//       It does say `cached_content_token_count`, but in the json, it's probably
+		//       `cachedContenTokenCount` (Could not verify for implicit cache, did not see it yet)
+		// Note: Here we are going to assume the same as the thoughtsTokenCount, that they arenot included in the
+		//       promptTokenCount (which seems to be the gemini way)
+		//       So, we normalize to match the OpenAI Way
+		let g_cached_tokens: Option<i32> = usage_value.x_take("cachedContentTokenCount").ok();
+		let (prompt_tokens, prompt_tokens_details) = match (g_prompt_tokens, g_cached_tokens) {
+			(Some(g_prompt_tokens), None) => (Some(g_prompt_tokens), None),
+			(Some(g_prompt_tokens), Some(g_cached_tokens)) => {
+				(
+					// normalize to the openai way, prompt_tokens is the sum (because in root)
+					Some(g_prompt_tokens + g_cached_tokens),
+					// Build the
+					Some(PromptTokensDetails {
+						cache_creation_tokens: None,
+						cached_tokens: Some(g_cached_tokens),
+						audio_tokens: None,
+					}),
+				)
+			}
+			(None, Some(g_cached_tokens)) => {
+				(
+					// normalize to the openai way, prompt_tokens is the sum (because in root)
+					Some(g_cached_tokens),
+					// Build the
+					Some(PromptTokensDetails {
+						cache_creation_tokens: None,
+						cached_tokens: Some(g_cached_tokens),
+						audio_tokens: None,
+					}),
+				)
+			}
+			// Note: for now, we passthrough the prompt_tokens None, but might set to 0 later
+			(None, None) => (None, None),
+		};
+
+		// -- Compute completion tokens
+		let candidate_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
+		let thoughts_tokens: Option<i32> = usage_value.x_take("thoughtsTokenCount").ok();
 		// IMPORTANT: For Gemini, the `thoughts_token_count` (~reasoning_tokens) is not included
 		//            in the root `candidatesTokenCount` (~completion_tokens).
 		//            Therefore, some computation is needed to normalize it in the "OpenAI API Way,"
 		//            meaning `completion_tokens` represents the total of completion tokens,
 		//            and the details provide a breakdown of the specific components.
-
-		let (completion_tokens, completion_tokens_details) =
-			match (completion_tokens, usage_value.x_get_i64("thoughtsTokenCount").ok()) {
-				(Some(c_tokens), Some(t_tokens)) => {
-					let t_tokens = t_tokens as i32; // should be safe enough
-					(
-						Some(c_tokens + t_tokens),
-						Some(CompletionTokensDetails {
-							accepted_prediction_tokens: None,
-							rejected_prediction_tokens: None,
-							reasoning_tokens: Some(t_tokens),
-							audio_tokens: None,
-						}),
-					)
-				}
-				(None, Some(t_tokens)) => {
-					(
-						None,
-						Some(CompletionTokensDetails {
-							accepted_prediction_tokens: None,
-							rejected_prediction_tokens: None,
-							reasoning_tokens: Some(t_tokens as i32), // should be safe enough
-							audio_tokens: None,
-						}),
-					)
-				}
-				(c_tokens, None) => (c_tokens, None),
-			};
+		let (completion_tokens, completion_tokens_details) = match (candidate_tokens, thoughts_tokens) {
+			(Some(c_tokens), Some(t_tokens)) => (
+				Some(c_tokens + t_tokens),
+				Some(CompletionTokensDetails {
+					accepted_prediction_tokens: None,
+					rejected_prediction_tokens: None,
+					reasoning_tokens: Some(t_tokens),
+					audio_tokens: None,
+				}),
+			),
+			(None, Some(t_tokens)) => {
+				(
+					None,
+					Some(CompletionTokensDetails {
+						accepted_prediction_tokens: None,
+						rejected_prediction_tokens: None,
+						reasoning_tokens: Some(t_tokens), // should be safe enough
+						audio_tokens: None,
+					}),
+				)
+			}
+			(c_tokens, None) => (c_tokens, None),
+		};
 
 		Usage {
 			prompt_tokens,
 			// for now, None for Gemini
-			prompt_tokens_details: None,
+			prompt_tokens_details,
 
 			completion_tokens,
 

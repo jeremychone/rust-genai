@@ -43,6 +43,15 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 
 // endregion: --- Chat
 
+// region:    --- Chat Implicit Cache
+
+#[tokio::test]
+async fn test_chat_cache_implicit_simple_ok() -> Result<()> {
+	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL).await
+}
+
+// endregion: --- Chat Implicit Cache
+
 // region:    --- Chat Stream Tests
 
 #[tokio::test]

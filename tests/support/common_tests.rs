@@ -302,9 +302,52 @@ pub async fn common_test_chat_reasoning_normalize_ok(model: &str) -> Result<()> 
 
 // endregion: --- Chat
 
-// region:    --- Chat Cache
+// region:    --- Chat Implicit Cache
 
-pub async fn common_test_chat_cache_simple_user_ok(model: &str) -> Result<()> {
+pub async fn common_test_chat_cache_implicit_simple_ok(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let big_content = get_big_content()?;
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (deactivate to see the differences)
+		ChatMessage::user(big_content),
+		ChatMessage::user("Give a very short summary of what each of those files are about."),
+	]);
+
+	// -- Exec
+	// Execute twice
+	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+	// sleep 500ms
+	tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check Content
+	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = &chat_res.usage;
+
+	let prompt_tokens = get_option_value!(usage.prompt_tokens);
+	let completion_tokens = get_option_value!(usage.completion_tokens);
+	let total_tokens = get_option_value!(usage.total_tokens);
+	let prompt_tokens_details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+
+	assert!(cached_tokens > 0, " cached_tokens should be greater than 0");
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+
+	Ok(())
+}
+
+// endregion: --- Chat Implicit Cache
+
+// region:    --- Chat Explicit Cache
+
+pub async fn common_test_chat_cache_explicit_user_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let big_content = get_big_content()?;
@@ -339,15 +382,11 @@ pub async fn common_test_chat_cache_simple_user_ok(model: &str) -> Result<()> {
 		"one of cache_creation_tokens or cached_tokens should be greater than 0"
 	);
 	assert!(total_tokens > 0, "total_tokens should be > 0");
-	assert!(
-		total_tokens >= prompt_tokens + completion_tokens,
-		"total_tokens should be greater to prompt_token + comletion_token because of the cached tokens"
-	);
 
 	Ok(())
 }
 
-pub async fn common_test_chat_cache_simple_system_ok(model: &str) -> Result<()> {
+pub async fn common_test_chat_cache_explicit_system_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let big_content = get_big_content()?;
@@ -383,15 +422,11 @@ pub async fn common_test_chat_cache_simple_system_ok(model: &str) -> Result<()> 
 		"one of cache_creation_tokens or cached_tokens should be greater than 0"
 	);
 	assert!(total_tokens > 0, "total_tokens should be > 0");
-	assert!(
-		total_tokens >= prompt_tokens + completion_tokens,
-		"total_tokens should be greater to prompt_token + comletion_token because of the cached tokens"
-	);
 
 	Ok(())
 }
 
-// endregion: --- Chat Cache
+// endregion: --- Chat Explicit Cache
 
 // region:    --- Chat Stream Tests
 

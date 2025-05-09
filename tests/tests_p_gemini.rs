@@ -7,7 +7,8 @@ use genai::resolver::AuthData;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 // "gemini-2.0-flash", "gemini-2.0-flash-lite" (somehow function calling work with -lite)
-const MODEL: &str = "gemini-2.0-flash";
+// "gemini-2.5-flash-preview-04-17" "gemini-2.5-pro-preview-05-06"
+const MODEL: &str = "gemini-2.5-flash-preview-04-17-zero";
 
 // region:    --- Chat
 
@@ -37,6 +38,17 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 }
 
 // endregion: --- Chat
+
+// region:    --- Chat Implicit Cache
+
+// NOTE: This should eventually work with the 2.5 Flash, but right now, we do not get the cached_tokens
+//       So, disabling
+// #[tokio::test]
+// async fn test_chat_cache_implicit_simple_ok() -> Result<()> {
+// 	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL).await
+// }
+
+// endregion: --- Chat Implicit Cache
 
 // region:    --- Chat Stream Tests
 
