@@ -118,17 +118,18 @@ where
 /// The asynchronous `ServiceTargetResolverAsyncFn` trait object.
 pub trait ServiceTargetResolverAsyncFn: Send + Sync {
 	/// Execute the `ServiceTargetResolverAsyncFn` asynchronously to get the `ServiceTarget`.
-	fn exec_fn(&self, service_target: ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>>;
+	fn exec_fn(&self, service_target: ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>>>>;
 	/// Clone the trait object.
 	fn clone_box(&self) -> Box<dyn ServiceTargetResolverAsyncFn>;
 }
 
-impl<F> ServiceTargetResolverAsyncFn for F
+impl<F: Send> ServiceTargetResolverAsyncFn for F
 where
-	F: Fn(ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>> + Send + Sync + Clone + 'static,
+	F: AsyncFnOnce(ServiceTarget) -> Result<ServiceTarget> + Send + Sync + Clone + 'static,
 {
-	fn exec_fn(&self, service_target: ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>> {
-		self.clone()(service_target)
+	fn exec_fn(&self, service_target: ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>>>> {
+		let resolver: F = self.clone();
+		Box::pin(async { resolver(service_target).await })
 	}
 
 	fn clone_box(&self) -> Box<dyn ServiceTargetResolverAsyncFn> {
@@ -158,15 +159,9 @@ pub trait IntoServiceTargetResolverAsyncFn {
 	fn into_resolver_async_fn(self) -> Arc<Box<dyn ServiceTargetResolverAsyncFn>>;
 }
 
-impl IntoServiceTargetResolverAsyncFn for Arc<Box<dyn ServiceTargetResolverAsyncFn>> {
-	fn into_resolver_async_fn(self) -> Arc<Box<dyn ServiceTargetResolverAsyncFn>> {
-		self
-	}
-}
-
 impl<F> IntoServiceTargetResolverAsyncFn for F
 where
-	F: Fn(ServiceTarget) -> Pin<Box<dyn Future<Output = Result<ServiceTarget>> + Send>> + Send + Sync + Clone + 'static,
+	F: AsyncFn(ServiceTarget) -> Result<ServiceTarget> + Send + Sync + Clone + 'static,
 {
 	fn into_resolver_async_fn(self) -> Arc<Box<dyn ServiceTargetResolverAsyncFn>> {
 		Arc::new(Box::new(self))
