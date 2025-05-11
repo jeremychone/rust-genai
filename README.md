@@ -16,8 +16,6 @@ Also, allow custom URL with `ServiceTargetResolver` (see [examples/c06-target-re
 
 Provides a common and ergonomic single API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-Check out [devai.run](https://devai.run), the **Iterate to Automate** command-line application that leverages **genai** for multi-AI capabilities.
-
 ## v0.3.0 - Released 2025-05-08
 
 What's new: 
@@ -57,6 +55,11 @@ Here are some of the api change. Check [CHANGELOG](CHANGELOG.md) for more info
 - [@giangndm](https://github.com/giangndm) for make stream is send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
 - [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
 
+## Usage examples
+
+- Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://www.youtube.com/watch?v=zL1BzPVM8-Y&list=PL7r-PXl6ZPcB2zN0XHsYIDaD5yW8I40AE) for a simple example of how I use AI PACK/genai for production coding.
+
+> Note: Feel free to send me a short description and link to your application or library using genai.
 
 ## Key Features
 
