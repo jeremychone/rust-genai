@@ -1,9 +1,9 @@
 [package]
 name = "genai"
-version = "0.3.1-WIP"
+version = "0.3.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-description = "Multi-AI Providers Library for Rust. (Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, DeepSeek, ...)"
+description = "Multi-AI Providers Library for Rust. (OpenAI, Gemini, Anthropic, xAI, Ollama, Groq, DeepSeek, Grok)"
 keywords = ["generative-ai","openai","chatgpt","gemini","ollama"]
 homepage = "https://github.com/jeremychone/rust-genai"
 repository = "https://github.com/jeremychone/rust-genai"
