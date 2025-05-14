@@ -2,12 +2,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::ModelName;
 use crate::adapter::AdapterKind;
+use derive_more::Display;
 
 /// Holds the adapter kind and model name in an efficient, clonable way.
 ///
 /// This struct represents the association between an adapter kind
 /// and a model name, allowing for easy conversion and instantiation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Display)]
+#[display("{model_name} (adapter: {adapter_kind})")]
 pub struct ModelIden {
 	/// The adapter kind.
 	pub adapter_kind: AdapterKind,
