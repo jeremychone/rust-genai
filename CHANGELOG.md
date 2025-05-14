@@ -1,5 +1,9 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-05-14 - [v0.3.2](https://github.com/jeremychone/rust-genai/compare/v0.3.1...v0.3.2)
+
+- `^` error - implement proper display for error variants
+
 ## 2025-05-10 - [v0.3.1](https://github.com/jeremychone/rust-genai/compare/v0.3.0...v0.3.1)
 
 - `^` gemini - usage - add capture/normalize cached tokens usage (need futher validation, but should work)
