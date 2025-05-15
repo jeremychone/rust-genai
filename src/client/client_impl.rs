@@ -42,6 +42,10 @@ impl Client {
 		self.config().resolve_service_target(model).await
 	}
 
+	pub async fn resolve_service_target_async(&self, model_name: &str) -> Result<ServiceTarget> {
+		let model = self.default_model(model_name)?;
+		self.config().resolve_service_target(model).await
+	}
 	/// Executes a chat.
 	pub async fn exec_chat(
 		&self,
@@ -58,8 +62,22 @@ impl Client {
 		let target = self.config().resolve_service_target(model).await?;
 		let model = target.model.clone();
 
-		let WebRequestData { headers, payload, url } =
-			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
+		let override_auth = if let AuthData::RequestOverride { url, headers } = &target.auth {
+			Some((url.to_owned(), headers.to_owned()))
+		} else {
+			None
+		};
+
+		let WebRequestData {
+			mut headers,
+			payload,
+			mut url,
+		} = AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
+
+		if let Some((override_url, override_headers)) = override_auth {
+			url = override_url;
+			headers = override_headers;
+		}
 
 		let web_res =
 			self.web_client()
@@ -87,9 +105,13 @@ impl Client {
 			.with_client_options(self.config().chat_options());
 
 		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model).await?;
-		let model = target.model.clone();
-		let auth_data = target.auth.clone();
+		let target = self.config().resolve_service_target(model.clone()).await?;
+
+		let override_auth = if let AuthData::RequestOverride { url, headers } = &target.auth {
+			Some((url.to_owned(), headers.to_owned()))
+		} else {
+			None
+		};
 
 		let WebRequestData {
 			mut url,
@@ -97,14 +119,10 @@ impl Client {
 			payload,
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
 
-		if let AuthData::RequestOverride {
-			url: override_url,
-			headers: override_headers,
-		} = auth_data
-		{
+		if let Some((override_url, override_headers)) = override_auth {
 			url = override_url;
 			headers = override_headers;
-		};
+		}
 
 		let reqwest_builder = self
 			.web_client()
