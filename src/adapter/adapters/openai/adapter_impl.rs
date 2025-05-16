@@ -74,7 +74,10 @@ impl Adapter for OpenAIAdapter {
 		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
 
 		// -- Capture the usage
-		let usage = body.x_take("usage").map(OpenAIAdapter::into_usage).unwrap_or_default();
+		let usage = body
+			.x_take("usage")
+			.map(|value| OpenAIAdapter::into_usage(model_iden.adapter_kind, value))
+			.unwrap_or_default();
 
 		// -- Capture the content
 		let (content, reasoning_content) = if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
@@ -266,8 +269,7 @@ impl OpenAIAdapter {
 	}
 
 	/// Note: Needs to be called from super::streamer as well
-	#[allow(deprecated)]
-	pub(super) fn into_usage(usage_value: Value) -> Usage {
+	pub(super) fn into_usage(adapter: AdapterKind, usage_value: Value) -> Usage {
 		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
 		let usage = serde_json::from_value(usage_value).map_err(|err| {
 			error!("Fail to deserilaize uage. Cause: {err}");
@@ -276,6 +278,20 @@ impl OpenAIAdapter {
 		let mut usage: Usage = usage.unwrap_or_default();
 		// Will set details to None if no values
 		usage.compact_details();
+
+		// Unfortunately, xAI grok-3 does not compute reasoning tokens correctly.
+		// Example: completion_tokens: 35, completion_tokens_details.reasoning_tokens: 192
+		// BUT completion_tokens should be 35 + 192.
+		// TODO: We might want to do this for other token details as well.
+		// TODO: We could check if the math adds up first with the total token count, and only change it if it does not.
+		//       This will allow us to be forward compatible if/when they fix this bug (yes, it is a bug).
+		if matches!(adapter, AdapterKind::Xai) {
+			if let Some(reasoning_tokens) = usage.completion_tokens_details.as_ref().and_then(|d| d.reasoning_tokens) {
+				let completion_tokens = usage.completion_tokens.unwrap_or(0);
+				usage.completion_tokens = Some(completion_tokens + reasoning_tokens)
+			}
+		}
+
 		usage
 	}
 

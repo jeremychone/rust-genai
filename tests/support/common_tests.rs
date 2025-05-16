@@ -33,7 +33,6 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> R
 
 	// -- Check Usage
 	let usage = &chat_res.usage;
-
 	let prompt_tokens = get_option_value!(usage.prompt_tokens);
 	let completion_tokens = get_option_value!(usage.completion_tokens);
 	let total_tokens = get_option_value!(usage.total_tokens);

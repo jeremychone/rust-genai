@@ -7,9 +7,8 @@ use serial_test::serial;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// Note: In groq, the llama3.1 or gemma models fail to produce JSON without a proposed schema.
-//       With the "tool-use" groq version, it will work correctly.
-const MODEL: &str = "grok-beta";
+// "grok-3-beta", "grok-3-mini-beta"
+const MODEL: &str = "grok-3-mini-beta";
 
 // region:    --- Chat
 
