@@ -7,9 +7,10 @@ use serial_test::serial;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// "grok-3-beta", "grok-3-mini-beta"
+// "grok-3-beta"
+// "grok-3-mini-beta" does seem to suport stream
 const MODEL: &str = "grok-3-mini-beta";
-
+const MODEL_FOR_STREAMING: &str = "grok-3-beta";
 // region:    --- Chat
 
 #[tokio::test]
@@ -56,19 +57,19 @@ async fn test_chat_temperature_ok() -> Result<()> {
 #[tokio::test]
 #[serial(xai)]
 async fn test_chat_stream_simple_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL_FOR_STREAMING, None).await
 }
 
 #[tokio::test]
 #[serial(xai)]
 async fn test_chat_stream_capture_content_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
+	common_tests::common_test_chat_stream_capture_content_ok(MODEL_FOR_STREAMING).await
 }
 
 #[tokio::test]
 #[serial(xai)]
 async fn test_chat_stream_capture_all_ok() -> Result<()> {
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL_FOR_STREAMING, None).await
 }
 
 // endregion: --- Chat Stream Tests
