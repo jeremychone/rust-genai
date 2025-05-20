@@ -280,53 +280,36 @@ impl GeminiAdapter {
 		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
 
 		// -- Compute prompt tokens
-		let g_prompt_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
+		let prompt_tokens: Option<i32> = usage_value.x_take("promptTokenCount").ok();
 		// Note: https://developers.googleblog.com/en/gemini-2-5-models-now-support-implicit-caching/
 		//       It does say `cached_content_token_count`, but in the json, it's probably
 		//       `cachedContenTokenCount` (Could not verify for implicit cache, did not see it yet)
-		// Note: Here we are going to assume the same as the thoughtsTokenCount, that they arenot included in the
-		//       promptTokenCount (which seems to be the gemini way)
-		//       So, we normalize to match the OpenAI Way
+		// Note: It seems the promptTokenCount is inclusive of the cachedContentTokenCount
+		//       see: https://ai.google.dev/gemini-api/docs/caching?lang=python#generate-content
+		//       (this was for explicit caching, but should be the same for implicit)
+		//       ```
+		//       prompt_token_count: 696219
+		//       cached_content_token_count: 696190
+		//       candidates_token_count: 214
+		//       total_token_count: 696433
+		//       ```
+		//       So, in short same as Open asi
 		let g_cached_tokens: Option<i32> = usage_value.x_take("cachedContentTokenCount").ok();
-		let (prompt_tokens, prompt_tokens_details) = match (g_prompt_tokens, g_cached_tokens) {
-			(Some(g_prompt_tokens), None) => (Some(g_prompt_tokens), None),
-			(Some(g_prompt_tokens), Some(g_cached_tokens)) => {
-				(
-					// normalize to the openai way, prompt_tokens is the sum (because in root)
-					Some(g_prompt_tokens + g_cached_tokens),
-					// Build the
-					Some(PromptTokensDetails {
-						cache_creation_tokens: None,
-						cached_tokens: Some(g_cached_tokens),
-						audio_tokens: None,
-					}),
-				)
-			}
-			(None, Some(g_cached_tokens)) => {
-				(
-					// normalize to the openai way, prompt_tokens is the sum (because in root)
-					Some(g_cached_tokens),
-					// Build the
-					Some(PromptTokensDetails {
-						cache_creation_tokens: None,
-						cached_tokens: Some(g_cached_tokens),
-						audio_tokens: None,
-					}),
-				)
-			}
-			// Note: for now, we passthrough the prompt_tokens None, but might set to 0 later
-			(None, None) => (None, None),
-		};
+		let prompt_tokens_details = g_cached_tokens.map(|g_cached_tokens| PromptTokensDetails {
+			cache_creation_tokens: None,
+			cached_tokens: Some(g_cached_tokens),
+			audio_tokens: None,
+		});
 
 		// -- Compute completion tokens
-		let candidate_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
-		let thoughts_tokens: Option<i32> = usage_value.x_take("thoughtsTokenCount").ok();
-		// IMPORTANT: For Gemini, the `thoughts_token_count` (~reasoning_tokens) is not included
+		let g_candidate_tokens: Option<i32> = usage_value.x_take("candidatesTokenCount").ok();
+		let g_thoughts_tokens: Option<i32> = usage_value.x_take("thoughtsTokenCount").ok();
+		// IMPORTANT: For Gemini, the `thoughtsTokenCount` (~reasoning_tokens) is not included
 		//            in the root `candidatesTokenCount` (~completion_tokens).
 		//            Therefore, some computation is needed to normalize it in the "OpenAI API Way,"
 		//            meaning `completion_tokens` represents the total of completion tokens,
 		//            and the details provide a breakdown of the specific components.
-		let (completion_tokens, completion_tokens_details) = match (candidate_tokens, thoughts_tokens) {
+		let (completion_tokens, completion_tokens_details) = match (g_candidate_tokens, g_thoughts_tokens) {
 			(Some(c_tokens), Some(t_tokens)) => (
 				Some(c_tokens + t_tokens),
 				Some(CompletionTokensDetails {
