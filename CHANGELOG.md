@@ -1,5 +1,11 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-05-20 - [v0.3.3](https://github.com/jeremychone/rust-genai/compare/v0.3.2...v0.3.3)
+
+- `-` gemini - fix cache computation (cachedContentTokenCount is included in promptTokenCount, as openai)
+- `^` xai - Fix/normalize xAI grok-3-beta API issue that does not compute completion_tokens the OpenAI way when reasonning_tokens
+- `.` test - updated xai test to use grok-3-mini-beta (and grok-3-beta for streaming)
+
 ## 2025-05-14 - [v0.3.2](https://github.com/jeremychone/rust-genai/compare/v0.3.1...v0.3.2)
 
 - `^` error - implement proper display for error variants
