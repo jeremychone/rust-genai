@@ -69,7 +69,7 @@ impl ClientConfig {
 	}
 }
 
-/// Resolvers
+/// Resolve
 impl ClientConfig {
 	pub async fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
 		// -- Resolve the Model first
