@@ -217,22 +217,18 @@ impl Adapter for AnthropicAdapter {
 
 impl AnthropicAdapter {
 	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
-		let prompt_tokens: Option<i32> = usage_value.x_take("input_tokens").ok();
-		let completion_tokens: Option<i32> = usage_value.x_take("output_tokens").ok();
+		// IMPORTANT: For Anthropic, the `input_tokens` does not include `cache_creation_input_tokens` or `cache_read_input_tokens`.
+		// Therefore, it must be normalized in the OpenAI style, where it includes both cached and written tokens (for symmetry).
+		let input_tokens: i32 = usage_value.x_take("input_tokens").ok().unwrap_or(0);
 		let cache_creation_input_tokens: i32 = usage_value.x_take("cache_creation_input_tokens").unwrap_or(0);
 		let cache_read_input_tokens: i32 = usage_value.x_take("cache_read_input_tokens").unwrap_or(0);
+		let completion_tokens: i32 = usage_value.x_take("output_tokens").ok().unwrap_or(0);
+
+		// compute the prompt_tokens
+		let prompt_tokens = input_tokens + cache_creation_input_tokens + cache_read_input_tokens;
 
 		// Compute total_tokens
-		let total_tokens = if prompt_tokens.is_some() || completion_tokens.is_some() {
-			Some(
-				prompt_tokens.unwrap_or(0)
-					+ completion_tokens.unwrap_or(0)
-					+ cache_creation_input_tokens
-					+ cache_read_input_tokens,
-			)
-		} else {
-			None
-		};
+		let total_tokens = prompt_tokens + completion_tokens;
 
 		// For now the logic is to have a Some of PromptTokensDetails if at least one of those value is not 0
 		// TODO: Needs to be normalized across adapters.
@@ -247,14 +243,14 @@ impl AnthropicAdapter {
 		};
 
 		Usage {
-			prompt_tokens,
+			prompt_tokens: Some(prompt_tokens),
 			prompt_tokens_details,
 
-			completion_tokens,
+			completion_tokens: Some(completion_tokens),
 			// for now, None for Anthropic
 			completion_tokens_details: None,
 
-			total_tokens,
+			total_tokens: Some(total_tokens),
 		}
 	}
 
