@@ -54,7 +54,7 @@ impl AuthData {
 				Ok(value)
 			}
 			AuthData::Key(value) => Ok(value.to_string()),
-			_ => Err(Error::ResolverAuthDataNotSingleValue),
+			AuthData::MultiKeys(_) => Err(Error::ResolverAuthDataNotSingleValue),
 		}
 	}
 }
@@ -69,9 +69,7 @@ impl std::fmt::Debug for AuthData {
 			AuthData::FromEnv(_env_name) => write!(f, "AuthData::FromEnv(REDACTED)"),
 			AuthData::Key(_) => write!(f, "AuthData::Single(REDACTED)"),
 			AuthData::MultiKeys(_) => write!(f, "AuthData::Multi(REDACTED)"),
-			AuthData::RequestOverride { .. } => {
-				write!(f, "AuthData::RequestOverride {{ url: REDACTED, headers: REDACTED }}")
-			}
+			AuthData::RequestOverride { .. } => write!(f, "AuthData::RequestOverride(REDACTED)"),
 		}
 	}
 }
