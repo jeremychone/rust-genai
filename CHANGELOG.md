@@ -1,5 +1,10 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-05-24 - [v0.3.4](https://github.com/jeremychone/rust-genai/compare/v0.3.3...v0.3.4)
+
+- `^` Anthropic - update the default max_tokens for the models, including claude-*-4
+- `-` Anthropic - fix the way prompt_tokens and cache_..._tokens are computed to match the normalized OpenAI Way
+
 ## 2025-05-20 - [v0.3.3](https://github.com/jeremychone/rust-genai/compare/v0.3.2...v0.3.3)
 
 - `-` gemini - fix cache computation (cachedContentTokenCount is included in promptTokenCount, as openai)
