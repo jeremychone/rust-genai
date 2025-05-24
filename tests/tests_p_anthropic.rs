@@ -10,6 +10,8 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 // "claude-3-haiku-20240307" cheapest
 // "claude-3-5-haiku-latest"
 // "claude-3-7-sonnet-latest" (fail on test_chat_json_mode_ok)
+// "claude-sonnet-4-20250514" (fail on test_chat_json_mode_ok)
+//
 const MODEL: &str = "claude-3-5-haiku-latest";
 
 // region:    --- Chat

@@ -24,8 +24,14 @@ pub struct AnthropicAdapter;
 // - otherwise assume 8k model
 //
 // NOTE: Will need to add the thinking option: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking
-const MAX_TOKENS_8K: u32 = 8192;
-const MAX_TOKENS_4K: u32 = 4096;
+// For max model tokens see: https://docs.anthropic.com/en/docs/about-claude/models/overview
+//
+// fall back
+const MAX_TOKENS_64K: u32 = 64000; // claude-3-7-sonnet, claude-sonnet-4
+// custom
+const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
+const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
+const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
@@ -119,11 +125,25 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
 		}
 
+		//const MAX_TOKENS_64K: u32 = 64000; // claude-sonnet-4, claude-3-7-sonnet,
+		// custom
+		// const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
+		// const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
+		// const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
 		let max_tokens = options_set.max_tokens().unwrap_or_else(|| {
-			if model_name.contains("3-opus") || model_name.contains("3-haiku") {
-				MAX_TOKENS_4K
-			} else {
+			// most likely models used, so put first. Also a little wider with `claude-sonnet` (since name from version 4)
+			if model_name.contains("claude-sonnet") || model_name.contains("claude-3-7-sonnet") {
+				MAX_TOKENS_64K
+			} else if model_name.contains("claude-opus-4") {
+				MAX_TOKENS_32K
+			} else if model_name.contains("claude-3-5") {
 				MAX_TOKENS_8K
+			} else if model_name.contains("3-opus") || model_name.contains("3-haiku") {
+				MAX_TOKENS_4K
+			}
+			// for now, fall back on the 64K by default (might want to be more conservative)
+			else {
+				MAX_TOKENS_64K
 			}
 		});
 		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
