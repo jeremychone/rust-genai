@@ -81,29 +81,32 @@ impl Adapter for OpenAIAdapter {
 
 		// -- Capture the content
 		let (content, reasoning_content) = if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
-			if let Some(mut content) = first_choice.x_take::<Option<String>>("/message/content")? {
-				// "Standard" attempt to get the reasoning_content
-				let mut reasoning_content = first_choice
-					.x_take::<Option<String>>("/message/reasoning_content")
-					.ok()
-					.flatten();
+			match first_choice.x_take::<Option<String>>("/message/content")? {
+				Some(mut content) if !content.is_empty() => {
+					// "Standard" attempt to get the reasoning_content
+					let mut reasoning_content = first_choice
+						.x_take::<Option<String>>("/message/reasoning_content")
+						.ok()
+						.flatten();
 
-				// If not reasoning_content, but
-				if reasoning_content.is_none() && options_set.normalize_reasoning_content().unwrap_or_default() {
-					(content, reasoning_content) = extract_think(content);
+					// If not reasoning_content, but
+					if reasoning_content.is_none() && options_set.normalize_reasoning_content().unwrap_or_default() {
+						(content, reasoning_content) = extract_think(content);
+					}
+
+					let content = MessageContent::from(content);
+
+					(Some(content), reasoning_content)
 				}
-
-				let content = MessageContent::from(content);
-
-				(Some(content), reasoning_content)
-			} else {
-				let content = first_choice
-					.x_take("/message/tool_calls")
-					.ok()
-					.map(parse_tool_calls)
-					.transpose()?
-					.map(MessageContent::from_tool_calls);
-				(content, None)
+				_ => {
+					let content = first_choice
+						.x_take("/message/tool_calls")
+						.ok()
+						.map(parse_tool_calls)
+						.transpose()?
+						.map(MessageContent::from_tool_calls);
+					(content, None)
+				}
 			}
 		} else {
 			(None, None)
