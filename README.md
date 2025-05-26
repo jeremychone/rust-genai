@@ -45,6 +45,7 @@ Here are some of the api change. Check [CHANGELOG](CHANGELOG.md) for more info
 
 ## Thanks
 
+- [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
 - [@una-spirito](https://github.com/luna-spirito) for gemini `ReasoningEffort::Budget` support. 
 - [@jBernavaPrah](https://github.com/jBernavaPrah) For adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
 - [@GustavoWidman](https://github.com/GustavoWidman) for the intial gemini tool/function support!! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
