@@ -92,11 +92,11 @@ async fn test_resolver_auth_ok() -> Result<()> {
 
 // region:    --- List
 
-/// NOTE this test assume the "llama3.1:8b" is present.
+/// NOTE this test assume the "gemma3:4b" is present.
 #[tokio::test]
 #[serial(ollama)]
 async fn test_list_models() -> Result<()> {
-	common_tests::common_test_list_models(AdapterKind::Ollama, "llama3.1:8b").await
+	common_tests::common_test_list_models(AdapterKind::Ollama, "gemma3:4b").await
 }
 
 // endregion: --- List
