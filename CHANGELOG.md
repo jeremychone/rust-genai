@@ -1,5 +1,10 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+
+## 2025-05-26 - [v0.3.5](https://github.com/jeremychone/rust-genai/compare/v0.3.4...v0.3.5)
+
+- `^` OpenAI Adapter - Update OpenAI adapter to check for tool calls if the LLM returns an empty content response ([PR #55](https://github.com/jeremychone/rust-genai/pull/55))
+
 ## 2025-05-24 - [v0.3.4](https://github.com/jeremychone/rust-genai/compare/v0.3.3...v0.3.4)
 
 - `^` Anthropic - update the default max_tokens for the models, including claude-*-4
