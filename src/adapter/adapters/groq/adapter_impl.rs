@@ -19,12 +19,12 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"mixtral-8x7b-32768",
 	"gemma2-9b-it",
 	"gemma-7b-it", // deprecated
-	"llama3-8b-8192",
+	"llama-3.1-8b-instant",
 	"llama-guard-3-8b",
 	"llama3-70b-8192",
 	// -- preview
 	"deepseek-r1-distill-llama-70b",
-	"llama-3.3-70b-specdec",
+	"llama-3.3-70b-versatile",
 	"llama-3.2-1b-preview",
 	"llama-3.2-3b-preview",
 	"llama-3.2-11b-vision-preview",
