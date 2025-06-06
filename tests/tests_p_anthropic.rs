@@ -118,6 +118,25 @@ async fn test_tool_full_flow_ok() -> Result<()> {
 
 // endregion: --- Tool Tests
 
+// region:    --- Typed Tool Tests
+
+#[tokio::test]
+async fn test_typed_tool_simple_ok() -> Result<()> {
+	common_tests::common_test_typed_tool_simple_ok(MODEL, false).await
+}
+
+#[tokio::test]
+async fn test_typed_tool_full_flow_ok() -> Result<()> {
+	common_tests::common_test_typed_tool_full_flow_ok(MODEL, false).await
+}
+
+#[tokio::test]
+async fn test_typed_tool_compatibility_ok() -> Result<()> {
+	common_tests::common_test_typed_tool_compatibility_ok(MODEL).await
+}
+
+// endregion: --- Typed Tool Tests
+
 // region:    --- Resolver Tests
 
 #[tokio::test]

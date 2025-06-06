@@ -1,6 +1,7 @@
 //! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
 
 use crate::chat::{ChatMessage, ChatRole, MessageContent, Tool};
+use crate::chat::tool::GenAiTool;
 use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
@@ -82,6 +83,23 @@ impl ChatRequest {
 
 	pub fn append_tool(mut self, tool: impl Into<Tool>) -> Self {
 		self.tools.get_or_insert_with(Vec::new).push(tool.into());
+		self
+	}
+
+	/// Add a typed tool to the request using the GenAiTool trait
+	pub fn with_typed_tool<T: GenAiTool>(mut self) -> Self {
+		let tool = T::to_tool();
+		self.tools.get_or_insert_with(Vec::new).push(tool);
+		self
+	}
+
+	/// Add multiple typed tools to the request
+	pub fn with_typed_tools<T: GenAiTool>(mut self, count: usize) -> Self {
+		let tool = T::to_tool();
+		let tools = self.tools.get_or_insert_with(Vec::new);
+		for _ in 0..count {
+			tools.push(tool.clone());
+		}
 		self
 	}
 }

@@ -685,6 +685,155 @@ pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) ->
 
 // endregion: --- Tools
 
+// region:    --- Typed Tools
+
+/// Test basic typed tool functionality - schema generation and tool call parsing
+pub async fn common_test_typed_tool_simple_ok(model: &str, complete_check: bool) -> Result<()> {
+	use genai::{GenAiTool, chat::tool::GenAiTool as _};
+	use serde::{Deserialize, Serialize};
+
+	#[derive(GenAiTool, Deserialize, Serialize, Debug, Clone)]
+	#[tool(name = "get_weather", description = "Get the current weather for a location")]
+	struct WeatherParams {
+		/// The city name
+		city: String,
+		/// The country of the city
+		country: String,
+		/// Temperature unit (C for Celsius, F for Fahrenheit)
+		#[tool(enum_values = ["C", "F"])]
+		unit: String,
+	}
+
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::user("What is the temperature in C, in Paris, France")
+	]).with_typed_tool::<WeatherParams>();
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let mut tool_calls = chat_res.tool_calls().ok_or("Should have tool calls")?;
+	let tool_call = tool_calls.pop().ok_or("Should have at least one tool call")?;
+	
+	// Test type-safe parameter extraction
+	let params = WeatherParams::from_tool_call(&tool_call)?;
+	assert_eq!(params.city.to_lowercase(), "paris");
+	assert_eq!(params.country.to_lowercase(), "france");
+	if complete_check {
+		assert!(params.unit == "C" || params.unit == "F");
+	}
+
+	Ok(())
+}
+
+/// Test full typed tool workflow including response handling
+pub async fn common_test_typed_tool_full_flow_ok(model: &str, complete_check: bool) -> Result<()> {
+	use genai::{GenAiTool, chat::tool::GenAiTool as _};
+	use serde::{Deserialize, Serialize};
+	use serde_json::json;
+
+	#[derive(GenAiTool, Deserialize, Serialize, Debug, Clone)]
+	#[tool(name = "get_weather", description = "Get the current weather for a location")]
+	struct WeatherParams {
+		/// The city name
+		city: String,
+		/// The country of the city
+		country: String,
+		/// Temperature unit (C for Celsius, F for Fahrenheit)
+		#[tool(enum_values = ["C", "F"])]
+		unit: String,
+	}
+
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::user("What is the temperature in C, in Paris, France")
+	]).with_typed_tool::<WeatherParams>();
+
+	// -- Exec first request to get the tool calls
+	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+	let tool_calls = chat_res.into_tool_calls().ok_or("Should have tool calls in chat_res")?;
+
+	// -- Parse tool call with type safety
+	let first_tool_call = tool_calls.first().ok_or("Should have at least one tool call")?;
+	let params = WeatherParams::from_tool_call(first_tool_call)?;
+	
+	// -- Simulate the response
+	let tool_response = ToolResponse::new(
+		&first_tool_call.call_id, 
+		&json!({"weather": "Sunny", "temperature": "32C"}).to_string()
+	);
+
+	// Add the tool_calls, tool_response
+	let chat_req = chat_req.append_message(tool_calls).append_message(tool_response);
+
+	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+
+	// -- Check
+	let content = chat_res
+		.content_text_as_str()
+		.ok_or("Last response should be message")?
+		.to_lowercase();
+
+	assert!(content.contains("paris"), "Should contain 'Paris'");
+	assert!(content.contains("32"), "Should contain '32'");
+	if complete_check {
+		assert!(content.contains("sunny"), "Should contain 'sunny'");
+	}
+
+	Ok(())
+}
+
+/// Test that typed tools integrate properly with manual tools (backward compatibility)
+pub async fn common_test_typed_tool_compatibility_ok(model: &str) -> Result<()> {
+	use genai::{GenAiTool, chat::tool::GenAiTool as _};
+	use serde::{Deserialize, Serialize};
+	use serde_json::json;
+
+	#[derive(GenAiTool, Deserialize, Serialize, Debug, Clone)]
+	#[tool(name = "get_weather_typed", description = "Get weather using typed tool")]
+	struct WeatherParams {
+		city: String,
+		country: String,
+	}
+
+	// -- Setup: Mix manual and typed tools
+	let manual_tool = Tool::new("get_weather_manual").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"location": {"type": "string"}
+		},
+		"required": ["location"]
+	}));
+
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::user("What's the weather in Tokyo?")
+	])
+	.with_tools(vec![manual_tool])
+	.with_typed_tool::<WeatherParams>();
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check that tools were properly registered
+	// Note: The model will choose which tool to use, but both should be available
+	let tool_calls = chat_res.tool_calls().ok_or("Should have tool calls")?;
+	assert!(!tool_calls.is_empty(), "Should have at least one tool call");
+
+	let first_tool_call = &tool_calls[0];
+	assert!(
+		first_tool_call.fn_name == "get_weather_typed" || first_tool_call.fn_name == "get_weather_manual",
+		"Should call one of the available tools"
+	);
+
+	Ok(())
+}
+
+// endregion: --- Typed Tools
+
 // region:    --- With Resolvers
 
 pub async fn common_test_resolver_auth_ok(model: &str, auth_data: AuthData) -> Result<()> {

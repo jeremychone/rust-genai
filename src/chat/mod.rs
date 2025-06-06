@@ -10,7 +10,7 @@ mod chat_request;
 mod chat_response;
 mod chat_stream;
 mod message_content;
-mod tool;
+pub mod tool;
 mod usage;
 
 // -- Flatten
