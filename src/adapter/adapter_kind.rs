@@ -4,6 +4,7 @@ use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
 use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::{self, GroqAdapter};
+use crate::adapter::nebius::{self, NebiusAdapter};
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
 use derive_more::Display;
@@ -24,6 +25,8 @@ pub enum AdapterKind {
 	Gemini,
 	/// Used for the Groq adapter. Behind the scenes, it uses the OpenAI adapter logic with the necessary Groq differences (e.g., usage).
 	Groq,
+	/// For Nebius
+	Nebius,
 	/// For xAI
 	Xai,
 	/// For DeepSeek
@@ -43,6 +46,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Gemini => "Gemini",
 			AdapterKind::Groq => "Groq",
+			AdapterKind::Nebius => "Nebius",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
 		}
@@ -57,6 +61,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Gemini => "gemini",
 			AdapterKind::Groq => "groq",
+			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
 		}
@@ -73,6 +78,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Nebius => Some(NebiusAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
@@ -117,6 +123,8 @@ impl AdapterKind {
 			Ok(Self::DeepSeek)
 		} else if groq::MODELS.contains(&model) {
 			return Ok(Self::Groq);
+		} else if nebius::MODELS.contains(&model) {
+			return Ok(Self::Nebius);
 		}
 		// For now, fallback to Ollama
 		else {
