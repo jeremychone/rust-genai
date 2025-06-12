@@ -1,5 +1,5 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{MessageContent, Usage};
+use crate::chat::{MessageContent, ToolCall, Usage};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
@@ -42,6 +42,9 @@ impl Stream for ChatStream {
 					InterStreamEvent::ReasoningChunk(content) => {
 						ChatStreamEvent::ReasoningChunk(StreamChunk { content })
 					}
+					InterStreamEvent::ToolCallChunk(tool_call) => {
+						ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
+					}
 					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 				};
 				Poll::Ready(Some(Ok(chat_event)))
@@ -69,6 +72,9 @@ pub enum ChatStreamEvent {
 	/// Represents the reasoning_content chunk.
 	ReasoningChunk(StreamChunk),
 
+	/// Represents tool call chunks.
+	ToolCallChunk(ToolChunk),
+
 	/// Represents the end of the stream.
 	/// It will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`.
 	End(StreamEnd),
@@ -80,6 +86,13 @@ pub enum ChatStreamEvent {
 pub struct StreamChunk {
 	/// The content text.
 	pub content: String,
+}
+
+/// Tool call chunk content of the `ChatStreamEvent::ToolCallChunk` variant.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ToolChunk {
+	/// The tool call.
+	pub tool_call: ToolCall,
 }
 
 /// StreamEnd content, with the eventual `.captured_usage` and `.captured_content`.
@@ -96,6 +109,10 @@ pub struct StreamEnd {
 	/// The eventual captured
 	/// Note: This requires the ChatOptions `capture_reasoning` flag to be set to true.
 	pub captured_reasoning_content: Option<String>,
+
+	/// The eventual captured tool calls.
+	/// Note: This requires the ChatOptions `capture_tool_calls` flag to be set to true.
+	pub captured_tool_calls: Option<Vec<ToolCall>>,
 }
 
 impl From<InterStreamEnd> for StreamEnd {
@@ -104,6 +121,7 @@ impl From<InterStreamEnd> for StreamEnd {
 			captured_usage: inter_end.captured_usage,
 			captured_content: inter_end.captured_content.map(MessageContent::from),
 			captured_reasoning_content: inter_end.captured_reasoning_content,
+			captured_tool_calls: inter_end.captured_tool_calls,
 		}
 	}
 }

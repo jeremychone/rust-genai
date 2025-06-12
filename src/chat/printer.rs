@@ -54,6 +54,7 @@ async fn print_chat_stream_inner(
 
 	let mut first_chunk = true;
 	let mut first_reasoning_chunk = true;
+	let mut first_tool_chunk = true;
 
 	while let Some(Ok(stream_event)) = stream.next().await {
 		let (event_info, content) = {
@@ -88,6 +89,20 @@ async fn print_chat_stream_inner(
 						)
 					} else {
 						(None, Some(content))
+					}
+				}
+				
+				ChatStreamEvent::ToolCallChunk(tool_chunk) => {
+					if print_events && first_tool_chunk {
+						first_tool_chunk = false;
+						(
+							Some(format!("\n-- ChatStreamEvent::ToolCallChunk: fn: {}, args: {}\n", 
+								tool_chunk.tool_call.fn_name, 
+								tool_chunk.tool_call.fn_arguments)),
+							None,
+						)
+					} else {
+						(None, None)
 					}
 				}
 
