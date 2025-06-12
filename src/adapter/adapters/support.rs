@@ -20,6 +20,7 @@ pub struct StreamerOptions {
 	pub capture_usage: bool,
 	pub capture_reasoning_content: bool,
 	pub capture_content: bool,
+	pub capture_tool_calls: bool,
 	pub model_iden: ModelIden,
 }
 
@@ -29,6 +30,7 @@ impl StreamerOptions {
 			capture_usage: options_set.capture_usage().unwrap_or(false),
 			capture_content: options_set.capture_content().unwrap_or(false),
 			capture_reasoning_content: options_set.capture_reasoning_content().unwrap_or(false),
+			capture_tool_calls: options_set.capture_tool_calls().unwrap_or(false),
 			model_iden,
 		}
 	}
@@ -43,6 +45,7 @@ pub struct StreamerCapturedData {
 	pub usage: Option<Usage>,
 	pub content: Option<String>,
 	pub reasoning_content: Option<String>,
+	pub tool_calls: Option<Vec<crate::chat::ToolCall>>,
 }
 
 // endregion: --- Streamer Captured Data

@@ -17,6 +17,9 @@ pub struct InterStreamEnd {
 
 	// When `ChatOptions..capture_reasoning_content == true`
 	pub captured_reasoning_content: Option<String>,
+
+	// When `ChatOptions..capture_tool_calls == true`
+	pub captured_tool_calls: Option<Vec<crate::chat::ToolCall>>,
 }
 
 /// Intermediary StreamEvent
@@ -25,5 +28,6 @@ pub enum InterStreamEvent {
 	Start,
 	Chunk(String),
 	ReasoningChunk(String),
+	ToolCallChunk(crate::chat::ToolCall),
 	End(InterStreamEnd),
 }

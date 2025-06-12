@@ -54,6 +54,7 @@ impl futures::Stream for GeminiStreamer {
 								captured_usage: self.captured_data.usage.take(),
 								captured_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
+								captured_tool_calls: self.captured_data.tool_calls.take(),
 							};
 
 							InterStreamEvent::End(inter_stream_end)
@@ -105,6 +106,17 @@ impl futures::Stream for GeminiStreamer {
 								}
 
 								InterStreamEvent::Chunk(content)
+							} else if let Some(GeminiChatContent::ToolCall(tool_call)) = content {
+								if self.options.capture_tool_calls {
+									match self.captured_data.tool_calls {
+										Some(ref mut tool_calls) => tool_calls.push(tool_call.clone()),
+										None => self.captured_data.tool_calls = Some(vec![tool_call.clone()]),
+									}
+								}
+								if self.options.capture_usage {
+									self.captured_data.usage = Some(usage);
+								}
+								InterStreamEvent::ToolCallChunk(tool_call)
 							} else {
 								continue;
 							}

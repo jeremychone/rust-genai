@@ -62,6 +62,7 @@ impl futures::Stream for OpenAIStreamer {
 							captured_usage,
 							captured_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
+							captured_tool_calls: self.captured_data.tool_calls.take(),
 						};
 
 						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
@@ -108,6 +109,65 @@ impl futures::Stream for OpenAIStreamer {
 								}
 							}
 
+							continue;
+						}
+						// -- Tool Call
+						else if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls") {
+							// Check if there's a tool call in the delta
+							if delta_tool_calls.is_array() && !delta_tool_calls.as_array().unwrap().is_empty() {
+								// Extract the first tool call object as a mutable value
+								let mut tool_call_obj = delta_tool_calls[0].clone();
+
+								// Extract tool call data
+								if let (Ok(index), Ok(mut function)) = (
+									tool_call_obj.x_take::<u32>("index"),
+									tool_call_obj.x_take::<Value>("function"),
+								) {
+									let call_id = tool_call_obj
+										.x_take::<String>("id")
+										.unwrap_or_else(|_| format!("call_{}", index));
+									let fn_name = function.x_take::<String>("name").unwrap_or_default();
+									let arguments = function.x_take::<String>("arguments").unwrap_or_default();
+									// Create the tool call
+									let fn_arguments = serde_json::from_str(&arguments)
+										.unwrap_or(serde_json::Value::String(arguments.clone()));
+									let mut tool_call = crate::chat::ToolCall {
+										call_id,
+										fn_name,
+										fn_arguments: fn_arguments.clone(),
+									};
+
+									// Capture the tool call if enabled
+									if self.options.capture_tool_calls {
+										match &mut self.captured_data.tool_calls {
+											Some(calls) => {
+												self.captured_data.tool_calls = Some({
+													// When fn_arguments can not be parsed, we need to append the arguments to the existing fn_arguments as json string
+													let mut captured_fn_argments = String::new();
+													if calls[index as usize].fn_arguments.is_string() {
+														captured_fn_argments.push_str(
+															calls[index as usize].fn_arguments.as_str().unwrap_or(""),
+														);
+														captured_fn_argments.push_str(&arguments);
+													}
+													let fn_arguments = serde_json::from_str(&captured_fn_argments)
+														.unwrap_or(serde_json::Value::String(
+															captured_fn_argments.clone(),
+														));
+													calls[index as usize].fn_arguments = fn_arguments.clone();
+													tool_call = calls[index as usize].clone();
+													calls.to_vec()
+												})
+											}
+											None => self.captured_data.tool_calls = Some(vec![tool_call.clone()]),
+										}
+									}
+
+									// Return the ToolCallChunk event
+									return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tool_call))));
+								}
+							}
+							// No valid tool call found, continue to next message
 							continue;
 						}
 						// -- Content
