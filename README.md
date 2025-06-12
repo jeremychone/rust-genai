@@ -16,6 +16,12 @@ Also, allow custom URL with `ServiceTargetResolver` (see [examples/c06-target-re
 
 Provides a common and ergonomic single API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
+## v0.4.0 - Upcoming (main branch)
+
+What's new: 
+
+- Tool Use Streaming support - thanks to [ClanceyLu](https://github.com/ClanceyLu), [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
+
 ## v0.3.0 - Released 2025-05-08
 
 What's new: 
@@ -45,6 +51,7 @@ Here are some of the api change. Check [CHANGELOG](CHANGELOG.md) for more info
 
 ## Thanks
 
+- [ClanceyLu](https://github.com/ClanceyLu) for Tool Use Streaming support [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
 - [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
 - [@una-spirito](https://github.com/luna-spirito) for gemini `ReasoningEffort::Budget` support. 
 - [@jBernavaPrah](https://github.com/jBernavaPrah) For adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
