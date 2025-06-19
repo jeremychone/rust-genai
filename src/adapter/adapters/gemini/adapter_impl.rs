@@ -15,12 +15,12 @@ use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;
 
+// Note: Those model names are just informative, as the Gemini AdapterKind is selected on `startsWith("gemini")`
 const MODELS: &[&str] = &[
-	"gemini-2.0-flash",
-	"gemini-2.0-flash-lite",
-	"gemini-2.5-flash",
 	"gemini-2.5-pro",
-	"gemini-1.5-pro",
+	"gemini-2.5-flash",
+	"gemini-2.5-flash-lite-preview-06-17",
+	"gemini-2.0-flash-lite",
 ];
 
 // Per gemini doc (https://x.com/jeremychone/status/1916501987371438372)
