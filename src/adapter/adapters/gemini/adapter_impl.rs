@@ -76,6 +76,16 @@ impl Adapter for GeminiAdapter {
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
+		// -- url
+		let url = Self::get_service_url(&model, service_type, endpoint);
+		let url = url.to_string();
+
+		// -- headers (empty for gemini)
+		let headers = vec![
+			// headers
+			("x-goog-api-key".to_string(), api_key.to_string()),
+		];
+
 		// -- Reasoning Budget
 		let (model_name, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
 			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
@@ -125,9 +135,6 @@ impl Adapter for GeminiAdapter {
 		if let Some(ReasoningEffort::Budget(budget)) = reasoning_effort {
 			payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
 		}
-
-		// -- headers (empty for gemini, since API_KEY is in url)
-		let headers = vec![];
 
 		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
 		//       Right now, it is omitted (since the spec states it can only be "user" or "model")
@@ -182,14 +189,6 @@ impl Adapter for GeminiAdapter {
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("/generationConfig/topP", top_p)?;
 		}
-
-		// -- url
-		// NOTE: Somehow, Google decided to put the API key in the URL.
-		//       This should be considered an antipattern from a security point of view
-		//       even if it is done by the well respected Google. Everybody can make mistake once in a while.
-		// e.g., '...models/gemini-1.5-flash-latest:generateContent?key=YOUR_API_KEY'
-		let url = Self::get_service_url(&model, service_type, endpoint);
-		let url = format!("{url}?key={api_key}");
 
 		Ok(WebRequestData { url, headers, payload })
 	}
