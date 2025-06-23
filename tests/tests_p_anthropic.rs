@@ -24,11 +24,13 @@ async fn test_chat_simple_ok() -> Result<()> {
 }
 
 #[tokio::test]
+#[serial(anthropic)]
 async fn test_chat_namespaced_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
 }
 
 #[tokio::test]
+#[serial(anthropic)]
 async fn test_chat_multi_system_ok() -> Result<()> {
 	common_tests::common_test_chat_multi_system_ok(MODEL).await
 }
