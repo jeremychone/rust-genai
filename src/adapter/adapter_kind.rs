@@ -150,8 +150,6 @@ impl AdapterKind {
 			Ok(Self::DeepSeek)
 		} else if groq::MODELS.contains(&model) {
 			return Ok(Self::Groq);
-		} else if nebius::MODELS.contains(&model) {
-			return Ok(Self::Nebius);
 		}
 		// For now, fallback to Ollama
 		else {

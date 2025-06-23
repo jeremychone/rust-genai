@@ -10,6 +10,8 @@ use reqwest::RequestBuilder;
 pub struct NebiusAdapter;
 
 // Latest models
+// NOTE: These are only used for the list_names API (not for Nebius model matching).
+// Use `nebius::deepseek-ai/DeepSeek-R1-0528` as the model name to select the Nebius adapter.
 pub(in crate::adapter) const MODELS: &[&str] = &[
 	//
 	"deepseek-ai/DeepSeek-R1-0528",
