@@ -8,12 +8,18 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 
 // "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite-preview-06-17"
 const MODEL: &str = "gemini-2.5-flash";
+const MODEL_NS: &str = "gemini::gemini-2.5-flash";
 
 // region:    --- Chat
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+async fn test_chat_namespaced_ok() -> Result<()> {
+	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
 }
 
 #[tokio::test]

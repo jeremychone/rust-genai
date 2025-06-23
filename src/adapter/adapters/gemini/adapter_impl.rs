@@ -57,7 +57,7 @@ impl Adapter for GeminiAdapter {
 	///       this will return the URL without the API_KEY in it. The API_KEY will need to be added by the caller.
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
 		let base_url = endpoint.base_url();
-		let model_name = model.model_name.clone();
+		let (model_name, _) = model.model_name.as_model_name_and_namespace();
 		match service_type {
 			ServiceType::Chat => format!("{base_url}models/{model_name}:generateContent"),
 			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent"),
@@ -71,15 +71,16 @@ impl Adapter for GeminiAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { endpoint, auth, model } = target;
+		let (model_name, _) = model.model_name.as_model_name_and_namespace();
 
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
 		// -- Reasoning Budget
-		let (model, reasoning_effort) = match (model, options_set.reasoning_effort()) {
+		let (model_name, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
 			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
 			(model, None) => {
-				let model_name: &str = &model.model_name;
+				// let model_name: &str = &model.model_name;
 				if let Some((prefix, last)) = model_name.rsplit_once('-') {
 					let reasoning = match last {
 						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
@@ -89,11 +90,7 @@ impl Adapter for GeminiAdapter {
 						_ => None,
 					};
 					// create the model name if there was a `-..` reasoning suffix
-					let model = if reasoning.is_some() {
-						model.from_name(prefix)
-					} else {
-						model
-					};
+					let model = if reasoning.is_some() { prefix } else { model };
 
 					(model, reasoning)
 				} else {
@@ -117,7 +114,7 @@ impl Adapter for GeminiAdapter {
 			system,
 			contents,
 			tools,
-		} = Self::into_gemini_request_parts(model.clone(), chat_req)?;
+		} = Self::into_gemini_request_parts(&model, model_name, chat_req)?;
 
 		// -- Playload
 		let mut payload = json!({
@@ -351,7 +348,11 @@ impl GeminiAdapter {
 	/// - `ChatRole::System` is concatenated (with an empty line) into a single `system` for the system instruction.
 	///   - This adapter uses version v1beta, which supports `systemInstruction`
 	/// - The eventual `chat_req.system` is pushed first into the "systemInstruction"
-	fn into_gemini_request_parts(model_iden: ModelIden, chat_req: ChatRequest) -> Result<GeminiChatRequestParts> {
+	fn into_gemini_request_parts(
+		model_iden: &ModelIden, // use for error reporting
+		model_name: &str,       // resolve model name for the provider
+		chat_req: ChatRequest,
+	) -> Result<GeminiChatRequestParts> {
 		let mut contents: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -366,7 +367,7 @@ impl GeminiAdapter {
 				ChatRole::System => {
 					let MessageContent::Text(content) = msg.content else {
 						return Err(Error::MessageContentTypeNotSupported {
-							model_iden,
+							model_iden: model_iden.clone(),
 							cause: "Only MessageContent::Text supported for this model (for now)",
 						});
 					};
@@ -459,7 +460,7 @@ impl GeminiAdapter {
 						})),
 						_ => {
 							return Err(Error::MessageContentTypeNotSupported {
-								model_iden,
+								model_iden: model_iden.clone(),
 								cause: "Only MessageContent::Text and MessageContent::ToolCalls supported for this model (for now)",
 							});
 						}
@@ -502,7 +503,7 @@ impl GeminiAdapter {
 						}
 						_ => {
 							return Err(Error::MessageContentTypeNotSupported {
-								model_iden,
+								model_iden: model_iden.clone(),
 								cause: "ChatRole::Tool can only be MessageContent::ToolCall or MessageContent::ToolResponse",
 							});
 						}

@@ -1,4 +1,3 @@
-use crate::Result;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
@@ -7,8 +6,10 @@ use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::{self, NebiusAdapter};
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
+use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 /// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -35,7 +36,7 @@ pub enum AdapterKind {
 	// AnthropicBedrock,
 }
 
-/// Serialization implementations
+/// Serialization/Parse implementations
 impl AdapterKind {
 	/// Serialize to a static str
 	pub fn as_str(&self) -> &'static str {
@@ -64,6 +65,21 @@ impl AdapterKind {
 			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
+		}
+	}
+
+	pub fn from_lower_str(name: &str) -> Option<Self> {
+		match name {
+			"openai" => Some(AdapterKind::OpenAI),
+			"ollama" => Some(AdapterKind::Ollama),
+			"anthropic" => Some(AdapterKind::Anthropic),
+			"cohere" => Some(AdapterKind::Cohere),
+			"gemini" => Some(AdapterKind::Gemini),
+			"groq" => Some(AdapterKind::Groq),
+			"nebius" => Some(AdapterKind::Nebius),
+			"xai" => Some(AdapterKind::Xai),
+			"deepseek" => Some(AdapterKind::DeepSeek),
+			_ => None,
 		}
 	}
 }
@@ -104,6 +120,17 @@ impl AdapterKind {
 	/// Note: At this point, this will never fail as the fallback is the Ollama adapter.
 	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
+		// -- First check if namespaced
+		if let (_, Some(ns)) = ModelName::model_name_and_namespace(model) {
+			if let Some(adapter) = Self::from_lower_str(ns) {
+				return Ok(adapter);
+			} else {
+				// TODO: Reassess if we need to returns error if no matching adapters
+				info!("No AdapterKind found for '{ns}'")
+			}
+		}
+
+		// -- Resolve from modelname
 		if model.starts_with("gpt")
 			|| model.starts_with("o3")
 			|| model.starts_with("o4")

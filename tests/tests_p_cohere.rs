@@ -7,12 +7,18 @@ use genai::resolver::AuthData;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 const MODEL: &str = "command-light";
+const MODEL_NS: &str = "cohere::command-light";
 
 // region:    --- Chat
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+async fn test_chat_namespaced_ok() -> Result<()> {
+	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
 }
 
 #[tokio::test]

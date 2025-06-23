@@ -7,9 +7,24 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModelName(Arc<str>);
 
-impl std::fmt::Display for ModelName {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)
+/// Utilities
+impl ModelName {
+	/// Calling the `model_name_and_namespace`
+	pub(crate) fn as_model_name_and_namespace(&self) -> (&str, Option<&str>) {
+		Self::model_name_and_namespace(&self.0)
+	}
+
+	/// e.g., `openai::gpt4.1` ("gpt4.1", Some("openai"))
+	///       `gpt4.1` ("gpt4.1", None)
+	pub(crate) fn model_name_and_namespace(model: &str) -> (&str, Option<&str>) {
+		if let Some(ns_idx) = model.find("::") {
+			let ns: &str = &model[..ns_idx];
+			let name: &str = &model[(ns_idx + 2)..];
+			// TODO: assess what to do when name or ns is empty
+			(name, Some(ns))
+		} else {
+			(model, None)
+		}
 	}
 }
 
@@ -53,3 +68,10 @@ impl Deref for ModelName {
 }
 
 // endregion: --- Froms
+
+// TODO: replace with derive_more Display
+impl std::fmt::Display for ModelName {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
+}

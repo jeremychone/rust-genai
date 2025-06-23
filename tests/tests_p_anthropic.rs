@@ -13,6 +13,7 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 // "claude-sonnet-4-20250514" (fail on test_chat_json_mode_ok)
 //
 const MODEL: &str = "claude-3-5-haiku-latest";
+const MODEL_NS: &str = "anthropic::claude-3-5-haiku-latest";
 
 // region:    --- Chat
 
@@ -20,6 +21,11 @@ const MODEL: &str = "claude-3-5-haiku-latest";
 #[serial(anthropic)]
 async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+async fn test_chat_namespaced_ok() -> Result<()> {
+	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
 }
 
 #[tokio::test]

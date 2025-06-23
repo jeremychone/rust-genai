@@ -158,7 +158,7 @@ impl OpenAIAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
-		let model_name = &model.model_name;
+		let (model_name, _) = model.model_name.as_model_name_and_namespace();
 		let adapter_kind = model.adapter_kind;
 
 		// -- api_key
@@ -182,12 +182,12 @@ impl OpenAIAdapter {
 				let (reasoning_effort, model_name) = options_set
 					.reasoning_effort()
 					.cloned()
-					.map(|v| (Some(v), model_name.as_ref()))
+					.map(|v| (Some(v), model_name))
 					.unwrap_or_else(|| ReasoningEffort::from_model_name(model_name));
 
 				(reasoning_effort, model_name)
 			} else {
-				(None, model_name.as_ref())
+				(None, model_name)
 			};
 
 		// -- Build the basic payload

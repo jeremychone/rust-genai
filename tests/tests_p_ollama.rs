@@ -7,12 +7,18 @@ use genai::resolver::AuthData;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 const MODEL: &str = "gemma3:4b"; // phi3:latest
+const MODEL_NS: &str = "ollama::gemma3:4b";
 
 // region:    --- Chat
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+async fn test_chat_namespaced_ok() -> Result<()> {
+	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
 }
 
 #[tokio::test]

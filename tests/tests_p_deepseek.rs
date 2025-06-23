@@ -7,12 +7,18 @@ use genai::resolver::AuthData;
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 const MODEL: &str = "deepseek-chat";
+const MODEL_NS: &str = "deepseek::deepseek-chat";
 
 // region:    --- Chat
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+async fn test_chat_namespaced_ok() -> Result<()> {
+	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
 }
 
 #[tokio::test]

@@ -69,16 +69,15 @@ impl Adapter for CohereAdapter {
 			("Authorization".to_string(), format!("Bearer {api_key}")),
 		];
 
-		let model_name = model.model_name.clone();
-
 		// -- parts
 		let CohereChatRequestParts {
 			preamble,
 			message,
 			chat_history,
-		} = Self::into_cohere_request_parts(model, chat_req)?;
+		} = Self::into_cohere_request_parts(model.clone(), chat_req)?;
 
 		// -- Build the basic payload
+		let (model_name, _) = model.model_name.as_model_name_and_namespace();
 		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"model": model_name.to_string(),
@@ -204,7 +203,10 @@ impl CohereAdapter {
 	/// - Sets any eventual `system` as the first `preamble`
 	/// - Adds all of the system messages into the 'preamble' (this might change when ChatReq has a `.system`)
 	/// - Builds the chat history with the remaining messages
-	fn into_cohere_request_parts(model_iden: ModelIden, mut chat_req: ChatRequest) -> Result<CohereChatRequestParts> {
+	fn into_cohere_request_parts(
+		model_iden: ModelIden, // for error only
+		mut chat_req: ChatRequest,
+	) -> Result<CohereChatRequestParts> {
 		let mut chat_history: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
 
@@ -219,7 +221,7 @@ impl CohereAdapter {
 		})?;
 		if !matches!(last_chat_msg.role, ChatRole::User) {
 			return Err(Error::LastChatMessageIsNotUser {
-				model_iden: model_iden.clone(),
+				model_iden,
 				actual_role: last_chat_msg.role,
 			});
 		}

@@ -90,17 +90,15 @@ impl Adapter for AnthropicAdapter {
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		];
 
-		let model_name = model.model_name.clone();
-
 		// -- Parts
 		let AnthropicRequestParts {
 			system,
 			messages,
 			tools,
-		} = Self::into_anthropic_request_parts(model, chat_req)?;
+		} = Self::into_anthropic_request_parts(chat_req)?;
 
 		// -- Build the basic payload
-
+		let (model_name, _) = model.model_name.as_model_name_and_namespace();
 		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"model": model_name.to_string(),
@@ -276,7 +274,7 @@ impl AnthropicAdapter {
 
 	/// Takes the GenAI ChatMessages and constructs the System string and JSON Messages for Anthropic.
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
-	fn into_anthropic_request_parts(_model_iden: ModelIden, chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
+	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 		// (content, is_cache_control)
 		let mut systems: Vec<(String, bool)> = Vec::new();
