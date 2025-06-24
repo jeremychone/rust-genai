@@ -18,9 +18,12 @@ Provides a common and ergonomic single API to many generative AI providers, such
 
 ## v0.4.0 - Upcoming (main branch)
 
-What's new: 
+What's new: (`-` fix, `+` addition, `!` change)
 
-- Tool Use Streaming support - thanks to [ClanceyLu](https://github.com/ClanceyLu), [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
+- `-` **Gemini ToolResponse Fix** Gemini Adapter wrongfully tried to parse the `ToolResponse.content` (see [#59](https://github.com/jeremychone/rust-genai/issues/59))
+- `+` **Model namespacing** to specify Adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name (AdapterKind and model name can still be overridden by `ServiceTargetResolver`)
+- `+` **Nebius Adapter** added. Activated with the new model namespacing feature: `nebius::Qwen/Qwen3-32B`
+- `!` **Tool Use Streaming** support – thanks to [ClanceyLu](https://github.com/ClanceyLu), [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
 
 ## v0.3.0 - Released 2025-05-08
 
