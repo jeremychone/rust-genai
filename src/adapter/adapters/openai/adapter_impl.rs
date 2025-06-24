@@ -80,40 +80,39 @@ impl Adapter for OpenAIAdapter {
 			.unwrap_or_default();
 
 		// -- Capture the content
-		let (content, reasoning_content) = if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
-			match first_choice.x_take::<Option<String>>("/message/content")? {
-				Some(mut content) if !content.is_empty() => {
-					// "Standard" attempt to get the reasoning_content
-					let mut reasoning_content = first_choice
-						.x_take::<Option<String>>("/message/reasoning_content")
-						.ok()
-						.flatten();
+		let mut content: Vec<MessageContent> = Vec::new();
+		let mut reasoning_content: Option<String> = None;
 
-					// If not reasoning_content, but
-					if reasoning_content.is_none() && options_set.normalize_reasoning_content().unwrap_or_default() {
-						(content, reasoning_content) = extract_think(content);
-					}
-
-					let content = MessageContent::from(content);
-
-					(Some(content), reasoning_content)
+		if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
+			// -- Push eventual text message
+			if let Some(mut text_content) = first_choice.x_take::<Option<String>>("/message/content")? {
+				// -- Reasoning content compute
+				// "Standard" attempt to get the reasoning_content
+				reasoning_content = first_choice
+					.x_take::<Option<String>>("/message/reasoning_content")
+					.ok()
+					.flatten();
+				// If not reasoning_content, but
+				if reasoning_content.is_none() && options_set.normalize_reasoning_content().unwrap_or_default() {
+					let (content_tmp, reasoning_content_tmp) = extract_think(text_content);
+					reasoning_content = reasoning_content_tmp;
+					text_content = content_tmp;
 				}
-				_ => {
-					let content = first_choice
-						.x_take("/message/tool_calls")
-						.ok()
-						.map(parse_tool_calls)
-						.transpose()?
-						.map(MessageContent::from_tool_calls);
-					(content, None)
-				}
+
+				content.push(text_content.into());
 			}
-		} else {
-			(None, None)
-		};
 
-		// FIXME: needs to fix the logic above to have the list of content
-		let content = content.map(|c| vec![c]).unwrap_or_default();
+			// -- Push eventual ToolCalls
+			if let Some(tool_calls) = first_choice
+				.x_take("/message/tool_calls")
+				.ok()
+				.map(parse_tool_calls)
+				.transpose()?
+				.map(MessageContent::from_tool_calls)
+			{
+				content.push(tool_calls);
+			}
+		}
 
 		Ok(ChatResponse {
 			content,

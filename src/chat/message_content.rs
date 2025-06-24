@@ -3,9 +3,11 @@ use derive_more::derive::From;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+/// Note: MessageContent is use for the ChatRequest as well as the ChatResponse
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum MessageContent {
 	/// Text content
+	#[from(&str, &String, String)]
 	Text(String),
 
 	/// Content parts
@@ -78,24 +80,6 @@ impl MessageContent {
 }
 
 // region:    --- Froms
-
-impl From<String> for MessageContent {
-	fn from(s: String) -> Self {
-		MessageContent::from_text(s)
-	}
-}
-
-impl<'a> From<&'a str> for MessageContent {
-	fn from(s: &'a str) -> Self {
-		MessageContent::from_text(s.to_string())
-	}
-}
-
-impl From<&String> for MessageContent {
-	fn from(s: &String) -> Self {
-		MessageContent::from_text(s.clone())
-	}
-}
 
 impl From<ToolResponse> for MessageContent {
 	fn from(tool_response: ToolResponse) -> Self {
