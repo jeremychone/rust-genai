@@ -425,7 +425,7 @@ impl GeminiAdapter {
 												"name": tool_response.call_id,
 												"response": {
 													"name": tool_response.call_id,
-													"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+													"content": tool_response.content,
 												}
 											}
 										})
@@ -491,7 +491,7 @@ impl GeminiAdapter {
 												"name": tool_response.call_id,
 												"response": {
 													"name": tool_response.call_id,
-													"content": serde_json::from_str(&tool_response.content).unwrap_or(Value::Null),
+													"content": tool_response.content,
 												}
 											}
 										})
