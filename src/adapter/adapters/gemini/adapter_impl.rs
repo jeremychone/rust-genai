@@ -87,7 +87,7 @@ impl Adapter for GeminiAdapter {
 		];
 
 		// -- Reasoning Budget
-		let (model_name, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
+		let (_, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
 			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
 			(model, None) => {
 				// let model_name: &str = &model.model_name;
@@ -124,7 +124,7 @@ impl Adapter for GeminiAdapter {
 			system,
 			contents,
 			tools,
-		} = Self::into_gemini_request_parts(&model, model_name, chat_req)?;
+		} = Self::into_gemini_request_parts(&model, chat_req)?;
 
 		// -- Playload
 		let mut payload = json!({
@@ -349,7 +349,6 @@ impl GeminiAdapter {
 	/// - The eventual `chat_req.system` is pushed first into the "systemInstruction"
 	fn into_gemini_request_parts(
 		model_iden: &ModelIden, // use for error reporting
-		model_name: &str,       // resolve model name for the provider
 		chat_req: ChatRequest,
 	) -> Result<GeminiChatRequestParts> {
 		let mut contents: Vec<Value> = Vec::new();

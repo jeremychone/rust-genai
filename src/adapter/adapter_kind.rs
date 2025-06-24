@@ -3,7 +3,7 @@ use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
 use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::{self, GroqAdapter};
-use crate::adapter::nebius::{self, NebiusAdapter};
+use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::{ModelName, Result};
