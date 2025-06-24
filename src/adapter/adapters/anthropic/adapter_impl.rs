@@ -170,20 +170,18 @@ impl Adapter for AnthropicAdapter {
 		let usage = usage.map(Self::into_usage).unwrap_or_default();
 
 		// -- Capture the content
-		// NOTE: Anthropic supports a list of content of multiple types but not the ChatResponse
-		//       So, the strategy is to:
-		//       - List all of the content and capture the text and tool_use
-		//       - If there is one or more tool_use, this will take precedence and MessageContent will support tool_call list
-		//       - Otherwise, the text is concatenated
-		// NOTE: We need to see if the multiple content type text happens and why. If not, we can probably simplify this by just capturing the first one.
-		//       Eventually, ChatResponse will have `content: Option<Vec<MessageContent>>` for the multi parts (with images and such)
-		let content_items: Vec<Value> = body.x_take("content")?;
+		let mut content: Vec<MessageContent> = Vec::new();
+
+		// NOTE: Here we are going to concatenate all of the Anthropic text content items into one
+		//       genai MessageContent::Text. This is more in line with the OpenAI API style,
+		//       but loses the fact that they were originally separate items.
+		let json_content_items: Vec<Value> = body.x_take("content")?;
 
 		let mut text_content: Vec<String> = Vec::new();
 		// Note: here tool_calls is probably the exception, so not creating the vector if not needed
-		let mut tool_calls: Option<Vec<ToolCall>> = None;
+		let mut tool_calls: Vec<ToolCall> = vec![];
 
-		for mut item in content_items {
+		for mut item in json_content_items {
 			let typ: &str = item.x_get_as("type")?;
 			if typ == "text" {
 				text_content.push(item.x_take("text")?);
@@ -197,16 +195,17 @@ impl Adapter for AnthropicAdapter {
 					fn_name,
 					fn_arguments,
 				};
-				tool_calls.get_or_insert_with(Vec::new).push(tool_call);
+				tool_calls.push(tool_call);
 			}
 		}
 
-		// FIXME: Need to fix the vec multi-content capture
-		let content = if let Some(tool_calls) = tool_calls {
-			vec![MessageContent::from(tool_calls)]
-		} else {
-			vec![MessageContent::from(text_content.join("\n"))]
-		};
+		if !tool_calls.is_empty() {
+			content.push(MessageContent::from(tool_calls))
+		}
+
+		if !text_content.is_empty() {
+			content.push(MessageContent::from(text_content.join("\n")))
+		}
 
 		Ok(ChatResponse {
 			content,
