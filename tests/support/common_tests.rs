@@ -630,7 +630,10 @@ pub async fn common_test_tool_simple_ok(model: &str, complete_check: bool) -> Re
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
-	let mut tool_calls = chat_res.tool_calls().ok_or("Should have tool calls")?;
+	let mut tool_calls = chat_res.tool_calls();
+	if tool_calls.is_empty() {
+		return Err("Should have tool calls in chat_res".into());
+	}
 	let tool_call = tool_calls.pop().ok_or("Should have at least one tool call")?;
 	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("city")?, "Paris");
 	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("country")?, "France");
@@ -650,7 +653,11 @@ pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) ->
 
 	// -- Exec first request to get the tool calls
 	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
-	let tool_calls = chat_res.into_tool_calls().ok_or("Should have tool calls in chat_res")?;
+	let tool_calls = chat_res.into_tool_calls();
+
+	if tool_calls.is_empty() {
+		return Err("Should have tool calls in chat_res".into());
+	}
 
 	// -- Exec the second request
 	// get the tool call id (first one)

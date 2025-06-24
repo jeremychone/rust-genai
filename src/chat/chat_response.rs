@@ -32,16 +32,45 @@ pub struct ChatResponse {
 
 // Getters
 impl ChatResponse {
-	// pub fn first_text(&self) -> Option<&str>
+	pub fn first_text(&self) -> Option<&str> {
+		for content_item in &self.content {
+			if let MessageContent::Text(content) = content_item {
+				return Some(content);
+			}
+		}
+		None
+	}
 
-	// pub fn into_first_text(self) -> Option<String>
+	pub fn into_first_text(self) -> Option<String> {
+		for content_item in self.content {
+			if let MessageContent::Text(content) = content_item {
+				return Some(content);
+			}
+		}
+		None
+	}
 
-	// pub fn texts(&self) -> Vec<&str>
+	pub fn texts(&self) -> Vec<&str> {
+		let mut all_texts = Vec::new();
+		for content_item in &self.content {
+			if let MessageContent::Text(content) = content_item {
+				all_texts.push(content.as_str());
+			}
+		}
+		all_texts
+	}
 
-	// pub fn into_texts(self) -> Vec<String>
+	pub fn into_texts(self) -> Vec<String> {
+		let mut all_texts = Vec::new();
+		for content_item in self.content {
+			if let MessageContent::Text(content) = content_item {
+				all_texts.push(content);
+			}
+		}
+		all_texts
+	}
 
-	/// FIXME: Should return Vec<_> (no Option)
-	pub fn tool_calls(&self) -> Option<Vec<&ToolCall>> {
+	pub fn tool_calls(&self) -> Vec<&ToolCall> {
 		let mut all_tool_calls: Vec<&ToolCall> = Vec::new();
 		for content_item in &self.content {
 			if let MessageContent::ToolCalls(tool_calls) = content_item {
@@ -50,20 +79,19 @@ impl ChatResponse {
 				all_tool_calls.extend(tool_calls);
 			}
 		}
-		// FIXME: need to return just Vec<..> (update signature)
-		Some(all_tool_calls)
+
+		all_tool_calls
 	}
 
-	/// FIXME: Should return Vec<_> (no Option)
-	pub fn into_tool_calls(self) -> Option<Vec<ToolCall>> {
+	pub fn into_tool_calls(self) -> Vec<ToolCall> {
 		let mut all_tool_calls: Vec<ToolCall> = Vec::new();
 		for content_item in self.content {
 			if let MessageContent::ToolCalls(tool_calls) = content_item {
 				all_tool_calls.extend(tool_calls);
 			}
 		}
-		// FIXME: need to return just Vec<..> (update signature)
-		Some(all_tool_calls)
+
+		all_tool_calls
 	}
 }
 
@@ -73,24 +101,14 @@ impl ChatResponse {
 	/// Otherwise, returns None
 	#[deprecated(note = "Use '.first_text()` or `.texts()")]
 	pub fn content_text_as_str(&self) -> Option<&str> {
-		for content_item in &self.content {
-			if let MessageContent::Text(content) = content_item {
-				return Some(content);
-			}
-		}
-		None
+		self.first_text()
 	}
 
 	/// Consumes the ChatResponse and returns the eventual String content of the `MessageContent::Text`
 	/// Otherwise, returns None
 	#[deprecated(note = "Use '.into_first_text()` or `.into_texts()")]
 	pub fn content_text_into_string(self) -> Option<String> {
-		for content_item in self.content {
-			if let MessageContent::Text(content) = content_item {
-				return Some(content);
-			}
-		}
-		None
+		self.into_first_text()
 	}
 }
 
