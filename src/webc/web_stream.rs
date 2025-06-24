@@ -173,7 +173,7 @@ struct BuffResponse {
 ///            This probably needs to be made more robust later.
 fn new_with_pretty_json_array(
 	buff_string: String,
-	_partial_message: &mut Option<String>,
+	partial_message: &mut Option<String>,
 ) -> Result<BuffResponse, crate::Error> {
 	let buff_str = buff_string.trim();
 
@@ -199,7 +199,17 @@ fn new_with_pretty_json_array(
 		messages.push(array_start.to_string());
 	}
 	if !rest_str.is_empty() {
-		messages.push(rest_str.to_string());
+		let full_str = if let Some(partial) = partial_message.take() {
+			format!("{partial}{rest_str}")
+		} else {
+			rest_str.to_string()
+		};
+
+		if serde_json::from_str::<serde_json::Value>(&full_str).is_ok() {
+			messages.push(full_str);
+		} else {
+			*partial_message = Some(full_str);
+		}
 	}
 	// We ignore the comma
 	if let Some(array_end) = array_end {
@@ -222,7 +232,7 @@ fn new_with_pretty_json_array(
 	Ok(BuffResponse {
 		first_message,
 		next_messages,
-		candidate_message: None,
+		candidate_message: partial_message.take(),
 	})
 }
 
