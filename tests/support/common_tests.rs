@@ -84,10 +84,7 @@ pub async fn common_test_chat_multi_system_ok(model: &str) -> Result<()> {
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
-	assert!(
-		!get_option_value!(chat_res.content).is_empty(),
-		"Content should not be empty"
-	);
+	assert!(!chat_res.content.is_empty(), "Content should not be empty");
 	let usage = chat_res.usage;
 	let prompt_tokens = get_option_value!(usage.prompt_tokens);
 	let completion_tokens = get_option_value!(usage.completion_tokens);
@@ -697,10 +694,7 @@ pub async fn common_test_resolver_auth_ok(model: &str, auth_data: AuthData) -> R
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
-	assert!(
-		!get_option_value!(chat_res.content).is_empty(),
-		"Content should not be empty"
-	);
+	assert!(!chat_res.content.is_empty(), "Content should not be empty");
 	let usage = chat_res.usage;
 	let total_tokens = get_option_value!(usage.total_tokens);
 	assert!(total_tokens > 0, "total_tokens should be > 0");

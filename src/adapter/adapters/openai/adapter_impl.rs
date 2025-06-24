@@ -112,6 +112,9 @@ impl Adapter for OpenAIAdapter {
 			(None, None)
 		};
 
+		// FIXME: needs to fix the logic above to have the list of content
+		let content = content.map(|c| vec![c]).unwrap_or_default();
+
 		Ok(ChatResponse {
 			content,
 			reasoning_content,

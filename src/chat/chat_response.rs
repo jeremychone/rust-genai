@@ -11,7 +11,7 @@ use crate::chat::{ChatStream, MessageContent, ToolCall, Usage};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
 	/// The eventual content of the chat response
-	pub content: Option<MessageContent>,
+	pub content: Vec<MessageContent>,
 
 	/// The eventual reasoning content,
 	pub reasoning_content: Option<String>,
@@ -32,32 +32,65 @@ pub struct ChatResponse {
 
 // Getters
 impl ChatResponse {
+	// pub fn first_text(&self) -> Option<&str>
+
+	// pub fn into_first_text(self) -> Option<String>
+
+	// pub fn texts(&self) -> Vec<&str>
+
+	// pub fn into_texts(self) -> Vec<String>
+
+	/// FIXME: Should return Vec<_> (no Option)
+	pub fn tool_calls(&self) -> Option<Vec<&ToolCall>> {
+		let mut all_tool_calls: Vec<&ToolCall> = Vec::new();
+		for content_item in &self.content {
+			if let MessageContent::ToolCalls(tool_calls) = content_item {
+				// TODO: Avoid the extra Vec alloc
+				let tool_calls: Vec<&ToolCall> = tool_calls.iter().collect();
+				all_tool_calls.extend(tool_calls);
+			}
+		}
+		// FIXME: need to return just Vec<..> (update signature)
+		Some(all_tool_calls)
+	}
+
+	/// FIXME: Should return Vec<_> (no Option)
+	pub fn into_tool_calls(self) -> Option<Vec<ToolCall>> {
+		let mut all_tool_calls: Vec<ToolCall> = Vec::new();
+		for content_item in self.content {
+			if let MessageContent::ToolCalls(tool_calls) = content_item {
+				all_tool_calls.extend(tool_calls);
+			}
+		}
+		// FIXME: need to return just Vec<..> (update signature)
+		Some(all_tool_calls)
+	}
+}
+
+/// Deprecated Getters
+impl ChatResponse {
 	/// Returns the eventual content as `&str` if it is of type `MessageContent::Text`
 	/// Otherwise, returns None
+	#[deprecated(note = "Use '.first_text()` or `.texts()")]
 	pub fn content_text_as_str(&self) -> Option<&str> {
-		self.content.as_ref().and_then(MessageContent::text_as_str)
+		for content_item in &self.content {
+			if let MessageContent::Text(content) = content_item {
+				return Some(content);
+			}
+		}
+		None
 	}
 
 	/// Consumes the ChatResponse and returns the eventual String content of the `MessageContent::Text`
 	/// Otherwise, returns None
+	#[deprecated(note = "Use '.into_first_text()` or `.into_texts()")]
 	pub fn content_text_into_string(self) -> Option<String> {
-		self.content.and_then(MessageContent::text_into_string)
-	}
-
-	pub fn tool_calls(&self) -> Option<Vec<&ToolCall>> {
-		if let Some(MessageContent::ToolCalls(tool_calls)) = self.content.as_ref() {
-			Some(tool_calls.iter().collect())
-		} else {
-			None
+		for content_item in self.content {
+			if let MessageContent::Text(content) = content_item {
+				return Some(content);
+			}
 		}
-	}
-
-	pub fn into_tool_calls(self) -> Option<Vec<ToolCall>> {
-		if let Some(MessageContent::ToolCalls(tool_calls)) = self.content {
-			Some(tool_calls)
-		} else {
-			None
-		}
+		None
 	}
 }
 

@@ -201,10 +201,11 @@ impl Adapter for AnthropicAdapter {
 			}
 		}
 
+		// FIXME: Need to fix the vec multi-content capture
 		let content = if let Some(tool_calls) = tool_calls {
-			Some(MessageContent::from(tool_calls))
+			vec![MessageContent::from(tool_calls)]
 		} else {
-			Some(MessageContent::from(text_content.join("\n")))
+			vec![MessageContent::from(text_content.join("\n"))]
 		};
 
 		Ok(ChatResponse {

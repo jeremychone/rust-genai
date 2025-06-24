@@ -207,10 +207,11 @@ impl Adapter for GeminiAdapter {
 		let gemini_response = Self::body_to_gemini_chat_response(&model_iden.clone(), body)?;
 		let GeminiChatResponse { content, usage } = gemini_response;
 
+		// FIXME: Needs to take the content list
 		let content = match content {
-			Some(GeminiChatContent::Text(content)) => Some(MessageContent::from_text(content)),
-			Some(GeminiChatContent::ToolCall(tool_call)) => Some(MessageContent::from_tool_calls(vec![tool_call])),
-			None => None,
+			Some(GeminiChatContent::Text(content)) => vec![MessageContent::from_text(content)],
+			Some(GeminiChatContent::ToolCall(tool_call)) => vec![MessageContent::from_tool_calls(vec![tool_call])],
+			None => vec![],
 		};
 
 		Ok(ChatResponse {
@@ -252,6 +253,7 @@ impl GeminiAdapter {
 			});
 		}
 
+		// FIXME: Need to read multiple part.
 		let mut response = body.x_take::<Value>("/candidates/0/content/parts/0")?;
 		let content = match response.x_take::<Value>("functionCall") {
 			Ok(f) => Some(GeminiChatContent::ToolCall(ToolCall {
@@ -544,6 +546,7 @@ impl GeminiAdapter {
 
 // struct Gemini
 
+/// FIXME: need to be Vec<GeminiChatContent>
 pub(super) struct GeminiChatResponse {
 	pub content: Option<GeminiChatContent>,
 	pub usage: Usage,
