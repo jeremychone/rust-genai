@@ -20,6 +20,11 @@ Provides a common and ergonomic single API to many generative AI providers, such
 
 What's new: (`-` fix, `+` addition, `!` change)
 
+- `!` **API CHANGE** Now `ChatResponse::into_tool_calls()` and (`tool_calls()`) returns `Vec<ToolCalls>` (rather than `Option<Vec<ToolCalls>>`) 
+- `!` **API CHANGE** Now `ChatResponse.content` is a `Vec<MessageContent>`
+	- To support when response has ToolCalls and Text Message
+	- `ChatResponse::content_text_as_str()` is now deprecated but mapped to `ChatResponse::first_text()`
+	- `ChatResponse::content_text_into_string()` is now deprecated but mapped to `ChatResponse::into_first_text()`
 - `-` **Gemini ToolResponse Fix** Gemini Adapter wrongfully tried to parse the `ToolResponse.content` (see [#59](https://github.com/jeremychone/rust-genai/issues/59))
 - `+` **Model namespacing** to specify Adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name (AdapterKind and model name can still be overridden by `ServiceTargetResolver`)
 - `+` **Nebius Adapter** added. Activated with the new model namespacing feature: `nebius::Qwen/Qwen3-32B`
