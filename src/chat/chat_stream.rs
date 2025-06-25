@@ -104,7 +104,7 @@ pub struct StreamEnd {
 
 	/// The eventual captured full content.
 	/// Note: This requires the ChatOptions `capture_content` or `capture_tool_calls` flags to be set to true.
-	/// NOTE: Since 0.4.0 this will have the tool calls as well (for API symmetry with the ChatRespone), call `.captured_tool_calls()` or `.captured_texts()` ...
+	/// Note: Since 0.4.0 this will have the tool calls as well (for API symmetry with the ChatRespone), call `.captured_tool_calls()` or `.captured_texts()` ...
 	pub captured_content: Option<Vec<MessageContent>>,
 
 	/// The eventual captured
@@ -120,12 +120,14 @@ impl From<InterStreamEnd> for StreamEnd {
 		// -- create public captured_content
 		let mut captured_content: Option<Vec<MessageContent>> = None;
 		if let Some(captured_text_content) = captured_text_content {
+			// This `captured_text_content` is the concatenation of all text chunks received.
 			captured_content = Some(vec![MessageContent::Text(captured_text_content)]);
 		}
 		if let Some(captured_tool_calls) = captured_tool_calls {
 			if let Some(existing_content) = &mut captured_content {
 				existing_content.push(MessageContent::ToolCalls(captured_tool_calls));
 			} else {
+				// This `captured_tool_calls` is the concatenation of all tool call chunks received.
 				captured_content = Some(vec![MessageContent::ToolCalls(captured_tool_calls)]);
 			}
 		}
@@ -141,6 +143,8 @@ impl From<InterStreamEnd> for StreamEnd {
 
 /// Getters
 impl StreamEnd {
+	/// Returns a reference to the first captured text content if available.
+	/// This is the concatenation of all text chunks received during the stream.
 	pub fn captured_first_text(&self) -> Option<&str> {
 		let captured_content = self.captured_content.as_ref()?;
 
@@ -152,6 +156,8 @@ impl StreamEnd {
 		None
 	}
 
+	/// Consumes the `StreamEnd` and returns the first captured text content if available.
+	/// This is the concatenation of all text chunks received during the stream.
 	pub fn captured_into_first_text(self) -> Option<String> {
 		let captured_content = self.captured_content?;
 
@@ -163,6 +169,8 @@ impl StreamEnd {
 		None
 	}
 
+	/// Returns a vector of references to all captured text content parts.
+	/// Each element in the vector represents the concatenation of text chunks received consecutively.
 	pub fn captured_texts(&self) -> Option<Vec<&str>> {
 		let captured_content = self.captured_content.as_ref()?;
 
@@ -175,6 +183,8 @@ impl StreamEnd {
 		Some(all_texts)
 	}
 
+	/// Consumes the `StreamEnd` and returns a vector of all captured text content parts.
+	/// Each element in the vector represents the concatenation of text chunks received consecutively.
 	pub fn into_texts(self) -> Option<Vec<String>> {
 		let captured_content = self.captured_content?;
 
@@ -188,6 +198,8 @@ impl StreamEnd {
 		Some(all_texts)
 	}
 
+	/// Returns a vector of references to all captured tool calls.
+	/// This is the concatenation of all tool call chunks received during the stream.
 	pub fn captured_tool_calls(&self) -> Option<Vec<&ToolCall>> {
 		let captured_content = self.captured_content.as_ref()?;
 
@@ -203,6 +215,8 @@ impl StreamEnd {
 		Some(all_tool_calls)
 	}
 
+	/// Consumes the `StreamEnd` and returns a vector of all captured tool calls.
+	/// This is the concatenation of all tool call chunks received during the stream.
 	pub fn captured_into_tool_calls(self) -> Option<Vec<ToolCall>> {
 		let captured_content = self.captured_content?;
 
