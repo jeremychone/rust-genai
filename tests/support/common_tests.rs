@@ -28,7 +28,7 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> R
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check Content
-	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	let content = chat_res.first_text().ok_or("Should have content")?;
 	assert!(!content.trim().is_empty(), "Content should not be empty");
 
 	// -- Check Usage
@@ -136,7 +136,7 @@ Reply in a JSON format."#,
 	}
 
 	// Check content
-	let content = chat_res.content_text_into_string().ok_or("SHOULD HAVE CONTENT")?;
+	let content = chat_res.into_first_text().ok_or("SHOULD HAVE CONTENT")?;
 	// Parse content as JSON
 	let json: serde_json::Value = serde_json::from_str(&content).map_err(|err| format!("Was not valid JSON: {err}"))?;
 	// Pretty print JSON
@@ -203,7 +203,7 @@ Reply in a JSON format."#,
 	}
 
 	// Check content
-	let content = chat_res.content_text_into_string().ok_or("SHOULD HAVE CONTENT")?;
+	let content = chat_res.into_first_text().ok_or("SHOULD HAVE CONTENT")?;
 	// Parse content as JSON
 	let json_response: serde_json::Value =
 		serde_json::from_str(&content).map_err(|err| format!("Was not valid JSON: {err}"))?;
@@ -227,7 +227,7 @@ pub async fn common_test_chat_temperature_ok(model: &str) -> Result<()> {
 
 	// -- Check
 	assert!(
-		!chat_res.content_text_as_str().unwrap_or("").is_empty(),
+		!chat_res.first_text().unwrap_or("").is_empty(),
 		"Content should not be empty"
 	);
 
@@ -243,10 +243,7 @@ pub async fn common_test_chat_stop_sequences_ok(model: &str) -> Result<()> {
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
 
-	let ai_content_lower = chat_res
-		.content_text_as_str()
-		.ok_or("Should have a AI response")?
-		.to_lowercase();
+	let ai_content_lower = chat_res.first_text().ok_or("Should have a AI response")?.to_lowercase();
 
 	// -- Check
 	assert!(
@@ -268,8 +265,8 @@ pub async fn common_test_chat_reasoning_normalize_ok(model: &str) -> Result<()> 
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check Content
-	chat_res.content_text_as_str();
-	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	chat_res.first_text();
+	let content = chat_res.first_text().ok_or("Should have content")?;
 	assert!(!content.trim().is_empty(), "Content should not be empty");
 
 	// -- Check Reasoning Content
@@ -318,7 +315,7 @@ pub async fn common_test_chat_cache_implicit_simple_ok(model: &str) -> Result<()
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check Content
-	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	let content = chat_res.first_text().ok_or("Should have content")?;
 	assert!(!content.trim().is_empty(), "Content should not be empty");
 
 	// -- Check Usage
@@ -357,7 +354,7 @@ pub async fn common_test_chat_cache_explicit_user_ok(model: &str) -> Result<()> 
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check Content
-	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	let content = chat_res.first_text().ok_or("Should have content")?;
 	assert!(!content.trim().is_empty(), "Content should not be empty");
 
 	// -- Check Usage
@@ -397,7 +394,7 @@ pub async fn common_test_chat_cache_explicit_system_ok(model: &str) -> Result<()
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check Content
-	let content = chat_res.content_text_as_str().ok_or("Should have content")?;
+	let content = chat_res.first_text().ok_or("Should have content")?;
 	assert!(!content.trim().is_empty(), "Content should not be empty");
 
 	// -- Check Usage
@@ -589,7 +586,7 @@ pub async fn common_test_chat_image_url_ok(model: &str) -> Result<()> {
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
-	let res = chat_res.content_text_as_str().ok_or("Should have text result")?;
+	let res = chat_res.first_text().ok_or("Should have text result")?;
 	assert_contains(res, "duck");
 
 	Ok(())
@@ -609,7 +606,7 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> Result<()> {
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
-	let res = chat_res.content_text_as_str().ok_or("Should have text result")?;
+	let res = chat_res.first_text().ok_or("Should have text result")?;
 	assert_contains(res, "duck");
 
 	Ok(())
@@ -672,10 +669,7 @@ pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) ->
 	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 
 	// -- Check
-	let content = chat_res
-		.content_text_as_str()
-		.ok_or("Last response should be message")?
-		.to_lowercase(); // lowercase because some models send "Sunny" and not "sunny"
+	let content = chat_res.first_text().ok_or("Last response should be message")?.to_lowercase(); // lowercase because some models send "Sunny" and not "sunny"
 
 	assert!(content.contains("paris"), "Should contain 'Paris'");
 	assert!(content.contains("32"), "Should contain '32'");

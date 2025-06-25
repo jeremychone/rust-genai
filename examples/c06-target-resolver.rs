@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		let chat_res = client.exec_chat(MODEL, chat_req.clone(), None).await?;
 
 		println!("\n--- Answer: ");
-		let assistant_answer = chat_res.content_text_as_str().ok_or("Should have response")?;
+		let assistant_answer = chat_res.first_text().ok_or("Should have response")?;
 		println!("{assistant_answer}");
 
 		chat_req = chat_req.append_message(ChatMessage::assistant(assistant_answer));
