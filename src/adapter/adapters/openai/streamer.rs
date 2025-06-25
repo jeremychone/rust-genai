@@ -60,7 +60,7 @@ impl futures::Stream for OpenAIStreamer {
 
 						let inter_stream_end = InterStreamEnd {
 							captured_usage,
-							captured_content: self.captured_data.content.take(),
+							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls: self.captured_data.tool_calls.take(),
 						};

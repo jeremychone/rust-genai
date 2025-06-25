@@ -13,7 +13,7 @@ pub struct InterStreamEnd {
 	pub captured_usage: Option<Usage>,
 
 	// When `ChatOptions..capture_content == true`
-	pub captured_content: Option<String>,
+	pub captured_text_content: Option<String>,
 
 	// When `ChatOptions..capture_reasoning_content == true`
 	pub captured_reasoning_content: Option<String>,

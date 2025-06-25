@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				println!("\nStream ended");
 
 				// Check if we captured any tool calls
-				if let Some(captured_tool_calls) = end.captured_tool_calls {
+				if let Some(captured_tool_calls) = end.captured_into_tool_calls() {
 					println!("\nCaptured Tool Calls:");
 					tool_calls = captured_tool_calls.clone();
 					for tool_call in captured_tool_calls {

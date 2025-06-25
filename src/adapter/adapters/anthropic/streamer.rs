@@ -15,6 +15,7 @@ pub struct AnthropicStreamer {
 	// -- Set by the poll_next
 	/// Flag to prevent polling the EventSource after a MessageStop event
 	done: bool,
+
 	captured_data: StreamerCapturedData,
 }
 
@@ -101,7 +102,7 @@ impl futures::Stream for AnthropicStreamer {
 
 							let inter_stream_end = InterStreamEnd {
 								captured_usage,
-								captured_content: self.captured_data.content.take(),
+								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
 							};

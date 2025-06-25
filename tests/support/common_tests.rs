@@ -532,7 +532,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	} = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check meta_usage
-	let meta_usage = get_option_value!(stream_end.captured_usage);
+	let meta_usage = stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
 
 	assert!(
 		get_option_value!(meta_usage.prompt_tokens) > 0,
@@ -548,14 +548,15 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	);
 
 	// -- Check captured_content
-	let captured_content = get_option_value!(stream_end.captured_content);
-	let captured_content = captured_content.text_as_str().ok_or("Captured content should have a text")?;
+	let captured_content = stream_end.captured_first_text();
+	let captured_content = captured_content.ok_or("Captured content should have a text")?;
 	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
 
 	// -- Check Reasoning Content
 	if contains_checks(checks, Check::REASONING) {
 		let reasoning_content = stream_end
 			.captured_reasoning_content
+			.as_ref()
 			.ok_or("captured_reasoning_content SHOULD have extracted some reasoning_content")?;
 		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
 		// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.

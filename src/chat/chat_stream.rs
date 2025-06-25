@@ -103,26 +103,119 @@ pub struct StreamEnd {
 	pub captured_usage: Option<Usage>,
 
 	/// The eventual captured full content.
-	/// Note: This requires the ChatOptions `capture_content` flag to be set to true.
-	pub captured_content: Option<MessageContent>,
+	/// Note: This requires the ChatOptions `capture_content` or `capture_tool_calls` flags to be set to true.
+	/// NOTE: Since 0.4.0 this will have the tool calls as well (for API symmetry with the ChatRespone), call `.captured_tool_calls()` or `.captured_texts()` ...
+	pub captured_content: Option<Vec<MessageContent>>,
 
 	/// The eventual captured
 	/// Note: This requires the ChatOptions `capture_reasoning` flag to be set to true.
 	pub captured_reasoning_content: Option<String>,
-
-	/// The eventual captured tool calls.
-	/// Note: This requires the ChatOptions `capture_tool_calls` flag to be set to true.
-	pub captured_tool_calls: Option<Vec<ToolCall>>,
 }
 
 impl From<InterStreamEnd> for StreamEnd {
 	fn from(inter_end: InterStreamEnd) -> Self {
+		let captured_text_content = inter_end.captured_text_content;
+		let captured_tool_calls = inter_end.captured_tool_calls;
+
+		// -- create public captured_content
+		let mut captured_content: Option<Vec<MessageContent>> = None;
+		if let Some(captured_text_content) = captured_text_content {
+			captured_content = Some(vec![MessageContent::Text(captured_text_content)]);
+		}
+		if let Some(captured_tool_calls) = captured_tool_calls {
+			if let Some(existing_content) = &mut captured_content {
+				existing_content.push(MessageContent::ToolCalls(captured_tool_calls));
+			} else {
+				captured_content = Some(vec![MessageContent::ToolCalls(captured_tool_calls)]);
+			}
+		}
+
+		// -- Return result
 		StreamEnd {
 			captured_usage: inter_end.captured_usage,
-			captured_content: inter_end.captured_content.map(MessageContent::from),
+			captured_content,
 			captured_reasoning_content: inter_end.captured_reasoning_content,
-			captured_tool_calls: inter_end.captured_tool_calls,
 		}
+	}
+}
+
+/// Getters
+impl StreamEnd {
+	pub fn captured_first_text(&self) -> Option<&str> {
+		let captured_content = self.captured_content.as_ref()?;
+
+		for content_item in captured_content {
+			if let MessageContent::Text(content) = content_item {
+				return Some(content);
+			}
+		}
+		None
+	}
+
+	pub fn captured_into_first_text(self) -> Option<String> {
+		let captured_content = self.captured_content?;
+
+		for content_item in captured_content {
+			if let MessageContent::Text(content) = content_item {
+				return Some(content);
+			}
+		}
+		None
+	}
+
+	pub fn captured_texts(&self) -> Option<Vec<&str>> {
+		let captured_content = self.captured_content.as_ref()?;
+
+		let mut all_texts = Vec::new();
+		for content_item in captured_content {
+			if let MessageContent::Text(content) = content_item {
+				all_texts.push(content.as_str());
+			}
+		}
+		Some(all_texts)
+	}
+
+	pub fn into_texts(self) -> Option<Vec<String>> {
+		let captured_content = self.captured_content?;
+
+		let mut all_texts = Vec::new();
+
+		for content_item in captured_content {
+			if let MessageContent::Text(content) = content_item {
+				all_texts.push(content);
+			}
+		}
+		Some(all_texts)
+	}
+
+	pub fn captured_tool_calls(&self) -> Option<Vec<&ToolCall>> {
+		let captured_content = self.captured_content.as_ref()?;
+
+		let mut all_tool_calls: Vec<&ToolCall> = Vec::new();
+		for content_item in captured_content {
+			if let MessageContent::ToolCalls(tool_calls) = content_item {
+				for tool_call in tool_calls {
+					all_tool_calls.push(tool_call);
+				}
+			}
+		}
+
+		Some(all_tool_calls)
+	}
+
+	pub fn captured_into_tool_calls(self) -> Option<Vec<ToolCall>> {
+		let captured_content = self.captured_content?;
+
+		let mut all_tool_calls: Vec<ToolCall> = Vec::new();
+		for content_item in captured_content {
+			if let MessageContent::ToolCalls(tool_calls) = content_item {
+				for tool_call in tool_calls {
+					all_tool_calls.push(tool_call);
+				}
+			}
+		}
+
+		Some(all_tool_calls)
 	}
 }
 
