@@ -1,7 +1,7 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::gemini::{GeminiAdapter, GeminiChatResponse};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::ChatOptionsSet;
+use crate::chat::{ChatOptionsSet, ToolCall};
 use crate::webc::WebStream;
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
@@ -87,13 +87,25 @@ impl futures::Stream for GeminiStreamer {
 
 							let GeminiChatResponse { content, usage } = gemini_response;
 
-							// -- Send Chunk event
-							if let Some(GeminiChatContent::Text(content)) = content {
+							// -- Extract text and toolcall
+							// WARNING: Assume that only ONE tool call per message (or take the last one)
+							let mut stream_text_content: String = String::new();
+							let mut stream_tool_call: Option<ToolCall> = None;
+							for g_content_item in content {
+								match g_content_item {
+									GeminiChatContent::Text(text) => stream_text_content.push_str(&text),
+									GeminiChatContent::ToolCall(tool_call) => stream_tool_call = Some(tool_call),
+								}
+							}
+
+							// -- Send Event
+							// WARNING: Assume only text or toolcall (not both on the same event)
+							if !stream_text_content.is_empty() {
 								// Capture content
 								if self.options.capture_content {
 									match self.captured_data.content {
-										Some(ref mut c) => c.push_str(&content),
-										None => self.captured_data.content = Some(content.clone()),
+										Some(ref mut c) => c.push_str(&stream_text_content),
+										None => self.captured_data.content = Some(stream_text_content.clone()),
 									}
 								}
 
@@ -105,8 +117,10 @@ impl futures::Stream for GeminiStreamer {
 									self.captured_data.usage = Some(usage);
 								}
 
-								InterStreamEvent::Chunk(content)
-							} else if let Some(GeminiChatContent::ToolCall(tool_call)) = content {
+								InterStreamEvent::Chunk(stream_text_content)
+							}
+							// tool call
+							else if let Some(tool_call) = stream_tool_call {
 								if self.options.capture_tool_calls {
 									match self.captured_data.tool_calls {
 										Some(ref mut tool_calls) => tool_calls.push(tool_call.clone()),

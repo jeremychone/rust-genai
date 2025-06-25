@@ -205,14 +205,24 @@ impl Adapter for GeminiAdapter {
 		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
 
 		let gemini_response = Self::body_to_gemini_chat_response(&model_iden.clone(), body)?;
-		let GeminiChatResponse { content, usage } = gemini_response;
+		let GeminiChatResponse {
+			content: gemini_content,
+			usage,
+		} = gemini_response;
 
 		// FIXME: Needs to take the content list
-		let content = match content {
-			Some(GeminiChatContent::Text(content)) => vec![MessageContent::from_text(content)],
-			Some(GeminiChatContent::ToolCall(tool_call)) => vec![MessageContent::from_tool_calls(vec![tool_call])],
-			None => vec![],
-		};
+		let mut tool_calls: Vec<ToolCall> = Default::default();
+		let mut content: Vec<MessageContent> = Default::default();
+		// let mut text_content:
+		for g_item in gemini_content {
+			match g_item {
+				GeminiChatContent::Text(text) => content.push(MessageContent::from_text(text)),
+				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
+			}
+		}
+		if !tool_calls.is_empty() {
+			content.push(MessageContent::ToolCalls(tool_calls))
+		}
 
 		Ok(ChatResponse {
 			content,
@@ -253,21 +263,32 @@ impl GeminiAdapter {
 			});
 		}
 
-		// FIXME: Need to read multiple part.
-		let mut response = body.x_take::<Value>("/candidates/0/content/parts/0")?;
-		let content = match response.x_take::<Value>("functionCall") {
-			Ok(f) => Some(GeminiChatContent::ToolCall(ToolCall {
-				call_id: f.x_get("name").unwrap_or("".to_string()), // TODO: Handle this, gemini does not return the call_id
-				fn_name: f.x_get("name").unwrap_or("".to_string()),
-				fn_arguments: f.x_get("args").unwrap_or(Value::Null),
-			})),
-			Err(_) => response
+		let mut content: Vec<GeminiChatContent> = Vec::new();
+
+		// -- Read multipart
+		let parts = body.x_take::<Vec<Value>>("/candidates/0/content/parts")?;
+		for mut part in parts {
+			// -- Capture eventual function call
+			if let Ok(fn_call_value) = part.x_take::<Value>("functionCall") {
+				let tool_call = ToolCall {
+					// NOTE: Gemini does not have call_id so, use name
+					call_id: fn_call_value.x_get("name").unwrap_or("".to_string()), // TODO: Handle this, gemini does not return the call_id
+					fn_name: fn_call_value.x_get("name").unwrap_or("".to_string()),
+					fn_arguments: fn_call_value.x_get("args").unwrap_or(Value::Null),
+				};
+				content.push(GeminiChatContent::ToolCall(tool_call))
+			}
+
+			// -- Capture eventual text
+			if let Some(txt_content) = part
 				.x_take::<Value>("text")
 				.ok()
-				.and_then(|v| v.as_str().map(String::from))
-				.map(GeminiChatContent::Text),
-		};
-
+				.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
+				.map(GeminiChatContent::Text)
+			{
+				content.push(txt_content)
+			}
+		}
 		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
 
 		Ok(GeminiChatResponse { content, usage })
@@ -548,7 +569,7 @@ impl GeminiAdapter {
 
 /// FIXME: need to be Vec<GeminiChatContent>
 pub(super) struct GeminiChatResponse {
-	pub content: Option<GeminiChatContent>,
+	pub content: Vec<GeminiChatContent>,
 	pub usage: Usage,
 }
 
