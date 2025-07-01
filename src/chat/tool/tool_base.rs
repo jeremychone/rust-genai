@@ -34,6 +34,11 @@ pub struct Tool {
 	/// })
 	/// ```
 	pub schema: Option<Value>,
+
+	/// Optional configuration for the tool.
+	///
+	/// This could be usefull when you are using embeded tools like googleSearch of gimini
+	pub config: Option<Value>,
 }
 
 /// Constructor
@@ -43,6 +48,7 @@ impl Tool {
 			name: name.into(),
 			description: None,
 			schema: None,
+			config: None,
 		}
 	}
 }
@@ -57,6 +63,11 @@ impl Tool {
 
 	pub fn with_schema(mut self, parameters: Value) -> Self {
 		self.schema = Some(parameters);
+		self
+	}
+
+	pub fn with_config(mut self, config: Value) -> Self {
+		self.config = Some(config);
 		self
 	}
 }
