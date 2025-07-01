@@ -2,7 +2,7 @@ use crate::adapter::AdapterDispatcher;
 use crate::chat::ChatOptions;
 use crate::client::ServiceTarget;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
-use crate::{Error, ModelIden, Result};
+use crate::{Error, ModelIden, Result, WebConfig};
 
 /// The Client configuration used in the configuration builder stage.
 #[derive(Debug, Default, Clone)]
@@ -11,6 +11,7 @@ pub struct ClientConfig {
 	pub(super) service_target_resolver: Option<ServiceTargetResolver>,
 	pub(super) model_mapper: Option<ModelMapper>,
 	pub(super) chat_options: Option<ChatOptions>,
+	pub(super) web_config: Option<WebConfig>,
 }
 
 /// Chainable setters related to the ClientConfig.
@@ -44,6 +45,17 @@ impl ClientConfig {
 	pub fn with_chat_options(mut self, options: ChatOptions) -> Self {
 		self.chat_options = Some(options);
 		self
+	}
+
+	/// Set the reqwest client configuration options for the ClientConfig.
+	pub fn with_web_config(mut self, web_config: WebConfig) -> Self {
+		self.web_config = Some(web_config);
+		self
+	}
+
+	/// Get a reference to the WebConfig, if it exists.
+	pub fn web_config(&self) -> Option<&WebConfig> {
+		self.web_config.as_ref()
 	}
 }
 

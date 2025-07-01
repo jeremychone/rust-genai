@@ -4,7 +4,7 @@ use crate::resolver::{
 	ServiceTargetResolver,
 };
 use crate::webc::WebClient;
-use crate::{Client, ClientConfig};
+use crate::{Client, ClientConfig, WebConfig};
 use std::sync::Arc;
 
 /// The builder for the `Client` structure.
@@ -28,6 +28,13 @@ impl ClientBuilder {
 	/// With a client configuration.
 	pub fn with_config(mut self, config: ClientConfig) -> Self {
 		self.config = Some(config);
+		self
+	}
+
+	/// Set the reqwest configuration for the ClientConfig of this ClientBuilder.
+	pub fn with_web_config(mut self, req_options: WebConfig) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.web_config = Some(req_options);
 		self
 	}
 }
@@ -91,10 +98,24 @@ impl ClientBuilder {
 impl ClientBuilder {
 	/// Build a new immutable GenAI client.
 	pub fn build(self) -> Client {
-		let inner = super::ClientInner {
-			web_client: self.web_client.unwrap_or_default(),
-			config: self.config.unwrap_or_default(),
+		let config = self.config.unwrap_or_default();
+
+		// Create WebClient based on configuration
+		let web_client = if let Some(web_client) = self.web_client {
+			// Use explicitly provided WebClient
+			web_client
+		} else if let Some(req_config) = config.web_config() {
+			// Create WebClient with reqwest configuration
+			let mut builder = reqwest::Client::builder();
+			builder = req_config.apply_to_builder(builder);
+			let reqwest_client = builder.build().expect("Failed to build reqwest client");
+			WebClient::from_reqwest_client(reqwest_client)
+		} else {
+			// Use default WebClient
+			WebClient::default()
 		};
+
+		let inner = super::ClientInner { web_client, config };
 		Client { inner: Arc::new(inner) }
 	}
 }
