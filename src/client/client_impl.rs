@@ -70,7 +70,7 @@ impl Client {
 					webc_error,
 				})?;
 
-		let chat_res = AdapterDispatcher::to_chat_response(model, web_res, options_set)?;
+		let chat_res = AdapterDispatcher::to_chat_response(self, model, web_res, options_set)?;
 
 		Ok(chat_res)
 	}

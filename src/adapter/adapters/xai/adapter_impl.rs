@@ -45,11 +45,12 @@ impl Adapter for XaiAdapter {
 	}
 
 	fn to_chat_response(
+		client: &crate::Client,
 		model_iden: ModelIden,
 		web_response: WebResponse,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
-		OpenAIAdapter::to_chat_response(model_iden, web_response, chat_options)
+		OpenAIAdapter::to_chat_response(client, model_iden, web_response, chat_options)
 	}
 
 	fn to_chat_stream(

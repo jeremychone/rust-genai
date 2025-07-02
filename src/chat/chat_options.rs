@@ -293,7 +293,7 @@ impl ChatOptionsSet<'_, '_> {
 			.and_then(|chat| chat.capture_reasoning_content)
 			.or_else(|| self.client.and_then(|client| client.capture_reasoning_content))
 	}
-	
+
 	pub fn capture_tool_calls(&self) -> Option<bool> {
 		self.chat
 			.and_then(|chat| chat.capture_tool_calls)
