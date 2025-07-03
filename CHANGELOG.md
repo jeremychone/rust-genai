@@ -21,6 +21,7 @@
 - `-` gemini - Fixed streaming multi-content
 - `-` gemini - Fixed wrong tool_response.content JSON parsing (#59)
 - `-` gemini - Fixed partial message parsing in Gemini stream (#63)
+- `.` openai - added `codex` prefix for Adapter match
 - `.` gemini model names - Updated
 - `.` groq - Updated groq llama models to llama-3.1-8b-instant, llama-3.3-70b-versatile (from deprecation notice)
 

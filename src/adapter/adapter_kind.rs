@@ -136,6 +136,7 @@ impl AdapterKind {
 			|| model.starts_with("o4")
 			|| model.starts_with("o1")
 			|| model.starts_with("chatgpt")
+			|| model.starts_with("codex")
 		{
 			Ok(Self::OpenAI)
 		} else if model.starts_with("claude") {
