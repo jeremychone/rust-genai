@@ -1,25 +1,13 @@
 use std::time::Duration;
 
 /// Configuration options for the reqwest client
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct WebConfig {
 	pub timeout: Option<Duration>,
 	pub connect_timeout: Option<Duration>,
 	pub read_timeout: Option<Duration>,
 	pub default_headers: Option<reqwest::header::HeaderMap>,
 	pub proxy: Option<reqwest::Proxy>,
-}
-
-impl Default for WebConfig {
-	fn default() -> Self {
-		Self {
-			timeout: None,
-			connect_timeout: None,
-			read_timeout: None,
-			default_headers: None,
-			proxy: None,
-		}
-	}
 }
 
 impl WebConfig {

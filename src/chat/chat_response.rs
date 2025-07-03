@@ -30,7 +30,7 @@ pub struct ChatResponse {
 	pub usage: Usage,
 
 	/// The raw value of the response body, which can be used for provider specific features.
-	pub capture_raw_body: Option<serde_json::Value>,
+	pub captured_raw_body: Option<serde_json::Value>,
 }
 
 // Getters

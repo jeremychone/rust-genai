@@ -46,6 +46,8 @@ pub struct ChatOptions {
 	/// `StreamEnd` from `StreamEvent::End(StreamEnd)` will contain `StreamEnd.captured_tool_calls`
 	pub capture_tool_calls: Option<bool>,
 
+	pub capture_raw_body: Option<bool>,
+
 	/// Specifies the response format for a chat request.
 	/// - `ChatResponseFormat::JsonMode` is for OpenAI-like API usage, where the user must specify in the prompt that they want a JSON format response.
 	///
@@ -101,6 +103,11 @@ impl ChatOptions {
 	/// Set the `capture_tool_calls` for this request.
 	pub fn with_capture_tool_calls(mut self, value: bool) -> Self {
 		self.capture_tool_calls = Some(value);
+		self
+	}
+
+	pub fn with_capture_raw_body(mut self, value: bool) -> Self {
+		self.capture_raw_body = Some(value);
 		self
 	}
 
@@ -298,6 +305,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.capture_tool_calls)
 			.or_else(|| self.client.and_then(|client| client.capture_tool_calls))
+	}
+
+	pub fn capture_raw_body(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.capture_raw_body)
+			.or_else(|| self.client.and_then(|client| client.capture_raw_body))
 	}
 
 	pub fn response_format(&self) -> Option<&ChatResponseFormat> {

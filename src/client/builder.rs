@@ -40,7 +40,7 @@ impl ClientBuilder {
 }
 
 /// Builder ClientConfig passthrough convenient setters.
-/// The goal of these functions is to set nested values such as ClientConfig.
+/// The goal of these functions is to set nested values such as Client Config and ChatOptions for the client.
 impl ClientBuilder {
 	/// Set the ChatOptions for the ClientConfig of this ClientBuilder.
 	/// This will create the ClientConfig if it is not present.

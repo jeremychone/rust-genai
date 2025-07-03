@@ -10,9 +10,8 @@ pub struct ClientConfig {
 	pub(super) auth_resolver: Option<AuthResolver>,
 	pub(super) service_target_resolver: Option<ServiceTargetResolver>,
 	pub(super) model_mapper: Option<ModelMapper>,
-	pub(super) chat_options: Option<ChatOptions>,
 	pub(super) web_config: Option<WebConfig>,
-	pub(super) capture_raw_body: bool,
+	pub(super) chat_options: Option<ChatOptions>,
 }
 
 /// Chainable setters related to the ClientConfig.
@@ -58,14 +57,6 @@ impl ClientConfig {
 	pub fn web_config(&self) -> Option<&WebConfig> {
 		self.web_config.as_ref()
 	}
-
-	/// Set the capture_raw_body flag for the ClientConfig.
-	///
-	/// If set to true, the raw body of the response will be captured and included in the [`ChatResponse`](crate::chat::ChatResponse).
-	pub fn with_capture_raw_body(mut self, capture_raw_body: bool) -> Self {
-		self.capture_raw_body = capture_raw_body;
-		self
-	}
 }
 
 /// Getters for the fields of ClientConfig (as references).
@@ -87,11 +78,6 @@ impl ClientConfig {
 	/// Get a reference to the ChatOptions, if they exist.
 	pub fn chat_options(&self) -> Option<&ChatOptions> {
 		self.chat_options.as_ref()
-	}
-
-	/// Check if the raw body of the response should be captured.
-	pub fn capture_raw_body(&self) -> bool {
-		self.capture_raw_body
 	}
 }
 

@@ -103,21 +103,20 @@ impl AdapterDispatcher {
 	}
 
 	pub fn to_chat_response(
-		client: &crate::Client,
 		model_iden: ModelIden,
 		web_response: WebResponse,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		match model_iden.adapter_kind {
-			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::Cohere => CohereAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::Ollama => OllamaAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::Gemini => GeminiAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::Groq => GroqAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::Nebius => NebiusAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::Xai => XaiAdapter::to_chat_response(client, model_iden, web_response, options_set),
-			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(client, model_iden, web_response, options_set),
+			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Nebius => NebiusAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
 	}
 

@@ -113,13 +113,13 @@ impl Adapter for CohereAdapter {
 	}
 
 	fn to_chat_response(
-		client: &crate::Client,
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		_chat_options: ChatOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-		let capture_raw_body = client.config().capture_raw_body().then(|| body.clone());
+		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
+
 		// -- Capture the provider_model_iden
 		// TODO: Need to be implemented (if available), for now, just clone model_iden
 		// let provider_model_name: Option<String> = body.x_remove("model").ok();
@@ -145,7 +145,7 @@ impl Adapter for CohereAdapter {
 			model_iden,
 			provider_model_iden,
 			usage,
-			capture_raw_body,
+			captured_raw_body,
 		})
 	}
 

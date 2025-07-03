@@ -76,12 +76,11 @@ impl Adapter for NebiusAdapter {
 	}
 
 	fn to_chat_response(
-		client: &crate::Client,
 		model_iden: ModelIden,
 		web_response: WebResponse,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
-		OpenAIAdapter::to_chat_response(client, model_iden, web_response, options_set)
+		OpenAIAdapter::to_chat_response(model_iden, web_response, options_set)
 	}
 
 	fn to_chat_stream(

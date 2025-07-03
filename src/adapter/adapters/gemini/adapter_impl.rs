@@ -189,17 +189,18 @@ impl Adapter for GeminiAdapter {
 	}
 
 	fn to_chat_response(
-		client: &crate::Client,
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		_options_set: ChatOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
+
+		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
+
 		// -- Capture the provider_model_iden
 		// TODO: Need to be implemented (if available), for now, just clone model_iden
 		let provider_model_name: Option<String> = body.x_remove("modelVersion").ok();
 		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
-		let capture_raw_body = client.config().capture_raw_body().then(|| body.clone());
 		let gemini_response = Self::body_to_gemini_chat_response(&model_iden.clone(), body)?;
 		let GeminiChatResponse {
 			content: gemini_content,
@@ -226,7 +227,7 @@ impl Adapter for GeminiAdapter {
 			model_iden,
 			provider_model_iden,
 			usage,
-			capture_raw_body,
+			captured_raw_body,
 		})
 	}
 

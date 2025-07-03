@@ -32,7 +32,6 @@ pub trait Adapter {
 
 	/// To be implemented by Adapters.
 	fn to_chat_response(
-		client: &crate::Client,
 		model_iden: ModelIden,
 		web_response: WebResponse,
 		options_set: ChatOptionsSet<'_, '_>,
