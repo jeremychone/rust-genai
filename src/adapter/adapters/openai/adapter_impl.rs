@@ -157,9 +157,16 @@ impl OpenAIAdapter {
 		default_endpoint: Endpoint,
 	) -> String {
 		let base_url = default_endpoint.base_url();
-		match service_type {
-			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}chat/completions"),
-		}
+		// Parse into URL and query-params
+		let base_url = reqwest::Url::parse(base_url).unwrap();
+		let original_query_params = base_url.query().to_owned();
+
+		let suffix = match service_type {
+			ServiceType::Chat | ServiceType::ChatStream => "chat/completions",
+		};
+		let mut full_url = base_url.join(suffix).unwrap();
+		full_url.set_query(original_query_params);
+		full_url.to_string()
 	}
 
 	pub(in crate::adapter::adapters) fn util_to_web_request_data(
