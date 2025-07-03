@@ -46,7 +46,7 @@ impl MessageContent {
 	/// Otherwise, it returns None.
 	///
 	/// NOTE: When multi-part content is present, this will return None and won't concatenate the text parts.
-	pub fn text_as_str(&self) -> Option<&str> {
+	pub fn text(&self) -> Option<&str> {
 		match self {
 			MessageContent::Text(content) => Some(content.as_str()),
 			MessageContent::Parts(_) => None,
@@ -59,12 +59,26 @@ impl MessageContent {
 	/// only if it is MessageContent::Text; otherwise, it returns None.
 	///
 	/// NOTE: When multi-part content is present, this will return None and won't concatenate the text parts.
-	pub fn text_into_string(self) -> Option<String> {
+	pub fn into_text(self) -> Option<String> {
 		match self {
 			MessageContent::Text(content) => Some(content),
 			MessageContent::Parts(_) => None,
 			MessageContent::ToolCalls(_) => None,
 			MessageContent::ToolResponses(_) => None,
+		}
+	}
+
+	pub fn tool_calls(&self) -> Option<Vec<&ToolCall>> {
+		match self {
+			MessageContent::ToolCalls(tool_calls) => Some(tool_calls.iter().collect()),
+			_ => None,
+		}
+	}
+
+	pub fn into_tool_calls(self) -> Option<Vec<ToolCall>> {
+		match self {
+			MessageContent::ToolCalls(tool_calls) => Some(tool_calls),
+			_ => None,
 		}
 	}
 

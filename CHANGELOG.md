@@ -9,8 +9,9 @@
 - `+` Added streaming support for tool calls
 - `+` nebius - Added Nebius adapter. Use with model namespace, for example, `nebius::Qwen/Qwen3-32B`
 - `!` API CHANGE - `StreamEnd` - Text and tool calls content are now part of Vec
-- `!` API CHANGE - `ChatResponse.tool_calls` now returns Vec ToolCall
-- `!` API CHANGE - `ChatResponse.content` now has content Vec MessageContent
+- `!` API CHANGE - `ChatResponse::tool_calls(&self) -> Vec<&ToolCall> ` (rather than `Option<Vec..>`)
+- `!` API CHANGE - `ChatResponse.content` now has content `Vec<MessageContent>`
+- `!` API CHANGE - `MessageContent` now use `message_content.text()` and `message_content.into_text()` (rather than text_as_str, text_into_string)
 - `^` API NEW - ChatResponse now implements texts(), into_texts(), first...
 - `^` Anthropic - Added support for ChatResponse multi-content
 - `^` openai - Added support for ChatResponse multi-content

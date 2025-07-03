@@ -22,11 +22,16 @@ What's new: (`-` fix, `+` addition, `!` change)
 
 (see [CHANGELOG.md](CHANGELOG.md) for more)
 
+- `!` **API CHANGE** Now `ChatResponse.content` is a `Vec<MessageContent>` To support when response has ToolCalls and Text Message
+	- you can use `let text: &str = chat_reponse.first_text()` (was `ChatResponse::content_text_as_str()`) or
+	- `let texts: Vec<&str> = chat_response.texts();`
+	- `let texts: Vec<String> = chat_response.into_texts();`
+	- `let text: String = chat_response::into_first_text()` (was `ChatResponse::content_text_into_string()`)
+	- To get the concatinated string of all message: 
+		- `let text: String = content.into_iter().filter_map(|c| c.text_into_string()).collect::<Vec<_>>().join("\n\n")`
+	- NOTE: We might add a `MessageContentVecExt` extention trait to provide convenient extraction methods.
 - `!` **API CHANGE** Now `ChatResponse::into_tool_calls()` and (`tool_calls()`) returns `Vec<ToolCalls>` (rather than `Option<Vec<ToolCalls>>`) 
-- `!` **API CHANGE** Now `ChatResponse.content` is a `Vec<MessageContent>`
-	- To support when response has ToolCalls and Text Message
-	- `ChatResponse::content_text_as_str()` is now deprecated but mapped to `ChatResponse::first_text()`
-	- `ChatResponse::content_text_into_string()` is now deprecated but mapped to `ChatResponse::into_first_text()`
+- `!` **API CHANGE** MessageContent - Now use `message_content.text()` and `message_content.into_text()` (rather than `text_as_str`, `text_into_string`)
 - `-` **Gemini ToolResponse Fix** Gemini Adapter wrongfully tried to parse the `ToolResponse.content` (see [#59](https://github.com/jeremychone/rust-genai/issues/59))
 - `+` **Model namespacing** to specify Adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name (AdapterKind and model name can still be overridden by `ServiceTargetResolver`)
 - `+` **Nebius Adapter** added. Activated with the new model namespacing feature: `nebius::Qwen/Qwen3-32B`
