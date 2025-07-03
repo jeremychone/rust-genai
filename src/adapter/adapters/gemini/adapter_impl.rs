@@ -150,12 +150,7 @@ impl Adapter for GeminiAdapter {
 
 		// -- Tools
 		if let Some(tools) = tools {
-			payload.x_insert(
-				"tools",
-				json!({
-					"function_declarations": tools
-				}),
-			)?;
+			payload.x_insert("tools", tools)?;
 		}
 
 		// -- Response Format
@@ -545,14 +540,30 @@ impl GeminiAdapter {
 			tools
 				.into_iter()
 				.map(|tool| {
-					// TODO: Need to handle the error correctly
-					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
-					// NOTE: Right now, low probability, so, we just return null if cannot convert to value.
-					json!({
-						"name": tool.name,
-						"description": tool.description,
-						"parameters": tool.schema,
-					})
+					if matches!(
+						tool.name.as_str(),
+						"googleSearch" | "googleSearchRetrieval" | "codeExecution" | "urlContext"
+					) {
+						json!(
+							{
+								tool.name: tool.config
+							}
+						)
+					} else {
+						// TODO: Need to handle the error correctly
+						// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
+						// NOTE: Right now, low probability, so, we just return null if cannot convert to value.
+						json!({
+							"functionDeclarations": [
+								{
+									"name": tool.name,
+									"description": tool.description,
+									"parameters": tool.schema,
+								}
+							]
+
+						})
+					}
 				})
 				.collect::<Vec<Value>>()
 		});
