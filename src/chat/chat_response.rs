@@ -28,6 +28,9 @@ pub struct ChatResponse {
 	// pub model
 	/// The eventual usage of the chat response
 	pub usage: Usage,
+
+	/// The raw value of the response body, which can be used for provider specific features.
+	pub capture_raw_body: Option<serde_json::Value>,
 }
 
 // Getters
@@ -132,4 +135,3 @@ pub struct ChatStreamResponse {
 }
 
 // endregion: --- ChatStreamResponse
-
