@@ -91,14 +91,15 @@ async fn print_chat_stream_inner(
 						(None, Some(content))
 					}
 				}
-				
+
 				ChatStreamEvent::ToolCallChunk(tool_chunk) => {
 					if print_events && first_tool_chunk {
 						first_tool_chunk = false;
 						(
-							Some(format!("\n-- ChatStreamEvent::ToolCallChunk: fn: {}, args: {}\n", 
-								tool_chunk.tool_call.fn_name, 
-								tool_chunk.tool_call.fn_arguments)),
+							Some(format!(
+								"\n-- ChatStreamEvent::ToolCallChunk: fn: {}, args: {}\n",
+								tool_chunk.tool_call.fn_name, tool_chunk.tool_call.fn_arguments
+							)),
 							None,
 						)
 					} else {
