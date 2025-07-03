@@ -1,5 +1,28 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## Upcoming - 0.4.0-alpha...
+
+- `+` API NEW - Added `ChatResponse.captured_raw_body` (opt-in via `chat_options.with_capture_raw_body(true)` (PR #68 + refactor)
+- `+` Added Gemini built-in support (PR #67)
+- `+` API NEW - Added web configuration support (#66) (manage proxy, timeout, etc.)
+- `+` Model Namespace Support to force AdapterKind, for example, `openai::codex-...`
+- `+` Added streaming support for tool calls
+- `+` nebius - Added Nebius adapter. Use with model namespace, for example, `nebius::Qwen/Qwen3-32B`
+- `!` API CHANGE - `StreamEnd` - Text and tool calls content are now part of Vec
+- `!` API CHANGE - `ChatResponse.tool_calls` now returns Vec ToolCall
+- `!` API CHANGE - `ChatResponse.content` now has content Vec MessageContent
+- `^` API NEW - ChatResponse now implements texts(), into_texts(), first...
+- `^` Anthropic - Added support for ChatResponse multi-content
+- `^` openai - Added support for ChatResponse multi-content
+- `^` gemini - Now uses x-goog-api-key header for auth
+- `-` gemini - Fixed built-in and user tools issue from #67
+- `-` OpenAI - Fixed ServiceTarget issue where custom URL and Auth were not used (PR #71)
+- `-` Fixed: Improved reasoning content extraction in OpenAIAdapter (#69)
+- `-` gemini - Fixed streaming multi-content
+- `-` gemini - Fixed wrong tool_response.content JSON parsing (#59)
+- `-` gemini - Fixed partial message parsing in Gemini stream (#63)
+- `.` gemini model names - Updated
+- `.` groq - Updated groq llama models to llama-3.1-8b-instant, llama-3.3-70b-versatile (from deprecation notice)
 
 ## 2025-05-26 - [v0.3.5](https://github.com/jeremychone/rust-genai/compare/v0.3.4...v0.3.5)
 

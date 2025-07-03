@@ -20,6 +20,8 @@ Provides a common and ergonomic single API to many generative AI providers, such
 
 What's new: (`-` fix, `+` addition, `!` change)
 
+(see [CHANGELOG.md](CHANGELOG.md) for more)
+
 - `!` **API CHANGE** Now `ChatResponse::into_tool_calls()` and (`tool_calls()`) returns `Vec<ToolCalls>` (rather than `Option<Vec<ToolCalls>>`) 
 - `!` **API CHANGE** Now `ChatResponse.content` is a `Vec<MessageContent>`
 	- To support when response has ToolCalls and Text Message
