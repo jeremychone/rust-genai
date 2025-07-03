@@ -10,7 +10,7 @@ use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
 use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;
@@ -539,37 +539,38 @@ impl GeminiAdapter {
 			None
 		};
 
-		let tools = chat_req.tools.map(|tools| {
-			tools
-				.into_iter()
-				.map(|tool| {
-					if matches!(
-						tool.name.as_str(),
-						"googleSearch" | "googleSearchRetrieval" | "codeExecution" | "urlContext"
-					) {
-						json!(
-							{
-								tool.name: tool.config
-							}
-						)
-					} else {
-						// TODO: Need to handle the error correctly
-						// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
-						// NOTE: Right now, low probability, so, we just return null if cannot convert to value.
-						json!({
-							"functionDeclarations": [
-								{
-									"name": tool.name,
-									"description": tool.description,
-									"parameters": tool.schema,
-								}
-							]
-
-						})
-					}
-				})
-				.collect::<Vec<Value>>()
-		});
+		// -- Build tools
+		let tools = if let Some(req_tools) = chat_req.tools {
+			let mut tools: Vec<Value> = Vec::new();
+			// Note: This is to add only one function_declarations in the tools as per the gemini spec
+			//       The rest are builtins
+			let mut function_declarations: Vec<Value> = Vec::new();
+			for req_tool in req_tools {
+				// -- if it is a builtin tool
+				if matches!(
+					req_tool.name.as_str(),
+					"googleSearch" | "googleSearchRetrieval" | "codeExecution" | "urlContext"
+				) {
+					tools.push(json!({req_tool.name: req_tool.config}));
+				}
+				// -- otherwise, user tool
+				else {
+					function_declarations.push(json! {
+						{
+							"name": req_tool.name,
+							"description": req_tool.description,
+							"parameters": req_tool.schema,
+						}
+					})
+				}
+			}
+			if !function_declarations.is_empty() {
+				tools.push(json!({"function_declarations": function_declarations}));
+			}
+			Some(tools)
+		} else {
+			None
+		};
 
 		Ok(GeminiChatRequestParts {
 			system,
