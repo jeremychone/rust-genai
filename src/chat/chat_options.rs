@@ -218,7 +218,7 @@ impl std::fmt::Display for ReasoningEffort {
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),
-			ReasoningEffort::Budget(n) => write!(f, "{}", n),
+			ReasoningEffort::Budget(n) => write!(f, "{n}"),
 		}
 	}
 }

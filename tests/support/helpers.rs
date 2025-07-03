@@ -44,7 +44,7 @@ impl std::fmt::Debug for Check {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let mut buffer = String::new();
 		to_writer(self, &mut buffer).unwrap();
-		write!(f, "{}", buffer)
+		write!(f, "{buffer}")
 	}
 }
 
@@ -60,7 +60,7 @@ pub fn validate_checks(checks: Option<Check>, valid_flags: Check) -> Result<()> 
 
 	let unsupported = checks - valid_flags;
 	if !unsupported.is_empty() {
-		return Err(format!("Unsupported flags passed for this test: {:?}", unsupported).into());
+		return Err(format!("Unsupported flags passed for this test: {unsupported:?}").into());
 	}
 
 	Ok(())

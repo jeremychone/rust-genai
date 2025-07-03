@@ -125,7 +125,7 @@ impl futures::Stream for OpenAIStreamer {
 								) {
 									let call_id = tool_call_obj
 										.x_take::<String>("id")
-										.unwrap_or_else(|_| format!("call_{}", index));
+										.unwrap_or_else(|_| format!("call_{index}"));
 									let fn_name = function.x_take::<String>("name").unwrap_or_default();
 									let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 									// Create the tool call

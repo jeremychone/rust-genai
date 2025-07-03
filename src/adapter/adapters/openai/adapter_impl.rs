@@ -463,7 +463,7 @@ fn extract_think(content: String) -> (String, Option<String>) {
 			let after_think = after_think.trim_start();
 
 			// Construct the final cleaned content in one allocation
-			let cleaned_content = format!("{}{}", before_think, after_think);
+			let cleaned_content = format!("{before_think}{after_think}");
 
 			return (cleaned_content, Some(think_content.to_string()));
 		}

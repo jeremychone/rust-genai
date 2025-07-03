@@ -10,7 +10,7 @@ use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
 use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;

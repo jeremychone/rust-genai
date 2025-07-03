@@ -8,12 +8,7 @@ where
 	T: Into<DataContainer<'a>>,
 {
 	let container: DataContainer = data.into();
-	assert!(
-		container.contains(val),
-		"Should contain: {}\nBut was: {:?}",
-		val,
-		container
-	);
+	assert!(container.contains(val), "Should contain: {val}\nBut was: {container:?}");
 }
 
 pub fn assert_not_contains<'a, T>(data: T, val: &str)
@@ -23,9 +18,7 @@ where
 	let container: DataContainer = data.into();
 	assert!(
 		!container.contains(val),
-		"Should not contain: {}\nBut was: {:?}",
-		val,
-		container
+		"Should not contain: {val}\nBut was: {container:?}"
 	);
 }
 
@@ -40,8 +33,8 @@ pub enum DataContainer<'a> {
 impl std::fmt::Debug for DataContainer<'_> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {
-			DataContainer::Owned(vec) => write!(f, "{:?}", vec),
-			DataContainer::Slice(slice) => write!(f, "{:?}", slice),
+			DataContainer::Owned(vec) => write!(f, "{vec:?}"),
+			DataContainer::Slice(slice) => write!(f, "{slice:?}"),
 			DataContainer::Str(s) => {
 				write!(f, "{s}")
 			}
