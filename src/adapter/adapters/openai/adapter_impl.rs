@@ -83,15 +83,24 @@ impl Adapter for OpenAIAdapter {
 		let mut content: Vec<MessageContent> = Vec::new();
 		let mut reasoning_content: Option<String> = None;
 
-		if let Some(mut first_choice) = body.x_take::<Option<Value>>("/choices/0")? {
+		if let Ok(Some(mut first_choice)) = body.x_take::<Option<Value>>("/choices/0") {
+			// Check if reasoning is present
+			// Can be in two places:
+			// - /message/reasoning
+			// - /message/reasoning_content
+			// Extracted before content as some model can return reasoning without content
+			reasoning_content = first_choice
+				.x_take::<Option<String>>("/message/reasoning")
+				.ok()
+				.unwrap_or_else(|| {
+					first_choice
+						.x_take::<Option<String>>("/message/reasoning_content")
+						.ok()
+						.flatten()
+				});
+
 			// -- Push eventual text message
-			if let Some(mut text_content) = first_choice.x_take::<Option<String>>("/message/content")? {
-				// -- Reasoning content compute
-				// "Standard" attempt to get the reasoning_content
-				reasoning_content = first_choice
-					.x_take::<Option<String>>("/message/reasoning_content")
-					.ok()
-					.flatten();
+			if let Ok(Some(mut text_content)) = first_choice.x_take::<Option<String>>("/message/content") {
 				// If not reasoning_content, but
 				if reasoning_content.is_none() && options_set.normalize_reasoning_content().unwrap_or_default() {
 					let (content_tmp, reasoning_content_tmp) = extract_think(text_content);
