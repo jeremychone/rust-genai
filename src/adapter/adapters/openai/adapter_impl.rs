@@ -110,7 +110,10 @@ impl Adapter for OpenAIAdapter {
 					text_content = content_tmp;
 				}
 
-				content.push(text_content.into());
+				// After extracting reasoning_content, sometimes the content is empty.
+				if !text_content.is_empty() {
+					content.push(text_content.into());
+				}
 			}
 
 			// -- Push eventual ToolCalls
