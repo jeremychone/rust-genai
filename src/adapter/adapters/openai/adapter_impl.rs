@@ -99,10 +99,12 @@ impl Adapter for OpenAIAdapter {
 						.x_take::<Option<String>>("/message/reasoning_content")
 						.ok()
 						.flatten()
-				});
+				})
+				.map(|s| s.trim().to_string());
 
 			// -- Push eventual text message
 			if let Ok(Some(mut text_content)) = first_choice.x_take::<Option<String>>("/message/content") {
+				text_content = text_content.trim().to_string();
 				// If not reasoning_content, but
 				if reasoning_content.is_none() && options_set.normalize_reasoning_content().unwrap_or_default() {
 					let (content_tmp, reasoning_content_tmp) = extract_think(text_content);
@@ -110,7 +112,10 @@ impl Adapter for OpenAIAdapter {
 					text_content = content_tmp;
 				}
 
-				content.push(text_content.into());
+				// After extracting reasoning_content, sometimes the content is empty.
+				if !text_content.is_empty() {
+					content.push(text_content.into());
+				}
 			}
 
 			// -- Push eventual ToolCalls
