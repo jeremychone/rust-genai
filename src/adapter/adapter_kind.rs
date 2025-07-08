@@ -6,6 +6,7 @@ use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
+use crate::adapter::zhipu::ZhipuAdapter;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -32,6 +33,8 @@ pub enum AdapterKind {
 	Xai,
 	/// For DeepSeek
 	DeepSeek,
+	/// For Zhipu
+	Zhipu,
 	// Note: Variants will probably be suffixed
 	// AnthropicBedrock,
 }
@@ -50,6 +53,7 @@ impl AdapterKind {
 			AdapterKind::Nebius => "Nebius",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
+			AdapterKind::Zhipu => "Zhipu",
 		}
 	}
 
@@ -65,6 +69,7 @@ impl AdapterKind {
 			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
+			AdapterKind::Zhipu => "zhipu",
 		}
 	}
 
@@ -79,6 +84,7 @@ impl AdapterKind {
 			"nebius" => Some(AdapterKind::Nebius),
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
+			"zhipu" => Some(AdapterKind::Zhipu),
 			_ => None,
 		}
 	}
@@ -97,6 +103,7 @@ impl AdapterKind {
 			AdapterKind::Nebius => Some(NebiusAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Zhipu => Some(ZhipuAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 		}
 	}
@@ -115,6 +122,7 @@ impl AdapterKind {
 	///  - Gemini     - starts_with "gemini"
 	///  - Groq       - model in Groq models
 	///  - DeepSeek   - model in DeepSeek models (deepseek.com)
+	///  - Zhipu      - starts_with "glm"
 	///  - Ollama     - For anything else
 	///
 	/// Note: At this point, this will never fail as the fallback is the Ollama adapter.
@@ -151,6 +159,8 @@ impl AdapterKind {
 			Ok(Self::DeepSeek)
 		} else if groq::MODELS.contains(&model) {
 			return Ok(Self::Groq);
+		} else if model.starts_with("glm") {
+			Ok(Self::Zhipu)
 		}
 		// For now, fallback to Ollama
 		else {

@@ -9,3 +9,4 @@ pub(super) mod nebius;
 pub(super) mod ollama;
 pub(super) mod openai;
 pub(super) mod xai;
+pub(super) mod zhipu;
