@@ -1,5 +1,5 @@
 use derive_more::{Display, From};
-use reqwest::StatusCode;
+use reqwest::{StatusCode, header::HeaderMap};
 use value_ext::JsonValueExtError;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -12,7 +12,11 @@ pub enum Error {
 	ResponseFailedNotJson { content_type: String },
 
 	#[display("Request failed with status code '{status}'. Response body:\n{body}")]
-	ResponseFailedStatus { status: StatusCode, body: String },
+	ResponseFailedStatus {
+		status: StatusCode,
+		body: String,
+		headers: HeaderMap,
+	},
 
 	// -- Utils
 	#[display("JSON value extension error: {_0}")]
