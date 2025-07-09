@@ -60,6 +60,10 @@ pub struct ChatOptions {
 	pub normalize_reasoning_content: Option<bool>,
 
 	pub reasoning_effort: Option<ReasoningEffort>,
+
+	/// Set the seed
+	/// This is useful for reproducibility.
+	pub seed: Option<u64>,
 }
 
 /// Chainable Setters
@@ -129,6 +133,11 @@ impl ChatOptions {
 
 	pub fn with_reasoning_effort(mut self, value: ReasoningEffort) -> Self {
 		self.reasoning_effort = Some(value);
+		self
+	}
+
+	pub fn with_seed(mut self, value: u64) -> Self {
+		self.seed = Some(value);
 		self
 	}
 
@@ -329,6 +338,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.reasoning_effort.as_ref())
 			.or_else(|| self.client.and_then(|client| client.reasoning_effort.as_ref()))
+	}
+
+	pub fn seed(&self) -> Option<u64> {
+		self.chat
+			.and_then(|chat| chat.seed)
+			.or_else(|| self.client.and_then(|client| client.seed))
 	}
 
 	/// Returns true only if there is a ChatResponseFormat::JsonMode
