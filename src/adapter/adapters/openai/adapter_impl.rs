@@ -397,7 +397,7 @@ impl OpenAIAdapter {
 								})
 							})
 							.collect::<Vec<Value>>();
-						messages.push(json! ({"role": "assistant", "tool_calls": tool_calls}))
+						messages.push(json! ({"role": "assistant", "tool_calls": tool_calls, "content": ""}))
 					}
 					// TODO: Probably need to trace/warn that this will be ignored
 					MessageContent::Parts(_) => (),
@@ -483,6 +483,11 @@ struct OpenAIRequestParts {
 }
 
 fn parse_tool_calls(raw_tool_calls: Value) -> Result<Vec<ToolCall>> {
+	// Some backends (like sglang) return null if no tool calls are present.
+	if raw_tool_calls.is_null() {
+		return Ok(vec![]);
+	}
+
 	let Value::Array(raw_tool_calls) = raw_tool_calls else {
 		return Err(Error::InvalidJsonResponseElement {
 			info: "tool calls is not an array",
