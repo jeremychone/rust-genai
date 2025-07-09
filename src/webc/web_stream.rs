@@ -174,7 +174,7 @@ struct BuffResponse {
 fn new_with_pretty_json_array(
 	buff_string: String,
 	partial_message: &mut Option<String>,
-) -> Result<BuffResponse, crate::Error> {
+) -> Result<BuffResponse, crate::webc::Error> {
 	let buff_str = buff_string.trim();
 
 	let mut messages: Vec<String> = Vec::new();
@@ -241,7 +241,7 @@ fn process_buff_string_delimited(
 	buff_string: String,
 	partial_message: &mut Option<String>,
 	delimiter: &str,
-) -> Result<BuffResponse, crate::Error> {
+) -> Result<BuffResponse, crate::webc::Error> {
 	let mut first_message: Option<String> = None;
 	let mut candidate_message: Option<String> = None;
 	let mut next_messages: Option<Vec<String>> = None;

@@ -15,7 +15,7 @@ pub enum Error {
 	ResponseFailedStatus {
 		status: StatusCode,
 		body: String,
-		headers: HeaderMap,
+		headers: Box<HeaderMap>,
 	},
 
 	// -- Utils

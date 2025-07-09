@@ -91,7 +91,11 @@ impl WebResponse {
 		if !status.is_success() {
 			let headers = res.headers().clone();
 			let body = res.text().await?;
-			return Err(Error::ResponseFailedStatus { status, body, headers });
+			return Err(Error::ResponseFailedStatus {
+				status,
+				body,
+				headers: Box::new(headers),
+			});
 		}
 
 		// Move the headers into a new HeaderMap
