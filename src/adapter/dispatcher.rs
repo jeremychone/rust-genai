@@ -14,6 +14,7 @@ use super::groq::GroqAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::xai::XaiAdapter;
+use crate::adapter::zhipu::ZhipuAdapter;
 use crate::resolver::{AuthData, Endpoint};
 
 /// A construct that allows dispatching calls to the Adapters.
@@ -35,6 +36,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::default_endpoint(),
 			AdapterKind::Xai => XaiAdapter::default_endpoint(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_endpoint(),
+			AdapterKind::Zhipu => ZhipuAdapter::default_endpoint(),
 		}
 	}
 
@@ -49,6 +51,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::default_auth(),
 			AdapterKind::Xai => XaiAdapter::default_auth(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_auth(),
+			AdapterKind::Zhipu => ZhipuAdapter::default_auth(),
 		}
 	}
 
@@ -63,6 +66,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::all_model_names(kind).await,
 			AdapterKind::Xai => XaiAdapter::all_model_names(kind).await,
 			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind).await,
+			AdapterKind::Zhipu => ZhipuAdapter::all_model_names(kind).await,
 		}
 	}
 
@@ -77,6 +81,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Xai => XaiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::DeepSeek => DeepSeekAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Zhipu => ZhipuAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
 
@@ -99,6 +104,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Zhipu => ZhipuAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 		}
 	}
 
@@ -117,6 +123,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Zhipu => ZhipuAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
 	}
 
@@ -135,6 +142,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Zhipu => ZhipuAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
 	}
 }

@@ -104,6 +104,13 @@ impl futures::Stream for OpenAIStreamer {
 											.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
 											.unwrap_or_default();
 										self.captured_data.usage = Some(usage)
+									},
+									AdapterKind::Zhipu => {
+										let usage = message_data
+											.x_take("usage")
+											.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
+											.unwrap_or_default();
+										self.captured_data.usage = Some(usage)
 									}
 									_ => (), // do nothing, will be captured the OpenAI way
 								}
