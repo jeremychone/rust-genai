@@ -48,11 +48,8 @@ async fn test_chat_temperature_ok() -> Result<()> {
 // async fn test_chat_stop_sequences_ok() -> Result<()> {
 // 	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
 // }
-
 // endregion: --- Chat
-
 // region:    --- Chat Implicit Cache
-
 /// NOTE - Disable for now, not supported by Zhipu as of 2025-07-08
 // #[tokio::test]
 // async fn test_chat_cache_implicit_simple_ok() -> Result<()> {
