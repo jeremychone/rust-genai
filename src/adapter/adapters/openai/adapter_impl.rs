@@ -293,7 +293,9 @@ impl OpenAIAdapter {
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("top_p", top_p)?;
 		}
-
+		if let Some(seed) = options_set.seed() {
+			payload.x_insert("seed", seed)?;
+		}
 		Ok(WebRequestData { url, headers, payload })
 	}
 
