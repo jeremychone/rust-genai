@@ -2,12 +2,13 @@
 
 ## Upcoming - 0.4.0-alpha...
 
+- `+` API NEW - **Custom http headers** in `ChatOptions` (#78)
 - `+` API NEW - Added `ChatResponse.captured_raw_body` (opt-in via `chat_options.with_capture_raw_body(true)` (PR #68 + refactor)
 - `+` Added Gemini built-in support (PR #67)
 - `+` API NEW - Added web configuration support (#66) (manage proxy, timeout, etc.)
 - `+` Model Namespace Support to force AdapterKind, for example, `openai::codex-...`
 - `+` Added streaming support for tool calls
-- `+` nebius - Added Nebius adapter. Use with model namespace, for example, `nebius::Qwen/Qwen3-32B`
+- `+` **New Adapters**  Zhipu (ChatGLM) (#76), Nebius
 - `!` API CHANGE - `StreamEnd` - Text and tool calls content are now part of Vec
 - `!` API CHANGE - `ChatResponse::tool_calls(&self) -> Vec<&ToolCall> ` (rather than `Option<Vec..>`)
 - `!` API CHANGE - `ChatResponse.content` now has content `Vec<MessageContent>`

@@ -16,12 +16,17 @@ Also, allow custom URL with `ServiceTargetResolver` (see [examples/c06-target-re
 
 Provides a common and ergonomic single API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-## v0.4.0 - Upcoming (main branch)
+**NOTE:** Try to use the latest version (`0.4.0-alpha.4`). It is as robust as `0.3.x`, with updated APIs (see below) and additional functionality, thanks to many great PRs.
+
+## v0.4.0-alpha.x (main branch)
 
 What's new: (`-` fix, `+` addition, `!` change)
 
 (see [CHANGELOG.md](CHANGELOG.md) for more)
 
+- `+` **Custom http headers** in `ChatOptions` (#78)
+- `+` **Model namespacing** to specify Adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name (AdapterKind and model name can still be overridden by `ServiceTargetResolver`)
+- `+` **New Adapters**  Zhipu (ChatGLM) (#76), Nebius
 - `!` **API CHANGE** Now `ChatResponse.content` is a `Vec<MessageContent>` To support when response has ToolCalls and Text Message
 	- you can use `let text: &str = chat_reponse.first_text()` (was `ChatResponse::content_text_as_str()`) or
 	- `let texts: Vec<&str> = chat_response.texts();`
@@ -33,8 +38,6 @@ What's new: (`-` fix, `+` addition, `!` change)
 - `!` **API CHANGE** Now `ChatResponse::into_tool_calls()` and (`tool_calls()`) returns `Vec<ToolCalls>` (rather than `Option<Vec<ToolCalls>>`) 
 - `!` **API CHANGE** MessageContent - Now use `message_content.text()` and `message_content.into_text()` (rather than `text_as_str`, `text_into_string`)
 - `-` **Gemini ToolResponse Fix** Gemini Adapter wrongfully tried to parse the `ToolResponse.content` (see [#59](https://github.com/jeremychone/rust-genai/issues/59))
-- `+` **Model namespacing** to specify Adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name (AdapterKind and model name can still be overridden by `ServiceTargetResolver`)
-- `+` **Nebius Adapter** added. Activated with the new model namespacing feature: `nebius::Qwen/Qwen3-32B`
 - `!` **Tool Use Streaming** support – thanks to [ClanceyLu](https://github.com/ClanceyLu), [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
 
 ## v0.3.0 - Released 2025-05-08
