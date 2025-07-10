@@ -194,10 +194,13 @@ impl OpenAIAdapter {
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint);
 
 		// -- headers
-		let headers = vec![
+		let mut headers = vec![
 			// headers
 			("Authorization".to_string(), format!("Bearer {api_key}")),
 		];
+
+		// Add extra headers from options
+		headers.extend_from_slice(options_set.extra_headers());
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
 

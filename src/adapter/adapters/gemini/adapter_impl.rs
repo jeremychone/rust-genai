@@ -81,10 +81,13 @@ impl Adapter for GeminiAdapter {
 		let url = url.to_string();
 
 		// -- headers (empty for gemini)
-		let headers = vec![
+		let mut headers = vec![
 			// headers
 			("x-goog-api-key".to_string(), api_key.to_string()),
 		];
+
+		// Add extra headers from options
+		headers.extend_from_slice(options_set.extra_headers());
 
 		// -- Reasoning Budget
 		let (_, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {

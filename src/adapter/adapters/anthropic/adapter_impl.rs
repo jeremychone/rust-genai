@@ -84,11 +84,14 @@ impl Adapter for AnthropicAdapter {
 		let url = Self::get_service_url(&model, service_type, endpoint);
 
 		// -- headers
-		let headers = vec![
+		let mut headers = vec![
 			// headers
 			("x-api-key".to_string(), api_key),
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		];
+
+		// Add extra headers from options
+		headers.extend_from_slice(options_set.extra_headers());
 
 		// -- Parts
 		let AnthropicRequestParts {

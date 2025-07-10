@@ -64,6 +64,9 @@ pub struct ChatOptions {
 	/// Set the seed
 	/// This is useful for reproducibility.
 	pub seed: Option<u64>,
+
+	/// Extra HTTP headers to include in the request
+	pub extra_headers: Vec<(String, String)>,
 }
 
 /// Chainable Setters
@@ -138,6 +141,18 @@ impl ChatOptions {
 
 	pub fn with_seed(mut self, value: u64) -> Self {
 		self.seed = Some(value);
+		self
+	}
+
+	/// Set extra headers for this request.
+	pub fn with_extra_headers(mut self, headers: Vec<(String, String)>) -> Self {
+		self.extra_headers = headers;
+		self
+	}
+
+	/// Add a single extra header for this request.
+	pub fn with_extra_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+		self.extra_headers.push((key.into(), value.into()));
 		self
 	}
 
@@ -346,6 +361,13 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.seed))
 	}
 
+	pub fn extra_headers(&self) -> &[(String, String)] {
+		self.chat
+			.map(|chat| chat.extra_headers.as_slice())
+			.or_else(|| self.client.map(|client| client.extra_headers.as_slice()))
+			.unwrap_or(&[])
+	}
+
 	/// Returns true only if there is a ChatResponseFormat::JsonMode
 	#[deprecated(note = "Use .response_format()")]
 	#[allow(unused)]
@@ -359,3 +381,72 @@ impl ChatOptionsSet<'_, '_> {
 }
 
 // endregion: --- ChatOptionsSet
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_chat_options_with_extra_headers() {
+        let options = ChatOptions::default()
+            .with_extra_header("X-Custom-Header", "custom-value")
+            .with_extra_header("X-Another-Header", "another-value");
+        
+        assert_eq!(options.extra_headers.len(), 2);
+        assert_eq!(options.extra_headers[0], ("X-Custom-Header".to_string(), "custom-value".to_string()));
+        assert_eq!(options.extra_headers[1], ("X-Another-Header".to_string(), "another-value".to_string()));
+    }
+
+    #[test]
+    fn test_chat_options_with_extra_headers_vec() {
+        let headers = vec![
+            ("X-Custom-Header".to_string(), "custom-value".to_string()),
+            ("X-Another-Header".to_string(), "another-value".to_string()),
+        ];
+        
+        let options = ChatOptions::default()
+            .with_extra_headers(headers.clone());
+        
+        assert_eq!(options.extra_headers, headers);
+    }
+
+    #[test]
+    fn test_chat_options_set_extra_headers() {
+        let client_options = ChatOptions::default()
+            .with_extra_header("X-Client-Header", "client-value");
+        
+        let chat_options = ChatOptions::default()
+            .with_extra_header("X-Chat-Header", "chat-value");
+        
+        let options_set = ChatOptionsSet::default()
+            .with_client_options(Some(&client_options))
+            .with_chat_options(Some(&chat_options));
+        
+        // Should prioritize chat options over client options
+        let headers = options_set.extra_headers();
+        assert_eq!(headers.len(), 1);
+        assert_eq!(headers[0], ("X-Chat-Header".to_string(), "chat-value".to_string()));
+    }
+
+    #[test]
+    fn test_chat_options_set_extra_headers_fallback() {
+        let client_options = ChatOptions::default()
+            .with_extra_header("X-Client-Header", "client-value");
+        
+        let options_set = ChatOptionsSet::default()
+            .with_client_options(Some(&client_options));
+        
+        // Should use client options when no chat options are provided
+        let headers = options_set.extra_headers();
+        assert_eq!(headers.len(), 1);
+        assert_eq!(headers[0], ("X-Client-Header".to_string(), "client-value".to_string()));
+    }
+
+    #[test]
+    fn test_chat_options_set_extra_headers_empty() {
+        let options_set = ChatOptionsSet::default();
+        
+        let headers = options_set.extra_headers();
+        assert_eq!(headers.len(), 0);
+    }
+}
