@@ -546,3 +546,112 @@ fn parse_tool_call(raw_tool_call: Value) -> Result<ToolCall> {
 }
 
 // endregion: --- Support
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapter::{ServiceType};
+    use crate::chat::{ChatRequest, ChatMessage, ChatOptions, ChatOptionsSet};
+    use crate::resolver::{AuthData, Endpoint};
+    use crate::{ModelIden, ServiceTarget};
+    use crate::common::ModelName;
+
+    #[test]
+    fn test_openai_adapter_extra_headers() {
+        // Create a mock service target
+        let model_iden = ModelIden::new(
+            crate::adapter::AdapterKind::OpenAI,
+            ModelName::from("gpt-4o-mini"),
+        );
+        let auth_data = AuthData::from_single("test-api-key");
+        let endpoint = Endpoint::from_static("https://api.openai.com/v1/");
+        let service_target = ServiceTarget {
+            model: model_iden,
+            auth: auth_data,
+            endpoint,
+        };
+
+        // Create a simple chat request
+        let chat_req = ChatRequest::new(vec![
+            ChatMessage::user("Hello, how are you?"),
+        ]);
+
+        // Create chat options with extra headers
+        let chat_options = ChatOptions::default()
+            .with_extra_header("X-Custom-Header", "custom-value")
+            .with_extra_header("X-Request-ID", "req-12345");
+
+        let options_set = ChatOptionsSet::default()
+            .with_chat_options(Some(&chat_options));
+
+        // Call the adapter to generate WebRequestData
+        let result = OpenAIAdapter::to_web_request_data(
+            service_target,
+            ServiceType::Chat,
+            chat_req,
+            options_set,
+        );
+
+        // Verify the result
+        assert!(result.is_ok());
+        let web_request_data = result.unwrap();
+
+        // Check that the standard Authorization header is present
+        assert!(web_request_data.headers.iter().any(|(k, v)| 
+            k == "Authorization" && v.starts_with("Bearer ")));
+
+        // Check that our custom headers are present
+        assert!(web_request_data.headers.iter().any(|(k, v)| 
+            k == "X-Custom-Header" && v == "custom-value"));
+        assert!(web_request_data.headers.iter().any(|(k, v)| 
+            k == "X-Request-ID" && v == "req-12345"));
+
+        // Verify we have at least 3 headers (Authorization + 2 custom)
+        assert!(web_request_data.headers.len() >= 3);
+    }
+
+    #[test]
+    fn test_openai_adapter_no_extra_headers() {
+        // Create a mock service target
+        let model_iden = ModelIden::new(
+            crate::adapter::AdapterKind::OpenAI,
+            ModelName::from("gpt-4o-mini"),
+        );
+        let auth_data = AuthData::from_single("test-api-key");
+        let endpoint = Endpoint::from_static("https://api.openai.com/v1/");
+        let service_target = ServiceTarget {
+            model: model_iden,
+            auth: auth_data,
+            endpoint,
+        };
+
+        // Create a simple chat request
+        let chat_req = ChatRequest::new(vec![
+            ChatMessage::user("Hello, how are you?"),
+        ]);
+
+        // Create chat options without extra headers
+        let chat_options = ChatOptions::default();
+        let options_set = ChatOptionsSet::default()
+            .with_chat_options(Some(&chat_options));
+
+        // Call the adapter to generate WebRequestData
+        let result = OpenAIAdapter::to_web_request_data(
+            service_target,
+            ServiceType::Chat,
+            chat_req,
+            options_set,
+        );
+
+        // Verify the result
+        assert!(result.is_ok());
+        let web_request_data = result.unwrap();
+
+        // Check that only the standard Authorization header is present
+        assert!(web_request_data.headers.iter().any(|(k, v)| 
+            k == "Authorization" && v.starts_with("Bearer ")));
+
+        // Verify we have exactly 1 header (just Authorization)
+        assert_eq!(web_request_data.headers.len(), 1);
+    }
+}
