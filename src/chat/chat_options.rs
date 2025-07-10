@@ -64,6 +64,9 @@ pub struct ChatOptions {
 	/// Set the seed
 	/// This is useful for reproducibility.
 	pub seed: Option<u64>,
+
+	// Extra headers
+	pub extra_headers: Option<Vec<(String, String)>>,
 }
 
 /// Chainable Setters
@@ -138,6 +141,11 @@ impl ChatOptions {
 
 	pub fn with_seed(mut self, value: u64) -> Self {
 		self.seed = Some(value);
+		self
+	}
+
+	pub fn with_extra_headers(mut self, headers: Vec<(String, String)>) -> Self {
+		self.extra_headers = Some(headers);
 		self
 	}
 
@@ -344,6 +352,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.seed)
 			.or_else(|| self.client.and_then(|client| client.seed))
+	}
+
+	pub fn extra_headers(&self) -> Option<&Vec<(String, String)>> {
+		self.chat
+			.and_then(|chat| chat.extra_headers.as_ref())
+			.or_else(|| self.client.and_then(|client| client.extra_headers.as_ref()))
 	}
 
 	/// Returns true only if there is a ChatResponseFormat::JsonMode
