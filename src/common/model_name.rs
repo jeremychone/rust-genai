@@ -4,7 +4,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 /// The model name, which is just an `Arc<str>` wrapper (simple and relatively efficient to clone)
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct ModelName(Arc<str>);
 
 /// Utilities
