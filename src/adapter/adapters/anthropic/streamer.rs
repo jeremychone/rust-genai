@@ -69,8 +69,6 @@ impl futures::Stream for AnthropicStreamer {
 									serde_error,
 								})?;
 
-							println!("CONTENT BLOCK START:\n{data:?}");
-
 							match data.x_get_str("/content_block/type") {
 								Ok(txt) if txt == "text" => self.in_progress_block = InProgressBlock::Text,
 								Ok(txt) if txt == "thinking" => self.in_progress_block = InProgressBlock::Thinking,
