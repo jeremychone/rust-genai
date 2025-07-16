@@ -26,7 +26,7 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"glm-z1-flash",
 	"glm-z1-flashx",
 	"glm-4.1v-thinking-flash",
-	"glm-4.1v-thinking-flashx"
+	"glm-4.1v-thinking-flashx",
 ];
 
 impl ZhipuAdapter {
