@@ -2,6 +2,7 @@
 
 ## Upcoming - 0.4.0-alpha...
 
+- to be updated
 - `+` API NEW - **Custom http headers** in `ChatOptions` (#78)
 - `+` API NEW - Added `ChatResponse.captured_raw_body` (opt-in via `chat_options.with_capture_raw_body(true)` (PR #68 + refactor)
 - `+` Added Gemini built-in support (PR #67)
