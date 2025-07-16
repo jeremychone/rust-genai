@@ -1,17 +1,17 @@
-use crate::ModelIden;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart, ImageSource,
-	MessageContent, PromptTokensDetails, ToolCall, Usage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart, DocumentSource,
+	ImageSource, MessageContent, PromptTokensDetails, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
+use crate::ModelIden;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tracing::warn;
 use value_ext::JsonValueExt;
 
@@ -28,7 +28,7 @@ pub struct AnthropicAdapter;
 //
 // fall back
 const MAX_TOKENS_64K: u32 = 64000; // claude-3-7-sonnet, claude-sonnet-4
-// custom
+								   // custom
 const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
 const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
 const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
@@ -322,6 +322,23 @@ impl AnthropicAdapter {
 												"media_type": content_type,
 												"data": content,
 											},
+										})),
+									},
+									ContentPart::Pdf(source) => match source {
+										DocumentSource::Url(url) => Some(json!({
+											"type": "document",
+											"source": {
+												"type": "url",
+												"url": url,
+											}
+										})),
+										DocumentSource::Base64(bytes) => Some(json!({
+											"type": "document",
+											"source": {
+												"type": "base64",
+												"media_type": "application/pdf",
+												"data": bytes,
+											}
 										})),
 									},
 								})
