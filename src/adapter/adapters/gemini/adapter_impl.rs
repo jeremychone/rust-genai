@@ -76,10 +76,6 @@ impl Adapter for GeminiAdapter {
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
-		// -- url
-		let url = Self::get_service_url(&model, service_type, endpoint);
-		let url = url.to_string();
-
 		// -- headers (empty for gemini)
 		let headers = vec![
 			// headers
@@ -87,7 +83,7 @@ impl Adapter for GeminiAdapter {
 		];
 
 		// -- Reasoning Budget
-		let (_, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
+		let (provider_model_name, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
 			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
 			(model, None) => {
 				// let model_name: &str = &model.model_name;
@@ -184,6 +180,11 @@ impl Adapter for GeminiAdapter {
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("/generationConfig/topP", top_p)?;
 		}
+
+		// -- url
+		let provider_model = model.from_name(provider_model_name);
+		let url = Self::get_service_url(&provider_model, service_type, endpoint);
+		let url = url.to_string();
 
 		Ok(WebRequestData { url, headers, payload })
 	}
