@@ -354,45 +354,54 @@ impl OpenAIAdapter {
 					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
 				ChatRole::User => {
-					let content = match msg.content {
-						MessageContent::Text(content) => json!(content),
-						MessageContent::Parts(parts) => {
-							json!(parts
-								.iter()
-								.map(|part| match part {
-									ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-									ContentPart::Image { content_type, source } => {
-										match source {
-											ImageSource::Url(url) => {
-												json!({"type": "image_url", "image_url": {"url": url}})
-											}
-											ImageSource::Base64(content) => {
-												let image_url = format!("data:{content_type};base64,{content}");
-												json!({"type": "image_url", "image_url": {"url": image_url}})
-											}
-										}
-									}
-									ContentPart::Pdf(source) => {
-										match source {
-											DocumentSource::Url(url) => {
-												json!({"type": "input_file", "file_url": url})
-											}
-											DocumentSource::Base64 { file_name, content } => {
-												json!({"type": "input_file", "filename": file_name, "file_data": content})
+					let content =
+						match msg.content {
+							MessageContent::Text(content) => json!(content),
+							MessageContent::Parts(parts) => {
+								json!(parts
+									.iter()
+									.map(|part| match part {
+										ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
+										ContentPart::Image { content_type, source } => {
+											match source {
+												ImageSource::Url(url) => {
+													json!({"type": "image_url", "image_url": {"url": url}})
+												}
+												ImageSource::Base64(content) => {
+													let image_url = format!("data:{content_type};base64,{content}");
+													json!({"type": "image_url", "image_url": {"url": image_url}})
+												}
 											}
 										}
-									}
-								})
-								.collect::<Vec<Value>>())
-						}
-						// Use `match` instead of `if let`. This will allow to future-proof this
-						// implementation in case some new message content types would appear,
-						// this way library would not compile if not all methods are implemented
-						// continue would allow to gracefully skip pushing unserializable message
-						// TODO: Probably need to warn if it is a ToolCalls type of content
-						MessageContent::ToolCalls(_) => continue,
-						MessageContent::ToolResponses(_) => continue,
-					};
+										ContentPart::Pdf(source) => {
+											match source {
+												DocumentSource::Url(_) => {
+													tracing::error!("referencing PDFs by URL is not supported in the completions API");
+													json!({})
+												}
+												DocumentSource::Base64 { file_name, content } => {
+													json!({
+														"type": "file",
+														"file": {
+															"filename": file_name,
+															"file_data": content,
+														}
+													})
+												}
+											}
+										}
+									})
+									.collect::<Vec<Value>>())
+							}
+							// Use `match` instead of `if let`. This will allow to future-proof this
+							// implementation in case some new message content types would appear,
+							// this way library would not compile if not all methods are implemented
+							// continue would allow to gracefully skip pushing unserializable message
+							// TODO: Probably need to warn if it is a ToolCalls type of content
+							MessageContent::ToolCalls(_) => continue,
+							MessageContent::ToolResponses(_) => continue,
+						};
+					println!("{}", serde_json::to_string_pretty(&content).unwrap());
 					messages.push(json! ({"role": "user", "content": content}));
 				}
 
