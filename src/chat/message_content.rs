@@ -171,14 +171,16 @@ pub enum ImageSource {
 #[derive(Clone, Serialize, Deserialize)]
 pub enum DocumentSource {
 	Url(String),
-	Base64(String),
+	Base64 { file_name: String, content: String },
 }
 
 impl Debug for DocumentSource {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			DocumentSource::Url(url) => write!(f, "{}", url),
-			DocumentSource::Base64(bytes) => write!(f, "<base64:{}>", bytes.len()),
+			DocumentSource::Base64 { file_name, content } => {
+				write!(f, "<file:{}, base64:{}>", file_name, content.len())
+			}
 		}
 	}
 }
@@ -187,7 +189,9 @@ impl Display for DocumentSource {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			DocumentSource::Url(url) => write!(f, "{}", url),
-			DocumentSource::Base64(bytes) => write!(f, "<base64:{}>", bytes.len()),
+			DocumentSource::Base64 { file_name, content } => {
+				write!(f, "<file:{}, base64:{}>", file_name, content.len())
+			}
 		}
 	}
 }

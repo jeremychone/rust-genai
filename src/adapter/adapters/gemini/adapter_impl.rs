@@ -3,8 +3,8 @@ use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	CompletionTokensDetails, ContentPart, ImageSource, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall,
-	Usage,
+	CompletionTokensDetails, ContentPart, DocumentSource, ImageSource, MessageContent, PromptTokensDetails,
+	ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -419,7 +419,26 @@ impl GeminiAdapter {
 											}),
 										}
 									}
-									ContentPart::Pdf(_) => todo!("implement pdf support"),
+									ContentPart::Pdf(source) => {
+										match source {
+											DocumentSource::Url(url) => {
+												json!({
+													"file_data": {
+														"mime_type": "application/pdf",
+														"file_uri": url,
+													}
+												})
+											}
+											DocumentSource::Base64 { file_name: _, content } => {
+												json!({
+													"inline_data": {
+														"mime_type": "application/pdf",
+														"data": content
+													}
+												})
+											}
+										}
+									}
 								})
 								.collect::<Vec<Value>>())
 						}

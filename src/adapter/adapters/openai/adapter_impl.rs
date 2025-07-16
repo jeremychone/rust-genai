@@ -3,7 +3,7 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
+	ContentPart, DocumentSource, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -372,7 +372,16 @@ impl OpenAIAdapter {
 											}
 										}
 									}
-									ContentPart::Pdf(_) => todo!("implement pdf support"),
+									ContentPart::Pdf(source) => {
+										match source {
+											DocumentSource::Url(url) => {
+												json!({"type": "input_file", "file_url": url})
+											}
+											DocumentSource::Base64 { file_name, content } => {
+												json!({"type": "input_file", "filename": file_name, "file_data": content})
+											}
+										}
+									}
 								})
 								.collect::<Vec<Value>>())
 						}

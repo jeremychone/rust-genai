@@ -332,12 +332,12 @@ impl AnthropicAdapter {
 												"url": url,
 											}
 										})),
-										DocumentSource::Base64(bytes) => Some(json!({
+										DocumentSource::Base64 { file_name: _, content } => Some(json!({
 											"type": "document",
 											"source": {
 												"type": "base64",
 												"media_type": "application/pdf",
-												"data": bytes,
+												"data": content,
 											}
 										})),
 									},
