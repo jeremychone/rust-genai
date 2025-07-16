@@ -3,7 +3,7 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
+	ContentPart, DocumentSource, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -12,7 +12,7 @@ use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tracing::error;
 use value_ext::JsonValueExt;
 
@@ -354,11 +354,11 @@ impl OpenAIAdapter {
 					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
 				ChatRole::User => {
-					let content = match msg.content {
-						MessageContent::Text(content) => json!(content),
-						MessageContent::Parts(parts) => {
-							json!(
-								parts
+					let content =
+						match msg.content {
+							MessageContent::Text(content) => json!(content),
+							MessageContent::Parts(parts) => {
+								json!(parts
 									.iter()
 									.map(|part| match part {
 										ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
@@ -373,18 +373,35 @@ impl OpenAIAdapter {
 												}
 											}
 										}
+										ContentPart::Pdf(source) => {
+											match source {
+												DocumentSource::Url(_) => {
+													tracing::error!("referencing PDFs by URL is not supported in the completions API");
+													json!({})
+												}
+												DocumentSource::Base64 { file_name, content } => {
+													json!({
+														"type": "file",
+														"file": {
+															"filename": file_name,
+															"file_data": content,
+														}
+													})
+												}
+											}
+										}
 									})
-									.collect::<Vec<Value>>()
-							)
-						}
-						// Use `match` instead of `if let`. This will allow to future-proof this
-						// implementation in case some new message content types would appear,
-						// this way library would not compile if not all methods are implemented
-						// continue would allow to gracefully skip pushing unserializable message
-						// TODO: Probably need to warn if it is a ToolCalls type of content
-						MessageContent::ToolCalls(_) => continue,
-						MessageContent::ToolResponses(_) => continue,
-					};
+									.collect::<Vec<Value>>())
+							}
+							// Use `match` instead of `if let`. This will allow to future-proof this
+							// implementation in case some new message content types would appear,
+							// this way library would not compile if not all methods are implemented
+							// continue would allow to gracefully skip pushing unserializable message
+							// TODO: Probably need to warn if it is a ToolCalls type of content
+							MessageContent::ToolCalls(_) => continue,
+							MessageContent::ToolResponses(_) => continue,
+						};
+					println!("{}", serde_json::to_string_pretty(&content).unwrap());
 					messages.push(json! ({"role": "user", "content": content}));
 				}
 

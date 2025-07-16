@@ -1,7 +1,10 @@
 use crate::chat::{ToolCall, ToolResponse};
 use derive_more::derive::From;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{
+	fmt::{Debug, Display},
+	sync::Arc,
+};
 
 /// Note: MessageContent is use for the ChatRequest as well as the ChatResponse
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
@@ -113,6 +116,7 @@ impl From<Vec<ContentPart>> for MessageContent {
 pub enum ContentPart {
 	Text(String),
 	Image { content_type: String, source: ImageSource },
+	Pdf(DocumentSource),
 }
 
 /// Constructors
@@ -163,3 +167,31 @@ pub enum ImageSource {
 // No `Local` location; this would require handling errors like "file not found" etc.
 // Such a file can be easily provided by the user as Base64, and we can implement a convenient
 // TryFrom<File> to Base64 version. All LLMs accept local images only as Base64.
+
+#[derive(Clone, Serialize, Deserialize)]
+pub enum DocumentSource {
+	Url(String),
+	Base64 { file_name: String, content: String },
+}
+
+impl Debug for DocumentSource {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			DocumentSource::Url(url) => write!(f, "{}", url),
+			DocumentSource::Base64 { file_name, content } => {
+				write!(f, "<file:{}, base64:{}>", file_name, content.len())
+			}
+		}
+	}
+}
+
+impl Display for DocumentSource {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			DocumentSource::Url(url) => write!(f, "{}", url),
+			DocumentSource::Base64 { file_name, content } => {
+				write!(f, "<file:{}, base64:{}>", file_name, content.len())
+			}
+		}
+	}
+}
