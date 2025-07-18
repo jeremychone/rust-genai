@@ -6,7 +6,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{Error, Result};
+use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Value, json};
@@ -64,10 +64,7 @@ impl Adapter for CohereAdapter {
 		let url = Self::get_service_url(&model, service_type, endpoint);
 
 		// -- headers
-		let headers = vec![
-			// headers
-			("Authorization".to_string(), format!("Bearer {api_key}")),
-		];
+		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
 		// -- parts
 		let CohereChatRequestParts {

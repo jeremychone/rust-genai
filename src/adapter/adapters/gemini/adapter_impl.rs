@@ -8,7 +8,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
-use crate::{Error, ModelIden, Result, ServiceTarget};
+use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Value, json};
 use value_ext::JsonValueExt;
@@ -77,10 +77,7 @@ impl Adapter for GeminiAdapter {
 		let api_key = get_api_key(auth, &model)?;
 
 		// -- headers (empty for gemini)
-		let headers = vec![
-			// headers
-			("x-goog-api-key".to_string(), api_key.to_string()),
-		];
+		let headers = Headers::from(("x-goog-api-key".to_string(), api_key.to_string()));
 
 		// -- Reasoning Budget
 		let (provider_model_name, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {

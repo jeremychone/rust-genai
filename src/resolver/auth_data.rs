@@ -1,3 +1,4 @@
+use crate::Headers;
 use crate::resolver::{Error, Result};
 use std::collections::HashMap;
 /// `AuthData` specifies either how or the key itself for an authentication resolver call.
@@ -10,10 +11,7 @@ pub enum AuthData {
 	Key(String),
 
 	/// Override headers and request url for unorthodox authentication schemes
-	RequestOverride {
-		url: String,
-		headers: Vec<(String, String)>,
-	},
+	RequestOverride { url: String, headers: Headers },
 
 	/// The key names/values when a credential has multiple pieces of credential information.
 	/// This will be adapter-specific.

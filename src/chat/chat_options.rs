@@ -5,6 +5,7 @@
 //! Note 1: In the future, we will probably allow setting the client
 //! Note 2: Extracting it from the `ChatRequest` object allows for better reusability of each component.
 
+use crate::Headers;
 use crate::chat::chat_req_response_format::ChatResponseFormat;
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -66,7 +67,7 @@ pub struct ChatOptions {
 	pub seed: Option<u64>,
 
 	// Extra headers
-	pub extra_headers: Option<Vec<(String, String)>>,
+	pub extra_headers: Option<Headers>,
 }
 
 /// Chainable Setters
@@ -144,8 +145,8 @@ impl ChatOptions {
 		self
 	}
 
-	pub fn with_extra_headers(mut self, headers: Vec<(String, String)>) -> Self {
-		self.extra_headers = Some(headers);
+	pub fn with_extra_headers(mut self, headers: impl Into<Headers>) -> Self {
+		self.extra_headers = Some(headers.into());
 		self
 	}
 
@@ -354,7 +355,7 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.seed))
 	}
 
-	pub fn extra_headers(&self) -> Option<&Vec<(String, String)>> {
+	pub fn extra_headers(&self) -> Option<&Headers> {
 		self.chat
 			.and_then(|chat| chat.extra_headers.as_ref())
 			.or_else(|| self.client.and_then(|client| client.extra_headers.as_ref()))

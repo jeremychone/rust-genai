@@ -7,7 +7,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{Error, Result};
+use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -194,14 +194,11 @@ impl OpenAIAdapter {
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint);
 
 		// -- headers
-		let mut headers = vec![
-			// headers
-			("Authorization".to_string(), format!("Bearer {api_key}")),
-		];
+		let mut headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
 		// -- extra headers
 		if let Some(extra_headers) = options_set.extra_headers() {
-			headers.extend(extra_headers.iter().cloned());
+			headers.merge_with(extra_headers);
 		}
 
 		let stream = matches!(service_type, ServiceType::ChatStream);

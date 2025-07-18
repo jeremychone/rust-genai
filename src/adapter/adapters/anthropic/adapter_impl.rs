@@ -1,4 +1,3 @@
-use crate::ModelIden;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -8,6 +7,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
+use crate::{Headers, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use reqwest_eventsource::EventSource;
@@ -84,11 +84,11 @@ impl Adapter for AnthropicAdapter {
 		let url = Self::get_service_url(&model, service_type, endpoint);
 
 		// -- headers
-		let headers = vec![
+		let headers = Headers::from(vec![
 			// headers
 			("x-api-key".to_string(), api_key),
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
-		];
+		]);
 
 		// -- Parts
 		let AnthropicRequestParts {

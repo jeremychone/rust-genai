@@ -1,5 +1,6 @@
 use gcp_auth::{CustomServiceAccount, TokenProvider};
 use genai::Client;
+use genai::Headers;
 use genai::ModelIden;
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
@@ -38,7 +39,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 				"https://{}-aiplatform.googleapis.com/v1/projects/{}/locations/{}/publishers/google/models/{}:generateContent",
 				location, project_id, location, model.model_name
 			);
-			let auth_header = vec![("Authorization".to_string(), format!("Bearer {}", token.as_str()))];
+
+			let auth_value = format!("Bearer {}", token.as_str());
+			let auth_header = Headers::from(("Authorization", auth_value));
 			Ok(Some(AuthData::RequestOverride {
 				headers: auth_header,
 				url,

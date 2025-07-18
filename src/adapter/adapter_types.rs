@@ -1,8 +1,8 @@
-use crate::ModelIden;
 use crate::adapter::AdapterKind;
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
+use crate::{Headers, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::Value;
@@ -61,7 +61,7 @@ pub enum ServiceType {
 #[derive(Debug, Clone)]
 pub struct WebRequestData {
 	pub url: String,
-	pub headers: Vec<(String, String)>,
+	pub headers: Headers,
 	pub payload: Value,
 }
 
