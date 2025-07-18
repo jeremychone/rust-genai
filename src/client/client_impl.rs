@@ -97,6 +97,9 @@ impl Client {
 			payload,
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
 
+		// TODO: Need to check this.
+		//       This was part of the 429c5cee2241dbef9f33699b9c91202233c22816 commit
+		//       But now it is missing in the the exec_chat(..) above, which is probably an issue.
 		if let AuthData::RequestOverride {
 			url: override_url,
 			headers: override_headers,
