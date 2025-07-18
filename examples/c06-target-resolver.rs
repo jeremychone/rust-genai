@@ -9,7 +9,7 @@ use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::{AuthData, Endpoint, ServiceTargetResolver};
 use genai::{Client, ModelIden, ServiceTarget};
 
-const MODEL: &str = "grok-beta";
+const MODEL: &str = "grok-3-mini";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
