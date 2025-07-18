@@ -38,7 +38,7 @@ impl Headers {
 
 	/// Apply this header on top of a target ExtraHeaders.
 	/// Consuming both, and returning the augmented target
-	pub fn apply_to(self, target: impl Into<Headers>) -> Headers {
+	pub fn applied_to(self, target: impl Into<Headers>) -> Headers {
 		let mut target = target.into();
 		for (k, v) in self.inner {
 			target.inner.insert(k, v);
