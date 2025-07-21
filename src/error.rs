@@ -93,6 +93,10 @@ pub enum Error {
 		resolver_error: resolver::Error,
 	},
 
+	// -- Adapter Support
+	#[display("Adapter '{adapter_kind}' does not support feature '{feature}'")]
+	AdapterNotSupported { adapter_kind: AdapterKind, feature: String },
+
 	// -- Externals
 	#[display("Failed to clone EventSource request: {_0}")]
 	#[from]

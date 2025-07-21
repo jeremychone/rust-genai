@@ -46,6 +46,11 @@ impl Adapter for CohereAdapter {
 		let base_url = endpoint.base_url();
 		match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}chat"),
+			ServiceType::Embed => {
+				//HACK: Cohere embeddings use v2 API, but base_url is v1, so we need to replace it
+				let base_without_version = base_url.trim_end_matches("v1/");
+				format!("{base_without_version}v2/embed")
+			}
 		}
 	}
 
@@ -159,6 +164,22 @@ impl Adapter for CohereAdapter {
 			model_iden,
 			stream: chat_stream,
 		})
+	}
+
+	fn to_embed_request_data(
+		service_target: crate::ServiceTarget,
+		embed_req: crate::embed::EmbedRequest,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::adapter::WebRequestData> {
+		super::embed::to_embed_request_data(service_target, embed_req, options_set)
+	}
+
+	fn to_embed_response(
+		model_iden: crate::ModelIden,
+		web_response: crate::webc::WebResponse,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		super::embed::to_embed_response(model_iden, web_response, options_set)
 	}
 }
 

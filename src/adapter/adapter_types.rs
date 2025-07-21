@@ -1,5 +1,6 @@
 use crate::adapter::AdapterKind;
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
 use crate::{Headers, ModelIden};
@@ -43,6 +44,20 @@ pub trait Adapter {
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse>;
+
+	/// To be implemented by Adapters.
+	fn to_embed_request_data(
+		service_target: ServiceTarget,
+		embed_req: EmbedRequest,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData>;
+
+	/// To be implemented by Adapters.
+	fn to_embed_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<EmbedResponse>;
 }
 
 // region:    --- ServiceType
@@ -51,6 +66,7 @@ pub trait Adapter {
 pub enum ServiceType {
 	Chat,
 	ChatStream,
+	Embed,
 }
 
 // endregion: --- ServiceType

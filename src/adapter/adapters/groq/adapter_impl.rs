@@ -85,4 +85,26 @@ impl Adapter for GroqAdapter {
 	) -> Result<ChatStreamResponse> {
 		OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
 	}
+
+	fn to_embed_request_data(
+		_service_target: crate::ServiceTarget,
+		_embed_req: crate::embed::EmbedRequest,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::adapter::WebRequestData> {
+		Err(crate::Error::AdapterNotSupported {
+			adapter_kind: crate::adapter::AdapterKind::Groq,
+			feature: "embeddings".to_string(),
+		})
+	}
+
+	fn to_embed_response(
+		_model_iden: crate::ModelIden,
+		_web_response: crate::webc::WebResponse,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		Err(crate::Error::AdapterNotSupported {
+			adapter_kind: crate::adapter::AdapterKind::Groq,
+			feature: "embeddings".to_string(),
+		})
+	}
 }

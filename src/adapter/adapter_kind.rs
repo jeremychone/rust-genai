@@ -145,11 +145,12 @@ impl AdapterKind {
 			|| model.starts_with("o1")
 			|| model.starts_with("chatgpt")
 			|| model.starts_with("codex")
+			|| model.starts_with("text-embedding")
 		{
 			Ok(Self::OpenAI)
 		} else if model.starts_with("claude") {
 			Ok(Self::Anthropic)
-		} else if model.starts_with("command") {
+		} else if model.starts_with("command") || model.starts_with("embed-") {
 			Ok(Self::Cohere)
 		} else if model.starts_with("gemini") {
 			Ok(Self::Gemini)

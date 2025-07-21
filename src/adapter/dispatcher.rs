@@ -6,6 +6,7 @@ use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::webc::WebResponse;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
@@ -143,6 +144,45 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Zhipu => ZhipuAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+		}
+	}
+
+	pub fn to_embed_request_data(
+		target: ServiceTarget,
+		embed_req: EmbedRequest,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		let adapter_kind = &target.model.adapter_kind;
+		match adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Ollama => OllamaAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Groq => GroqAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Nebius => NebiusAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Xai => XaiAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Zhipu => ZhipuAdapter::to_embed_request_data(target, embed_req, options_set),
+		}
+	}
+
+	pub fn to_embed_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: EmbedOptionsSet<'_, '_>,
+	) -> Result<EmbedResponse> {
+		match model_iden.adapter_kind {
+			AdapterKind::OpenAI => OpenAIAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Anthropic => AnthropicAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Cohere => CohereAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Ollama => OllamaAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Gemini => GeminiAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Groq => GroqAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Nebius => NebiusAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Xai => XaiAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Zhipu => ZhipuAdapter::to_embed_response(model_iden, web_response, options_set),
 		}
 	}
 }

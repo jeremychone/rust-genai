@@ -1,5 +1,6 @@
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::embed::{EmbedOptions, EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::AuthData;
 use crate::{Client, Error, ModelIden, Result, ServiceTarget};
 
@@ -118,6 +119,60 @@ impl Client {
 			})?;
 
 		let res = AdapterDispatcher::to_chat_stream(model, reqwest_builder, options_set)?;
+
+		Ok(res)
+	}
+
+	/// Executes an embedding request for a single text input.
+	pub async fn embed(
+		&self,
+		model: &str,
+		input: impl Into<String>,
+		options: Option<&EmbedOptions>,
+	) -> Result<EmbedResponse> {
+		let embed_req = EmbedRequest::new(input);
+		self.exec_embed(model, embed_req, options).await
+	}
+
+	/// Executes an embedding request for multiple text inputs (batch operation).
+	pub async fn embed_batch(
+		&self,
+		model: &str,
+		inputs: Vec<String>,
+		options: Option<&EmbedOptions>,
+	) -> Result<EmbedResponse> {
+		let embed_req = EmbedRequest::new_batch(inputs);
+		self.exec_embed(model, embed_req, options).await
+	}
+
+	/// Executes an embedding request.
+	pub async fn exec_embed(
+		&self,
+		model: &str,
+		embed_req: EmbedRequest,
+		options: Option<&EmbedOptions>,
+	) -> Result<EmbedResponse> {
+		let options_set = EmbedOptionsSet::new()
+			.with_request_options(options)
+			.with_client_options(self.config().embed_options());
+
+		let model = self.default_model(model)?;
+		let target = self.config().resolve_service_target(model).await?;
+		let model = target.model.clone();
+
+		let WebRequestData { headers, payload, url } =
+			AdapterDispatcher::to_embed_request_data(target, embed_req, options_set.clone())?;
+
+		let web_res =
+			self.web_client()
+				.do_post(&url, &headers, payload)
+				.await
+				.map_err(|webc_error| Error::WebModelCall {
+					model_iden: model.clone(),
+					webc_error,
+				})?;
+
+		let res = AdapterDispatcher::to_embed_response(model, web_res, options_set)?;
 
 		Ok(res)
 	}

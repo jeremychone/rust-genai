@@ -5,6 +5,7 @@
 // region:    --- Modules
 
 mod adapter_impl;
+mod embed;
 mod streamer;
 
 pub use adapter_impl::*;
