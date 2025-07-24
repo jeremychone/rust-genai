@@ -99,7 +99,7 @@ pub fn to_embed_request_data(
 
 	// Get the model name for the request
 	let (model_name, _) = model.model_name.as_model_name_and_namespace();
-	let full_model_name = format!("models/{}", model_name);
+	let full_model_name = format!("models/{model_name}",);
 
 	// Convert EmbedRequest to Gemini format and determine URL
 	let (payload, is_batch) = match embed_req.input {

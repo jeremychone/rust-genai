@@ -99,10 +99,7 @@ async fn test_embed_different_models_ok() -> Result<()> {
 	// Large model should have more dimensions
 	assert!(dims_large >= dims_small);
 
-	println!(
-		"✓ Model comparison: small={} dims, large={} dims",
-		dims_small, dims_large
-	);
+	// println!("✓ Model comparison: small={dims_small} dims, large={dims_large} dims",);
 
 	Ok(())
 }

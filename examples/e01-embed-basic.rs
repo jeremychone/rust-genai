@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Example 1: Single embedding
 	println!("1. Single Embedding:");
 	let text = "The quick brown fox jumps over the lazy dog";
-	println!("   Text: \"{}\"", text);
+	println!("   Text: \"{text}\"",);
 
 	match client.embed(MODEL_OPENAI_SMALL, text, None).await {
 		Ok(response) => {
@@ -41,10 +41,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				embedding.vector()[2]
 			);
 			if let Some(usage) = response.usage.prompt_tokens {
-				println!("   Tokens used: {}", usage);
+				println!("   Tokens used: {usage}",);
 			}
 		}
-		Err(e) => println!("   Error: {}", e),
+		Err(e) => println!("   Error: {e}",),
 	}
 	println!();
 
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		"Goodbye world".to_string(),
 		"The meaning of life".to_string(),
 	];
-	println!("   Texts: {:?}", texts);
+	println!("   Texts: {texts:?}",);
 
 	match client.embed_batch(MODEL_OPENAI_SMALL, texts, None).await {
 		Ok(response) => {
@@ -71,10 +71,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				);
 			}
 			if let Some(usage) = response.usage.prompt_tokens {
-				println!("   Total tokens used: {}", usage);
+				println!("   Total tokens used: {usage}",);
 			}
 		}
-		Err(e) => println!("   Error: {}", e),
+		Err(e) => println!("   Error: {e}",),
 	}
 	println!();
 
@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				println!("   Index {}: {} dimensions", embedding.index(), embedding.dimensions());
 			}
 		}
-		Err(e) => println!("   Error: {}", e),
+		Err(e) => println!("   Error: {e}",),
 	}
 	println!();
 
@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				embedding.vector()[2]
 			);
 		}
-		Err(e) => println!("   Error: {}", e),
+		Err(e) => println!("   Error: {e}",),
 	}
 	println!();
 
@@ -138,7 +138,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			let embedding = response.first_embedding().unwrap();
 			println!("   ✓ Cohere embedding: {} dimensions", embedding.dimensions());
 		}
-		Err(e) => println!("   ✗ Cohere error: {}", e),
+		Err(e) => println!("   ✗ Cohere error: {e}",),
 	}
 
 	// Gemini-specific options
@@ -155,7 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			let embedding = response.first_embedding().unwrap();
 			println!("   ✓ Gemini embedding: {} dimensions", embedding.dimensions());
 		}
-		Err(e) => println!("   ✗ Gemini error: {}", e),
+		Err(e) => println!("   ✗ Gemini error: {e}",),
 	}
 	println!();
 
@@ -164,13 +164,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let test_text = "Compare embedding models";
 
 	for model in &[MODEL_OPENAI_SMALL, MODEL_OPENAI_LARGE] {
-		print!("   Testing {}: ", model);
+		print!("   Testing {model}: ",);
 		match client.embed(model, test_text, None).await {
 			Ok(response) => {
 				let embedding = response.first_embedding().unwrap();
 				println!("{} dimensions", embedding.dimensions());
 			}
-			Err(e) => println!("Error - {}", e),
+			Err(e) => println!("Error - {e}",),
 		}
 	}
 	println!();

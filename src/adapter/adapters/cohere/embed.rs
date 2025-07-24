@@ -205,7 +205,7 @@ pub fn to_embed_response(
 	if let Some(meta) = &cohere_res.meta {
 		if let Some(warnings) = &meta.warnings {
 			for warning in warnings {
-				eprintln!("Cohere API Warning: {}", warning);
+				eprintln!("Cohere API Warning: {warning}");
 			}
 		}
 	}
