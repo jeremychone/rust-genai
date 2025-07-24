@@ -10,7 +10,7 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 //       With the "tool-use" groq version, it will work correctly.
 // Works with: "deepseek-r1-distill-llama-70b" (does not support json mode)
 // "mistral-saba-24b" (require term acceptance)
-// "llama-3.1-8b-instant"
+// "llama-3.1-8b-instant", moonshotai/kimi-k2-instruct
 const MODEL: &str = "llama-3.1-8b-instant";
 const MODEL_NS: &str = "groq::llama-3.1-8b-instant";
 
