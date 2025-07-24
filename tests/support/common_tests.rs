@@ -9,6 +9,7 @@ use genai::chat::{
 	CacheControl, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool,
 	ToolResponse,
 };
+use genai::embed::EmbedOptions;
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
 use serde_json::{Value, json};
@@ -721,3 +722,219 @@ pub async fn common_test_list_models(adapter_kind: AdapterKind, contains: &str) 
 }
 
 // endregion: --- List
+
+// region:    --- Embeddings
+
+pub async fn common_test_embed_single_simple_ok(model: &str) -> Result<()> {
+	common_test_embed_single_simple_ok_with_usage_check(model, true).await
+}
+
+pub async fn common_test_embed_single_simple_ok_with_usage_check(model: &str, expect_usage: bool) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let text = "Hello, world!";
+
+	// -- Exec
+	let response = client.embed(model, text, None).await?;
+
+	// -- Check Basic Properties
+	assert_eq!(response.embedding_count(), 1);
+	assert!(response.is_single());
+	assert!(!response.is_batch());
+
+	// -- Check Embedding
+	let embedding = response.first_embedding().unwrap();
+	assert_eq!(embedding.index(), 0);
+	assert!(embedding.dimensions() > 0);
+	assert_eq!(embedding.vector().len(), embedding.dimensions());
+
+	// -- Check Usage (provider-dependent)
+	assert!(response.usage.completion_tokens.is_none()); // Embeddings don't have completion tokens
+
+	if expect_usage {
+		assert!(response.usage.prompt_tokens.is_some());
+		assert!(response.usage.prompt_tokens.unwrap() > 0);
+		assert!(response.usage.total_tokens.is_some());
+		println!(
+			"✓ Single embedding: {} dimensions, {} tokens",
+			embedding.dimensions(),
+			response.usage.prompt_tokens.unwrap()
+		);
+	} else {
+		// Some providers (like Gemini) don't provide usage information for embeddings
+		assert!(response.usage.prompt_tokens.is_none());
+		assert!(response.usage.total_tokens.is_none());
+		println!(
+			"✓ Single embedding: {} dimensions (no usage info)",
+			embedding.dimensions()
+		);
+	}
+
+	Ok(())
+}
+
+pub async fn common_test_embed_single_with_options_ok(model: &str) -> Result<()> {
+	common_test_embed_single_with_options_ok_with_usage_check(model, true).await
+}
+
+pub async fn common_test_embed_single_with_options_ok_with_usage_check(model: &str, expect_usage: bool) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let text = "Test with options";
+
+	let options = EmbedOptions::new()
+		.with_dimensions(512)
+		.with_capture_usage(true)
+		.with_user("test-user".to_string());
+
+	// -- Exec
+	let response = client.embed(model, text, Some(&options)).await?;
+
+	// -- Check
+	let embedding = response.first_embedding().unwrap();
+	assert!(embedding.dimensions() > 0);
+
+	// Usage check (provider-dependent)
+	if expect_usage {
+		assert!(response.usage.prompt_tokens.is_some());
+		println!(
+			"✓ Embedding with options: {} dimensions (requested 512)",
+			embedding.dimensions()
+		);
+	} else {
+		// Some providers (like Gemini) don't provide usage information for embeddings
+		assert!(response.usage.prompt_tokens.is_none());
+		println!(
+			"✓ Embedding with options: {} dimensions (requested 512, no usage info)",
+			embedding.dimensions()
+		);
+	}
+
+	Ok(())
+}
+
+pub async fn common_test_embed_batch_simple_ok(model: &str) -> Result<()> {
+	common_test_embed_batch_simple_ok_with_usage_check(model, true).await
+}
+
+pub async fn common_test_embed_batch_simple_ok_with_usage_check(model: &str, expect_usage: bool) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let texts = vec!["First text".to_string(), "Second text".to_string(), "Third text".to_string()];
+
+	// -- Exec
+	let response = client.embed_batch(model, texts.clone(), None).await?;
+
+	// -- Check Basic Properties
+	assert_eq!(response.embedding_count(), 3);
+	assert!(!response.is_single());
+	assert!(response.is_batch());
+
+	// -- Check Each Embedding
+	for (i, embedding) in response.embeddings.iter().enumerate() {
+		assert_eq!(embedding.index(), i);
+		assert!(embedding.dimensions() > 0);
+		assert_eq!(embedding.vector().len(), embedding.dimensions());
+	}
+
+	// -- Check Consistent Dimensions
+	let first_dims = response.embeddings[0].dimensions();
+	for embedding in &response.embeddings {
+		assert_eq!(embedding.dimensions(), first_dims);
+	}
+
+	// -- Check Usage (provider-dependent)
+	if expect_usage {
+		assert!(response.usage.prompt_tokens.is_some());
+		assert!(response.usage.prompt_tokens.unwrap() > 0);
+		println!(
+			"✓ Batch embedding: {} texts, {} dimensions each, {} tokens",
+			response.embedding_count(),
+			first_dims,
+			response.usage.prompt_tokens.unwrap()
+		);
+	} else {
+		// Some providers (like Gemini) don't provide usage information for embeddings
+		assert!(response.usage.prompt_tokens.is_none());
+		println!(
+			"✓ Batch embedding: {} texts, {} dimensions each (no usage info)",
+			response.embedding_count(),
+			first_dims
+		);
+	}
+
+	Ok(())
+}
+
+pub async fn common_test_embed_provider_specific_options_ok(
+	model: &str,
+	embedding_type: &str,
+	truncate: Option<&str>,
+) -> Result<()> {
+	common_test_embed_provider_specific_options_ok_with_usage_check(model, embedding_type, truncate, true).await
+}
+
+pub async fn common_test_embed_provider_specific_options_ok_with_usage_check(
+	model: &str,
+	embedding_type: &str,
+	truncate: Option<&str>,
+	expect_usage: bool,
+) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let text = "Test with provider-specific options";
+
+	let mut options = EmbedOptions::new()
+		.with_dimensions(512)
+		.with_capture_usage(true)
+		.with_embedding_type(embedding_type);
+
+	if let Some(truncate_val) = truncate {
+		options = options.with_truncate(truncate_val);
+	}
+
+	// -- Exec
+	let response = client.embed(model, text, Some(&options)).await?;
+
+	// -- Check
+	let embedding = response.first_embedding().unwrap();
+	assert!(embedding.dimensions() > 0);
+
+	// Usage check (provider-dependent)
+	if expect_usage {
+		assert!(response.usage.prompt_tokens.is_some());
+		println!(
+			"✓ Provider-specific options: {} dimensions, embedding_type='{}'",
+			embedding.dimensions(),
+			embedding_type
+		);
+	} else {
+		// Some providers (like Gemini) don't provide usage information for embeddings
+		assert!(response.usage.prompt_tokens.is_none());
+		println!(
+			"✓ Provider-specific options: {} dimensions, embedding_type='{}' (no usage info)",
+			embedding.dimensions(),
+			embedding_type
+		);
+	}
+
+	Ok(())
+}
+
+pub async fn common_test_embed_empty_batch_should_fail(model: &str) -> Result<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let texts: Vec<String> = vec![];
+
+	// -- Exec
+	let result = client.embed_batch(model, texts, None).await;
+
+	// -- Check
+	assert!(result.is_err(), "Empty batch should fail");
+
+	println!("✓ Empty batch correctly failed");
+
+	Ok(())
+}
+
+// endregion: --- Embeddings

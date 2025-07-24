@@ -154,6 +154,22 @@ impl Adapter for OpenAIAdapter {
 			stream: chat_stream,
 		})
 	}
+
+	fn to_embed_request_data(
+		service_target: ServiceTarget,
+		embed_req: crate::embed::EmbedRequest,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		super::embed::to_embed_request_data(service_target, embed_req, options_set)
+	}
+
+	fn to_embed_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		super::embed::to_embed_response(model_iden, web_response, options_set)
+	}
 }
 
 /// Support functions for other adapters that share OpenAI APIs
@@ -171,6 +187,7 @@ impl OpenAIAdapter {
 
 		let suffix = match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => "chat/completions",
+			ServiceType::Embed => "embeddings",
 		};
 		let mut full_url = base_url.join(suffix).unwrap();
 		full_url.set_query(original_query_params);

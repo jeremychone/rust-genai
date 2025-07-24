@@ -87,4 +87,20 @@ impl Adapter for OllamaAdapter {
 	) -> Result<ChatStreamResponse> {
 		OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
 	}
+
+	fn to_embed_request_data(
+		service_target: crate::ServiceTarget,
+		embed_req: crate::embed::EmbedRequest,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::adapter::WebRequestData> {
+		OpenAIAdapter::to_embed_request_data(service_target, embed_req, options_set)
+	}
+
+	fn to_embed_response(
+		model_iden: crate::ModelIden,
+		web_response: crate::webc::WebResponse,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		OpenAIAdapter::to_embed_response(model_iden, web_response, options_set)
+	}
 }
