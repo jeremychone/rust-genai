@@ -3,13 +3,13 @@
 
 // region:    --- Modules
 
+mod embed_options;
 mod embed_request;
 mod embed_response;
-mod embed_options;
 
 // -- Flatten
+pub use embed_options::*;
 pub use embed_request::*;
 pub use embed_response::*;
-pub use embed_options::*;
 
 // endregion: --- Modules
