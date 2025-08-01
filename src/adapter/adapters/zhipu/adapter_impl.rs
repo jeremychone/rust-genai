@@ -15,7 +15,6 @@ pub(in crate::adapter) const MODELS: &[&str] = &[
 	"glm-4-flashx-250414",
 	"glm-4-flash-250414",
 	"glm-4-air",
-	"glm-4-air-250414",
 	"glm-4-airx",
 	"glm-4-long",
 	"glm-4-flash",
