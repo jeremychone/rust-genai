@@ -5,11 +5,11 @@
 //!             However, there is now an XaiAdapter, which gets activated on `starts_with("grok")`.
 
 use genai::adapter::AdapterKind;
-use genai::chat::{ChatMessage, ChatRequest};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
 use genai::resolver::{AuthData, Endpoint, ServiceTargetResolver};
 use genai::{Client, ModelIden, ServiceTarget};
 
-const MODEL: &str = "grok-3-mini";
+const MODEL: &str = "accounts/fireworks/models/qwen3-30b-a3b";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,8 +25,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let target_resolver = ServiceTargetResolver::from_resolver_fn(
 		|service_target: ServiceTarget| -> Result<ServiceTarget, genai::resolver::Error> {
 			let ServiceTarget { model, .. } = service_target;
-			let endpoint = Endpoint::from_static("https://api.x.ai/v1/");
-			let auth = AuthData::from_env("XAI_API_KEY");
+			let endpoint = Endpoint::from_static("https://api.fireworks.ai/inference/v1/");
+			let auth = AuthData::from_env("FIREWORKS_API_KEY");
 			let model = ModelIden::new(AdapterKind::OpenAI, model.model_name);
 			// TODO: point to xai
 			Ok(ServiceTarget { endpoint, auth, model })
@@ -36,13 +36,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// -- Build the new client with this adapter_config
 	let client = Client::builder().with_service_target_resolver(target_resolver).build();
 
+	// -- Normalize the eventual reasoning content (fireworks use the <think></think> style)
+	let chat_options = ChatOptions::default().with_normalize_reasoning_content(true);
+
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 
 	for &question in questions {
 		chat_req = chat_req.append_message(ChatMessage::user(question));
 
 		println!("\n--- Question:\n{question}");
-		let chat_res = client.exec_chat(MODEL, chat_req.clone(), None).await?;
+		let chat_res = client.exec_chat(MODEL, chat_req.clone(), Some(&chat_options)).await?;
+
+		if let Some(reasoning_content) = chat_res.reasoning_content.as_deref() {
+			println!("\n--- Reasoning:\n{reasoning_content}")
+		}
 
 		println!("\n--- Answer: ");
 		let assistant_answer = chat_res.first_text().ok_or("Should have response")?;
