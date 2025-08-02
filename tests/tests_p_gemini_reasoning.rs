@@ -4,8 +4,8 @@ use crate::support::{Check, common_tests};
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// "gemini-2.5-flash-preview-04-17", "gemini-2.5-pro-preview-05-06"
-const MODEL: &str = "gemini-2.5-flash-preview-04-17"; // can add "-medium" .. suffix
+// "gemini-2.5-flash", "gemini-2.5-pro-preview"
+const MODEL: &str = "gemini-2.5-flash"; // can add "-medium" .. suffix
 
 // NOTE: For now just single test to make sure reasonning token get captured.
 

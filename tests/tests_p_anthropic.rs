@@ -115,13 +115,13 @@ async fn test_chat_image_b64_ok() -> Result<()> {
 #[tokio::test]
 #[serial(anthropic)]
 async fn test_tool_simple_ok() -> Result<()> {
-	common_tests::common_test_tool_simple_ok(MODEL, true).await
+	common_tests::common_test_tool_simple_ok(MODEL).await
 }
 
 #[tokio::test]
 // #[serial(anthropic)]
 async fn test_tool_full_flow_ok() -> Result<()> {
-	common_tests::common_test_tool_full_flow_ok(MODEL, true).await
+	common_tests::common_test_tool_full_flow_ok(MODEL).await
 }
 
 // endregion: --- Tool Tests

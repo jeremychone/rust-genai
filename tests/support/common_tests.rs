@@ -620,7 +620,7 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> Result<()> {
 
 /// Just making the tool request, and checking the tool call response
 /// `complete_check` if for LLMs that are better at giving back the unit and weather.
-pub async fn common_test_tool_simple_ok(model: &str, complete_check: bool) -> Result<()> {
+pub async fn common_test_tool_simple_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = seed_chat_req_tool_simple();
@@ -636,16 +636,12 @@ pub async fn common_test_tool_simple_ok(model: &str, complete_check: bool) -> Re
 	let tool_call = tool_calls.pop().ok_or("Should have at least one tool call")?;
 	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("city")?, "Paris");
 	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("country")?, "France");
-	if complete_check {
-		// Note: Not all LLM will output the weather (e.g. Anthropic Haiku)
-		assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("unit")?, "C");
-	}
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("unit")?, "C");
 
 	Ok(())
 }
 
-/// `complete_check` if for LLMs that are better at giving back the unit and weather.
-pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) -> Result<()> {
+pub async fn common_test_tool_full_flow_ok(model: &str) -> Result<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let mut chat_req = seed_chat_req_tool_simple();
@@ -676,11 +672,7 @@ pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) ->
 
 	assert!(content.contains("paris"), "Should contain 'Paris'");
 	assert!(content.contains("32"), "Should contain '32'");
-	if complete_check {
-		// Note 1: Not all LLM will output the weather (e.g. Anthropic Haiku)
-		// Note 2
-		assert!(content.contains("sunny"), "Should contain 'sunny'");
-	}
+	assert!(content.contains("sunny"), "Should contain 'sunny'");
 
 	Ok(())
 }

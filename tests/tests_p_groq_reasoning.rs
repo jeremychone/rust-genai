@@ -1,6 +1,6 @@
 mod support;
 
-use crate::support::{Check, common_tests};
+use crate::support::common_tests;
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
@@ -24,10 +24,11 @@ async fn test_chat_multi_system_ok() -> Result<()> {
 	common_tests::common_test_chat_multi_system_ok(MODEL).await
 }
 
-#[tokio::test]
-async fn test_chat_json_mode_ok() -> Result<()> {
-	common_tests::common_test_chat_json_mode_ok(MODEL, Some(Check::USAGE)).await
-}
+// THis model does not seem to support json mode
+// #[tokio::test]
+// async fn test_chat_json_mode_ok() -> Result<()> {
+// 	common_tests::common_test_chat_json_mode_ok(MODEL, Some(Check::USAGE)).await
+// }
 
 #[tokio::test]
 async fn test_chat_temperature_ok() -> Result<()> {
