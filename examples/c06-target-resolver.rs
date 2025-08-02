@@ -10,7 +10,9 @@ use genai::resolver::{AuthData, Endpoint, ServiceTargetResolver};
 use genai::{Client, ModelIden, ServiceTarget};
 use tracing_subscriber::EnvFilter;
 
-const MODEL: &str = "accounts/fireworks/models/qwen3-30b-a3b";
+// for fireworks: "https://api.fireworks.ai/inference/v1/",  "accounts/fireworks/models/qwen3-30b-a3b"
+
+const MODEL: &str = "meta-llama/Llama-3-8b-chat-hf";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,8 +31,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let target_resolver = ServiceTargetResolver::from_resolver_fn(
 		|service_target: ServiceTarget| -> Result<ServiceTarget, genai::resolver::Error> {
 			let ServiceTarget { model, .. } = service_target;
-			let endpoint = Endpoint::from_static("https://api.fireworks.ai/inference/v1/");
-			let auth = AuthData::from_env("FIREWORKS_API_KEY");
+			let endpoint = Endpoint::from_static("https://api.together.xyz/v1/");
+			let auth = AuthData::from_env("TOGETHER_API_KEY");
 			let model = ModelIden::new(AdapterKind::OpenAI, model.model_name);
 			// TODO: point to xai
 			Ok(ServiceTarget { endpoint, auth, model })
