@@ -179,7 +179,7 @@ impl futures::Stream for OpenAIStreamer {
 						}
 						// -- Content
 						// If there is no finish_reason but there is some content, we can get the delta content and send the Internal Stream Event
-						else if let Some(content) = first_choice.x_take::<Option<String>>("/delta/content")? {
+						else if let Ok(Some(content)) = first_choice.x_take::<Option<String>>("/delta/content") {
 							// Add to the captured_content if chat options allow it
 							if self.options.capture_content {
 								match self.captured_data.content {
@@ -192,8 +192,8 @@ impl futures::Stream for OpenAIStreamer {
 							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
 						}
 						// -- Reasoning Content
-						else if let Some(reasoning_content) =
-							first_choice.x_take::<Option<String>>("/delta/reasoning_content")?
+						else if let Ok(Some(reasoning_content)) =
+							first_choice.x_take::<Option<String>>("/delta/reasoning_content")
 						{
 							// Add to the captured_content if chat options allow it
 							if self.options.capture_reasoning_content {
