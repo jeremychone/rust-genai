@@ -9,6 +9,7 @@ const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 // or namespaced with simple anme "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
 const MODEL_FIREWORKS: &str = "accounts/fireworks/models/qwen3-30b-a3b";
+const MODEL_TOGETHER: &str = "together::meta-llama/Llama-3-8b-chat-hf";
 const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "llama-3.1-8b-instant";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
@@ -22,9 +23,10 @@ const MODEL_COHERE: &str = "command-light";
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- De/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
-	(MODEL_FIREWORKS, "FIREWORKS_API_KEY"),
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
+	(MODEL_FIREWORKS, "FIREWORKS_API_KEY"),
+	(MODEL_TOGETHER, "TOGETHER_API_KEY"),
 	(MODEL_GROQ, "GROQ_API_KEY"),
 	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
