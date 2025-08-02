@@ -671,12 +671,14 @@ pub async fn common_test_tool_full_flow_ok(model: &str, complete_check: bool) ->
 	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 
 	// -- Check
-	let content = chat_res.first_text().ok_or("Last response should be message")?.to_lowercase(); // lowercase because some models send "Sunny" and not "sunny"
+	// lowercase because some models send "Sunny" and not "sunny"
+	let content = chat_res.first_text().ok_or("Last response should be message")?.to_lowercase();
 
 	assert!(content.contains("paris"), "Should contain 'Paris'");
 	assert!(content.contains("32"), "Should contain '32'");
 	if complete_check {
-		// Note: Not all LLM will output the weather (e.g. Anthropic Haiku)
+		// Note 1: Not all LLM will output the weather (e.g. Anthropic Haiku)
+		// Note 2
 		assert!(content.contains("sunny"), "Should contain 'sunny'");
 	}
 

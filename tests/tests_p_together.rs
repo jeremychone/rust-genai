@@ -101,10 +101,10 @@ async fn test_tool_simple_ok() -> Result<()> {
 
 // NOTE for now not working with Llama-3.3-70B-Instruct-Turbo
 // TODO: need to investigate
-// #[tokio::test]
-// async fn test_tool_full_flow_ok() -> Result<()> {
-// 	common_tests::common_test_tool_full_flow_ok(MODEL, true).await
-// }
+#[tokio::test]
+async fn test_tool_full_flow_ok() -> Result<()> {
+	common_tests::common_test_tool_full_flow_ok(MODEL, true).await
+}
 // endregion: --- Tool Tests
 
 // region:    --- Resolver Tests

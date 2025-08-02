@@ -29,7 +29,7 @@ pub fn seed_chat_req_simple() -> ChatRequest {
 pub fn seed_chat_req_tool_simple() -> ChatRequest {
 	ChatRequest::new(vec![
 		// -- Messages (deactivate to see the differences)
-		ChatMessage::user("What is the temperature in C, in Paris, France"),
+		ChatMessage::user("What is the temperature in C and weather, in Paris, France"),
 	])
 	.append_tool(Tool::new("get_weather").with_schema(json!({
 		"type": "object",
