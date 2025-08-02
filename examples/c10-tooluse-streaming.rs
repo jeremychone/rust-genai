@@ -4,12 +4,18 @@ use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest, Tool, ToolResponse};
 use genai::chat::{ChatStreamEvent, ToolCall};
 use serde_json::json;
+use tracing_subscriber::EnvFilter;
 
 // const MODEL: &str = "gemini-2.0-flash";
 const MODEL: &str = "deepseek-chat";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	tracing_subscriber::fmt()
+		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
+		.init();
+
 	let client = Client::default();
 
 	// 1. Define a tool for getting weather information

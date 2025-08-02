@@ -3,6 +3,7 @@
 use genai::Client;
 use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
 use genai::chat::{ChatMessage, ChatRequest};
+use tracing_subscriber::EnvFilter;
 
 const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
@@ -42,7 +43,10 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
+	tracing_subscriber::fmt()
+		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
+		.init();
 
 	let question = "Why is the sky red?";
 

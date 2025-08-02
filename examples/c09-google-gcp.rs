@@ -7,11 +7,17 @@ use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::{AuthData, AuthResolver};
 use std::pin::Pin;
 use std::sync::Arc;
+use tracing_subscriber::EnvFilter;
 
 const MODEL: &str = "gemini-2.0-flash";
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+	tracing_subscriber::fmt()
+		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
+		.init();
+
 	// Just an example of a data that will get captured (needs to be locable)
 	let gcp_env_name: Arc<str> = "GCP_SERVICE_ACCOUNT".into();
 

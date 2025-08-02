@@ -6,13 +6,17 @@ use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::resolver::ModelMapper;
 use genai::{Client, ModelIden};
+use tracing_subscriber::EnvFilter;
 
 // NOTE: This will be overridden below to `gpt-4o-mini`
 const MODEL: &str = "gpt-4o";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
+	tracing_subscriber::fmt()
+		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
+		.init();
 
 	let questions = &[
 		// follow-up questions

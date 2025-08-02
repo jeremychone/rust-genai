@@ -3,13 +3,17 @@
 use genai::Client;
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest, ContentPart};
+use tracing_subscriber::EnvFilter;
 
 const MODEL: &str = "gpt-4o-mini";
 const IMAGE_URL: &str = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
+	tracing_subscriber::fmt()
+		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
+		.init();
 
 	let client = Client::default();
 

@@ -8,12 +8,16 @@ use genai::adapter::AdapterKind;
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
 use genai::resolver::{AuthData, Endpoint, ServiceTargetResolver};
 use genai::{Client, ModelIden, ServiceTarget};
+use tracing_subscriber::EnvFilter;
 
 const MODEL: &str = "accounts/fireworks/models/qwen3-30b-a3b";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).init();
+	tracing_subscriber::fmt()
+		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
+		.init();
 
 	let questions = &[
 		// Follow-up questions
