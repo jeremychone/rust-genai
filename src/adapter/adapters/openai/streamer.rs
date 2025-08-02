@@ -115,7 +115,9 @@ impl futures::Stream for OpenAIStreamer {
 							continue;
 						}
 						// -- Tool Call
-						else if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls") {
+						else if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls")
+							&& delta_tool_calls != Value::Null
+						{
 							// Check if there's a tool call in the delta
 							if delta_tool_calls.is_array() && !delta_tool_calls.as_array().unwrap().is_empty() {
 								// Extract the first tool call object as a mutable value
