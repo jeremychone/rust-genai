@@ -7,27 +7,30 @@ use tracing_subscriber::EnvFilter;
 
 const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
-const MODEL_COHERE: &str = "command-light";
+// or namespaced with simple anme "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
+const MODEL_FIREWORKS: &str = "accounts/fireworks/models/qwen3-30b-a3b";
 const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "llama-3.1-8b-instant";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
-const MODEL_XAI: &str = "grok-beta";
+const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZHIPU: &str = "glm-4-plus";
+const MODEL_COHERE: &str = "command-light";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- De/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
+	(MODEL_FIREWORKS, "FIREWORKS_API_KEY"),
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
-	(MODEL_COHERE, "COHERE_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
 	(MODEL_GROQ, "GROQ_API_KEY"),
 	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
-	(MODEL_ZHIPU, "ZHIPU_API_KEY"),
 	(MODEL_OLLAMA, ""),
+	(MODEL_ZHIPU, "ZHIPU_API_KEY"),
+	(MODEL_COHERE, "COHERE_API_KEY"),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule

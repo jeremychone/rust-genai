@@ -13,6 +13,7 @@ use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
+use crate::adapter::fireworks::FireworksAdapter;
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::adapter::zhipu::ZhipuAdapter;
@@ -33,6 +34,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::default_endpoint(),
 			AdapterKind::Ollama => OllamaAdapter::default_endpoint(),
 			AdapterKind::Gemini => GeminiAdapter::default_endpoint(),
+			AdapterKind::Fireworks => FireworksAdapter::default_endpoint(),
 			AdapterKind::Groq => GroqAdapter::default_endpoint(),
 			AdapterKind::Nebius => NebiusAdapter::default_endpoint(),
 			AdapterKind::Xai => XaiAdapter::default_endpoint(),
@@ -48,6 +50,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::default_auth(),
 			AdapterKind::Ollama => OllamaAdapter::default_auth(),
 			AdapterKind::Gemini => GeminiAdapter::default_auth(),
+			AdapterKind::Fireworks => FireworksAdapter::default_auth(),
 			AdapterKind::Groq => GroqAdapter::default_auth(),
 			AdapterKind::Nebius => NebiusAdapter::default_auth(),
 			AdapterKind::Xai => XaiAdapter::default_auth(),
@@ -63,6 +66,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::all_model_names(kind).await,
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
 			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind).await,
+			AdapterKind::Fireworks => FireworksAdapter::all_model_names(kind).await,
 			AdapterKind::Groq => GroqAdapter::all_model_names(kind).await,
 			AdapterKind::Nebius => NebiusAdapter::all_model_names(kind).await,
 			AdapterKind::Xai => XaiAdapter::all_model_names(kind).await,
@@ -78,6 +82,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Gemini => GeminiAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Fireworks => FireworksAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Groq => GroqAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Nebius => NebiusAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Xai => XaiAdapter::get_service_url(model, service_type, endpoint),
@@ -101,6 +106,9 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Fireworks => {
+				FireworksAdapter::to_web_request_data(target, service_type, chat_req, options_set)
+			}
 			AdapterKind::Groq => GroqAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
@@ -120,6 +128,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Fireworks => FireworksAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response, options_set),
@@ -139,6 +148,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Fireworks => FireworksAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
@@ -159,6 +169,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Fireworks => FireworksAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Groq => GroqAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_embed_request_data(target, embed_req, options_set),
@@ -178,6 +189,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Fireworks => FireworksAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Groq => GroqAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Xai => XaiAdapter::to_embed_response(model_iden, web_response, options_set),

@@ -3,6 +3,7 @@ mod support;
 pub(super) mod anthropic;
 pub(super) mod cohere;
 pub(super) mod deepseek;
+pub(super) mod fireworks;
 pub(super) mod gemini;
 pub(super) mod groq;
 pub(super) mod nebius;
