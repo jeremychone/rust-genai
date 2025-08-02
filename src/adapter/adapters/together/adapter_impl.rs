@@ -7,32 +7,20 @@ use crate::webc::WebResponse;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
-/// The Fireworks API is mostly compatible with the OpenAI API.
-///
-/// NOTE: This adapter will add `accounts/fireworks/models/`
-///       if the model name does not contain a `/`.
-///
-/// For example, `qwen3-30b-a3b` becomes `accounts/fireworks/models/qwen3-30b-a3b`.
-///
-/// Since this adapter is activated only when `fireworks` is in the model name,
-/// or if the model is namespaced with `fireworks::`, you can simply use
-/// `fireworks::qwen3-30b-a3b` to resolve to `accounts/fireworks/models/qwen3-30b-a3b`.
-///
-/// However, if the model name has a `/`, then it is assumed to be one recognized by the fireworks.ai service.
-pub struct FireworksAdapter;
+/// The Together API is compatible with the OpenAI API.
+/// NOTE: This adapter is activated for namespaced model names (e.g., `together::meta-llama/Llama-3-8b-chat-hf`)
+pub struct TogetherAdapter;
 
-/// For fireworks, perhaps to many to list.
-/// Might do the top one later.
-/// But model to adapter kind happen if "fireworks is part of the model name
+/// For together, perhaps to many to list.
 pub(in crate::adapter) const MODELS: &[&str] = &[];
 
-impl FireworksAdapter {
-	pub const API_KEY_DEFAULT_ENV_NAME: &str = "FIREWORKS_API_KEY";
+impl TogetherAdapter {
+	pub const API_KEY_DEFAULT_ENV_NAME: &str = "TOGETHER_API_KEY";
 }
 
-impl Adapter for FireworksAdapter {
+impl Adapter for TogetherAdapter {
 	fn default_endpoint() -> Endpoint {
-		const BASE_URL: &str = "https://api.fireworks.ai/inference/v1/";
+		const BASE_URL: &str = "https://api.together.xyz/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
@@ -49,19 +37,11 @@ impl Adapter for FireworksAdapter {
 	}
 
 	fn to_web_request_data(
-		mut target: ServiceTarget,
+		target: ServiceTarget,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		// NOTE: Here we do the simplification logic about the model
-		//       e.g., adding the prefix `accounts/fireworks/models/` if the model name does not contain any `/`
-		if !target.model.model_name.contains('/') {
-			target.model = target.model.from_name(format!(
-				"accounts/fireworks/models/{}",
-				target.model.model_name.as_model_name_and_namespace().0
-			))
-		}
 		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)
 	}
 

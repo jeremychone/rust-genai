@@ -12,6 +12,7 @@ use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 use super::groq::GroqAdapter;
+use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
 use crate::adapter::fireworks::FireworksAdapter;
 use crate::adapter::nebius::NebiusAdapter;
@@ -40,6 +41,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::default_endpoint(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_endpoint(),
 			AdapterKind::Zhipu => ZhipuAdapter::default_endpoint(),
+			AdapterKind::Together => TogetherAdapter::default_endpoint(),
 		}
 	}
 
@@ -56,6 +58,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::default_auth(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_auth(),
 			AdapterKind::Zhipu => ZhipuAdapter::default_auth(),
+			AdapterKind::Together => TogetherAdapter::default_auth(),
 		}
 	}
 
@@ -72,6 +75,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::all_model_names(kind).await,
 			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind).await,
 			AdapterKind::Zhipu => ZhipuAdapter::all_model_names(kind).await,
+			AdapterKind::Together => TogetherAdapter::all_model_names(kind).await,
 		}
 	}
 
@@ -88,6 +92,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::DeepSeek => DeepSeekAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Zhipu => ZhipuAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Together => TogetherAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
 
@@ -114,6 +119,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Zhipu => ZhipuAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Together => TogetherAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 		}
 	}
 
@@ -134,6 +140,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Zhipu => ZhipuAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Together => TogetherAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
 	}
 
@@ -154,6 +161,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Zhipu => ZhipuAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Together => TogetherAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
 	}
 
@@ -175,6 +183,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Zhipu => ZhipuAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Together => TogetherAdapter::to_embed_request_data(target, embed_req, options_set),
 		}
 	}
 
@@ -195,6 +204,7 @@ impl AdapterDispatcher {
 			AdapterKind::Xai => XaiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Zhipu => ZhipuAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Together => TogetherAdapter::to_embed_response(model_iden, web_response, options_set),
 		}
 	}
 }
