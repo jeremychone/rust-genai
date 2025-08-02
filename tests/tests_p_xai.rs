@@ -9,8 +9,8 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 
 // "grok-3-beta"
 // "grok-3-mini-beta" does seem to suport stream
-const MODEL: &str = "grok-3-mini-beta";
-const MODEL_FOR_STREAMING: &str = "grok-3-beta";
+const MODEL: &str = "grok-3-mini";
+const MODEL_FOR_STREAMING: &str = "grok-3-mini";
 // region:    --- Chat
 
 #[tokio::test]
@@ -89,7 +89,7 @@ async fn test_resolver_auth_ok() -> Result<()> {
 #[tokio::test]
 #[serial(xai)]
 async fn test_list_models() -> Result<()> {
-	common_tests::common_test_list_models(AdapterKind::Xai, "grok-3-beta").await
+	common_tests::common_test_list_models(AdapterKind::Xai, "grok-3").await
 }
 
 // endregion: --- List

@@ -12,6 +12,7 @@ impl Client {
 	/// - Besides the Ollama adapter, this will only look at a hardcoded static list of names for now.
 	/// - For Ollama, it will currently make a live request to the default host/port (http://localhost:11434/v1/).
 	/// - This function will eventually change to either take an endpoint or have another function to allow a custom endpoint.
+	/// - Except for groq and deepseek, those names are used to match AdapterKind to Model name (see [`AdapterKind`]) for this.
 	///
 	/// Notes:
 	/// - Since genai only supports Chat for now, the adapter implementation should attempt to remove the non-chat models.
