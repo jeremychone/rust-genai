@@ -98,7 +98,10 @@ impl futures::Stream for OpenAIStreamer {
 											.unwrap_or_default(); // permissive for now
 										self.captured_data.usage = Some(usage)
 									}
-									AdapterKind::DeepSeek | AdapterKind::Zhipu | AdapterKind::Fireworks => {
+									AdapterKind::DeepSeek
+									| AdapterKind::Zhipu
+									| AdapterKind::Fireworks
+									| AdapterKind::Together => {
 										let usage = message_data
 											.x_take("usage")
 											.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
