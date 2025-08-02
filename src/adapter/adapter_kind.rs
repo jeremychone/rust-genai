@@ -1,3 +1,4 @@
+use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
@@ -8,13 +9,13 @@ use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::adapter::zhipu::ZhipuAdapter;
-use crate::adapter::adapters::together::TogetherAdapter;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
 /// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
+///
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AdapterKind {
 	/// For OpenAI and also can be used for OpenAI compatible APIs
@@ -26,6 +27,8 @@ pub enum AdapterKind {
 	Anthropic,
 	/// For fireworks.ai, mostly OpenAI.
 	Fireworks,
+	/// Together AI (Mostly uses OpenAI-compatible protocol)
+	Together,
 	/// Reuse some of the OpenAI adapter behavior, customize some (e.g., normalize thinking budget)
 	Groq,
 	/// For Nebius (Mostly use OpenAI)
@@ -36,8 +39,6 @@ pub enum AdapterKind {
 	DeepSeek,
 	/// For Zhipu (Mostly use OpenAI)
 	Zhipu,
-	/// Together AI (Mostly uses OpenAI-compatible protocol)
-	Together,
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
@@ -50,33 +51,33 @@ impl AdapterKind {
 	pub fn as_str(&self) -> &'static str {
 		match self {
 			AdapterKind::OpenAI => "OpenAI",
-			AdapterKind::Anthropic => "Anthropic",
 			AdapterKind::Gemini => "Gemini",
+			AdapterKind::Anthropic => "Anthropic",
 			AdapterKind::Fireworks => "Fireworks",
+			AdapterKind::Together => "Together",
 			AdapterKind::Groq => "Groq",
 			AdapterKind::Nebius => "Nebius",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
 			AdapterKind::Zhipu => "Zhipu",
-			AdapterKind::Together => "Together",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 		}
 	}
 
-	/// Serialize to a static str
+	/// Serialize to a lowercase static str
 	pub fn as_lower_str(&self) -> &'static str {
 		match self {
 			AdapterKind::OpenAI => "openai",
+			AdapterKind::Gemini => "gemini",
 			AdapterKind::Anthropic => "anthropic",
-			AdapterKind::Gemini => "fireworks",
-			AdapterKind::Fireworks => "groq",
+			AdapterKind::Fireworks => "fireworks",
+			AdapterKind::Together => "together",
 			AdapterKind::Groq => "groq",
 			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
 			AdapterKind::Zhipu => "zhipu",
-			AdapterKind::Together => "together",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 		}
@@ -85,15 +86,15 @@ impl AdapterKind {
 	pub fn from_lower_str(name: &str) -> Option<Self> {
 		match name {
 			"openai" => Some(AdapterKind::OpenAI),
-			"anthropic" => Some(AdapterKind::Anthropic),
 			"gemini" => Some(AdapterKind::Gemini),
+			"anthropic" => Some(AdapterKind::Anthropic),
 			"fireworks" => Some(AdapterKind::Fireworks),
+			"together" => Some(AdapterKind::Together),
 			"groq" => Some(AdapterKind::Groq),
 			"nebius" => Some(AdapterKind::Nebius),
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
 			"zhipu" => Some(AdapterKind::Zhipu),
-			"together" => Some(AdapterKind::Together),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			_ => None,
@@ -107,15 +108,15 @@ impl AdapterKind {
 	pub fn default_key_env_name(&self) -> Option<&'static str> {
 		match self {
 			AdapterKind::OpenAI => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Anthropic => Some(AnthropicAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Anthropic => Some(AnthropicAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Fireworks => Some(FireworksAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Together => Some(TogetherAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Nebius => Some(NebiusAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Zhipu => Some(ZhipuAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Together => Some(TogetherAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 		}
@@ -140,6 +141,7 @@ impl AdapterKind {
 	///  - Ollama     - For anything else
 	///
 	/// Other Some adapters have to have model name namespaced to be used,
+	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
 	///
 	/// And all adapters can be force namspaced as well.
@@ -152,7 +154,6 @@ impl AdapterKind {
 			if let Some(adapter) = Self::from_lower_str(ns) {
 				return Ok(adapter);
 			} else {
-				// TODO: Reassess if we need to returns error if no matching adapters
 				info!("No AdapterKind found for '{ns}'")
 			}
 		}
@@ -167,22 +168,20 @@ impl AdapterKind {
 			|| model.starts_with("text-embedding")
 		{
 			Ok(Self::OpenAI)
-		} else if model.starts_with("claude") {
-			Ok(Self::Anthropic)
-		} else if model.starts_with("command") || model.starts_with("embed-") {
-			Ok(Self::Cohere)
 		} else if model.starts_with("gemini") {
 			Ok(Self::Gemini)
-		} else if model.starts_with("grok") {
-			Ok(Self::Xai)
+		} else if model.starts_with("claude") {
+			Ok(Self::Anthropic)
 		} else if model.contains("fireworks") {
 			Ok(Self::Fireworks)
-		} else if model.contains("together") {
-			Ok(Self::Together)
+		} else if groq::MODELS.contains(&model) {
+			Ok(Self::Groq)
+		} else if model.starts_with("command") || model.starts_with("embed-") {
+			Ok(Self::Cohere)
 		} else if deepseek::MODELS.contains(&model) {
 			Ok(Self::DeepSeek)
-		} else if groq::MODELS.contains(&model) {
-			return Ok(Self::Groq);
+		} else if model.starts_with("grok") {
+			Ok(Self::Xai)
 		} else if model.starts_with("glm") {
 			Ok(Self::Zhipu)
 		}
