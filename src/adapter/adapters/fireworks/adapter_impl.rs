@@ -1,5 +1,5 @@
 use crate::ModelIden;
-use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::openai::{OpenAIAdapter, ToWebRequestCustom};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
@@ -62,7 +62,18 @@ impl Adapter for FireworksAdapter {
 				target.model.model_name.as_model_name_and_namespace().0
 			))
 		}
-		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)
+		// NOTE: Fireworks max_tokens is set at 2K by default, which is unpractical for most task.
+		//       However, Fireworks allows max tokens above the model limit; it will simply be capped at the model's maximum by Fireworks, so it won't fail.
+		//       See: https://fireworks.ai/docs/faq-new/models-inference/what-are-the-maximum-completion-token-limits-for-models-and-can-they-be-increase
+		// NOTE: The `genai` strategy is to set a large max_tokens value, letting the model enforce its own lower limit by default to avoid unpleasant and confusing surprises.
+		//       Users can use [`ChatOptions`] to specify a specific max_tokens value.
+		// NOTE: As mentioned in the Fireworks FAQ above, typically, for Fireworks-hosted models the top max_tokens is equal to the context window.
+		//       Since, Qwen3 models are at 256k, so we will use this upper bound (without going to the 1M/10M of Llama 4).
+		let custom = ToWebRequestCustom {
+			default_max_tokens: Some(256_000),
+		};
+
+		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options, Some(custom))
 	}
 
 	fn to_chat_response(

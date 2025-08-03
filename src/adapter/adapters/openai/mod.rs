@@ -6,9 +6,11 @@
 
 mod adapter_impl;
 mod embed;
+mod openai_custom;
 mod streamer;
 
 pub use adapter_impl::*;
+pub use openai_custom::*;
 pub use streamer::*;
 
 // endregion: --- Modules

@@ -1,5 +1,6 @@
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::openai::OpenAIStreamer;
+use crate::adapter::openai::ToWebRequestCustom;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
@@ -59,7 +60,7 @@ impl Adapter for OpenAIAdapter {
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)
+		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options, None)
 	}
 
 	fn to_chat_response(
@@ -194,11 +195,13 @@ impl OpenAIAdapter {
 		full_url.to_string()
 	}
 
+	/// Shared OpenAI to_web_request_data for various OpenAI compatible adapters
 	pub(in crate::adapter::adapters) fn util_to_web_request_data(
 		target: ServiceTarget,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
+		custom: Option<ToWebRequestCustom>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (model_name, _) = model.model_name.as_model_name_and_namespace();
@@ -307,6 +310,10 @@ impl OpenAIAdapter {
 		}
 
 		if let Some(max_tokens) = options_set.max_tokens() {
+			payload.x_insert("max_tokens", max_tokens)?;
+		} else if let Some(custom) = custom.as_ref()
+			&& let Some(max_tokens) = custom.default_max_tokens
+		{
 			payload.x_insert("max_tokens", max_tokens)?;
 		}
 		if let Some(top_p) = options_set.top_p() {
