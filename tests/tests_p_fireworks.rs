@@ -5,7 +5,8 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-// accounts/fireworks/models/qwen3-30b-a3b
+// const MODEL: &str = "fireworks::qwen3-coder-480b-a35b-instruct";
+// const MODEL: &str = "fireworks::gpt-oss-120b";
 const MODEL: &str = "accounts/fireworks/models/llama4-maverick-instruct-basic";
 const MODEL_NS: &str = "fireworks::llama4-maverick-instruct-basic";
 
@@ -77,19 +78,31 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 
 // endregion: --- Chat Stream Tests
 
-// region:    --- Image Tests
+// region:    --- Binary Tests
 
 #[tokio::test]
-async fn test_chat_image_url_ok() -> Result<()> {
+async fn test_chat_binary_image_url_ok() -> Result<()> {
 	common_tests::common_test_chat_image_url_ok(MODEL).await
 }
 
 #[tokio::test]
-async fn test_chat_image_b64_ok() -> Result<()> {
+async fn test_chat_binary_image_b64_ok() -> Result<()> {
 	common_tests::common_test_chat_image_b64_ok(MODEL).await
 }
 
-// endregion: --- Image Test
+// PDF not supported
+
+// #[tokio::test]
+// async fn test_chat_binary_pdf_b64_ok() -> Result<()> {
+// 	common_tests::common_test_chat_pdf_b64_ok(MODEL).await
+// }
+
+// #[tokio::test]
+// async fn test_chat_binary_multi_b64_ok() -> Result<()> {
+// 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
+// }
+
+// endregion: --- Binary Tests
 
 // region:    --- Tool Tests
 

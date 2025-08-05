@@ -2,7 +2,7 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart, ImageSource,
+	BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart,
 	MessageContent, PromptTokensDetails, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
@@ -330,23 +330,50 @@ impl AnthropicAdapter {
 								.iter()
 								.filter_map(|part| match part {
 									ContentPart::Text(text) => Some(json!({"type": "text", "text": text})),
-									ContentPart::Image { content_type, source } => match source {
-										ImageSource::Url(_) => {
-											// TODO: Might need to return an error here.
-											warn!(
-												"Anthropic doesn't support images from URL, need to handle it gracefully"
-											);
-											None
+									ContentPart::Binary {
+										name: _name,
+										content_type,
+										source,
+									} => {
+										//
+										if part.is_image() {
+											match source {
+												BinarySource::Url(_) => {
+													// TODO: Check if supported now
+													warn!(
+														"Anthropic doesn't support images from URL, need to handle it gracefully"
+													);
+													None
+												}
+												BinarySource::Base64(content) => Some(json!({
+													"type": "image",
+													"source": {
+														"type": "base64",
+														"media_type": content_type,
+														"data": content,
+													},
+												})),
+											}
+										} else {
+											match source {
+												BinarySource::Url(url) => Some(json!({
+													"type": "document",
+													"source": {
+														"type": "url",
+														"url": url,
+													}
+												})),
+												BinarySource::Base64(b64) => Some(json!({
+													"type": "document",
+													"source": {
+														"type": "base64",
+														"media_type": content_type,
+														"data": b64,
+													}
+												})),
+											}
 										}
-										ImageSource::Base64(content) => Some(json!({
-											"type": "image",
-											"source": {
-												"type": "base64",
-												"media_type": content_type,
-												"data": content,
-											},
-										})),
-									},
+									}
 								})
 								.collect::<Vec<Value>>();
 

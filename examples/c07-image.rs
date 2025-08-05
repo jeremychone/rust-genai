@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text(question),
-		ContentPart::from_image_url("image/jpg", IMAGE_URL),
+		ContentPart::from_binary_url(None, "image/jpg", IMAGE_URL),
 	]));
 
 	println!("\n--- Question:\n{question}");

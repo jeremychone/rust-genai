@@ -9,6 +9,8 @@ type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tes
 // meta-llama/Llama-3-8b-chat-hf ($0.2) , Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8 ($2)
 // meta-llama/Llama-3.3-70B-Instruct-Turbo ($0.88) , Qwen/Qwen3-235B-A22B-Instruct-2507-tput ($0.2/$0.6)
 const MODEL: &str = "together::Qwen/Qwen3-235B-A22B-Instruct-2507-tput";
+//const MODEL_FOR_IMAGE: &str = "together::Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8";
+const MODEL_NS: &str = "together::Qwen/Qwen3-235B-A22B-Instruct-2507-tput";
 
 // region:    --- Chat
 
@@ -18,11 +20,11 @@ async fn test_chat_simple_ok() -> Result<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
 }
 
-// Only namspaced for together
-// #[tokio::test]
-// async fn test_chat_namespaced_ok() -> Result<()> {
-// 	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
-// }
+#[tokio::test]
+#[serial(together)]
+async fn test_chat_namespaced_ok() -> Result<()> {
+	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
+}
 
 #[tokio::test]
 #[serial(together)]
@@ -58,8 +60,9 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 
 // region:    --- Chat Implicit Cache
 
-/// Caching does not seem to be supported for fireworks (at leat not reported)
+/// Caching does not seem to be supported for together (at least not reported)
 // #[tokio::test]
+// #[serial(together)]
 // async fn test_chat_cache_implicit_simple_ok() -> Result<()> {
 // 	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL).await
 // }
@@ -88,23 +91,39 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 
 // endregion: --- Chat Stream Tests
 
-// region:    --- Image Tests
+// region:    --- Binary Tests
 
 // #[tokio::test]
 // #[serial(together)]
-// async fn test_chat_image_url_ok() -> Result<()> {
+// async fn test_chat_binary_image_url_ok() -> Result<()> {
 // 	common_tests::common_test_chat_image_url_ok(MODEL).await
 // }
 
-// NOTE: Only found that Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8 was supporting image without return invalid format
-//       but could not see the image
+// NOTE: Only found that Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8 was supporting image without returning
+//       invalid format, but the rendered image could not be viewed yet.
 // #[tokio::test]
 // #[serial(together)]
-// async fn test_chat_image_b64_ok() -> Result<()> {
-// 	common_tests::common_test_chat_image_b64_ok(MODEL).await
+// async fn test_chat_binary_image_b64_ok() -> Result<()> {
+// 	common_tests::common_test_chat_image_b64_ok(MODEL_FOR_IMAGE).await
 // }
 
-// endregion: --- Image Test
+// NOT SUPPORTED YET
+
+// #[tokio::test]
+// #[serial(together)]
+// #[ignore = "Binary PDF is currently not supported by TogetherAI."]
+// async fn test_chat_binary_pdf_b64_ok() -> Result<()> {
+// 	common_tests::common_test_chat_pdf_b64_ok(MODEL).await
+// }
+
+// #[tokio::test]
+// #[serial(together)]
+// #[ignore = "Multiple binary payloads are currently not supported by TogetherAI."]
+// async fn test_chat_binary_multi_b64_ok() -> Result<()> {
+// 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
+// }
+
+// endregion: --- Binary Tests
 
 // region:    --- Tool Tests
 
@@ -121,6 +140,7 @@ async fn test_tool_simple_ok() -> Result<()> {
 async fn test_tool_full_flow_ok() -> Result<()> {
 	common_tests::common_test_tool_full_flow_ok(MODEL).await
 }
+
 // endregion: --- Tool Tests
 
 // region:    --- Resolver Tests
@@ -136,8 +156,9 @@ async fn test_resolver_auth_ok() -> Result<()> {
 // region:    --- List
 
 // #[tokio::test]
+// #[serial(together)]
 // async fn test_list_models() -> Result<()> {
-// 	//common_tests::common_test_list_models(AdapterKind::Fireworks, "..").await
+// 	common_tests::common_test_list_models(AdapterKind::Together, "Qwen").await
 // }
 
 // endregion: --- List

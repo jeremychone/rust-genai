@@ -1,12 +1,12 @@
 use crate::get_option_value;
-use crate::support::data::{IMAGE_URL_JPG_DUCK, get_b64_duck};
+use crate::support::data::{IMAGE_URL_JPG_DUCK, get_b64_duck, get_b64_pdf};
 use crate::support::{
 	Check, Result, StreamExtract, assert_contains, contains_checks, extract_stream_end, get_big_content,
 	seed_chat_req_simple, seed_chat_req_tool_simple, validate_checks,
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
-	CacheControl, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, ImageSource, JsonSpec, Tool,
+	BinarySource, CacheControl, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, JsonSpec, Tool,
 	ToolResponse,
 };
 use genai::embed::EmbedOptions;
@@ -572,7 +572,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 
 // endregion: --- Chat Stream Tests
 
-// region:    --- Images
+// region:    --- Binaries
 
 pub async fn common_test_chat_image_url_ok(model: &str) -> Result<()> {
 	// -- Setup
@@ -583,7 +583,7 @@ pub async fn common_test_chat_image_url_ok(model: &str) -> Result<()> {
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text("What is in this picture?"),
-		ContentPart::from_image_url("image/jpeg", IMAGE_URL_JPG_DUCK),
+		ContentPart::from_binary_url(None, "image/jpeg", IMAGE_URL_JPG_DUCK),
 	]));
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
@@ -603,8 +603,9 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> Result<()> {
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text("What is in this picture?"),
-		ContentPart::from_image_base64("image/jpeg", get_b64_duck()?),
+		ContentPart::from_binary_base64(None, "image/jpeg", get_b64_duck()?),
 	]));
+
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check
@@ -614,7 +615,54 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> Result<()> {
 	Ok(())
 }
 
-// endregion: --- Images
+pub async fn common_test_chat_pdf_b64_ok(model: &str) -> Result<()> {
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
+	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
+	chat_req = chat_req.append_message(ChatMessage::user(vec![
+		ContentPart::from_text("What does this document talk about?"),
+		ContentPart::from_binary_base64(Some("small.pdf".to_string()), "application/pdf", get_b64_pdf()?),
+	]));
+
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.first_text().ok_or("Should have text result")?;
+	assert_contains(res, "quantum");
+
+	Ok(())
+}
+
+pub async fn common_test_chat_multi_binary_b64_ok(model: &str) -> Result<()> {
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
+	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
+	chat_req = chat_req.append_message(ChatMessage::user(vec![
+		ContentPart::from_binary_base64(None, "image/jpeg", get_b64_duck()?),
+		ContentPart::from_binary_base64(Some("small.pdf".to_string()), "application/pdf", get_b64_pdf()?),
+	]));
+	chat_req = chat_req.append_message(ChatMessage::user(
+		"
+Can you tell me what those images and files are about. 
+	",
+	));
+
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.first_text().ok_or("Should have text result")?;
+	assert_contains(res, "quantum");
+	assert_contains(res, "duck");
+
+	Ok(())
+}
+// endregion: --- Binaries
 
 // region:    --- Tools
 

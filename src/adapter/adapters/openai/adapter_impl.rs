@@ -3,8 +3,8 @@ use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::openai::ToWebRequestCustom;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, ImageSource, MessageContent, ReasoningEffort, ToolCall, Usage,
+	BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
+	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -15,6 +15,7 @@ use reqwest_eventsource::EventSource;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::error;
+use tracing::warn;
 use value_ext::JsonValueExt;
 
 pub struct OpenAIAdapter;
@@ -381,17 +382,48 @@ impl OpenAIAdapter {
 							json!(
 								parts
 									.iter()
-									.map(|part| match part {
-										ContentPart::Text(text) => json!({"type": "text", "text": text.clone()}),
-										ContentPart::Image { content_type, source } => {
-											match source {
-												ImageSource::Url(url) => {
-													json!({"type": "image_url", "image_url": {"url": url}})
+									.filter_map(|part| match part {
+										ContentPart::Text(text) => Some(json!({"type": "text", "text": text.clone()})),
+										ContentPart::Binary {
+											name,
+											content_type,
+											source,
+										} => {
+											if part.is_image() {
+												match source {
+													BinarySource::Url(url) => {
+														Some(json!({"type": "image_url", "image_url": {"url": url}}))
+													}
+													BinarySource::Base64(content) => {
+														let image_url = format!("data:{content_type};base64,{content}");
+														Some(
+															json!({"type": "image_url", "image_url": {"url": image_url}}),
+														)
+													}
 												}
-												ImageSource::Base64(content) => {
-													let image_url = format!("data:{content_type};base64,{content}");
-													json!({"type": "image_url", "image_url": {"url": image_url}})
+											} else {
+												match source {
+													BinarySource::Url(_url) => {
+														// TODO: Need to return error
+														warn!(
+															"OpenAI doesn't support file from URL, need to handle it gracefully"
+														);
+														None
+													}
+													BinarySource::Base64(content) => {
+														let file_data = format!("data:{content_type};base64,{content}");
+														Some(json!({"type": "file", "file": {
+															 "filename": name,
+															"file_data": file_data}
+														}))
+													}
 												}
+
+												// "type": "file",
+												// "file": {
+												//     "filename": "draconomicon.pdf",
+												//     "file_data": f"data:application/pdf;base64,{base64_string}",
+												// }
 											}
 										}
 									})

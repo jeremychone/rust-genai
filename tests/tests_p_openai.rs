@@ -6,8 +6,8 @@ use genai::resolver::AuthData;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
-const MODEL: &str = "gpt-4o-mini"; // "gpt-4o-mini", "gpt-4o"
-const MODEL_NS: &str = "openai::gpt-4o-mini";
+const MODEL: &str = "gpt-4.1-mini"; // note: "gpt-4o-mini" has issue when image & pdf
+const MODEL_NS: &str = "openai::gpt-4.1-mini";
 
 // region:    --- Chat
 
@@ -76,19 +76,29 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 
 // endregion: --- Chat Stream Tests
 
-// region:    --- Image Tests
+// region:    --- Binary Tests
 
 #[tokio::test]
-async fn test_chat_image_url_ok() -> Result<()> {
+async fn test_chat_binary_image_url_ok() -> Result<()> {
 	common_tests::common_test_chat_image_url_ok(MODEL).await
 }
 
 #[tokio::test]
-async fn test_chat_image_b64_ok() -> Result<()> {
+async fn test_chat_binary_image_b64_ok() -> Result<()> {
 	common_tests::common_test_chat_image_b64_ok(MODEL).await
 }
 
-// endregion: --- Image Test
+#[tokio::test]
+async fn test_chat_binary_pdf_b64_ok() -> Result<()> {
+	common_tests::common_test_chat_pdf_b64_ok(MODEL).await
+}
+
+#[tokio::test]
+async fn test_chat_binary_multi_b64_ok() -> Result<()> {
+	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
+}
+
+// endregion: --- Binary Tests
 
 // region:    --- Tool Tests
 

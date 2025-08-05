@@ -93,7 +93,7 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 }
 // endregion: --- Chat Stream Tests
 
-// region:    --- Image Tests
+// region:    --- Binary Tests
 
 // NOTE: For now disable these tests as they failed. Needs to be resolved.
 
@@ -104,11 +104,21 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 // }
 
 #[tokio::test]
-async fn test_chat_image_b64_ok() -> Result<()> {
+async fn test_chat_binary_image_b64_ok() -> Result<()> {
 	common_tests::common_test_chat_image_b64_ok(MODEL).await
 }
 
-// endregion: --- Image Test
+#[tokio::test]
+async fn test_chat_binary_pdf_b64_ok() -> Result<()> {
+	common_tests::common_test_chat_pdf_b64_ok(MODEL).await
+}
+
+#[tokio::test]
+async fn test_chat_binary_multi_b64_ok() -> Result<()> {
+	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
+}
+
+// endregion: --- Binary Tests
 
 // region:    --- Tool Tests
 

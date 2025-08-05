@@ -109,10 +109,16 @@ impl From<Vec<ContentPart>> for MessageContent {
 
 // endregion: --- Froms
 
+// region:    --- Content Part
+
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum ContentPart {
 	Text(String),
-	Image { content_type: String, source: ImageSource },
+	Binary {
+		name: Option<String>,
+		content_type: String,
+		source: BinarySource,
+	},
 }
 
 /// Constructors
@@ -121,22 +127,57 @@ impl ContentPart {
 		ContentPart::Text(text.into())
 	}
 
-	pub fn from_image_base64(content_type: impl Into<String>, content: impl Into<Arc<str>>) -> ContentPart {
-		ContentPart::Image {
+	pub fn from_binary_base64(
+		name: Option<String>,
+		content_type: impl Into<String>,
+		content: impl Into<Arc<str>>,
+	) -> ContentPart {
+		ContentPart::Binary {
+			name,
 			content_type: content_type.into(),
-			source: ImageSource::Base64(content.into()),
+			source: BinarySource::Base64(content.into()),
 		}
 	}
 
-	pub fn from_image_url(content_type: impl Into<String>, url: impl Into<String>) -> ContentPart {
-		ContentPart::Image {
+	pub fn from_binary_url(
+		name: Option<String>,
+		content_type: impl Into<String>,
+		url: impl Into<String>,
+	) -> ContentPart {
+		ContentPart::Binary {
+			name,
 			content_type: content_type.into(),
-			source: ImageSource::Url(url.into()),
+			source: BinarySource::Url(url.into()),
 		}
 	}
 }
 
-// region:    --- Froms
+/// Accessors
+impl ContentPart {
+	#[allow(unused)]
+	pub fn is_text(&self) -> bool {
+		matches!(self, ContentPart::Text(_))
+	}
+	pub fn is_image(&self) -> bool {
+		match self {
+			ContentPart::Text(_) => false,
+			ContentPart::Binary { content_type, .. } => {
+				content_type.trim_start().to_ascii_lowercase().starts_with("image/")
+			}
+		}
+	}
+	#[allow(unused)]
+	pub fn is_pdf(&self) -> bool {
+		match self {
+			ContentPart::Text(_) => false,
+			ContentPart::Binary { content_type, .. } => {
+				content_type.trim_start().eq_ignore_ascii_case("application/pdf")
+			}
+		}
+	}
+}
+
+// -- Froms
 
 impl<'a> From<&'a str> for ContentPart {
 	fn from(s: &'a str) -> Self {
@@ -144,10 +185,10 @@ impl<'a> From<&'a str> for ContentPart {
 	}
 }
 
-// endregion: --- Froms
+// endregion: --- Content Part
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ImageSource {
+pub enum BinarySource {
 	/// For models/services that support URL as input
 	/// NOTE: Few AI services support this.
 	Url(String),
