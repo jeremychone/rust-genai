@@ -1,4 +1,4 @@
-use super::Result;
+use super::TestResult;
 use bitflags::parser::to_writer;
 use genai::chat::{ChatStream, ChatStreamEvent, StreamEnd};
 use tokio_stream::StreamExt;
@@ -55,7 +55,7 @@ pub fn contains_checks(checks: Option<Check>, matching_check: Check) -> bool {
 }
 
 // Function to validate flags
-pub fn validate_checks(checks: Option<Check>, valid_flags: Check) -> Result<()> {
+pub fn validate_checks(checks: Option<Check>, valid_flags: Check) -> TestResult<()> {
 	let Some(checks) = checks else { return Ok(()) };
 
 	let unsupported = checks - valid_flags;
@@ -80,7 +80,7 @@ pub struct StreamExtract {
 	pub reasoning_content: Option<String>,
 }
 
-pub async fn extract_stream_end(mut chat_stream: ChatStream) -> Result<StreamExtract> {
+pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<StreamExtract> {
 	let mut stream_end: Option<StreamEnd> = None;
 
 	let mut content: Vec<String> = Vec::new();

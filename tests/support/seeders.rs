@@ -1,9 +1,9 @@
-use super::Result;
+use super::TestResult;
 use genai::chat::{BinarySource, ChatMessage, ChatRequest, ContentPart, Tool};
 use serde_json::json;
 use simple_fs::{list_files, read_to_string};
 
-pub fn get_big_content() -> Result<String> {
+pub fn get_big_content() -> TestResult<String> {
 	// resolver/... about 13567 (len)
 	// it has to be that to have cache activate
 	let files = list_files("./src", Some(&["./src/resolver/**/*.rs"]), None)?;

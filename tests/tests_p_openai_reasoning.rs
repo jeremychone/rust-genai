@@ -1,10 +1,8 @@
 mod support;
 
-use crate::support::{Check, common_tests};
+use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
-
-type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 // NOTE 2025-01-31: OpenAI reasoning models do not provide reasoning right now, so for now we disabled those test(s)
 
@@ -20,42 +18,42 @@ const MODEL_FOR_THINKING: &str = "o4-mini-medium";
 // region:    --- Chat
 
 #[tokio::test]
-async fn test_chat_simple_ok() -> Result<()> {
+async fn test_chat_simple_ok() -> TestResult<()> {
 	// NOTE 2025-01-31  - Reasoning_content or <think> content not supported by OpenAI at this point
 	//                    So, disabled for now
 	common_tests::common_test_chat_simple_ok(MODEL_FOR_THINKING, Some(Check::REASONING_USAGE)).await
 }
 
 #[tokio::test]
-async fn test_chat_multi_system_ok() -> Result<()> {
+async fn test_chat_multi_system_ok() -> TestResult<()> {
 	common_tests::common_test_chat_multi_system_ok(MODEL).await
 }
 
 #[tokio::test]
-async fn test_chat_json_mode_ok() -> Result<()> {
+async fn test_chat_json_mode_ok() -> TestResult<()> {
 	common_tests::common_test_chat_json_mode_ok(MODEL, Some(Check::USAGE)).await
 }
 
 #[tokio::test]
-async fn test_chat_json_structured_ok() -> Result<()> {
+async fn test_chat_json_structured_ok() -> TestResult<()> {
 	common_tests::common_test_chat_json_structured_ok(MODEL, Some(Check::USAGE)).await
 }
 
 // NOTE 2025-01-31 - OpenAI reasoning model does not temperature
 // #[tokio::test]
-// async fn test_chat_temperature_ok() -> Result<()> {
+// async fn test_chat_temperature_ok() -> TestResult<()> {
 // 	common_tests::common_test_chat_temperature_ok(MODEL).await
 // }
 
 #[tokio::test]
-async fn test_chat_stop_sequences_ok() -> Result<()> {
+async fn test_chat_stop_sequences_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
 }
 
 /// NOTE 2025-01-31  - Reasoning_content or <think> content not supported by OpenAI at this point
 ///                    So, disabled for now.
 // #[tokio::test]
-// async fn test_chat_reasoning_ok() -> Result<()> {
+// async fn test_chat_reasoning_ok() -> TestResult<()> {
 // 	common_tests::common_test_chat_reasoning_ok(MODEL, true).await
 // }
 
@@ -64,17 +62,17 @@ async fn test_chat_stop_sequences_ok() -> Result<()> {
 // region:    --- Chat Stream Tests
 
 #[tokio::test]
-async fn test_chat_stream_simple_ok() -> Result<()> {
+async fn test_chat_stream_simple_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
-async fn test_chat_stream_capture_content_ok() -> Result<()> {
+async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
 #[tokio::test]
-async fn test_chat_stream_capture_all_ok() -> Result<()> {
+async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
 }
 
@@ -83,12 +81,12 @@ async fn test_chat_stream_capture_all_ok() -> Result<()> {
 // region:    --- Tool Tests
 
 #[tokio::test]
-async fn test_tool_simple_ok() -> Result<()> {
+async fn test_tool_simple_ok() -> TestResult<()> {
 	common_tests::common_test_tool_simple_ok(MODEL).await
 }
 
 #[tokio::test]
-async fn test_tool_full_flow_ok() -> Result<()> {
+async fn test_tool_full_flow_ok() -> TestResult<()> {
 	common_tests::common_test_tool_full_flow_ok(MODEL).await
 }
 // endregion: --- Tool Tests
@@ -96,7 +94,7 @@ async fn test_tool_full_flow_ok() -> Result<()> {
 // region:    --- Resolver Tests
 
 #[tokio::test]
-async fn test_resolver_auth_ok() -> Result<()> {
+async fn test_resolver_auth_ok() -> TestResult<()> {
 	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("OPENAI_API_KEY")).await
 }
 
@@ -105,7 +103,7 @@ async fn test_resolver_auth_ok() -> Result<()> {
 // region:    --- List
 
 #[tokio::test]
-async fn test_list_models() -> Result<()> {
+async fn test_list_models() -> TestResult<()> {
 	common_tests::common_test_list_models(AdapterKind::OpenAI, "gpt-4o").await
 }
 
