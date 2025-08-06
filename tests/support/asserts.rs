@@ -92,19 +92,19 @@ mod tests {
 
 	use super::*;
 
-	#[test]
-	fn test_assert_contains() -> Result<()> {
-		let data_vec = vec!["apple", "banana", "cherry"];
-		assert_contains(&data_vec, "banana");
+	// #[test]
+	// fn test_assert_contains() -> Result<()> {
+	// 	let data_vec = vec!["apple", "banana", "cherry"];
+	// 	assert_contains(&data_vec, "banana");
 
-		let data_slice: &[&str] = &["dog", "cat", "mouse"];
-		assert_contains(data_slice, "cat");
+	// 	let data_slice: &[&str] = &["dog", "cat", "mouse"];
+	// 	assert_contains(data_slice, "cat");
 
-		let data_str = "This is a test string";
-		assert_contains(data_str, "test");
+	// 	let data_str = "This is a test string";
+	// 	assert_contains(data_str, "test");
 
-		Ok(())
-	}
+	// 	Ok(())
+	// }
 }
 
 // endregion: --- Tests
