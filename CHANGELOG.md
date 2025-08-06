@@ -2,32 +2,33 @@
 
 ## Upcoming - 0.4.0-alpha...
 
-- to be updated
-- `+` API NEW - **Custom http headers** in `ChatOptions` (#78)
-- `+` API NEW - Added `ChatResponse.captured_raw_body` (opt-in via `chat_options.with_capture_raw_body(true)` (PR #68 + refactor)
-- `+` Added Gemini built-in support (PR #67)
-- `+` API NEW - Added web configuration support (#66) (manage proxy, timeout, etc.)
-- `+` Model Namespace Support to force AdapterKind, for example, `openai::codex-...`
-- `+` Added streaming support for tool calls
-- `+` **New Adapters**  Zhipu (ChatGLM) (#76), Nebius
-- `!` API CHANGE - `StreamEnd` - Text and tool calls content are now part of Vec
-- `!` API CHANGE - `ChatResponse::tool_calls(&self) -> Vec<&ToolCall> ` (rather than `Option<Vec..>`)
-- `!` API CHANGE - `ChatResponse.content` now has content `Vec<MessageContent>`
-- `!` API CHANGE - `MessageContent` now use `message_content.text()` and `message_content.into_text()` (rather than text_as_str, text_into_string)
-- `^` API NEW - ChatResponse now implements texts(), into_texts(), first...
-- `^` Anthropic - Added support for ChatResponse multi-content
-- `^` openai - Added support for ChatResponse multi-content
-- `^` gemini - Now uses x-goog-api-key header for auth
-- `-` gemini - Fixed built-in and user tools issue from #67
-- `-` OpenAI - Fixed ServiceTarget issue where custom URL and Auth were not used (PR #71)
-- `-` Fixed: Improved reasoning content extraction in OpenAIAdapter (#69)
-- `-` gemini - Fixed streaming multi-content
-- `-` gemini - Fixed wrong tool_response.content JSON parsing (#59)
-- `-` gemini - Fixed partial message parsing in Gemini stream (#63)
-- `.` openai - added `codex` prefix for Adapter match
-- `.` gemini model names - Updated
-- `.` groq - Updated groq llama models to llama-3.1-8b-instant, llama-3.3-70b-versatile (from deprecation notice)
-
+- MORE TO COME...
+- `!` API CHANGE, `ContentPart::Binary` now (was `ContentPart::Image`), enabling PDF support  
+- `!` API CHANGE, `StreamEnd`, text and tool calls content are now part of Vec  
+- `!` API CHANGE, `ChatResponse::tool_calls(&self) -> Vec<&ToolCall>` (instead of `Option<Vec..>`)  
+- `!` API CHANGE, `ChatResponse.content` now contains `Vec<MessageContent>`  
+- `!` API CHANGE, `MessageContent` now uses `message_content.text()` and `message_content.into_text()` (replacing `text_as_str`, `text_into_string`)  
+- `+` API NEW, **Custom HTTP headers** in `ChatOptions` (#78)  
+- `+` API NEW, added `ChatResponse.captured_raw_body` (opt-in via `chat_options.with_capture_raw_body(true)`) (PR #68 + refactor)  
+- `+` Added Gemini built-in support (PR #67)  
+- `+` API NEW, added web configuration support (#66) (manage proxy, timeout, etc.)  
+- `+` API NEW, Model **Namespace Support** to force AdapterKind, e.g., `openai::codex-...`  
+- `+` NEW ADAPTERS, fireworks.ai and together.ai, with namespaces; fireworks models detected by `fireworks` in model name  
+- `+` Added streaming support for tool calls  
+- `+` **New Adapters**, Zhipu (ChatGLM) (#76), Nebius  
+- `^` API NEW, `ChatResponse` now implements `texts()`, `into_texts()`, `first()`  
+- `^` Anthropic, added support for `ChatResponse` multi-content  
+- `^` openai, added support for `ChatResponse` multi-content  
+- `^` gemini, now uses `x-goog-api-key` header for auth  
+- `-` gemini, fixed built-in and user tools issue from #67  
+- `-` openai, fixed ServiceTarget issue where custom URL and auth were not used (PR #71)  
+- `-` Fixed, improved reasoning content extraction in OpenAIAdapter (#69)  
+- `-` gemini, fixed streaming multi-content  
+- `-` gemini, fixed incorrect `tool_response.content` JSON parsing (#59)  
+- `-` gemini, fixed partial message parsing in Gemini stream (#63)  
+- `.` openai, added `codex` prefix for Adapter match  
+- `.` gemini model names, updated  
+- `.` groq, updated Groq Llama models to `llama-3.1-8b-instant`, `llama-3.3-70b-versatile` (per deprecation notice)
 ## 2025-05-26 - [v0.3.5](https://github.com/jeremychone/rust-genai/compare/v0.3.4...v0.3.5)
 
 - `^` OpenAI Adapter - Update OpenAI adapter to check for tool calls if the LLM returns an empty content response ([PR #55](https://github.com/jeremychone/rust-genai/pull/55))
