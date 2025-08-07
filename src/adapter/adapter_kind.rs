@@ -159,13 +159,14 @@ impl AdapterKind {
 		}
 
 		// -- Resolve from modelname
-		if model.starts_with("gpt")
-			|| model.starts_with("o3")
+		if model.starts_with("o3")
 			|| model.starts_with("o4")
 			|| model.starts_with("o1")
 			|| model.starts_with("chatgpt")
 			|| model.starts_with("codex")
+			|| (model.starts_with("gpt") && !model.starts_with("gpt-oss"))
 			|| model.starts_with("text-embedding")
+		// migh be a little generic on this one
 		{
 			Ok(Self::OpenAI)
 		} else if model.starts_with("gemini") {
