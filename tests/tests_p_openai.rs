@@ -4,7 +4,10 @@ use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-const MODEL: &str = "gpt-4.1-mini"; // note: "gpt-4o-mini" has issue when image & pdf
+// note: "gpt-4o-mini" has issue when image & pdf
+// as for 2025-08-08 gpt-5-mini does not support temperature & stop sequence
+const MODEL: &str = "gpt-5-mini";
+const MODEL2: &str = "gpt-4.1-mini"; // for temperature & stop sequence
 const MODEL_NS: &str = "openai::gpt-4.1-mini";
 
 // region:    --- Chat
@@ -36,12 +39,12 @@ async fn test_chat_json_structured_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_temperature_ok() -> TestResult<()> {
-	common_tests::common_test_chat_temperature_ok(MODEL).await
+	common_tests::common_test_chat_temperature_ok(MODEL2).await
 }
 
 #[tokio::test]
 async fn test_chat_stop_sequences_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
+	common_tests::common_test_chat_stop_sequences_ok(MODEL2).await
 }
 
 // endregion: --- Chat
