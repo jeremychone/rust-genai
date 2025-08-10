@@ -23,13 +23,9 @@ pub struct OpenAIAdapter;
 // Latest models
 const MODELS: &[&str] = &[
 	//
-	"gpt-4.1",
-	"gpt-4.1-mini",
-	"gpt-4.1-nano",
-	"o4-mini",
-	"gpt-4o",
-	"gpt-4o-mini",
-	"o3-mini",
+	"gpt-5",
+	"gpt-5-mini",
+	"gpt-5-nano",
 ];
 
 impl OpenAIAdapter {
