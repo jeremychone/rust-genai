@@ -173,6 +173,7 @@ impl ChatOptions {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReasoningEffort {
+	Minimal,
 	Low,
 	Medium,
 	High,
@@ -184,6 +185,7 @@ impl ReasoningEffort {
 	/// Budget always returns "budget" regardless of the number.
 	pub fn variant_name(&self) -> &'static str {
 		match self {
+			ReasoningEffort::Minimal => "minimal",
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
@@ -195,6 +197,7 @@ impl ReasoningEffort {
 	/// Budget will be None
 	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
+			ReasoningEffort::Minimal => Some("minimal"),
 			ReasoningEffort::Low => Some("low"),
 			ReasoningEffort::Medium => Some("medium"),
 			ReasoningEffort::High => Some("high"),
@@ -206,6 +209,7 @@ impl ReasoningEffort {
 	/// This function will not create budget variant (no)
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
+			"minimal" => Some(ReasoningEffort::Low),
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
@@ -233,6 +237,7 @@ impl ReasoningEffort {
 impl std::fmt::Display for ReasoningEffort {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
+			ReasoningEffort::Minimal => write!(f, "minimal"),
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),

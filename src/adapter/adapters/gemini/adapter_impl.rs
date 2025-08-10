@@ -104,6 +104,8 @@ impl Adapter for GeminiAdapter {
 			// If reasoning effort, turn the low, medium, budget ones into Budget
 			(model, Some(effort)) => {
 				let effort = match effort {
+					// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
+					ReasoningEffort::Minimal => ReasoningEffort::Budget(REASONING_LOW),
 					ReasoningEffort::Low => ReasoningEffort::Budget(REASONING_LOW),
 					ReasoningEffort::Medium => ReasoningEffort::Budget(REASONING_MEDIUM),
 					ReasoningEffort::High => ReasoningEffort::Budget(REASONING_HIGH),

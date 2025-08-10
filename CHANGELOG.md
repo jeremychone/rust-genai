@@ -29,6 +29,7 @@
 - `.` openai, added `codex` prefix for Adapter match  
 - `.` gemini model names, updated  
 - `.` groq, updated Groq Llama models to `llama-3.1-8b-instant`, `llama-3.3-70b-versatile` (per deprecation notice)
+
 ## 2025-05-26 - [v0.3.5](https://github.com/jeremychone/rust-genai/compare/v0.3.4...v0.3.5)
 
 - `^` OpenAI Adapter - Update OpenAI adapter to check for tool calls if the LLM returns an empty content response ([PR #55](https://github.com/jeremychone/rust-genai/pull/55))

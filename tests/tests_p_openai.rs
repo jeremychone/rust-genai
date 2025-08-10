@@ -10,6 +10,16 @@ const MODEL: &str = "gpt-5-mini";
 const MODEL2: &str = "gpt-4.1-mini"; // for temperature & stop sequence
 const MODEL_NS: &str = "openai::gpt-4.1-mini";
 
+// region:    --- Provider Specific
+
+// openai specific
+#[tokio::test]
+async fn test_chat_reasoning_minimal_ok() -> TestResult<()> {
+	common_tests::common_test_chat_simple_ok("gpt-5-mini-minimal", None).await
+}
+
+// endregion: --- Provider Specific
+
 // region:    --- Chat
 
 #[tokio::test]
