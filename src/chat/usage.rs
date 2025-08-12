@@ -37,16 +37,16 @@ pub struct Usage {
 impl Usage {
 	/// Removes empty details fields if they only contain `None` values.
 	pub fn compact_details(&mut self) {
-		if let Some(details) = &self.prompt_tokens_details {
-			if details.is_empty() {
-				self.prompt_tokens_details = None;
-			}
+		if let Some(details) = &self.prompt_tokens_details
+			&& details.is_empty()
+		{
+			self.prompt_tokens_details = None;
 		}
 
-		if let Some(details) = &self.completion_tokens_details {
-			if details.is_empty() {
-				self.completion_tokens_details = None;
-			}
+		if let Some(details) = &self.completion_tokens_details
+			&& details.is_empty()
+		{
+			self.completion_tokens_details = None;
 		}
 	}
 }

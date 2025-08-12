@@ -225,10 +225,10 @@ impl ReasoningEffort {
 	/// This will not create budget variant, only the keyword one
 	/// Returns (reasoning_effort, model_name)
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
-		if let Some((prefix, last)) = model_name.rsplit_once('-') {
-			if let Some(effort) = ReasoningEffort::from_keyword(last) {
-				return (Some(effort), prefix);
-			}
+		if let Some((prefix, last)) = model_name.rsplit_once('-')
+			&& let Some(effort) = ReasoningEffort::from_keyword(last)
+		{
+			return (Some(effort), prefix);
 		}
 		(None, model_name)
 	}

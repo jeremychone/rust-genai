@@ -63,10 +63,10 @@ impl Stream for WebStream {
 		let this = self.get_mut();
 
 		// -- First, we check if we have any remaining messages to send.
-		if let Some(ref mut remaining_messages) = this.remaining_messages {
-			if let Some(msg) = remaining_messages.pop_front() {
-				return Poll::Ready(Some(Ok(msg)));
-			}
+		if let Some(ref mut remaining_messages) = this.remaining_messages
+			&& let Some(msg) = remaining_messages.pop_front()
+		{
+			return Poll::Ready(Some(Ok(msg)));
 		}
 
 		// -- Then execute the web poll and processing loop
@@ -133,10 +133,10 @@ impl Stream for WebStream {
 					}
 					Poll::Ready(Some(Err(e))) => return Poll::Ready(Some(Err(e))),
 					Poll::Ready(None) => {
-						if let Some(partial) = this.partial_message.take() {
-							if !partial.is_empty() {
-								return Poll::Ready(Some(Ok(partial)));
-							}
+						if let Some(partial) = this.partial_message.take()
+							&& !partial.is_empty()
+						{
+							return Poll::Ready(Some(Ok(partial)));
 						}
 						this.bytes_stream = None;
 					}

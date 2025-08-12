@@ -245,10 +245,10 @@ impl OpenAIAdapter {
 		});
 
 		// -- Set reasoning effort
-		if let Some(reasoning_effort) = reasoning_effort {
-			if let Some(keyword) = reasoning_effort.as_keyword() {
-				payload.x_insert("reasoning_effort", keyword)?;
-			}
+		if let Some(reasoning_effort) = reasoning_effort
+			&& let Some(keyword) = reasoning_effort.as_keyword()
+		{
+			payload.x_insert("reasoning_effort", keyword)?;
 		}
 
 		// -- Tools
@@ -339,11 +339,11 @@ impl OpenAIAdapter {
 		// TODO: We might want to do this for other token details as well.
 		// TODO: We could check if the math adds up first with the total token count, and only change it if it does not.
 		//       This will allow us to be forward compatible if/when they fix this bug (yes, it is a bug).
-		if matches!(adapter, AdapterKind::Xai) {
-			if let Some(reasoning_tokens) = usage.completion_tokens_details.as_ref().and_then(|d| d.reasoning_tokens) {
-				let completion_tokens = usage.completion_tokens.unwrap_or(0);
-				usage.completion_tokens = Some(completion_tokens + reasoning_tokens)
-			}
+		if matches!(adapter, AdapterKind::Xai)
+			&& let Some(reasoning_tokens) = usage.completion_tokens_details.as_ref().and_then(|d| d.reasoning_tokens)
+		{
+			let completion_tokens = usage.completion_tokens.unwrap_or(0);
+			usage.completion_tokens = Some(completion_tokens + reasoning_tokens)
 		}
 
 		usage
@@ -508,26 +508,26 @@ fn extract_think(content: String) -> (String, Option<String>) {
 	let start_tag = "<think>";
 	let end_tag = "</think>";
 
-	if let Some(start) = content.find(start_tag) {
-		if let Some(end) = content[start + start_tag.len()..].find(end_tag) {
-			let start_pos = start;
-			let end_pos = start + start_tag.len() + end;
+	if let Some(start) = content.find(start_tag)
+		&& let Some(end) = content[start + start_tag.len()..].find(end_tag)
+	{
+		let start_pos = start;
+		let end_pos = start + start_tag.len() + end;
 
-			let think_content = &content[start_pos + start_tag.len()..end_pos];
-			let think_content = think_content.trim();
+		let think_content = &content[start_pos + start_tag.len()..end_pos];
+		let think_content = think_content.trim();
 
-			// Extract parts of the original content without cloning until necessary
-			let before_think = &content[..start_pos];
-			let after_think = &content[end_pos + end_tag.len()..];
+		// Extract parts of the original content without cloning until necessary
+		let before_think = &content[..start_pos];
+		let after_think = &content[end_pos + end_tag.len()..];
 
-			// Remove a leading newline in `after_think` if it starts with '\n'
-			let after_think = after_think.trim_start();
+		// Remove a leading newline in `after_think` if it starts with '\n'
+		let after_think = after_think.trim_start();
 
-			// Construct the final cleaned content in one allocation
-			let cleaned_content = format!("{before_think}{after_think}");
+		// Construct the final cleaned content in one allocation
+		let cleaned_content = format!("{before_think}{after_think}");
 
-			return (cleaned_content, Some(think_content.to_string()));
-		}
+		return (cleaned_content, Some(think_content.to_string()));
 	}
 
 	(content, None)

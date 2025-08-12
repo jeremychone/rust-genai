@@ -202,11 +202,11 @@ pub fn to_embed_response(
 		.collect();
 
 	// Log any API warnings and debug info
-	if let Some(meta) = &cohere_res.meta {
-		if let Some(warnings) = &meta.warnings {
-			for warning in warnings {
-				eprintln!("Cohere API Warning: {warning}");
-			}
+	if let Some(meta) = &cohere_res.meta
+		&& let Some(warnings) = &meta.warnings
+	{
+		for warning in warnings {
+			eprintln!("Cohere API Warning: {warning}");
 		}
 	}
 
