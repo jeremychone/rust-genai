@@ -4,7 +4,7 @@ use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-// "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite-preview-06-17"
+// "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite"
 // "gemini-2.5-flash-zero"
 const MODEL: &str = "gemini-2.5-flash";
 const MODEL_NS: &str = "gemini::gemini-2.5-flash";
