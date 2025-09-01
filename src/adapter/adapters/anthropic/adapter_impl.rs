@@ -315,133 +315,151 @@ impl AnthropicAdapter {
 			let is_cache_control = msg.options.map(|o| o.cache_control.is_some()).unwrap_or(false);
 
 			match msg.role {
-				// for now, system and tool messages go to the system
+				// Collect only text for system; other content parts are ignored by Anthropic here.
 				ChatRole::System => {
-					if let MessageContent::Text(content) = msg.content {
-						systems.push((content, is_cache_control))
+					if let Some(system_text) = msg.content.joined_texts() {
+						systems.push((system_text, is_cache_control));
 					}
-					// TODO: Needs to trace/warn that other types are not supported
 				}
+
+				// User message: text, binary (image/document), and tool_result supported.
 				ChatRole::User => {
-					let content = match msg.content {
-						MessageContent::Text(content) => apply_cache_control_to_text(is_cache_control, content),
-						MessageContent::Parts(parts) => {
-							let values = parts
-								.iter()
-								.filter_map(|part| match part {
-									ContentPart::Text(text) => Some(json!({"type": "text", "text": text})),
-									ContentPart::Binary {
-										name: _name,
-										content_type,
-										source,
-									} => {
-										//
-										if part.is_image() {
-											match source {
-												BinarySource::Url(_) => {
-													// TODO: Check if supported now
-													warn!(
-														"Anthropic doesn't support images from URL, need to handle it gracefully"
-													);
-													None
-												}
-												BinarySource::Base64(content) => Some(json!({
+					if msg.content.is_text_only() {
+						let text = msg.content.joined_texts().unwrap_or_else(String::new);
+						let content = apply_cache_control_to_text(is_cache_control, text);
+						messages.push(json!({"role": "user", "content": content}));
+					} else {
+						let mut values: Vec<Value> = Vec::new();
+						for part in msg.content {
+							match part {
+								ContentPart::Text(text) => {
+									values.push(json!({"type": "text", "text": text}));
+								}
+								ContentPart::Binary {
+									name: _name,
+									content_type,
+									source,
+								} => {
+									let is_image = content_type.trim_start().to_ascii_lowercase().starts_with("image/");
+									if is_image {
+										match source {
+											BinarySource::Url(_) => {
+												// As of this API version, Anthropic doesn't support images by URL directly in messages.
+												warn!(
+													"Anthropic doesn't support images from URL, need to handle it gracefully"
+												);
+											}
+											BinarySource::Base64(content) => {
+												values.push(json!({
 													"type": "image",
 													"source": {
 														"type": "base64",
 														"media_type": content_type,
 														"data": content,
-													},
-												})),
+													}
+												}));
 											}
-										} else {
-											match source {
-												BinarySource::Url(url) => Some(json!({
+										}
+									} else {
+										match source {
+											BinarySource::Url(url) => {
+												values.push(json!({
 													"type": "document",
 													"source": {
 														"type": "url",
 														"url": url,
 													}
-												})),
-												BinarySource::Base64(b64) => Some(json!({
+												}));
+											}
+											BinarySource::Base64(b64) => {
+												values.push(json!({
 													"type": "document",
 													"source": {
 														"type": "base64",
 														"media_type": content_type,
 														"data": b64,
 													}
-												})),
+												}));
 											}
 										}
 									}
-								})
-								.collect::<Vec<Value>>();
-
-							let values = apply_cache_control_to_parts(is_cache_control, values);
-
-							json!(values)
+								}
+								// ToolCall is not valid in user content for Anthropic; skip gracefully.
+								ContentPart::ToolCall(_tc) => {}
+								ContentPart::ToolResponse(tool_response) => {
+									values.push(json!({
+										"type": "tool_result",
+										"content": tool_response.content,
+										"tool_use_id": tool_response.call_id,
+									}));
+								}
+							}
 						}
-						// Use `match` instead of `if let`. This will allow to future-proof this
-						// implementation in case some new message content types would appear,
-						// this way the library would not compile if not all methods are implemented
-						// continue would allow to gracefully skip pushing unserializable message
-						// TODO: Probably need to warn if it is a ToolCalls type of content
-						MessageContent::ToolCalls(_) => continue,
-						MessageContent::ToolResponses(_) => continue,
-					};
-					messages.push(json! ({"role": "user", "content": content}));
+						let values = apply_cache_control_to_parts(is_cache_control, values);
+						messages.push(json!({"role": "user", "content": values}));
+					}
 				}
+
+				// Assistant can mix text and tool_use entries.
 				ChatRole::Assistant => {
-					//
-					match msg.content {
-						MessageContent::Text(content) => {
-							let content = apply_cache_control_to_text(is_cache_control, content);
-							messages.push(json! ({"role": "assistant", "content": content}))
+					let mut values: Vec<Value> = Vec::new();
+					let mut has_tool_use = false;
+					let mut has_text = false;
+
+					for part in msg.content {
+						match part {
+							ContentPart::Text(text) => {
+								has_text = true;
+								values.push(json!({"type": "text", "text": text}));
+							}
+							ContentPart::ToolCall(tool_call) => {
+								has_tool_use = true;
+								// see: https://docs.anthropic.com/en/docs/build-with-claude/tool-use#example-of-successful-tool-result
+								values.push(json!({
+									"type": "tool_use",
+									"id": tool_call.call_id,
+									"name": tool_call.fn_name,
+									"input": tool_call.fn_arguments,
+								}));
+							}
+							// Unsupported for assistant role in Anthropic message content
+							ContentPart::Binary { .. } => {}
+							ContentPart::ToolResponse(_) => {}
 						}
-						MessageContent::ToolCalls(tool_calls) => {
-							let tool_calls = tool_calls
-								.into_iter()
-								.map(|tool_call| {
-									// see: https://docs.anthropic.com/en/docs/build-with-claude/tool-use#example-of-successful-tool-result
-									json!({
-										"type": "tool_use",
-										"id": tool_call.call_id,
-										"name": tool_call.fn_name,
-										"input": tool_call.fn_arguments,
-									})
-								})
-								.collect::<Vec<Value>>();
-							let tool_calls = apply_cache_control_to_parts(is_cache_control, tool_calls);
-							messages.push(json! ({
-								"role": "assistant",
-								"content": tool_calls
+					}
+
+					if !has_tool_use && has_text && !is_cache_control && values.len() == 1 {
+						// Optimize to simple string when it's only one text part and no cache control.
+						let text = values
+							.first()
+							.and_then(|v| v.get("text"))
+							.and_then(|v| v.as_str())
+							.unwrap_or_default()
+							.to_string();
+						let content = apply_cache_control_to_text(false, text);
+						messages.push(json!({"role": "assistant", "content": content}));
+					} else {
+						let values = apply_cache_control_to_parts(is_cache_control, values);
+						messages.push(json!({"role": "assistant", "content": values}));
+					}
+				}
+
+				// Tool responses are represented as user tool_result items in Anthropic.
+				ChatRole::Tool => {
+					let mut values: Vec<Value> = Vec::new();
+					for part in msg.content {
+						if let ContentPart::ToolResponse(tool_response) = part {
+							values.push(json!({
+								"type": "tool_result",
+								"content": tool_response.content,
+								"tool_use_id": tool_response.call_id,
 							}));
 						}
-						// TODO: Probably need to trace/warn that this will be ignored
-						MessageContent::Parts(_) => (),
-						MessageContent::ToolResponses(_) => (),
 					}
-				}
-				ChatRole::Tool => {
-					if let MessageContent::ToolResponses(tool_responses) = msg.content {
-						let tool_responses = tool_responses
-							.into_iter()
-							.map(|tool_response| {
-								json!({
-									"type": "tool_result",
-									"content": tool_response.content,
-									"tool_use_id": tool_response.call_id,
-								})
-							})
-							.collect::<Vec<Value>>();
-						let tool_responses = apply_cache_control_to_parts(is_cache_control, tool_responses);
-						// FIXME: MessageContent::ToolResponse should be MessageContent::ToolResponses (even if OpenAI does require multi Tool message)
-						messages.push(json!({
-							"role": "user",
-							"content": tool_responses
-						}));
+					if !values.is_empty() {
+						let values = apply_cache_control_to_parts(is_cache_control, values);
+						messages.push(json!({"role": "user", "content": values}));
 					}
-					// TODO: Probably need to trace/warn that this will be ignored
 				}
 			}
 		}

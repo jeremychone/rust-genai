@@ -121,14 +121,14 @@ impl From<InterStreamEnd> for StreamEnd {
 		let mut captured_content: Option<Vec<MessageContent>> = None;
 		if let Some(captured_text_content) = captured_text_content {
 			// This `captured_text_content` is the concatenation of all text chunks received.
-			captured_content = Some(vec![MessageContent::Text(captured_text_content)]);
+			captured_content = Some(vec![MessageContent::from_text(captured_text_content)]);
 		}
 		if let Some(captured_tool_calls) = captured_tool_calls {
 			if let Some(existing_content) = &mut captured_content {
-				existing_content.push(MessageContent::ToolCalls(captured_tool_calls));
+				existing_content.push(MessageContent::from_tool_calls(captured_tool_calls));
 			} else {
 				// This `captured_tool_calls` is the concatenation of all tool call chunks received.
-				captured_content = Some(vec![MessageContent::ToolCalls(captured_tool_calls)]);
+				captured_content = Some(vec![MessageContent::from_tool_calls(captured_tool_calls)]);
 			}
 		}
 
@@ -149,7 +149,7 @@ impl StreamEnd {
 		let captured_content = self.captured_content.as_ref()?;
 
 		for content_item in captured_content {
-			if let MessageContent::Text(content) = content_item {
+			if let Some(content) = content_item.first_text() {
 				return Some(content);
 			}
 		}
@@ -162,7 +162,7 @@ impl StreamEnd {
 		let captured_content = self.captured_content?;
 
 		for content_item in captured_content {
-			if let MessageContent::Text(content) = content_item {
+			if let Some(content) = content_item.into_first_text() {
 				return Some(content);
 			}
 		}
@@ -176,8 +176,8 @@ impl StreamEnd {
 
 		let mut all_texts = Vec::new();
 		for content_item in captured_content {
-			if let MessageContent::Text(content) = content_item {
-				all_texts.push(content.as_str());
+			if let Some(content) = content_item.first_text() {
+				all_texts.push(content);
 			}
 		}
 		Some(all_texts)
@@ -191,7 +191,7 @@ impl StreamEnd {
 		let mut all_texts = Vec::new();
 
 		for content_item in captured_content {
-			if let MessageContent::Text(content) = content_item {
+			if let Some(content) = content_item.into_first_text() {
 				all_texts.push(content);
 			}
 		}
@@ -205,11 +205,8 @@ impl StreamEnd {
 
 		let mut all_tool_calls: Vec<&ToolCall> = Vec::new();
 		for content_item in captured_content {
-			if let MessageContent::ToolCalls(tool_calls) = content_item {
-				for tool_call in tool_calls {
-					all_tool_calls.push(tool_call);
-				}
-			}
+			let tool_calls = content_item.tool_calls();
+			all_tool_calls.extend(tool_calls);
 		}
 
 		Some(all_tool_calls)
@@ -222,11 +219,8 @@ impl StreamEnd {
 
 		let mut all_tool_calls: Vec<ToolCall> = Vec::new();
 		for content_item in captured_content {
-			if let MessageContent::ToolCalls(tool_calls) = content_item {
-				for tool_call in tool_calls {
-					all_tool_calls.push(tool_call);
-				}
-			}
+			let tool_calls = content_item.into_tool_calls();
+			all_tool_calls.extend(tool_calls);
 		}
 
 		Some(all_tool_calls)

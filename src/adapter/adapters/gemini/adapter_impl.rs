@@ -219,7 +219,7 @@ impl Adapter for GeminiAdapter {
 			}
 		}
 		if !tool_calls.is_empty() {
-			content.push(MessageContent::ToolCalls(tool_calls))
+			content.push(MessageContent::from_tool_calls(tool_calls))
 		}
 
 		Ok(ChatResponse {
@@ -401,155 +401,112 @@ impl GeminiAdapter {
 			match msg.role {
 				// For now, system goes as "user" (later, we might have adapter_config.system_to_user_impl)
 				ChatRole::System => {
-					let MessageContent::Text(content) = msg.content else {
-						return Err(Error::MessageContentTypeNotSupported {
-							model_iden: model_iden.clone(),
-							cause: "Only MessageContent::Text supported for this model (for now)",
-						});
-					};
-					systems.push(content)
+					if let Some(content) = msg.content.into_joined_texts() {
+						systems.push(content);
+					}
 				}
 				ChatRole::User => {
-					let content = match msg.content {
-						MessageContent::Text(content) => json!([{"text": content}]),
-						MessageContent::Parts(parts) => {
-							json!(
-								parts
-									.iter()
-									.map(|part| match part {
-										ContentPart::Text(text) => json!({"text": text.clone()}),
-										ContentPart::Binary {
-											name: _name,
-											content_type,
-											source,
-										} => {
-											match source {
-												BinarySource::Url(url) => json!({
-													"file_data": {
-														"mime_type": content_type,
-														"file_uri": url
-													}
-												}),
-												BinarySource::Base64(content) => json!({
-													"inline_data": {
-														"mime_type": content_type,
-														"data": content
-													}
-												}),
-											}
+					let mut parts_values: Vec<Value> = Vec::new();
+					for part in msg.content {
+						match part {
+							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
+							ContentPart::Binary {
+								name: _name,
+								content_type,
+								source,
+							} => match source {
+								BinarySource::Url(url) => parts_values.push(json!({
+									"file_data": {
+										"mime_type": content_type,
+										"file_uri": url
+									}
+								})),
+								BinarySource::Base64(content) => parts_values.push(json!({
+									"inline_data": {
+										"mime_type": content_type,
+										"data": content
+									}
+								})),
+							},
+							ContentPart::ToolCall(tool_call) => {
+								parts_values.push(json!({
+									"functionCall": {
+										"name": tool_call.fn_name,
+										"args": tool_call.fn_arguments,
+									}
+								}));
+							}
+							ContentPart::ToolResponse(tool_response) => {
+								parts_values.push(json!({
+									"functionResponse": {
+										"name": tool_response.call_id,
+										"response": {
+											"name": tool_response.call_id,
+											"content": tool_response.content,
 										}
-									})
-									.collect::<Vec<Value>>()
-							)
+									}
+								}));
+							}
 						}
-						MessageContent::ToolCalls(tool_calls) => {
-							json!(
-								tool_calls
-									.into_iter()
-									.map(|tool_call| {
-										json!({
-											"functionCall": {
-												"name": tool_call.fn_name,
-												"args": tool_call.fn_arguments,
-											}
-										})
-									})
-									.collect::<Vec<Value>>()
-							)
-						}
-						MessageContent::ToolResponses(tool_responses) => {
-							json!(
-								tool_responses
-									.into_iter()
-									.map(|tool_response| {
-										json!({
-											"functionResponse": {
-												"name": tool_response.call_id,
-												"response": {
-													"name": tool_response.call_id,
-													"content": tool_response.content,
-												}
-											}
-										})
-									})
-									.collect::<Vec<Value>>()
-							)
-						}
-					};
+					}
 
-					contents.push(json!({"role": "user", "parts": content}));
+					contents.push(json!({"role": "user", "parts": parts_values}));
 				}
 				ChatRole::Assistant => {
-					match msg.content {
-						MessageContent::Text(content) => {
-							contents.push(json!({"role": "model", "parts": [{"text": content}]}))
+					let mut parts_values: Vec<Value> = Vec::new();
+					for part in msg.content {
+						match part {
+							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
+							ContentPart::ToolCall(tool_call) => {
+								parts_values.push(json!({
+									"functionCall": {
+										"name": tool_call.fn_name,
+										"args": tool_call.fn_arguments,
+									}
+								}));
+							}
+							// Ignore unsupported parts for Assistant role
+							ContentPart::Binary { .. } => {}
+							ContentPart::ToolResponse(_) => {}
 						}
-						MessageContent::ToolCalls(tool_calls) => contents.push(json!({
-							"role": "model",
-							"parts": tool_calls
-								.into_iter()
-								.map(|tool_call| {
-									json!({
-										"functionCall": {
-											"name": tool_call.fn_name,
-											"args": tool_call.fn_arguments,
-										}
-									})
-								})
-								.collect::<Vec<Value>>()
-						})),
-						_ => {
-							return Err(Error::MessageContentTypeNotSupported {
-								model_iden: model_iden.clone(),
-								cause: "Only MessageContent::Text and MessageContent::ToolCalls supported for this model (for now)",
-							});
-						}
-					};
+					}
+					if !parts_values.is_empty() {
+						contents.push(json!({"role": "model", "parts": parts_values}));
+					}
 				}
 				ChatRole::Tool => {
-					let content = match msg.content {
-						MessageContent::ToolCalls(tool_calls) => {
-							json!(
-								tool_calls
-									.into_iter()
-									.map(|tool_call| {
-										json!({
-											"functionCall": {
-												"name": tool_call.fn_name,
-												"args": tool_call.fn_arguments,
-											}
-										})
-									})
-									.collect::<Vec<Value>>()
-							)
+					let mut parts_values: Vec<Value> = Vec::new();
+					for part in msg.content {
+						match part {
+							ContentPart::ToolCall(tool_call) => {
+								parts_values.push(json!({
+									"functionCall": {
+										"name": tool_call.fn_name,
+										"args": tool_call.fn_arguments,
+									}
+								}));
+							}
+							ContentPart::ToolResponse(tool_response) => {
+								parts_values.push(json!({
+									"functionResponse": {
+										"name": tool_response.call_id,
+										"response": {
+											"name": tool_response.call_id,
+											"content": tool_response.content,
+										}
+									}
+								}));
+							}
+							_ => {
+								return Err(Error::MessageContentTypeNotSupported {
+									model_iden: model_iden.clone(),
+									cause: "ChatRole::Tool can only contain ToolCall or ToolResponse content parts",
+								});
+							}
 						}
-						MessageContent::ToolResponses(tool_responses) => {
-							json!(
-								tool_responses
-									.into_iter()
-									.map(|tool_response| {
-										json!({
-											"functionResponse": {
-												"name": tool_response.call_id,
-												"response": {
-													"name": tool_response.call_id,
-													"content": tool_response.content,
-												}
-											}
-										})
-									})
-									.collect::<Vec<Value>>()
-							)
-						}
-						_ => {
-							return Err(Error::MessageContentTypeNotSupported {
-								model_iden: model_iden.clone(),
-								cause: "ChatRole::Tool can only be MessageContent::ToolCall or MessageContent::ToolResponse",
-							});
-						}
-					};
+					}
 
-					contents.push(json!({"role": "user", "parts": content}));
+					contents.push(json!({"role": "user", "parts": parts_values}));
 				}
 			}
 		}

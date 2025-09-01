@@ -248,7 +248,7 @@ impl CohereAdapter {
 		}
 
 		// TODO: Needs to implement tool_calls
-		let MessageContent::Text(message) = last_chat_msg.content else {
+		let Some(message) = last_chat_msg.content.into_joined_texts() else {
 			return Err(Error::MessageContentTypeNotSupported {
 				model_iden,
 				cause: "Only MessageContent::Text supported for this model (for now)",
@@ -257,7 +257,7 @@ impl CohereAdapter {
 
 		// -- Build
 		for msg in chat_req.messages {
-			let MessageContent::Text(content) = msg.content else {
+			let Some(content) = msg.content.into_joined_texts() else {
 				return Err(Error::MessageContentTypeNotSupported {
 					model_iden,
 					cause: "Only MessageContent::Text supported for this model (for now)",

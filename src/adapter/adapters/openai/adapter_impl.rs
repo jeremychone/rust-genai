@@ -366,103 +366,116 @@ impl OpenAIAdapter {
 			match msg.role {
 				// For now, system and tool messages go to the system
 				ChatRole::System => {
-					if let MessageContent::Text(content) = msg.content {
+					if let Some(content) = msg.content.into_joined_texts() {
 						messages.push(json!({"role": "system", "content": content}))
 					}
 					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
-				ChatRole::User => {
-					let content = match msg.content {
-						MessageContent::Text(content) => json!(content),
-						MessageContent::Parts(parts) => {
-							json!(
-								parts
-									.iter()
-									.filter_map(|part| match part {
-										ContentPart::Text(text) => Some(json!({"type": "text", "text": text.clone()})),
-										ContentPart::Binary {
-											name,
-											content_type,
-											source,
-										} => {
-											if part.is_image() {
-												match source {
-													BinarySource::Url(url) => {
-														Some(json!({"type": "image_url", "image_url": {"url": url}}))
-													}
-													BinarySource::Base64(content) => {
-														let image_url = format!("data:{content_type};base64,{content}");
-														Some(
-															json!({"type": "image_url", "image_url": {"url": image_url}}),
-														)
-													}
-												}
-											} else {
-												match source {
-													BinarySource::Url(_url) => {
-														// TODO: Need to return error
-														warn!(
-															"OpenAI doesn't support file from URL, need to handle it gracefully"
-														);
-														None
-													}
-													BinarySource::Base64(content) => {
-														let file_data = format!("data:{content_type};base64,{content}");
-														Some(json!({"type": "file", "file": {
-															 "filename": name,
-															"file_data": file_data}
-														}))
-													}
-												}
 
-												// "type": "file",
-												// "file": {
-												//     "filename": "draconomicon.pdf",
-												//     "file_data": f"data:application/pdf;base64,{base64_string}",
-												// }
+				// User - For now support Text and Binary
+				ChatRole::User => {
+					// -- If we have only text, then, we jjust returned the joined_texts
+					if msg.content.is_text_only() {
+						// NOTE: for now, if no content, just return empty string (respect current logic)
+						let content = json!(msg.content.joined_texts().unwrap_or_else(String::new));
+						messages.push(json! ({"role": "user", "content": content}));
+					} else {
+						let mut values: Vec<Value> = Vec::new();
+						for part in msg.content {
+							match part {
+								ContentPart::Text(content) => values.push(json!({"type": "text", "text": content})),
+								ContentPart::Binary {
+									name,
+									content_type,
+									source,
+								} => {
+									// TODO: Need to use the binary.is_image() once Binary
+									if content_type.trim_start().to_ascii_lowercase().starts_with("image/") {
+										match source {
+											BinarySource::Url(url) => {
+												values.push(json!({"type": "image_url", "image_url": {"url": url}}))
+											}
+											BinarySource::Base64(content) => {
+												let image_url = format!("data:{content_type};base64,{content}");
+												values
+													.push(json!({"type": "image_url", "image_url": {"url": image_url}}))
 											}
 										}
-									})
-									.collect::<Vec<Value>>()
-							)
+									} else {
+										match source {
+											BinarySource::Url(_url) => {
+												// TODO: Need to return error
+												warn!(
+													"OpenAI doesn't support file from URL, need to handle it gracefully"
+												);
+											}
+											BinarySource::Base64(content) => {
+												let file_data = format!("data:{content_type};base64,{content}");
+												values.push(json!({"type": "file", "file": {
+													 "filename": name,
+													"file_data": file_data}
+												}))
+											}
+										}
+
+										// "type": "file",
+										// "file": {
+										//     "filename": "draconomicon.pdf",
+										//     "file_data": f"data:application/pdf;base64,{base64_string}",
+										// }
+									}
+								}
+
+								// Use `match` instead of `if let`. This will allow to future-proof this
+								// implementation in case some new message content types would appear,
+								// this way library would not compile if not all methods are implemented
+								// continue would allow to gracefully skip pushing unserializable message
+								// TODO: Probably need to warn if it is a ToolCalls type of content
+								ContentPart::ToolCall(_) => (),
+								ContentPart::ToolResponse(_) => (),
+							}
 						}
-						// Use `match` instead of `if let`. This will allow to future-proof this
-						// implementation in case some new message content types would appear,
-						// this way library would not compile if not all methods are implemented
-						// continue would allow to gracefully skip pushing unserializable message
-						// TODO: Probably need to warn if it is a ToolCalls type of content
-						MessageContent::ToolCalls(_) => continue,
-						MessageContent::ToolResponses(_) => continue,
-					};
-					messages.push(json! ({"role": "user", "content": content}));
+						messages.push(json! ({"role": "user", "content": values}));
+					}
 				}
 
-				ChatRole::Assistant => match msg.content {
-					MessageContent::Text(content) => messages.push(json! ({"role": "assistant", "content": content})),
-					MessageContent::ToolCalls(tool_calls) => {
-						let tool_calls = tool_calls
-							.into_iter()
-							.map(|tool_call| {
-								json!({
+				// Assistant - For now support Text and ToolCalls
+				ChatRole::Assistant => {
+					// -- If we have only text, then, we jjust returned the joined_texts
+					let mut texts: Vec<String> = Vec::new();
+					let mut tool_calls: Vec<Value> = Vec::new();
+					for part in msg.content {
+						match part {
+							ContentPart::Text(text) => texts.push(text),
+							ContentPart::ToolCall(tool_call) => {
+								//
+								tool_calls.push(json!({
 									"type": "function",
 									"id": tool_call.call_id,
 									"function": {
 										"name": tool_call.fn_name,
 										"arguments": tool_call.fn_arguments.to_string(),
 									}
-								})
-							})
-							.collect::<Vec<Value>>();
-						messages.push(json! ({"role": "assistant", "tool_calls": tool_calls, "content": ""}))
-					}
-					// TODO: Probably need to trace/warn that this will be ignored
-					MessageContent::Parts(_) => (),
-					MessageContent::ToolResponses(_) => (),
-				},
+								}))
+							}
 
+							// TODO: Probably need towarn on this one (probably need to add binary here)
+							ContentPart::Binary { .. } => (),
+							ContentPart::ToolResponse(_) => (),
+						}
+					}
+					let content = texts.join("\n\n");
+					let mut message = json!({"role": "assistant", "content": content});
+					if !tool_calls.is_empty() {
+						message.x_insert("tool_calls", tool_calls)?;
+					}
+					messages.push(message);
+				}
+
+				// Tool - For now, support only tool responses
 				ChatRole::Tool => {
-					if let MessageContent::ToolResponses(tool_responses) = msg.content {
-						for tool_response in tool_responses {
+					for part in msg.content {
+						if let ContentPart::ToolResponse(tool_response) = part {
 							messages.push(json!({
 								"role": "tool",
 								"content": tool_response.content,
@@ -470,6 +483,7 @@ impl OpenAIAdapter {
 							}))
 						}
 					}
+
 					// TODO: Probably need to trace/warn that this will be ignored
 				}
 			}

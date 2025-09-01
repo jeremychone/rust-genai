@@ -38,7 +38,7 @@ impl ChatResponse {
 	/// Returns a reference to the first text content if available.
 	pub fn first_text(&self) -> Option<&str> {
 		for content_item in &self.content {
-			if let MessageContent::Text(content) = content_item {
+			if let Some(content) = content_item.first_text() {
 				return Some(content);
 			}
 		}
@@ -48,7 +48,7 @@ impl ChatResponse {
 	/// Consumes the `ChatResponse` and returns the first text content if available.
 	pub fn into_first_text(self) -> Option<String> {
 		for content_item in self.content {
-			if let MessageContent::Text(content) = content_item {
+			if let Some(content) = content_item.into_first_text() {
 				return Some(content);
 			}
 		}
@@ -59,8 +59,8 @@ impl ChatResponse {
 	pub fn texts(&self) -> Vec<&str> {
 		let mut all_texts = Vec::new();
 		for content_item in &self.content {
-			if let MessageContent::Text(content) = content_item {
-				all_texts.push(content.as_str());
+			if let Some(content) = content_item.first_text() {
+				all_texts.push(content);
 			}
 		}
 		all_texts
@@ -70,7 +70,7 @@ impl ChatResponse {
 	pub fn into_texts(self) -> Vec<String> {
 		let mut all_texts = Vec::new();
 		for content_item in self.content {
-			if let MessageContent::Text(content) = content_item {
+			if let Some(content) = content_item.into_first_text() {
 				all_texts.push(content);
 			}
 		}
@@ -81,11 +81,8 @@ impl ChatResponse {
 	pub fn tool_calls(&self) -> Vec<&ToolCall> {
 		let mut all_tool_calls: Vec<&ToolCall> = Vec::new();
 		for content_item in &self.content {
-			if let MessageContent::ToolCalls(tool_calls) = content_item {
-				// TODO: Avoid the extra Vec alloc
-				let tool_calls: Vec<&ToolCall> = tool_calls.iter().collect();
-				all_tool_calls.extend(tool_calls);
-			}
+			let tool_calls = content_item.tool_calls();
+			all_tool_calls.extend(tool_calls);
 		}
 
 		all_tool_calls
@@ -95,9 +92,8 @@ impl ChatResponse {
 	pub fn into_tool_calls(self) -> Vec<ToolCall> {
 		let mut all_tool_calls: Vec<ToolCall> = Vec::new();
 		for content_item in self.content {
-			if let MessageContent::ToolCalls(tool_calls) = content_item {
-				all_tool_calls.extend(tool_calls);
-			}
+			let tool_calls = content_item.into_tool_calls();
+			all_tool_calls.extend(tool_calls);
 		}
 
 		all_tool_calls

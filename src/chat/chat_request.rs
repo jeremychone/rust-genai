@@ -1,6 +1,6 @@
 //! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
 
-use crate::chat::{ChatMessage, ChatRole, MessageContent, Tool};
+use crate::chat::{ChatMessage, ChatRole, Tool};
 use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
@@ -95,11 +95,7 @@ impl ChatRequest {
 			.iter()
 			.map(|s| s.as_str())
 			.chain(self.messages.iter().filter_map(|message| match message.role {
-				ChatRole::System => match message.content {
-					MessageContent::Text(ref content) => Some(content.as_str()),
-					// If system content is not text, then we do not add it for now.
-					_ => None,
-				},
+				ChatRole::System => message.content.first_text(),
 				_ => None,
 			}))
 	}
