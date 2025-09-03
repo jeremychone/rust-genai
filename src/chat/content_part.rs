@@ -8,11 +8,8 @@ pub enum ContentPart {
 	#[from(String, &String, &str)]
 	Text(String),
 
-	Binary {
-		name: Option<String>,
-		content_type: String,
-		source: BinarySource,
-	},
+	#[from]
+	Binary(Binary),
 
 	#[from]
 	ToolCall(ToolCall),
@@ -32,11 +29,11 @@ impl ContentPart {
 		content_type: impl Into<String>,
 		content: impl Into<Arc<str>>,
 	) -> ContentPart {
-		ContentPart::Binary {
+		ContentPart::Binary(Binary {
 			name,
 			content_type: content_type.into(),
 			source: BinarySource::Base64(content.into()),
-		}
+		})
 	}
 
 	pub fn from_binary_url(
@@ -44,11 +41,11 @@ impl ContentPart {
 		content_type: impl Into<String>,
 		url: impl Into<String>,
 	) -> ContentPart {
-		ContentPart::Binary {
+		ContentPart::Binary(Binary {
 			name,
 			content_type: content_type.into(),
 			source: BinarySource::Url(url.into()),
-		}
+		})
 	}
 }
 
@@ -102,14 +99,9 @@ impl ContentPart {
 		}
 	}
 
-	pub fn as_binary(&self) -> Option<(&Option<String>, &String, &BinarySource)> {
-		if let ContentPart::Binary {
-			name,
-			content_type,
-			source,
-		} = self
-		{
-			Some((name, content_type, source))
+	pub fn as_binary(&self) -> Option<&Binary> {
+		if let ContentPart::Binary(binary) = self {
+			Some(binary)
 		} else {
 			None
 		}
@@ -126,9 +118,7 @@ impl ContentPart {
 	}
 	pub fn is_image(&self) -> bool {
 		match self {
-			ContentPart::Binary { content_type, .. } => {
-				content_type.trim_start().to_ascii_lowercase().starts_with("image/")
-			}
+			ContentPart::Binary(binary) => binary.content_type.trim_start().to_ascii_lowercase().starts_with("image/"),
 			_ => false,
 		}
 	}
@@ -136,9 +126,7 @@ impl ContentPart {
 	#[allow(unused)]
 	pub fn is_pdf(&self) -> bool {
 		match self {
-			ContentPart::Binary { content_type, .. } => {
-				content_type.trim_start().eq_ignore_ascii_case("application/pdf")
-			}
+			ContentPart::Binary(binary) => binary.content_type.trim_start().eq_ignore_ascii_case("application/pdf"),
 			_ => false,
 		}
 	}
@@ -154,6 +142,39 @@ impl ContentPart {
 
 // endregion: --- Content Part
 
+// region:    --- Binary
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Binary {
+	pub name: Option<String>,
+	pub content_type: String,
+	pub source: BinarySource,
+}
+
+impl Binary {
+	pub fn new(name: Option<String>, content_type: impl Into<String>, source: BinarySource) -> Self {
+		Self {
+			name,
+			content_type: content_type.into(),
+			source,
+		}
+	}
+}
+
+impl Binary {
+	pub fn is_image(&self) -> bool {
+		self.content_type.trim_start().to_ascii_lowercase().starts_with("image/")
+	}
+
+	pub fn is_pdf(&self) -> bool {
+		self.content_type.trim_start().eq_ignore_ascii_case("application/pdf")
+	}
+}
+
+// endregion: --- Binary
+
+// region:    --- BinarySource
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BinarySource {
 	/// For models/services that support URL as input
@@ -167,6 +188,8 @@ pub enum BinarySource {
 	///       The downside is that it will be an Arc even when used only once, but for this particular data type, the net benefit is positive.
 	Base64(Arc<str>),
 }
+
+// endregion: --- BinarySource
 
 // No `Local` location; this would require handling errors like "file not found" etc.
 // Such a file can be easily provided by the user as Base64, and we can implement a convenient
