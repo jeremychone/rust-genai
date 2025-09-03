@@ -2,7 +2,7 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::gemini::GeminiStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
+	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
 	ChatStreamResponse, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
 	ToolCall, Usage,
 };
@@ -410,24 +410,25 @@ impl GeminiAdapter {
 					for part in msg.content {
 						match part {
 							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
-							ContentPart::Binary {
-								name: _name,
-								content_type,
-								source,
-							} => match source {
-								BinarySource::Url(url) => parts_values.push(json!({
-									"file_data": {
-										"mime_type": content_type,
-										"file_uri": url
-									}
-								})),
-								BinarySource::Base64(content) => parts_values.push(json!({
-									"inline_data": {
-										"mime_type": content_type,
-										"data": content
-									}
-								})),
-							},
+							ContentPart::Binary(binary) => {
+								let Binary {
+									content_type, source, ..
+								} = binary;
+								match &source {
+									BinarySource::Url(url) => parts_values.push(json!({
+										"file_data": {
+											"mime_type": content_type,
+											"file_uri": url
+										}
+									})),
+									BinarySource::Base64(content) => parts_values.push(json!({
+										"inline_data": {
+											"mime_type": content_type,
+											"data": content
+										}
+									})),
+								}
+							}
 							ContentPart::ToolCall(tool_call) => {
 								parts_values.push(json!({
 									"functionCall": {
@@ -466,7 +467,7 @@ impl GeminiAdapter {
 								}));
 							}
 							// Ignore unsupported parts for Assistant role
-							ContentPart::Binary { .. } => {}
+							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 						}
 					}

@@ -2,6 +2,7 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::openai::ToWebRequestCustom;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
+use crate::chat::Binary;
 use crate::chat::{
 	BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
 	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, ToolCall, Usage,
@@ -384,25 +385,25 @@ impl OpenAIAdapter {
 						for part in msg.content {
 							match part {
 								ContentPart::Text(content) => values.push(json!({"type": "text", "text": content})),
-								ContentPart::Binary {
-									name,
-									content_type,
-									source,
-								} => {
-									// TODO: Need to use the binary.is_image() once Binary
-									if content_type.trim_start().to_ascii_lowercase().starts_with("image/") {
-										match source {
+								ContentPart::Binary(binary) => {
+									let is_image = binary.is_image();
+									let Binary {
+										content_type, source, ..
+									} = binary;
+
+									if is_image {
+										match &source {
 											BinarySource::Url(url) => {
 												values.push(json!({"type": "image_url", "image_url": {"url": url}}))
 											}
 											BinarySource::Base64(content) => {
-												let image_url = format!("data:{content_type};base64,{content}");
+												let image_url = format!("data:{};base64,{}", content_type, content);
 												values
 													.push(json!({"type": "image_url", "image_url": {"url": image_url}}))
 											}
 										}
 									} else {
-										match source {
+										match &source {
 											BinarySource::Url(_url) => {
 												// TODO: Need to return error
 												warn!(
@@ -410,11 +411,11 @@ impl OpenAIAdapter {
 												);
 											}
 											BinarySource::Base64(content) => {
-												let file_data = format!("data:{content_type};base64,{content}");
+												let file_data = format!("data:{};base64,{}", content_type, content);
 												values.push(json!({"type": "file", "file": {
-													 "filename": name,
-													"file_data": file_data}
-												}))
+													"filename": binary.name,
+													"file_data": file_data
+												}}))
 											}
 										}
 
@@ -460,7 +461,7 @@ impl OpenAIAdapter {
 							}
 
 							// TODO: Probably need towarn on this one (probably need to add binary here)
-							ContentPart::Binary { .. } => (),
+							ContentPart::Binary(_) => (),
 							ContentPart::ToolResponse(_) => (),
 						}
 					}

@@ -25,9 +25,9 @@ impl ContentPart {
 	}
 
 	pub fn from_binary_base64(
-		name: Option<String>,
 		content_type: impl Into<String>,
 		content: impl Into<Arc<str>>,
+		name: Option<String>,
 	) -> ContentPart {
 		ContentPart::Binary(Binary {
 			name,
@@ -37,9 +37,9 @@ impl ContentPart {
 	}
 
 	pub fn from_binary_url(
-		name: Option<String>,
 		content_type: impl Into<String>,
 		url: impl Into<String>,
+		name: Option<String>,
 	) -> ContentPart {
 		ContentPart::Binary(Binary {
 			name,
@@ -83,7 +83,7 @@ impl ContentPart {
 		}
 	}
 
-	pub fn as_tool_response(self) -> Option<ToolResponse> {
+	pub fn as_tool_response(&self) -> Option<&ToolResponse> {
 		if let ContentPart::ToolResponse(tool_response) = self {
 			Some(tool_response)
 		} else {
@@ -146,13 +146,13 @@ impl ContentPart {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Binary {
-	pub name: Option<String>,
 	pub content_type: String,
 	pub source: BinarySource,
+	pub name: Option<String>,
 }
 
 impl Binary {
-	pub fn new(name: Option<String>, content_type: impl Into<String>, source: BinarySource) -> Self {
+	pub fn new(content_type: impl Into<String>, source: BinarySource, name: Option<String>) -> Self {
 		Self {
 			name,
 			content_type: content_type.into(),

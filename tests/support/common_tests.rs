@@ -583,7 +583,7 @@ pub async fn common_test_chat_image_url_ok(model: &str) -> TestResult<()> {
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text("What is in this picture?"),
-		ContentPart::from_binary_url(None, "image/jpeg", IMAGE_URL_JPG_DUCK),
+		ContentPart::from_binary_url("image/jpeg", IMAGE_URL_JPG_DUCK, None),
 	]));
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
@@ -603,7 +603,7 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> TestResult<()> {
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text("What is in this picture?"),
-		ContentPart::from_binary_base64(None, "image/jpeg", get_b64_duck()?),
+		ContentPart::from_binary_base64("image/jpeg", get_b64_duck()?, None),
 	]));
 
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
@@ -624,7 +624,7 @@ pub async fn common_test_chat_pdf_b64_ok(model: &str) -> TestResult<()> {
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text("What does this document talk about?"),
-		ContentPart::from_binary_base64(Some("small.pdf".to_string()), "application/pdf", get_b64_pdf()?),
+		ContentPart::from_binary_base64("application/pdf", get_b64_pdf()?, Some("small.pdf".to_string())),
 	]));
 
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
@@ -644,8 +644,8 @@ pub async fn common_test_chat_multi_binary_b64_ok(model: &str) -> TestResult<()>
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
-		ContentPart::from_binary_base64(None, "image/jpeg", get_b64_duck()?),
-		ContentPart::from_binary_base64(Some("small.pdf".to_string()), "application/pdf", get_b64_pdf()?),
+		ContentPart::from_binary_base64("image/jpeg", get_b64_duck()?, None),
+		ContentPart::from_binary_base64("application/pdf", get_b64_pdf()?, Some("small.pdf".to_string())),
 	]));
 	chat_req = chat_req.append_message(ChatMessage::user(
 		"

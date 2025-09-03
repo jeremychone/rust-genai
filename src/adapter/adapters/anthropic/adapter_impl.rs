@@ -2,8 +2,8 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart,
-	MessageContent, PromptTokensDetails, ToolCall, Usage,
+	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse,
+	ContentPart, MessageContent, PromptTokensDetails, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -335,14 +335,14 @@ impl AnthropicAdapter {
 								ContentPart::Text(text) => {
 									values.push(json!({"type": "text", "text": text}));
 								}
-								ContentPart::Binary {
-									name: _name,
-									content_type,
-									source,
-								} => {
-									let is_image = content_type.trim_start().to_ascii_lowercase().starts_with("image/");
+								ContentPart::Binary(binary) => {
+									let is_image = binary.is_image();
+									let Binary {
+										content_type, source, ..
+									} = binary;
+
 									if is_image {
-										match source {
+										match &source {
 											BinarySource::Url(_) => {
 												// As of this API version, Anthropic doesn't support images by URL directly in messages.
 												warn!(
@@ -361,7 +361,7 @@ impl AnthropicAdapter {
 											}
 										}
 									} else {
-										match source {
+										match &source {
 											BinarySource::Url(url) => {
 												values.push(json!({
 													"type": "document",
@@ -423,7 +423,7 @@ impl AnthropicAdapter {
 								}));
 							}
 							// Unsupported for assistant role in Anthropic message content
-							ContentPart::Binary { .. } => {}
+							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 						}
 					}
