@@ -24,6 +24,11 @@ What's new: (`-` fix, `+` addition, `!` change)
 
 (see [CHANGELOG.md](CHANGELOG.md) for more)
 
+- `!` **API CHANGE** `MessageContent::text(&self)` replaced by (Because now `MessageContent` flatten multi-part format)
+	- `MessageContent::into_joined_texts(self) -> Option<String>`
+	- `MessageContent::joined_texts(&self) -> Option<String>`
+	- `MessageContent::texts(&self) -> Vec<&str>`
+	- `MessageContent::into_texts(self) -> Vec<String>`
 - `+` **Custom http headers** in `ChatOptions` (#78)
 - `+` **Model namespacing** to specify Adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name (AdapterKind and model name can still be overridden by `ServiceTargetResolver`)
 - `+` **New Adapters**  Zhipu (ChatGLM) (#76), Nebius
@@ -53,18 +58,6 @@ What's new:
 	- `ModelIden::with_name_or_clone` has been deprecated for `ModelInden::from_option_name(Option<String>)`
 
 Check [CHANGELOG](CHANGELOG.md) for more info	
-	
-## v0.2.0 - Released 2025-04-16
-
-Here are some of the api change. Check [CHANGELOG](CHANGELOG.md) for more info
-
-**API-CHANGES**
-- `chat::MetaUsage` has been renamed to `chat::Usage`
-- `Usage.input_tokens` to `Usage.prompt_tokens` 
-- `Usage.prompt_tokens` to `Usage.completion_tokens`
-- `ChatMessage` now takes an additional property, `options: MessageOptions` with and optional `cache_control` (`CacheControl::Ephemeral`)
-- Now `client.resolve_service_target(model)` is ASYNC, so, `client.resolve_service_target(model).await`
-- Note: At this point, we still cannot `AsyncFn...` traits as its support is not complete in stable (as of rust 1.86), but Auth   Resolver can be async now with some Pin/Box/Future type anotation. 
 	
 
 ## Thanks
