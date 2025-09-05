@@ -2,12 +2,12 @@ use derive_more::From;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Represents a list of headers to be applied to a request.
-/// These can be applied on top of each other to produce the final list.
+/// A map of HTTP headers (single value per name).
+/// Headers can be layered; later values override earlier ones.
 ///
-/// NOTE: Currently, this Headers construct supports only one value per header name,
-///       which, in the context of genai, is the most intuitive default behavior.
-///       This allows for natural authentication and other header overrides.
+/// Note: This type keeps a single value per header name, which is the most
+/// intuitive behavior for genai. It enables straightforward auth and other
+/// overrides.
 #[derive(Debug, Default, Clone, From, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Headers {
@@ -15,9 +15,9 @@ pub struct Headers {
 }
 
 impl Headers {
-	/// Merge this ExtraHeaders in place with the overlay ExtraHeaders
-	/// This take the ownership of the overlay
-	/// Use [`extend_with`] for reference overllay
+	/// Merge headers from overlay into self, consuming overlay.
+	/// Later values override existing ones.
+	/// Use [`merge_with`] for a borrowed overlay.
 	pub fn merge(&mut self, overlay: impl Into<Headers>) {
 		let overlay = overlay.into();
 
@@ -27,8 +27,8 @@ impl Headers {
 		}
 	}
 
-	/// Extend this ExtraHeaders in place with the overlay
-	/// This takes a reference to the overlay, and does not consume it.
+	/// Merge headers from overlay into self without consuming it.
+	/// Later values override existing ones.
 	pub fn merge_with(&mut self, overlay: &Headers) {
 		// Insert or replace each single-value override:
 		for (k, v) in &overlay.inner {
@@ -36,8 +36,8 @@ impl Headers {
 		}
 	}
 
-	/// Apply this header on top of a target ExtraHeaders.
-	/// Consuming both, and returning the augmented target
+	/// Apply self on top of target, consuming both, and return the result.
+	/// Values in self override those in target.
 	pub fn applied_to(self, target: impl Into<Headers>) -> Headers {
 		let mut target = target.into();
 		for (k, v) in self.inner {
@@ -89,12 +89,12 @@ where
 use std::collections::hash_map::{IntoIter, Iter, IterMut};
 
 impl Headers {
-	/// Returns an iterator over the headers.
+	/// Returns an iterator over (name, value) pairs.
 	pub fn iter(&self) -> Iter<'_, String, String> {
 		self.inner.iter()
 	}
 
-	/// Returns a mutable iterator over the headers.
+	/// Returns a mutable iterator over (name, value) pairs.
 	pub fn iter_mut(&mut self) -> IterMut<'_, String, String> {
 		self.inner.iter_mut()
 	}

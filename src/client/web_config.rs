@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-/// Configuration options for the reqwest client
+/// Reqwest client configuration.
 #[derive(Debug, Default, Clone)]
 pub struct WebConfig {
 	pub timeout: Option<Duration>,
@@ -11,52 +11,52 @@ pub struct WebConfig {
 }
 
 impl WebConfig {
-	/// Set the timeout for the reqwest client
+	/// Sets the per-request timeout.
 	pub fn with_timeout(mut self, timeout: Duration) -> Self {
 		self.timeout = Some(timeout);
 		self
 	}
 
-	/// Set the connect timeout for the reqwest client
+	/// Sets the connect timeout.
 	pub fn with_connect_timeout(mut self, timeout: Duration) -> Self {
 		self.connect_timeout = Some(timeout);
 		self
 	}
 
-	/// Set default headers for the reqwest client
+	/// Sets default headers.
 	pub fn with_default_headers(mut self, headers: reqwest::header::HeaderMap) -> Self {
 		self.default_headers = Some(headers);
 		self
 	}
 
-	/// Set proxy for the reqwest client
+	/// Sets the proxy.
 	pub fn with_proxy(mut self, proxy: reqwest::Proxy) -> Self {
 		self.proxy = Some(proxy);
 		self
 	}
 
-	/// Set proxy from URL string for the reqwest client
+	/// Sets the HTTP proxy from a URL.
 	pub fn with_proxy_url(mut self, proxy_url: &str) -> Result<Self, reqwest::Error> {
 		let proxy = reqwest::Proxy::http(proxy_url)?;
 		self.proxy = Some(proxy);
 		Ok(self)
 	}
 
-	/// Set HTTPS proxy from URL string for the reqwest client
+	/// Sets the HTTPS proxy from a URL.
 	pub fn with_https_proxy_url(mut self, proxy_url: &str) -> Result<Self, reqwest::Error> {
 		let proxy = reqwest::Proxy::https(proxy_url)?;
 		self.proxy = Some(proxy);
 		Ok(self)
 	}
 
-	/// Set proxy for all schemes from URL string for the reqwest client
+	/// Sets the proxy for all schemes from a URL.
 	pub fn with_all_proxy_url(mut self, proxy_url: &str) -> Result<Self, reqwest::Error> {
 		let proxy = reqwest::Proxy::all(proxy_url)?;
 		self.proxy = Some(proxy);
 		Ok(self)
 	}
 
-	/// Apply the configuration to a reqwest ClientBuilder
+	/// Applies this config to a reqwest::ClientBuilder.
 	pub fn apply_to_builder(&self, mut builder: reqwest::ClientBuilder) -> reqwest::ClientBuilder {
 		if let Some(timeout) = self.timeout {
 			builder = builder.timeout(timeout);

@@ -1,3 +1,8 @@
+//! Client module.
+//!
+//! Re-exports the public client API: builder, client types, configuration,
+//! headers, service targets, and web configuration utilities.
+
 // region:    --- Modules
 
 mod builder;
@@ -16,3 +21,4 @@ pub use service_target::*;
 pub use web_config::*;
 
 // endregion: --- Modules
+

@@ -1,12 +1,13 @@
-use crate::ClientBuilder;
-use crate::client::ClientConfig;
 use crate::webc::WebClient;
+use crate::{ClientBuilder, ClientConfig};
 use std::sync::Arc;
 
-/// genai Client for executing AI requests to any providers.
-/// Built with:
-/// - `ClientBuilder::default()...build()`
-/// - or `Client::builder()`, which is equivalent to `ClientBuilder::default()...build()`
+/// Client for sending AI requests to supported providers.
+///
+/// Construct with:
+/// - [`ClientBuilder::default()`] followed by `.build()`, or
+///
+/// - [`Client::builder()`], which is equivalent to `ClientBuilder::default()`.
 #[derive(Debug, Clone)]
 pub struct Client {
 	pub(super) inner: Arc<ClientInner>,
@@ -15,14 +16,18 @@ pub struct Client {
 // region:    --- Client Constructors
 
 impl Default for Client {
+	/// Creates a [`Client`] with default configuration.
+	///
+	/// Equivalent to `Client::builder().build()`.
 	fn default() -> Self {
 		Client::builder().build()
 	}
 }
 
 impl Client {
-	/// Create a new ClientBuilder for Client
-	/// This is just another way to use `ClientBuilder::default()`
+	/// Returns a builder for configuring and constructing a [`Client`].
+	///
+	/// Equivalent to calling [`ClientBuilder::default()`].
 	pub fn builder() -> ClientBuilder {
 		ClientBuilder::default()
 	}

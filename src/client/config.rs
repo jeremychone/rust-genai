@@ -5,7 +5,7 @@ use crate::embed::EmbedOptions;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result, WebConfig};
 
-/// The Client configuration used in the configuration builder stage.
+/// Configuration for building and customizing a `Client`.
 #[derive(Debug, Default, Clone)]
 pub struct ClientConfig {
 	pub(super) auth_resolver: Option<AuthResolver>,
@@ -18,50 +18,49 @@ pub struct ClientConfig {
 
 /// Chainable setters related to the ClientConfig.
 impl ClientConfig {
-	/// Set the AuthResolver for the ClientConfig.
-	/// Note: This will be called before the `service_target_resolver`, and if registered
-	///       the `service_target_resolver` will receive this new value.
+	/// Sets the AuthResolver.
+	///
+	/// Called before `service_target_resolver`; if set, it will receive this value.
 	pub fn with_auth_resolver(mut self, auth_resolver: AuthResolver) -> Self {
 		self.auth_resolver = Some(auth_resolver);
 		self
 	}
 
-	/// Set the ModelMapper for the ClientConfig.
-	/// Note: This will be called before the `service_target_resolver`, and if registered
-	///       the `service_target_resolver` will receive this new value.
+	/// Sets the ModelMapper.
+	///
+	/// Called before `service_target_resolver`; if set, it will receive this value.
 	pub fn with_model_mapper(mut self, model_mapper: ModelMapper) -> Self {
 		self.model_mapper = Some(model_mapper);
 		self
 	}
 
-	/// Set the ServiceTargetResolver for this client config.
+	/// Sets the ServiceTargetResolver.
 	///
-	/// A ServiceTargetResolver is the last step before execution, allowing the users full
-	/// control of the resolved Endpoint, AuthData, and ModelIden.
+	/// Final step before execution; allows full control over the resolved endpoint, auth, and model identifier.
 	pub fn with_service_target_resolver(mut self, service_target_resolver: ServiceTargetResolver) -> Self {
 		self.service_target_resolver = Some(service_target_resolver);
 		self
 	}
 
-	/// Set the default chat request options for the ClientConfig.
+	/// Sets default ChatOptions for chat requests.
 	pub fn with_chat_options(mut self, options: ChatOptions) -> Self {
 		self.chat_options = Some(options);
 		self
 	}
 
-	/// Set the default embed request options for the ClientConfig.
+	/// Sets default EmbedOptions for embed requests.
 	pub fn with_embed_options(mut self, options: EmbedOptions) -> Self {
 		self.embed_options = Some(options);
 		self
 	}
 
-	/// Set the reqwest client configuration options for the ClientConfig.
+	/// Sets the HTTP client configuration (reqwest).
 	pub fn with_web_config(mut self, web_config: WebConfig) -> Self {
 		self.web_config = Some(web_config);
 		self
 	}
 
-	/// Get a reference to the WebConfig, if it exists.
+	/// Returns the WebConfig, if set.
 	pub fn web_config(&self) -> Option<&WebConfig> {
 		self.web_config.as_ref()
 	}
@@ -69,26 +68,27 @@ impl ClientConfig {
 
 /// Getters for the fields of ClientConfig (as references).
 impl ClientConfig {
-	/// Get a reference to the AuthResolver, if it exists.
+	/// Returns the AuthResolver, if set.
 	pub fn auth_resolver(&self) -> Option<&AuthResolver> {
 		self.auth_resolver.as_ref()
 	}
 
+	/// Returns the ServiceTargetResolver, if set.
 	pub fn service_target_resolver(&self) -> Option<&ServiceTargetResolver> {
 		self.service_target_resolver.as_ref()
 	}
 
-	/// Get a reference to the ModelMapper, if it exists.
+	/// Returns the ModelMapper, if set.
 	pub fn model_mapper(&self) -> Option<&ModelMapper> {
 		self.model_mapper.as_ref()
 	}
 
-	/// Get a reference to the ChatOptions, if they exist.
+	/// Returns the default ChatOptions, if set.
 	pub fn chat_options(&self) -> Option<&ChatOptions> {
 		self.chat_options.as_ref()
 	}
 
-	/// Get a reference to the EmbedOptions, if they exist.
+	/// Returns the default EmbedOptions, if set.
 	pub fn embed_options(&self) -> Option<&EmbedOptions> {
 		self.embed_options.as_ref()
 	}
@@ -96,6 +96,12 @@ impl ClientConfig {
 
 /// Resolvers
 impl ClientConfig {
+	/// Resolves a ServiceTarget for the given model.
+	///
+	/// Applies the ModelMapper (if any), resolves auth (via AuthResolver or adapter default),
+	/// selects the adapter's default endpoint, then applies the ServiceTargetResolver (if any).
+	///
+	/// Errors with Error::Resolver if any resolver step fails.
 	pub async fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
 		// -- Resolve the Model first
 		let model = match self.model_mapper() {
