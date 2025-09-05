@@ -212,7 +212,7 @@ impl ReasoningEffort {
 	/// Parses a keyword into a non-`Budget` variant.
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
-			"minimal" => Some(ReasoningEffort::Low),
+			"minimal" => Some(ReasoningEffort::Minimal),
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
