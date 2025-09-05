@@ -1,8 +1,8 @@
 # genai - Multi-AI Providers Library for Rust
 
-Currently supports natively: **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**,  **Groq**, **DeepSeek** (deepseek.com & Groq),  **Cohere** (more to come)
+Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**, **Groq**, **DeepSeek** (deepseek.com & Groq), **Cohere** (more to come)
 
-Also, allow custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
+Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
 
 <div align="center">
 
@@ -14,9 +14,9 @@ Also, allow custom URL with `ServiceTargetResolver` (see [examples/c06-target-re
 
 <br />
 
-Provides a common and ergonomic single API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
+Provides a single, ergonomic API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-**NOTE:** Try to use the latest version (`0.4.0-alpha.4`). It is as robust as `0.3.x`, with updated APIs (see below) and additional functionality, thanks to many great PRs.
+**NOTE:** Try to use the latest version (`0.4.0-alpha.4`). It is as robust as `0.3.x`, but with updated APIs (see below) and additional functionality thanks to many great PRs.
 
 ## v0.4.0-alpha.x (main branch)
 
@@ -24,38 +24,38 @@ What's new: (`-` fix, `+` addition, `!` change)
 
 (see [CHANGELOG.md](CHANGELOG.md) for more)
 
-- `!` **API CHANGE** `MessageContent::text(&self)` replaced by (Because now `MessageContent` flatten multi-part format)
+- `!` **API CHANGE** `MessageContent::text(&self)` replaced by (because `MessageContent` now flattens multi-part formats)
 	- `MessageContent::into_joined_texts(self) -> Option<String>`
 	- `MessageContent::joined_texts(&self) -> Option<String>`
 	- `MessageContent::texts(&self) -> Vec<&str>`
 	- `MessageContent::into_texts(self) -> Vec<String>`
-- `+` **Custom http headers** in `ChatOptions` (#78)
-- `+` **Model namespacing** to specify Adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name (AdapterKind and model name can still be overridden by `ServiceTargetResolver`)
-- `+` **New Adapters**  Zhipu (ChatGLM) (#76), Nebius
-- `!` **API CHANGE** Now `ChatResponse.content` is a `Vec<MessageContent>` To support when response has ToolCalls and Text Message
-	- you can use `let text: &str = chat_reponse.first_text()` (was `ChatResponse::content_text_as_str()`) or
+- `+` **Custom HTTP headers** in `ChatOptions` (#78)
+- `+` **Model namespacing** to specify the adapter, e.g., `openai::codex-unknown-model` will use the OpenAI adapter and send `codex-unknown-model` as the model name. AdapterKind and model name can still be overridden by `ServiceTargetResolver`
+- `+` **New Adapters**: Zhipu (ChatGLM) (#76), Nebius
+- `!` **API CHANGE** Now `ChatResponse.content` is a `Vec<MessageContent>` to support responses that include ToolCalls and text messages
+	- you can use `let text: &str = chat_response.first_text()` (was `ChatResponse::content_text_as_str()`) or
 	- `let texts: Vec<&str> = chat_response.texts();`
 	- `let texts: Vec<String> = chat_response.into_texts();`
 	- `let text: String = chat_response::into_first_text()` (was `ChatResponse::content_text_into_string()`)
-	- To get the concatinated string of all message: 
+	- To get the concatenated string of all messages:
 		- `let text: String = content.into_iter().filter_map(|c| c.text_into_string()).collect::<Vec<_>>().join("\n\n")`
-	- NOTE: We might add a `MessageContentVecExt` extention trait to provide convenient extraction methods.
-- `!` **API CHANGE** Now `ChatResponse::into_tool_calls()` and (`tool_calls()`) returns `Vec<ToolCalls>` (rather than `Option<Vec<ToolCalls>>`) 
+	- NOTE: We might add a `MessageContentVecExt` extension trait to provide convenient extraction methods.
+- `!` **API CHANGE** Now `ChatResponse::into_tool_calls()` and `tool_calls()` return `Vec<ToolCalls>` rather than `Option<Vec<ToolCalls>>`
 - `!` **API CHANGE** MessageContent - Now use `message_content.text()` and `message_content.into_text()` (rather than `text_as_str`, `text_into_string`)
-- `-` **Gemini ToolResponse Fix** Gemini Adapter wrongfully tried to parse the `ToolResponse.content` (see [#59](https://github.com/jeremychone/rust-genai/issues/59))
-- `!` **Tool Use Streaming** support – thanks to [ClanceyLu](https://github.com/ClanceyLu), [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
+- `-` **Gemini ToolResponse Fix** Gemini adapter wrongfully tried to parse the `ToolResponse.content` (see [#59](https://github.com/jeremychone/rust-genai/issues/59))
+- `!` **Tool Use Streaming** support, thanks to [ClanceyLu](https://github.com/ClanceyLu), [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
 
 ## v0.3.0 - Released 2025-05-08
 
 What's new: 
 
 - Gemini Thinking Budget support `ReasoningEffort::Budget(num)`
-- Gemini`-zero`, `-low`, `-medium`, and `-high` suffixes that set the corresponding budget (`0`, `1k`, `8k`, `24k`)
-- When set, `ReasoningEffort::Low, ...` will map to their corresponding budget `1k`, `8k`, `24k`
+- Gemini `-zero`, `-low`, `-medium`, and `-high` suffixes that set the corresponding budget (`0`, `1k`, `8k`, `24k`)
+- When set, `ReasoningEffort::Low, ...` will map to their corresponding budgets `1k`, `8k`, `24k`
 
 **API-CHANGES** (minors)
-	- `ReasoningEffort` has now and additional `Budget(num)` variant
-	- `ModelIden::with_name_or_clone` has been deprecated for `ModelInden::from_option_name(Option<String>)`
+	- `ReasoningEffort` now has an additional `Budget(num)` variant
+	- `ModelIden::with_name_or_clone` has been deprecated in favor of `ModelIden::from_option_name(Option<String>)`
 
 Check [CHANGELOG](CHANGELOG.md) for more info	
 	
@@ -63,27 +63,27 @@ Check [CHANGELOG](CHANGELOG.md) for more info
 ## Thanks
 
 - [ClanceyLu](https://github.com/ClanceyLu) for Tool Use Streaming support [PR #58](https://github.com/jeremychone/rust-genai/pull/58)
-- [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
-- [@una-spirito](https://github.com/luna-spirito) for gemini `ReasoningEffort::Budget` support. 
-- [@jBernavaPrah](https://github.com/jBernavaPrah) For adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
-- [@GustavoWidman](https://github.com/GustavoWidman) for the intial gemini tool/function support!! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
+- [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some Ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
+- [@una-spirito](https://github.com/luna-spirito) for Gemini `ReasoningEffort::Budget` support
+- [@jBernavaPrah](https://github.com/jBernavaPrah) for adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
+- [@GustavoWidman](https://github.com/GustavoWidman) for the initial Gemini tool/function support! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
 - [@AdamStrojek](https://github.com/AdamStrojek) for initial image support [PR #36](https://github.com/jeremychone/rust-genai/pull/36)
 - [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
 - [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
-- [@tusharmath](https://github.com/tusharmath) for make webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
-- [@giangndm](https://github.com/giangndm) for make stream is send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
+- [@tusharmath](https://github.com/tusharmath) for making webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
+- [@giangndm](https://github.com/giangndm) for making stream Send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
 - [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
 
 ## Usage examples
 
 - Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://www.youtube.com/watch?v=zL1BzPVM8-Y&list=PL7r-PXl6ZPcB2zN0XHsYIDaD5yW8I40AE) for a simple example of how I use AI PACK/genai for production coding.
 
-> Note: Feel free to send me a short description and link to your application or library using genai.
+> Note: Feel free to send me a short description and a link to your application or library using genai.
 
 ## Key Features
 
 - Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek (Direct chat and stream) (see [examples/c00-readme.rs](examples/c00-readme.rs))
-- DeepSeekR1 support, with `reasoning_content` (and stream support) + DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
+- DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
 - Model Alias (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
@@ -183,7 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c01-conv.rs](examples/c01-conv.rs) - Shows how to build a conversation flow.
 - [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data (i.e., for api_key) per adapter kind.
 - [examples/c03-mapper.rs](examples/c03-mapper.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
-- [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per request level.
+- [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per-request level.
 - [examples/c05-model-names.rs](examples/c05-model-names.rs) - Shows how to get model names per AdapterKind.
 - [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs) - For custom Auth, Endpoint, and Model.
 - [examples/c07-image.rs](examples/c07-image.rs) - Image Analysis support
@@ -209,11 +209,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Focuses on standardizing chat completion APIs across major AI services.
 
 - Native implementation, meaning no per-service SDKs.
-    - Reason: While there are some variations between all of the various APIs, they all follow the same pattern and high-level flow and constructs. Managing the differences at a lower layer is actually simpler and more cumulative across services than doing SDKs gymnastics.
+    - Reason: While there are some variations across the various APIs, they all follow the same pattern and high-level flow and constructs. Managing the differences at a lower layer is actually simpler and more cumulative across services than doing SDK gymnastics.
 
 - Prioritizes ergonomics and commonality, with depth being secondary. (If you require a complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); they are both excellent and easy to use.)
 
-- Initially, this library will mostly focus on text chat API (images, or even function calling in the first stage).
+- Initially, this library will mostly focus on text chat APIs; images and function calling will come later.
 
 ## ChatOptions
 
