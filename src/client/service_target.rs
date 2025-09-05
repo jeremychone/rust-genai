@@ -5,9 +5,9 @@ use crate::resolver::{AuthData, Endpoint};
 ///
 /// Fields:
 /// - `endpoint`: Resolved service endpoint.
-/// 
+///
 /// - `auth`: Authentication data for the request.
-/// 
+///
 /// - `model`: Target model identifier.
 pub struct ServiceTarget {
 	pub endpoint: Endpoint,

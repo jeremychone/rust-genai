@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
 
-	/// Chat request for client chat calls.
+/// Chat request for client chat calls.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
 	/// The initial system content of the request.

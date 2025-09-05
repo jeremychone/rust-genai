@@ -1,4 +1,5 @@
- //! Types for chat responses. `ChatStream` is defined separately.
+
+//! Types for chat responses. `ChatStream` is defined separately.
 
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +8,7 @@ use crate::chat::{ChatStream, MessageContent, ToolCall, Usage};
 
 // region:    --- ChatResponse
 
- /// Response returned by a non-streaming chat request.
+/// Response returned by a non-streaming chat request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
 	/// Message content returned by the assistant.
@@ -121,7 +122,7 @@ impl ChatResponse {
 
 // region:    --- ChatStreamResponse
 
- /// Result of a streaming chat request.
+/// Result of a streaming chat request.
 pub struct ChatStreamResponse {
 	/// Stream to iterate through response events.
 	pub stream: ChatStream,
