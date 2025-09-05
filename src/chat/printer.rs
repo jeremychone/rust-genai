@@ -11,15 +11,16 @@ type Result<T> = core::result::Result<T, Error>;
 
 // region:    --- PrintChatOptions
 
-/// Options to be passed into the `printer::print_chat_stream`
+/// Options for printing a chat stream with `printer::print_chat_stream`.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PrintChatStreamOptions {
+	/// When true, also print event markers and tool-call metadata.
 	print_events: Option<bool>,
 }
 
 /// Constructors
 impl PrintChatStreamOptions {
-	/// Create a `PrintChatStreamOptions` with the `print_events` field set to `true`
+	/// Build options with `print_events` set.
 	pub fn from_print_events(print_events: bool) -> Self {
 		PrintChatStreamOptions {
 			print_events: Some(print_events),
@@ -29,7 +30,9 @@ impl PrintChatStreamOptions {
 
 // endregion: --- PrintChatOptions
 
-/// Convenient function that prints a chat stream, captures the content, and returns it (only concatenated chunks).
+/// Write the streamed chat response to stdout and return the concatenated content.
+///
+/// Stdout is flushed before returning, even on error.
 pub async fn print_chat_stream(
 	chat_res: ChatStreamResponse,
 	options: Option<&PrintChatStreamOptions>,

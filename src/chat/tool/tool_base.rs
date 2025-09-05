@@ -2,17 +2,18 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Tool metadata used for function calling by LLMs.
 pub struct Tool {
-	/// The tool name, which is typically the function name
-	/// e.g., `get_weather`
+	/// Tool name, typically the function name.
+	/// Example: `get_weather`.
 	pub name: String,
 
-	/// The description of the tool that will be used by the LLM to understand the context/usage of this tool
+	/// Human-readable description used by the LLM to understand when and how to call this tool.
 	pub description: Option<String>,
 
-	/// The JSON schema for the parameters
-	/// e.g.,
-	/// ```json
+	/// JSON Schema for the tool parameters.
+	/// Example:
+	/// ```rust
 	/// json!({
 	/// "type": "object",
 	/// "properties": {
@@ -37,12 +38,13 @@ pub struct Tool {
 
 	/// Optional configuration for the tool.
 	///
-	/// This could be usefull when you are using embeded tools like googleSearch of gimini
+	/// Useful with embedded provider tools (e.g., Google Search for Gemini).
 	pub config: Option<Value>,
 }
 
 /// Constructor
 impl Tool {
+	/// Create a new tool with the given name.
 	pub fn new(name: impl Into<String>) -> Self {
 		Self {
 			name: name.into(),
@@ -56,16 +58,19 @@ impl Tool {
 // region:    --- Setters
 
 impl Tool {
+	/// Set the tool description. Returns self for chaining.
 	pub fn with_description(mut self, description: impl Into<String>) -> Self {
 		self.description = Some(description.into());
 		self
 	}
 
+	/// Set the JSON Schema for the tool parameters. Returns self for chaining.
 	pub fn with_schema(mut self, parameters: Value) -> Self {
 		self.schema = Some(parameters);
 		self
 	}
 
+	/// Set provider-specific configuration (if any). Returns self for chaining.
 	pub fn with_config(mut self, config: Value) -> Self {
 		self.config = Some(config);
 		self

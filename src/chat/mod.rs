@@ -1,5 +1,5 @@
-//! The genai chat module contains all of the constructs necessary
-//! to make genai requests with the `genai::Client`.
+//! Chat primitives and utilities for building requests and streaming responses.
+//! Intended for use with `genai::Client`
 
 // region:    --- Modules
 
@@ -26,6 +26,7 @@ pub use message_content::*;
 pub use tool::*;
 pub use usage::*;
 
+#[doc = "Printing helpers for chat requests and streaming output."]
 pub mod printer;
 
 // endregion: --- Modules

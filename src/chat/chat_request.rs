@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
 
-/// The Chat request when performing a direct `Client::`
+	/// Chat request for client chat calls.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
 	/// The initial system content of the request.
@@ -14,12 +14,13 @@ pub struct ChatRequest {
 	/// The messages of the request.
 	pub messages: Vec<ChatMessage>,
 
+	/// Optional tool definitions available to the model.
 	pub tools: Option<Vec<Tool>>,
 }
 
 /// Constructors
 impl ChatRequest {
-	/// Create a new ChatRequest with the given messages.
+	/// Construct from a set of messages.
 	pub fn new(messages: Vec<ChatMessage>) -> Self {
 		Self {
 			messages,
@@ -28,7 +29,7 @@ impl ChatRequest {
 		}
 	}
 
-	/// Create a ChatRequest from the `.system` property content.
+	/// Construct with an initial system prompt.
 	pub fn from_system(content: impl Into<String>) -> Self {
 		Self {
 			system: Some(content.into()),
@@ -37,7 +38,7 @@ impl ChatRequest {
 		}
 	}
 
-	/// Create a ChatRequest with one user message.
+	/// Construct with a single user message.
 	pub fn from_user(content: impl Into<String>) -> Self {
 		Self {
 			system: None,
@@ -46,7 +47,7 @@ impl ChatRequest {
 		}
 	}
 
-	/// Create a new request from messages.
+	/// Construct from messages.
 	pub fn from_messages(messages: Vec<ChatMessage>) -> Self {
 		Self {
 			system: None,
@@ -58,28 +59,31 @@ impl ChatRequest {
 
 /// Chainable Setters
 impl ChatRequest {
-	/// Set the system content of the request.
+	/// Set or replace the system prompt.
 	pub fn with_system(mut self, system: impl Into<String>) -> Self {
 		self.system = Some(system.into());
 		self
 	}
 
-	/// Append a message to the request.
+	/// Append one message.
 	pub fn append_message(mut self, msg: impl Into<ChatMessage>) -> Self {
 		self.messages.push(msg.into());
 		self
 	}
 
+	/// Append multiple messages.
 	pub fn append_messages(mut self, messages: Vec<ChatMessage>) -> Self {
 		self.messages.extend(messages);
 		self
 	}
 
+	/// Replace the tool set.
 	pub fn with_tools(mut self, tools: Vec<Tool>) -> Self {
 		self.tools = Some(tools);
 		self
 	}
 
+	/// Append one tool.
 	pub fn append_tool(mut self, tool: impl Into<Tool>) -> Self {
 		self.tools.get_or_insert_with(Vec::new).push(tool.into());
 		self
@@ -88,8 +92,7 @@ impl ChatRequest {
 
 /// Getters
 impl ChatRequest {
-	/// Iterate through all of the system content, starting with the eventual
-	/// ChatRequest.system and then the ChatMessage of role System.
+	/// Iterate over all system content: the top-level system prompt, then any system-role messages.
 	pub fn iter_systems(&self) -> impl Iterator<Item = &str> {
 		self.system
 			.iter()
@@ -100,12 +103,10 @@ impl ChatRequest {
 			}))
 	}
 
-	/// Combine the eventual ChatRequest `.system` and system messages into one string.
-	/// - It will start with the eventual `chat_request.system`.
-	/// - Then concatenate the eventual `ChatRequestMessage` of Role `System`.
-	/// - This will attempt to add an empty line between system content. So, it will add
-	///   - Two `\n` when the previous content does not end with `\n`.
-	///   - One `\n` if the previous content ends with `\n`.
+	/// Concatenate the top-level system prompt and all system-role messages into one string.
+	/// Separation rules:
+	/// - add two newlines if the previous chunk does not end with '\n'
+	/// - add one newline if it does
 	pub fn combine_systems(&self) -> Option<String> {
 		let mut systems: Option<String> = None;
 

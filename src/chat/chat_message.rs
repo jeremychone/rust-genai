@@ -2,33 +2,28 @@ use crate::chat::{MessageContent, ToolCall, ToolResponse};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
-/// An individual chat message, for System, User, Assistant, Tool, or ToolResponse
+/// A single chat message (system, user, assistant, or tool).
 ///
-/// **Note:**
-///
-/// The current design uses a single ChatMessage type for all Roles as a struct for now,
-/// with the content being the MessageContent, and the role distinguished by the `.role` property.
-///
-/// This differs from another valid approach where ChatMessage would have been an enum
-/// with a variant per role, making the content more aligned with the Role, but adding some type redundancy.
-///
-/// Both approaches have pros and cons. For now, genai has taken the former approach, but we might revisit this in a "major" release.
+/// Design:
+/// - Uses one struct with a role field instead of role-specific enum variants.
+/// - Payload lives in MessageContent; ChatRole distinguishes the role.
+/// - MessageContent is a multipart format, with `Vec<ContentPart>`
 ///
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
-	/// The role of the message.
+	/// The message role.
 	pub role: ChatRole,
 
-	/// The content of the message.
+	/// Message content.
 	pub content: MessageContent,
 
-	/// For now, just allow CacheControl, but might support more later
+	/// Optional per-message options (e.g., cache control).
 	pub options: Option<MessageOptions>,
 }
 
 /// Constructors
 impl ChatMessage {
-	/// Create a new ChatMessage with the role `ChatRole::System`.
+	/// Constructs a system message.
 	pub fn system(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::System,
@@ -37,7 +32,7 @@ impl ChatMessage {
 		}
 	}
 
-	/// Create a new ChatMessage with the role `ChatRole::Assistant`.
+	/// Constructs an assistant message.
 	pub fn assistant(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::Assistant,
@@ -46,7 +41,7 @@ impl ChatMessage {
 		}
 	}
 
-	/// Create a new ChatMessage with the role `ChatRole::User`.
+	/// Constructs a user message.
 	pub fn user(content: impl Into<MessageContent>) -> Self {
 		Self {
 			role: ChatRole::User,
@@ -57,6 +52,7 @@ impl ChatMessage {
 }
 
 impl ChatMessage {
+	/// Attaches options to this message.
 	pub fn with_options(mut self, options: impl Into<MessageOptions>) -> Self {
 		self.options = Some(options.into());
 		self
@@ -65,17 +61,19 @@ impl ChatMessage {
 // region:    --- MessageOptions
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
+/// Per-message options (e.g., cache control).
 pub struct MessageOptions {
 	#[from]
 	pub cache_control: Option<CacheControl>,
 }
 
 /// Cache control
-/// Note - For now, only for Anthropic
-///        Also Anthropic put the cache_control at the ContentPart level but for now
-///        to keep things simpler, the cache_control is at the ChatMessage leve
-///        and genera will create the tright thing
-/// Note: OpenAI is transparent, and Gemini has a separate call for it (so not supported for now)
+///
+/// Notes:
+/// - Currently used for Anthropic only.
+/// - Anthropic applies cache_control at the content-part level; genai exposes it at the
+///   ChatMessage level and maps it appropriately.
+/// - OpenAI ignores it; Gemini uses a separate API, so it is not supported there yet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CacheControl {
 	Ephemeral,

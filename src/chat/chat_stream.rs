@@ -7,7 +7,7 @@ use std::task::{Context, Poll};
 
 type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>> + Send>>;
 
-/// ChatStream is a Rust Future Stream that iterates through the events of a chat stream request.
+/// A stream of chat events produced by a streaming chat request.
 pub struct ChatStream {
 	inter_stream: InterStreamType,
 }
@@ -60,55 +60,54 @@ impl Stream for ChatStream {
 
 // region:    --- ChatStreamEvent
 
-/// The normalized chat stream event for any provider when calling `Client::exec`.
+/// Provider-agnostic chat events returned by `Client::exec()` when streaming.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ChatStreamEvent {
-	/// Represents the start of the stream. The first event.
+	/// Emitted once at the start of the stream.
 	Start,
 
-	/// Represents each content chunk. Currently, it only contains text content.
+	/// Assistant content chunk (text).
 	Chunk(StreamChunk),
 
-	/// Represents the reasoning_content chunk.
+	/// Reasoning content chunk.
 	ReasoningChunk(StreamChunk),
 
-	/// Represents tool call chunks.
+	/// Tool-call chunk.
 	ToolCallChunk(ToolChunk),
 
-	/// Represents the end of the stream.
-	/// It will have the `.captured_usage` and `.captured_content` if specified in the `ChatOptions`.
+	/// End of stream.
+	/// May include captured usage and/or content when enabled via `ChatOptions`.
 	End(StreamEnd),
 }
 
-/// Chunk content of the `ChatStreamEvent::Chunk` variant.
-/// For now, it only contains text.
+/// Content of `ChatStreamEvent::Chunk`.
+/// Currently text only.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StreamChunk {
-	/// The content text.
+	/// Text content.
 	pub content: String,
 }
 
-/// Tool call chunk content of the `ChatStreamEvent::ToolCallChunk` variant.
+/// Content of `ChatStreamEvent::ToolCallChunk`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ToolChunk {
 	/// The tool call.
 	pub tool_call: ToolCall,
 }
 
-/// StreamEnd content, with the eventual `.captured_usage` and `.captured_content`.
+/// Terminal event data with optionally captured usage and content.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StreamEnd {
-	/// The eventual captured usage metadata.
-	/// Note: This requires the ChatOptions `capture_usage` flag to be set to true.
+	/// Captured usage if `ChatOptions.capture_usage` is enabled.
 	pub captured_usage: Option<Usage>,
 
-	/// The eventual captured full content.
-	/// Note: This requires the ChatOptions `capture_content` or `capture_tool_calls` flags to be set to true.
-	/// Note: Since 0.4.0 this will have the tool calls as well (for API symmetry with the ChatRespone), call `.captured_tool_calls()` or `.captured_texts()` ...
+	/// Captured final content (text and tool calls) if `ChatOptions.capture_content`
+	/// or `capture_tool_calls` is enabled.
+	/// Note: Since 0.4.0 this includes tool calls as well (for API symmetry with `ChatResponse`);
+	///       use `.captured_tool_calls()` or `.captured_texts()`.
 	pub captured_content: Option<Vec<MessageContent>>,
 
-	/// The eventual captured
-	/// Note: This requires the ChatOptions `capture_reasoning` flag to be set to true.
+	/// Captured reasoning content if `ChatOptions.capture_reasoning` is enabled.
 	pub captured_reasoning_content: Option<String>,
 }
 
@@ -143,8 +142,8 @@ impl From<InterStreamEnd> for StreamEnd {
 
 /// Getters
 impl StreamEnd {
-	/// Returns a reference to the first captured text content if available.
-	/// This is the concatenation of all text chunks received during the stream.
+	/// Returns the first captured text, if any.
+	/// This is the concatenation of all streamed text chunks.
 	pub fn captured_first_text(&self) -> Option<&str> {
 		let captured_content = self.captured_content.as_ref()?;
 
@@ -156,8 +155,8 @@ impl StreamEnd {
 		None
 	}
 
-	/// Consumes the `StreamEnd` and returns the first captured text content if available.
-	/// This is the concatenation of all text chunks received during the stream.
+	/// Consumes `self` and returns the first captured text, if any.
+	/// This is the concatenation of all streamed text chunks.
 	pub fn captured_into_first_text(self) -> Option<String> {
 		let captured_content = self.captured_content?;
 
@@ -169,8 +168,7 @@ impl StreamEnd {
 		None
 	}
 
-	/// Returns a vector of references to all captured text content parts.
-	/// Each element in the vector represents the concatenation of text chunks received consecutively.
+	/// Returns all captured text segments, if any.
 	pub fn captured_texts(&self) -> Option<Vec<&str>> {
 		let captured_content = self.captured_content.as_ref()?;
 
@@ -183,8 +181,7 @@ impl StreamEnd {
 		Some(all_texts)
 	}
 
-	/// Consumes the `StreamEnd` and returns a vector of all captured text content parts.
-	/// Each element in the vector represents the concatenation of text chunks received consecutively.
+	/// Consumes `self` and returns all captured text segments, if any.
 	pub fn into_texts(self) -> Option<Vec<String>> {
 		let captured_content = self.captured_content?;
 
@@ -198,8 +195,7 @@ impl StreamEnd {
 		Some(all_texts)
 	}
 
-	/// Returns a vector of references to all captured tool calls.
-	/// This is the concatenation of all tool call chunks received during the stream.
+	/// Returns all captured tool calls, if any.
 	pub fn captured_tool_calls(&self) -> Option<Vec<&ToolCall>> {
 		let captured_content = self.captured_content.as_ref()?;
 
@@ -212,8 +208,7 @@ impl StreamEnd {
 		Some(all_tool_calls)
 	}
 
-	/// Consumes the `StreamEnd` and returns a vector of all captured tool calls.
-	/// This is the concatenation of all tool call chunks received during the stream.
+	/// Consumes `self` and returns all captured tool calls, if any.
 	pub fn captured_into_tool_calls(self) -> Option<Vec<ToolCall>> {
 		let captured_content = self.captured_content?;
 

@@ -1,32 +1,32 @@
-/// Note: MessageContent is use for the ChatRequest as well as the ChatResponse
+﻿/// Note: MessageContent is used for ChatRequest and ChatResponse.
 use crate::chat::{ContentPart, ToolCall, ToolResponse};
 use serde::{Deserialize, Serialize};
 
-/// MessageContent for the ChatRequest and ChatResponse
+/// Message content container used in ChatRequest and ChatResponse.
 ///
-/// This is a list of ContentPart that can be Text, Binary, ToolCall, or ToolResponse
+/// Transparent wrapper around a list of ContentPart (Text, Binary, ToolCall, or ToolResponse).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct MessageContent {
-	/// The content parts of this message content
+	/// The parts that compose this message.
 	parts: Vec<ContentPart>,
 }
 
 /// Constructors
 impl MessageContent {
-	/// Create a new MessageContent with a single Text part
+	/// Create a message containing a single text part.
 	pub fn from_text(content: impl Into<String>) -> Self {
 		Self {
 			parts: vec![ContentPart::Text(content.into())],
 		}
 	}
 
-	/// Create a new MessageContent from provided content parts
+	/// Build from the provided content parts.
 	pub fn from_parts(parts: impl Into<Vec<ContentPart>>) -> Self {
 		Self { parts: parts.into() }
 	}
 
-	/// Create a new MessageContent from provided tool calls
+	/// Build from the provided tool calls.
 	pub fn from_tool_calls(tool_calls: Vec<ToolCall>) -> Self {
 		Self {
 			parts: tool_calls.into_iter().map(ContentPart::ToolCall).collect(),
@@ -36,17 +36,18 @@ impl MessageContent {
 
 /// Fluid Setters/Builders
 impl MessageContent {
-	/// Push a single ContentPart (Consuming Builder style)
+	/// Append one part and return self (builder style).
 	pub fn append(mut self, part: impl Into<ContentPart>) -> Self {
 		self.parts.push(part.into());
 		self
 	}
 
-	/// Push a single ContentPart
+	/// Append one part (mutating).
 	pub fn push(&mut self, part: impl Into<ContentPart>) {
 		self.parts.push(part.into());
 	}
 
+	/// Extend with an iterator of parts, returning self.
 	pub fn extended<I>(mut self, iter: I) -> Self
 	where
 		I: IntoIterator<Item = ContentPart>,
@@ -104,23 +105,27 @@ impl FromIterator<ContentPart> for MessageContent {
 
 /// Getters
 impl MessageContent {
+	/// Return all parts.
 	pub fn parts(&self) -> &Vec<ContentPart> {
 		&self.parts
 	}
 
+	/// Consume and return the underlying parts.
 	pub fn into_parts(self) -> Vec<ContentPart> {
 		self.parts
 	}
 
+	/// Return all text parts as &str.
 	pub fn texts(&self) -> Vec<&str> {
 		self.parts.iter().filter_map(|p| p.as_text()).collect()
 	}
 
+	/// Consume and return all text parts as owned Strings.
 	pub fn into_texts(self) -> Vec<String> {
 		self.parts.into_iter().filter_map(|p| p.into_text()).collect()
 	}
 
-	/// Returns references to tool calls only if all parts are ToolCall.
+	/// Return references to all ToolCall parts.
 	pub fn tool_calls(&self) -> Vec<&ToolCall> {
 		self.parts
 			.iter()
@@ -131,7 +136,7 @@ impl MessageContent {
 			.collect()
 	}
 
-	/// Consumes and returns tool calls only if all parts are ToolCall.
+	/// Consume and return all ToolCall parts.
 	pub fn into_tool_calls(self) -> Vec<ToolCall> {
 		self.parts
 			.into_iter()
@@ -142,6 +147,7 @@ impl MessageContent {
 			.collect()
 	}
 
+	/// Return references to all ToolResponse parts.
 	pub fn tool_responses(&self) -> Vec<&ToolResponse> {
 		self.parts
 			.iter()
@@ -152,6 +158,7 @@ impl MessageContent {
 			.collect()
 	}
 
+	/// Consume and return all ToolResponse parts.
 	pub fn into_tool_responses(self) -> Vec<ToolResponse> {
 		self.parts
 			.into_iter()
@@ -162,16 +169,17 @@ impl MessageContent {
 			.collect()
 	}
 
+	/// True if there are no parts.
 	pub fn is_empty(&self) -> bool {
 		self.parts.is_empty()
 	}
 
+	/// Number of parts.
 	pub fn len(&self) -> usize {
 		self.parts.len()
 	}
 
-	/// Returns true if there is at least one text part
-	/// and all text parts are empty or whitespace.
+	/// True if empty, or if all parts are text whose content is empty or whitespace.
 	pub fn is_text_empty(&self) -> bool {
 		if self.parts.is_empty() {
 			return true;
@@ -184,25 +192,23 @@ impl MessageContent {
 
 /// Convenient Getters
 impl MessageContent {
-	/// Returns the MessageContent as &str only if it contains exactly one Text part.
-	/// Otherwise, it returns None.
+	/// Return the first text part, if any.
 	///
-	/// NOTE: When multi-part content is present, this will return None and won't concatenate the text parts.
+	/// Does not concatenate multiple text parts.
 	pub fn first_text(&self) -> Option<&str> {
 		let first_text_part = self.parts.iter().find(|p| p.is_text())?;
 		first_text_part.as_text()
 	}
 
-	/// Consumes the MessageContent and returns it as String only if it contains exactly one Text part.
-	/// Otherwise, it returns None.
+	/// Consume and return the first text part as a String, if any.
 	///
-	/// NOTE: When multi-part content is present, this will return None and won't concatenate the text parts.
+	/// Does not concatenate multiple text parts.
 	pub fn into_first_text(self) -> Option<String> {
 		let first_text_part = self.parts.into_iter().find(|p| p.is_text())?;
 		first_text_part.into_text()
 	}
 
-	/// Joined the text, and join with empty line "\n" (will add extra "\n" if previous text does not end with "\n")
+	/// Join all text parts, separating segments with a blank line.
 	pub fn joined_texts(&self) -> Option<String> {
 		let texts = self.texts();
 		if texts.is_empty() {
@@ -227,6 +233,7 @@ impl MessageContent {
 		Some(combined)
 	}
 
+	/// Consume and join all text parts, separating segments with a blank line.
 	pub fn into_joined_texts(self) -> Option<String> {
 		let texts = self.into_texts();
 		if texts.is_empty() {
@@ -254,18 +261,22 @@ impl MessageContent {
 
 /// is_.., contains_..
 impl MessageContent {
+	/// True if every part is text.
 	pub fn is_text_only(&self) -> bool {
 		self.parts.iter().all(|p| p.is_text())
 	}
 
+	/// True if at least one part is text.
 	pub fn contains_text(&self) -> bool {
 		self.parts.iter().any(|p| p.is_text())
 	}
 
+	/// True if at least one part is a ToolCall.
 	pub fn contains_tool_call(&self) -> bool {
 		self.parts.iter().any(|p| p.is_tool_call())
 	}
 
+	/// True if at least one part is a ToolResponse.
 	pub fn contains_tool_response(&self) -> bool {
 		self.parts.iter().any(|p| p.is_tool_response())
 	}
