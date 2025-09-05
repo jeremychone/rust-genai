@@ -252,6 +252,13 @@ impl OpenAIAdapter {
 			payload.x_insert("reasoning_effort", keyword)?;
 		}
 
+		// -- Set verbosity
+		if let Some(verbosity) = options_set.verbosity()
+			&& let Some(keyword) = verbosity.as_keyword()
+		{
+			payload.x_insert("verbosity", keyword)?;
+		}
+
 		// -- Tools
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;

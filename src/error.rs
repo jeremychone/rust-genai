@@ -30,6 +30,9 @@ pub enum Error {
 	#[display("JSON mode requested but no instruction/prompt provided.")]
 	JsonModeWithoutInstruction,
 
+	#[display("Failed to parse verbosity. Actual: '{actual}'")]
+	VerbosityParsing { actual: String },
+
 	#[display("Failed to parse reasoning. Actual: '{actual}'")]
 	ReasoningParsingError { actual: String },
 

@@ -6,8 +6,8 @@ use crate::support::{
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
-	BinarySource, CacheControl, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, JsonSpec, Tool,
-	ToolResponse,
+	BinarySource, CacheControl, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, JsonSpec,
+	ReasoningEffort, Tool, ToolResponse, Verbosity,
 };
 use genai::embed::EmbedOptions;
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
@@ -66,6 +66,32 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> T
 			"Reasoning content should be > than the content"
 		);
 	}
+
+	Ok(())
+}
+
+pub async fn common_test_chat_verbosity_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let chat_client_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Low);
+	let client = Client::builder().with_chat_options(chat_client_options).build();
+	let chat_req = ChatRequest::new(vec![
+		//
+		ChatMessage::user("Why is the sky blue?"),
+	]);
+
+	// -- Exec
+	// content low
+	let chat_options = ChatOptions::default().with_verbosity(Verbosity::Low);
+	let chat_res = client.exec_chat(model, chat_req.clone(), Some(&chat_options)).await?;
+	let content_low = chat_res.first_text().ok_or("Should have content")?;
+	// content high
+	let chat_options = ChatOptions::default().with_verbosity(Verbosity::High);
+	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
+	let content_high = chat_res.first_text().ok_or("Should have content")?;
+
+	// -- Check Content
+	let ratio = content_high.len() / content_low.len();
+	assert!(ratio >= 2, "The verbosity high was not high enough compared to the low");
 
 	Ok(())
 }

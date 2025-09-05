@@ -57,6 +57,9 @@ pub struct ChatOptions {
 	/// Preferred reasoning effort, when supported by the provider.
 	pub reasoning_effort: Option<ReasoningEffort>,
 
+	/// Verbosity (for OpenAI gpt-5),
+	pub verbosity: Option<Verbosity>,
+
 	/// Seed for repeatability, if supported.
 	pub seed: Option<u64>,
 
@@ -135,6 +138,12 @@ impl ChatOptions {
 	/// Sets the reasoning effort hint.
 	pub fn with_reasoning_effort(mut self, value: ReasoningEffort) -> Self {
 		self.reasoning_effort = Some(value);
+		self
+	}
+
+	/// Sets the verbosity hint.
+	pub fn with_verbosity(mut self, value: Verbosity) -> Self {
+		self.verbosity = Some(value);
 		self
 	}
 
@@ -250,6 +259,80 @@ impl std::str::FromStr for ReasoningEffort {
 
 // endregion: --- ReasoningEffort
 
+// region:    --- Verbosity
+
+/// Provider-specific hint for verbosity intensity/budget.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Verbosity {
+	Low,
+	Medium,
+	High,
+}
+
+impl Verbosity {
+	/// Returns the lowercase variant name; `Budget(_)` returns `"budget"`.
+	pub fn variant_name(&self) -> &'static str {
+		match self {
+			Verbosity::Low => "low",
+			Verbosity::Medium => "medium",
+			Verbosity::High => "high",
+		}
+	}
+
+	/// Returns a keyword for (to be symmetrical with the ReasoningEffort::as_keyword )
+	pub fn as_keyword(&self) -> Option<&'static str> {
+		match self {
+			Verbosity::Low => Some("low"),
+			Verbosity::Medium => Some("medium"),
+			Verbosity::High => Some("high"),
+		}
+	}
+
+	/// Parses a keyword into a non-`Budget` variant.
+	pub fn from_keyword(name: &str) -> Option<Self> {
+		match name {
+			"low" => Some(Verbosity::Low),
+			"medium" => Some(Verbosity::Medium),
+			"high" => Some(Verbosity::High),
+			_ => None,
+		}
+	}
+
+	/// If `model_name` ends with `-<effort>`, returns the parsed effort and the trimmed name.
+	///
+	/// Only keyword variants are produced; `Budget` is never created here.
+	/// Returns `(effort, trimmed_model_name)`.
+	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
+		if let Some((prefix, last)) = model_name.rsplit_once('-')
+			&& let Some(effort) = Verbosity::from_keyword(last)
+		{
+			return (Some(effort), prefix);
+		}
+		(None, model_name)
+	}
+}
+
+impl std::fmt::Display for Verbosity {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Verbosity::Low => write!(f, "low"),
+			Verbosity::Medium => write!(f, "medium"),
+			Verbosity::High => write!(f, "high"),
+		}
+	}
+}
+
+impl std::str::FromStr for Verbosity {
+	type Err = Error;
+
+	/// Parses a keyword effort or a numeric budget.
+	fn from_str(s: &str) -> Result<Self> {
+		Self::from_keyword(s).ok_or(Error::VerbosityParsing { actual: s.to_string() })
+	}
+}
+
+// endregion: --- Verbosity
+
 // region:    --- ChatOptionsSet
 
 /// This is an internal crate struct to resolve the ChatOptions value in a cascading manner.
@@ -344,6 +427,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.reasoning_effort.as_ref())
 			.or_else(|| self.client.and_then(|client| client.reasoning_effort.as_ref()))
+	}
+
+	pub fn verbosity(&self) -> Option<&Verbosity> {
+		self.chat
+			.and_then(|chat| chat.verbosity.as_ref())
+			.or_else(|| self.client.and_then(|client| client.verbosity.as_ref()))
 	}
 
 	pub fn seed(&self) -> Option<u64> {

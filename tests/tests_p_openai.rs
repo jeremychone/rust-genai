@@ -28,6 +28,11 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_verbosity_ok() -> TestResult<()> {
+	common_tests::common_test_chat_verbosity_ok(MODEL).await
+}
+
+#[tokio::test]
 async fn test_chat_namespaced_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
 }
