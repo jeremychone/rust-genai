@@ -103,22 +103,25 @@ impl ChatRequest {
 			}))
 	}
 
-	/// Concatenate the top-level system prompt and all system-role messages into one string.
-	/// Separation rules:
-	/// - add two newlines if the previous chunk does not end with '\n'
-	/// - add one newline if it does
+	/// Concatenate all systems into one string,  
+	/// keeping at 1 empty line in between
 	pub fn combine_systems(&self) -> Option<String> {
 		let mut systems: Option<String> = None;
 
 		for system in self.iter_systems() {
-			let systems_content = systems.get_or_insert_with(|| "".to_string());
+			let systems_content = systems.get_or_insert_with(String::new);
 
-			// Add eventual separator
-			if systems_content.ends_with('\n') {
-				systems_content.push('\n');
-			} else if !systems_content.is_empty() {
-				systems_content.push_str("\n\n");
-			} // Do not add any empty line if previous content is empty
+			if !systems_content.is_empty() {
+				// Single pass on the tail using byte slice patterns
+				match systems_content.as_bytes() {
+					// already ends with "\n\n" -> add nothing
+					[.., b'\n', b'\n'] => {}
+					// ends with a single '\n' -> add one more
+					[.., b'\n'] => systems_content.push('\n'),
+					// no trailing newline -> add two
+					_ => systems_content.push_str("\n\n"),
+				}
+			}
 
 			systems_content.push_str(system);
 		}
