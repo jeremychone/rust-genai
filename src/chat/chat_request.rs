@@ -12,6 +12,7 @@ pub struct ChatRequest {
 	pub system: Option<String>,
 
 	/// The messages of the request.
+	#[serde(default)]
 	pub messages: Vec<ChatMessage>,
 
 	/// Optional tool definitions available to the model.
@@ -104,7 +105,7 @@ impl ChatRequest {
 	}
 
 	/// Concatenate all systems into one string,  
-	/// keeping at 1 empty line in between
+	/// keeping one empty line in between
 	pub fn combine_systems(&self) -> Option<String> {
 		let mut systems: Option<String> = None;
 
