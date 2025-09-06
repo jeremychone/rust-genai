@@ -72,15 +72,23 @@ impl ChatRequest {
 		self
 	}
 
-	/// Append multiple messages.
-	pub fn append_messages(mut self, messages: Vec<ChatMessage>) -> Self {
-		self.messages.extend(messages);
+	/// Append multiple messages from any iterable.
+	pub fn append_messages<I>(mut self, messages: I) -> Self
+	where
+		I: IntoIterator,
+		I::Item: Into<ChatMessage>,
+	{
+		self.messages.extend(messages.into_iter().map(Into::into));
 		self
 	}
 
 	/// Replace the tool set.
-	pub fn with_tools(mut self, tools: Vec<Tool>) -> Self {
-		self.tools = Some(tools);
+	pub fn with_tools<I>(mut self, tools: I) -> Self
+	where
+		I: IntoIterator,
+		I::Item: Into<Tool>,
+	{
+		self.tools = Some(tools.into_iter().map(Into::into).collect());
 		self
 	}
 
