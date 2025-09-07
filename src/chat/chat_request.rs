@@ -115,7 +115,7 @@ impl ChatRequest {
 
 	/// Concatenate all systems into one string,  
 	/// keeping one empty line in between
-	pub fn combine_systems(&self) -> Option<String> {
+	pub fn join_systems(&self) -> Option<String> {
 		let mut systems: Option<String> = None;
 
 		for system in self.iter_systems() {
@@ -125,6 +125,11 @@ impl ChatRequest {
 		}
 
 		systems
+	}
+
+	#[deprecated(note = "use join_systems()")]
+	pub fn combine_systems(&self) -> Option<String> {
+		self.join_systems()
 	}
 }
 
