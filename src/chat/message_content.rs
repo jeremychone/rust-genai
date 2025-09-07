@@ -1,4 +1,4 @@
-﻿/// Note: MessageContent is used for ChatRequest and ChatResponse.
+/// Note: MessageContent is used for ChatRequest and ChatResponse.
 use crate::chat::{ContentPart, ToolCall, ToolResponse};
 use serde::{Deserialize, Serialize};
 

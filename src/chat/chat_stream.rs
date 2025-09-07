@@ -19,7 +19,7 @@ impl ChatStream {
 
 	pub(crate) fn from_inter_stream<T>(inter_stream: T) -> Self
 	where
-		T: Stream<Item = crate::Result<InterStreamEvent>> + Send + Unpin + 'static,
+		T: Stream<Item = crate::Result<InterStreamEvent>> + Send + 'static,
 	{
 		let boxed_stream: InterStreamType = Box::pin(inter_stream);
 		ChatStream::new(boxed_stream)
