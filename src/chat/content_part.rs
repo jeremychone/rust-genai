@@ -129,6 +129,13 @@ impl ContentPart {
 	}
 
 	// into_binary implemented below
+	pub fn into_binary(self) -> Option<Binary> {
+		if let ContentPart::Binary(binary) = self {
+			Some(binary)
+		} else {
+			None
+		}
+	}
 }
 
 /// is_.. Accessors
@@ -141,7 +148,7 @@ impl ContentPart {
 	/// Returns true if this part is a binary image (content_type starts with "image/").
 	pub fn is_image(&self) -> bool {
 		match self {
-			ContentPart::Binary(binary) => binary.content_type.trim_start().to_ascii_lowercase().starts_with("image/"),
+			ContentPart::Binary(binary) => binary.content_type.trim().to_ascii_lowercase().starts_with("image/"),
 			_ => false,
 		}
 	}
@@ -150,7 +157,7 @@ impl ContentPart {
 	/// Returns true if this part is a PDF binary (content_type equals "application/pdf").
 	pub fn is_pdf(&self) -> bool {
 		match self {
-			ContentPart::Binary(binary) => binary.content_type.trim_start().eq_ignore_ascii_case("application/pdf"),
+			ContentPart::Binary(binary) => binary.content_type.trim().eq_ignore_ascii_case("application/pdf"),
 			_ => false,
 		}
 	}
@@ -175,8 +182,10 @@ impl ContentPart {
 pub struct Binary {
 	/// MIME type, such as "image/png" or "application/pdf".
 	pub content_type: String,
+
 	/// Where the bytes come from (base64 or URL).
 	pub source: BinarySource,
+
 	/// Optional display name or filename.
 	pub name: Option<String>,
 }
@@ -195,12 +204,12 @@ impl Binary {
 impl Binary {
 	/// Returns true if this binary is an image (content_type starts with "image/").
 	pub fn is_image(&self) -> bool {
-		self.content_type.trim_start().to_ascii_lowercase().starts_with("image/")
+		self.content_type.trim().to_ascii_lowercase().starts_with("image/")
 	}
 
 	/// Returns true if this binary is a PDF (content_type equals "application/pdf").
 	pub fn is_pdf(&self) -> bool {
-		self.content_type.trim_start().eq_ignore_ascii_case("application/pdf")
+		self.content_type.trim().eq_ignore_ascii_case("application/pdf")
 	}
 }
 
