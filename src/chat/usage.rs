@@ -3,7 +3,7 @@ use serde_with::{serde_as, skip_serializing_none};
 
 /// Normalized token usage across providers (OpenAI-compatible).
 ///
-/// - Serialization treats 0 as None for cross-provider consistency. OpenAI often returns 0 for non-applicable counters.
+	/// - Deserialization treats 0 as None for cross-provider consistency. OpenAI often returns 0 for non-applicable counters.
 ///
 /// - `prompt_tokens` and `completion_tokens` are the total input/output tokens. The corresponding `*_details` carry provider-specific breakdowns.
 ///

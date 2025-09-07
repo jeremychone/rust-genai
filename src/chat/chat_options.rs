@@ -51,7 +51,7 @@ pub struct ChatOptions {
 	pub response_format: Option<ChatResponseFormat>,
 
 	// -- Reasoning options
-	/// Extract `` into `ChatResponse.reasoning_content` if present.
+	/// Extract -style reasoning blocks into `ChatResponse.reasoning_content` when present.
 	pub normalize_reasoning_content: Option<bool>,
 
 	/// Preferred reasoning effort, when supported by the provider.
@@ -187,7 +187,7 @@ pub enum ReasoningEffort {
 }
 
 impl ReasoningEffort {
-	/// Returns the lowercase variant name; `Budget(_)` returns `"budget"`.
+	/// Returns the lowercase variant name.
 	pub fn variant_name(&self) -> &'static str {
 		match self {
 			ReasoningEffort::Minimal => "minimal",
@@ -209,7 +209,7 @@ impl ReasoningEffort {
 		}
 	}
 
-	/// Parses a keyword into a non-`Budget` variant.
+	/// Parses a verbosity keyword.
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
 			"minimal" => Some(ReasoningEffort::Minimal),
@@ -220,10 +220,9 @@ impl ReasoningEffort {
 		}
 	}
 
-	/// If `model_name` ends with `-<effort>`, returns the parsed effort and the trimmed name.
+	/// If `model_name` ends with `-<verbosity>`, returns the parsed verbosity and the trimmed name.
 	///
-	/// Only keyword variants are produced; `Budget` is never created here.
-	/// Returns `(effort, trimmed_model_name)`.
+	/// Returns `(verbosity, trimmed_model_name)`.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		if let Some((prefix, last)) = model_name.rsplit_once('-')
 			&& let Some(effort) = ReasoningEffort::from_keyword(last)
@@ -249,7 +248,7 @@ impl std::fmt::Display for ReasoningEffort {
 impl std::str::FromStr for ReasoningEffort {
 	type Err = Error;
 
-	/// Parses a keyword effort or a numeric budget.
+	/// Parses a verbosity keyword.
 	fn from_str(s: &str) -> Result<Self> {
 		Self::from_keyword(s)
 			.or_else(|| s.parse::<u32>().ok().map(Self::Budget))
@@ -279,7 +278,7 @@ impl Verbosity {
 		}
 	}
 
-	/// Returns a keyword for (to be symmetrical with the ReasoningEffort::as_keyword )
+	/// Returns the verbosity keyword.
 	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
 			Verbosity::Low => Some("low"),

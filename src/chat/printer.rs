@@ -9,7 +9,7 @@ use tokio::io::{AsyncWriteExt as _, Stdout};
 // Note: This module has its own Error type (see end of file)
 type Result<T> = core::result::Result<T, Error>;
 
-// region:    --- PrintChatOptions
+	// region:    --- PrintChatStreamOptions
 
 /// Options for printing a chat stream with `printer::print_chat_stream`.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -28,7 +28,7 @@ impl PrintChatStreamOptions {
 	}
 }
 
-// endregion: --- PrintChatOptions
+	// endregion: --- PrintChatStreamOptions
 
 /// Write the streamed chat response to stdout and return the concatenated content.
 ///

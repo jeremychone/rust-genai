@@ -22,8 +22,9 @@ pub struct ChatResponse {
 	/// > NOTE 2: May also differ from `provider_model_iden` (provider-reported name).
 	pub model_iden: ModelIden,
 
-	/// Provider-reported model identifier. Defaults to `model_iden` if not provided or mapped.
-	/// For example, `gpt-4o` may be reported as `gpt-4o-2024-08-06`.
+	/// Provider-reported model identifier.
+	/// May differ from the requested or mapped `model_iden` (e.g., `gpt-4o` reported as `gpt-4o-2024-08-06`).
+	/// Set explicitly by construction code; no implicit defaulting at the type level.
 	pub provider_model_iden: ModelIden,
 
 	// pub model
@@ -105,7 +106,7 @@ impl ChatResponse {
 impl ChatResponse {
 	/// Deprecated: use `first_text` or `texts`.
 	/// Returns None if no text is present.
-	#[deprecated(note = "Use '.first_text()' or '.texts()")]
+	#[deprecated(note = "Use '.first_text()' or '.texts()'")]
 	pub fn content_text_as_str(&self) -> Option<&str> {
 		self.first_text()
 	}

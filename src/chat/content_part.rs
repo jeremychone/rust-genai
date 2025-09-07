@@ -3,6 +3,8 @@ use derive_more::From;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+// region:    --- Content Part
+
 /// A single content segment in a chat message.
 ///
 /// Variants cover plain text, binary payloads (e.g., images/PDF), and tool calls/responses.
@@ -126,7 +128,7 @@ impl ContentPart {
 		}
 	}
 
-	// TODO: into_binary when we have the Binary type
+	// into_binary implemented below
 }
 
 /// is_.. Accessors
