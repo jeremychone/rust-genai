@@ -64,6 +64,7 @@ impl ChatMessage {
 /// Per-message options (e.g., cache control).
 pub struct MessageOptions {
 	#[from]
+	/// Per-provider cache behavior hint.
 	pub cache_control: Option<CacheControl>,
 }
 
@@ -76,6 +77,7 @@ pub struct MessageOptions {
 /// - OpenAI ignores it; Gemini uses a separate API, so it is not supported there yet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CacheControl {
+	/// Hint to avoid persisting this message in provider caches.
 	Ephemeral,
 }
 
@@ -88,7 +90,7 @@ impl From<CacheControl> for MessageOptions {
 }
 // endregion: --- MessageOptions
 
-/// Chat roles.
+/// Chat roles recognized across providers.
 #[derive(Debug, Clone, Serialize, Deserialize, derive_more::Display)]
 #[allow(missing_docs)]
 pub enum ChatRole {
@@ -100,6 +102,7 @@ pub enum ChatRole {
 
 // region:    --- Froms
 
+/// Will create a Assisttant ChatMessage with this vect of tool
 impl From<Vec<ToolCall>> for ChatMessage {
 	fn from(tool_calls: Vec<ToolCall>) -> Self {
 		Self {
