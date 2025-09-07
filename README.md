@@ -24,6 +24,7 @@ What's new: (`-` fix, `+` addition, `!` change)
 
 (see [CHANGELOG.md](CHANGELOG.md) for more)
 
+- `!` **API CHANGE** `ChatResponse::content` is now `MessageContent` (as MessageContent is now multipart). Minor impact, as ChatResponse public API (`into_text...` as before)
 - `!` **API CHANGE** `MessageContent::text(&self)` replaced by (because `MessageContent` now flattens multi-part formats)
 	- `MessageContent::into_joined_texts(self) -> Option<String>`
 	- `MessageContent::joined_texts(&self) -> Option<String>`
@@ -39,7 +40,6 @@ What's new: (`-` fix, `+` addition, `!` change)
 	- `let text: String = chat_response::into_first_text()` (was `ChatResponse::content_text_into_string()`)
 	- To get the concatenated string of all messages:
 		- `let text: String = content.into_iter().filter_map(|c| c.text_into_string()).collect::<Vec<_>>().join("\n\n")`
-	- NOTE: We might add a `MessageContentVecExt` extension trait to provide convenient extraction methods.
 - `!` **API CHANGE** Now `ChatResponse::into_tool_calls()` and `tool_calls()` return `Vec<ToolCalls>` rather than `Option<Vec<ToolCalls>>`
 - `!` **API CHANGE** MessageContent - Now use `message_content.text()` and `message_content.into_text()` (rather than `text_as_str`, `text_into_string`)
 - `-` **Gemini ToolResponse Fix** Gemini adapter wrongfully tried to parse the `ToolResponse.content` (see [#59](https://github.com/jeremychone/rust-genai/issues/59))

@@ -172,7 +172,7 @@ impl Adapter for AnthropicAdapter {
 		let usage = usage.map(Self::into_usage).unwrap_or_default();
 
 		// -- Capture the content
-		let mut content: Vec<MessageContent> = Vec::new();
+		let mut content: MessageContent = MessageContent::default();
 
 		// NOTE: Here we are going to concatenate all of the Anthropic text content items into one
 		//       genai MessageContent::Text. This is more in line with the OpenAI API style,
@@ -202,11 +202,11 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		if !tool_calls.is_empty() {
-			content.push(MessageContent::from(tool_calls))
+			content.extend(MessageContent::from(tool_calls));
 		}
 
 		if !text_content.is_empty() {
-			content.push(MessageContent::from(text_content.join("\n")))
+			content.push(text_content.join("\n"));
 		}
 
 		Ok(ChatResponse {

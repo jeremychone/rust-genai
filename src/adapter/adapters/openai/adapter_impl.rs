@@ -81,7 +81,7 @@ impl Adapter for OpenAIAdapter {
 			.unwrap_or_default();
 
 		// -- Capture the content
-		let mut content: Vec<MessageContent> = Vec::new();
+		let mut content: MessageContent = MessageContent::default();
 		let mut reasoning_content: Option<String> = None;
 
 		if let Ok(Some(mut first_choice)) = body.x_take::<Option<Value>>("/choices/0") {
@@ -113,7 +113,7 @@ impl Adapter for OpenAIAdapter {
 
 				// After extracting reasoning_content, sometimes the content is empty.
 				if !text_content.is_empty() {
-					content.push(text_content.into());
+					content.push(text_content);
 				}
 			}
 
@@ -125,7 +125,7 @@ impl Adapter for OpenAIAdapter {
 				.transpose()?
 				.map(MessageContent::from_tool_calls)
 			{
-				content.push(tool_calls);
+				content.extend(tool_calls);
 			}
 		}
 

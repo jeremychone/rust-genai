@@ -136,9 +136,9 @@ impl Adapter for CohereAdapter {
 			return Err(Error::NoChatResponse { model_iden });
 		};
 
-		let content: Vec<MessageContent> = last_chat_history_item
+		let content: MessageContent = last_chat_history_item
 			.x_take::<Option<String>>("message")?
-			.map(|c| vec![MessageContent::from(c)])
+			.map(MessageContent::from)
 			.unwrap_or_default();
 
 		Ok(ChatResponse {

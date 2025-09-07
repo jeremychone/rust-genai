@@ -209,17 +209,12 @@ impl Adapter for GeminiAdapter {
 		} = gemini_response;
 
 		// FIXME: Needs to take the content list
-		let mut tool_calls: Vec<ToolCall> = Default::default();
-		let mut content: Vec<MessageContent> = Default::default();
-		// let mut text_content:
+		let mut content: MessageContent = MessageContent::default();
 		for g_item in gemini_content {
 			match g_item {
-				GeminiChatContent::Text(text) => content.push(MessageContent::from_text(text)),
-				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
+				GeminiChatContent::Text(text) => content.push(text),
+				GeminiChatContent::ToolCall(tool_call) => content.push(tool_call),
 			}
-		}
-		if !tool_calls.is_empty() {
-			content.push(MessageContent::from_tool_calls(tool_calls))
 		}
 
 		Ok(ChatResponse {

@@ -1,4 +1,3 @@
-
 //! Types for chat responses. `ChatStream` is defined separately.
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +11,7 @@ use crate::chat::{ChatStream, MessageContent, ToolCall, Usage};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
 	/// Message content returned by the assistant.
-	pub content: Vec<MessageContent>,
+	pub content: MessageContent,
 
 	/// Optional reasoning content returned by some models.
 	pub reasoning_content: Option<String>,
@@ -39,66 +38,32 @@ pub struct ChatResponse {
 impl ChatResponse {
 	/// Returns the first text segment, if any.
 	pub fn first_text(&self) -> Option<&str> {
-		for content_item in &self.content {
-			if let Some(content) = content_item.first_text() {
-				return Some(content);
-			}
-		}
-		None
+		self.content.first_text()
 	}
 
 	/// Consumes self and returns the first text segment, if any.
 	pub fn into_first_text(self) -> Option<String> {
-		for content_item in self.content {
-			if let Some(content) = content_item.into_first_text() {
-				return Some(content);
-			}
-		}
-		None
+		self.content.into_first_text()
 	}
 
 	/// Returns all text segments (first per content item).
 	pub fn texts(&self) -> Vec<&str> {
-		let mut all_texts = Vec::new();
-		for content_item in &self.content {
-			if let Some(content) = content_item.first_text() {
-				all_texts.push(content);
-			}
-		}
-		all_texts
+		self.content.texts()
 	}
 
 	/// Consumes self and returns all text segments (first per content item).
 	pub fn into_texts(self) -> Vec<String> {
-		let mut all_texts = Vec::new();
-		for content_item in self.content {
-			if let Some(content) = content_item.into_first_text() {
-				all_texts.push(content);
-			}
-		}
-		all_texts
+		self.content.into_texts()
 	}
 
 	/// Returns all captured tool calls.
 	pub fn tool_calls(&self) -> Vec<&ToolCall> {
-		let mut all_tool_calls: Vec<&ToolCall> = Vec::new();
-		for content_item in &self.content {
-			let tool_calls = content_item.tool_calls();
-			all_tool_calls.extend(tool_calls);
-		}
-
-		all_tool_calls
+		self.content.tool_calls()
 	}
 
 	/// Consumes self and returns all captured tool calls.
 	pub fn into_tool_calls(self) -> Vec<ToolCall> {
-		let mut all_tool_calls: Vec<ToolCall> = Vec::new();
-		for content_item in self.content {
-			let tool_calls = content_item.into_tool_calls();
-			all_tool_calls.extend(tool_calls);
-		}
-
-		all_tool_calls
+		self.content.into_tool_calls()
 	}
 }
 
