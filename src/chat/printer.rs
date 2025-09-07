@@ -9,7 +9,7 @@ use tokio::io::{AsyncWriteExt as _, Stdout};
 // Note: This module has its own Error type (see end of file)
 type Result<T> = core::result::Result<T, Error>;
 
-	// region:    --- PrintChatStreamOptions
+// region:    --- PrintChatStreamOptions
 
 /// Options for printing a chat stream with `printer::print_chat_stream`.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -28,7 +28,7 @@ impl PrintChatStreamOptions {
 	}
 }
 
-	// endregion: --- PrintChatStreamOptions
+// endregion: --- PrintChatStreamOptions
 
 /// Write the streamed chat response to stdout and return the concatenated content.
 ///
@@ -39,9 +39,20 @@ pub async fn print_chat_stream(
 ) -> Result<String> {
 	let mut stdout = tokio::io::stdout();
 	let res = print_chat_stream_inner(&mut stdout, chat_res, options).await;
+
 	// Ensure tokio stdout flush is called, regardless of success or failure.
-	stdout.flush().await?;
-	res
+	let flush_res = stdout.flush().await;
+
+	match (res, flush_res) {
+		// Prefer returning the inner processing error when both fail.
+		(Err(e), Err(_flush_err)) => Err(e),
+
+		// Inner succeeded but flush failed.
+		(Ok(_), Err(flush_err)) => Err(flush_err.into()),
+
+		// Flush succeeded (or not applicable); return inner result.
+		(inner, _) => inner,
+	}
 }
 
 async fn print_chat_stream_inner(
@@ -59,74 +70,86 @@ async fn print_chat_stream_inner(
 	let mut first_reasoning_chunk = true;
 	let mut first_tool_chunk = true;
 
-	while let Some(Ok(stream_event)) = stream.next().await {
-		let (event_info, content) = {
-			match stream_event {
-				ChatStreamEvent::Start => {
-					if print_events {
-						// TODO: Might implement pretty JSON formatting
-						(Some("\n-- ChatStreamEvent::Start\n".to_string()), None)
-					} else {
-						(None, None)
+	while let Some(next) = stream.next().await {
+		let (event_info, print_content, capture_content_flag) = match next {
+			Ok(stream_event) => {
+				match stream_event {
+					ChatStreamEvent::Start => {
+						if print_events {
+							// TODO: Might implement pretty JSON formatting
+							(Some("\n-- ChatStreamEvent::Start\n".to_string()), None, false)
+						} else {
+							(None, None, false)
+						}
 					}
-				}
 
-				ChatStreamEvent::Chunk(StreamChunk { content }) => {
-					if print_events && first_chunk {
-						first_chunk = false;
-						(
-							Some("\n-- ChatStreamEvent::Chunk (concatenated):\n".to_string()),
-							Some(content),
-						)
-					} else {
-						(None, Some(content))
+					ChatStreamEvent::Chunk(StreamChunk { content }) => {
+						if print_events && first_chunk {
+							first_chunk = false;
+							(
+								Some("\n-- ChatStreamEvent::Chunk (concatenated):\n".to_string()),
+								Some(content),
+								true,
+							)
+						} else {
+							(None, Some(content), true)
+						}
 					}
-				}
 
-				ChatStreamEvent::ReasoningChunk(StreamChunk { content }) => {
-					if print_events && first_reasoning_chunk {
-						first_reasoning_chunk = false;
-						(
-							Some("\n-- ChatStreamEvent::ReasoningChunk (concatenated):\n".to_string()),
-							Some(content),
-						)
-					} else {
-						(None, Some(content))
+					ChatStreamEvent::ReasoningChunk(StreamChunk { content }) => {
+						if print_events && first_reasoning_chunk {
+							first_reasoning_chunk = false;
+							(
+								Some("\n-- ChatStreamEvent::ReasoningChunk (concatenated):\n".to_string()),
+								Some(content),
+								false, // print but do not capture
+							)
+						} else {
+							(None, Some(content), false) // print but do not capture
+						}
 					}
-				}
 
-				ChatStreamEvent::ToolCallChunk(tool_chunk) => {
-					if print_events && first_tool_chunk {
-						first_tool_chunk = false;
-						(
-							Some(format!(
-								"\n-- ChatStreamEvent::ToolCallChunk: fn: {}, args: {}\n",
-								tool_chunk.tool_call.fn_name, tool_chunk.tool_call.fn_arguments
-							)),
-							None,
-						)
-					} else {
-						(None, None)
+					ChatStreamEvent::ToolCallChunk(tool_chunk) => {
+						if print_events && first_tool_chunk {
+							first_tool_chunk = false;
+							(
+								Some(format!(
+									"\n-- ChatStreamEvent::ToolCallChunk: fn: {}, args: {}\n",
+									tool_chunk.tool_call.fn_name, tool_chunk.tool_call.fn_arguments
+								)),
+								None,
+								false,
+							)
+						} else {
+							(None, None, false)
+						}
 					}
-				}
 
-				ChatStreamEvent::End(end_event) => {
-					if print_events {
-						// TODO: Might implement pretty JSON formatting
-						(Some(format!("\n\n-- ChatStreamEvent::End {end_event:?}\n")), None)
-					} else {
-						(None, None)
+					ChatStreamEvent::End(end_event) => {
+						if print_events {
+							// TODO: Might implement pretty JSON formatting
+							(
+								Some(format!("\n\n-- ChatStreamEvent::End {end_event:?}\n")),
+								None,
+								false,
+							)
+						} else {
+							(None, None, false)
+						}
 					}
 				}
 			}
+			Err(e) => return Err(e.into()),
 		};
 
 		if let Some(event_info) = event_info {
 			stdout.write_all(event_info.as_bytes()).await?;
 		}
 
-		if let Some(content) = content {
-			content_capture.push_str(&content);
+		if let Some(content) = print_content {
+			if capture_content_flag {
+				content_capture.push_str(&content);
+			}
 			stdout.write_all(content.as_bytes()).await?;
 		};
 
@@ -154,6 +177,10 @@ pub enum Error {
 	/// The `tokio::io::Error` when using `tokio::io::stdout`
 	#[from]
 	TokioIo(tokio::io::Error),
+
+	/// The stream returned an error from the main crate.
+	#[from]
+	Stream(crate::Error),
 }
 
 // region:    --- Error Boilerplate
