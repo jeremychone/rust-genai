@@ -1,5 +1,7 @@
 use serde::{Deserialize, Deserializer};
 
+// region:    --- Serde Support
+
 pub fn zero_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
 	D: Deserializer<'de>,
@@ -14,3 +16,22 @@ where
 		other => Ok(other),
 	}
 }
+
+// endregion: --- Serde Support
+
+// region:    --- Text Support
+
+pub fn combine_text_with_empty_line(combined: &mut String, text: &str) {
+	if !combined.is_empty() {
+		if combined.ends_with('\n') {
+			combined.push('\n');
+		} else if !combined.is_empty() {
+			combined.push_str("\n\n");
+		}
+	}
+	// Do not add any empty line if previous content is empty
+
+	combined.push_str(text);
+}
+
+// endregion: --- Text Support

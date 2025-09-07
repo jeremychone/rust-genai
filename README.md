@@ -25,6 +25,7 @@ What's new: (`-` fix, `+` addition, `!` change)
 (see [CHANGELOG.md](CHANGELOG.md) for more)
 
 - `!` **API CHANGE** `ChatResponse::content` is now `MessageContent` (as MessageContent is now multipart). Minor impact, as ChatResponse public API (`into_text...` as before)
+	- Now simpler, just use `let joined_text: Option<String> = chat_response.content.into_join_texts()`
 - `!` **API CHANGE** `MessageContent::text(&self)` replaced by (because `MessageContent` now flattens multi-part formats)
 	- `MessageContent::into_joined_texts(self) -> Option<String>`
 	- `MessageContent::joined_texts(&self) -> Option<String>`

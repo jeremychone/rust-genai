@@ -65,6 +65,7 @@ impl Extend<ContentPart> for MessageContent {
 
 // region:    --- Iterator Support
 
+use crate::support;
 use std::iter::FromIterator;
 use std::slice::{Iter, IterMut};
 
@@ -221,14 +222,9 @@ impl MessageContent {
 
 		let mut combined = String::new();
 		for text in texts {
-			if combined.ends_with('\n') {
-				combined.push('\n');
-			} else if !combined.is_empty() {
-				combined.push_str("\n\n");
+			if !combined.is_empty() {
+				support::combine_text_with_empty_line(&mut combined, text);
 			}
-			// Do not add any empty line if previous content is empty
-
-			combined.push_str(text);
 		}
 		Some(combined)
 	}
@@ -246,14 +242,7 @@ impl MessageContent {
 
 		let mut combined = String::new();
 		for text in texts {
-			if combined.ends_with('\n') {
-				combined.push('\n');
-			} else if !combined.is_empty() {
-				combined.push_str("\n\n");
-			}
-			// Do not add any empty line if previous content is empty
-
-			combined.push_str(&text);
+			support::combine_text_with_empty_line(&mut combined, &text);
 		}
 		Some(combined)
 	}

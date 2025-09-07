@@ -1,6 +1,7 @@
 //! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
 
 use crate::chat::{ChatMessage, ChatRole, Tool};
+use crate::support;
 use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
@@ -120,19 +121,7 @@ impl ChatRequest {
 		for system in self.iter_systems() {
 			let systems_content = systems.get_or_insert_with(String::new);
 
-			if !systems_content.is_empty() {
-				// Single pass on the tail using byte slice patterns
-				match systems_content.as_bytes() {
-					// already ends with "\n\n" -> add nothing
-					[.., b'\n', b'\n'] => {}
-					// ends with a single '\n' -> add one more
-					[.., b'\n'] => systems_content.push('\n'),
-					// no trailing newline -> add two
-					_ => systems_content.push_str("\n\n"),
-				}
-			}
-
-			systems_content.push_str(system);
+			support::combine_text_with_empty_line(systems_content, system);
 		}
 
 		systems
