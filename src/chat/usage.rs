@@ -3,7 +3,7 @@ use serde_with::{serde_as, skip_serializing_none};
 
 /// Normalized token usage across providers (OpenAI-compatible).
 ///
-	/// - Deserialization treats 0 as None for cross-provider consistency. OpenAI often returns 0 for non-applicable counters.
+/// - Deserialization treats 0 as None for cross-provider consistency. OpenAI often returns 0 for non-applicable counters.
 ///
 /// - `prompt_tokens` and `completion_tokens` are the total input/output tokens. The corresponding `*_details` carry provider-specific breakdowns.
 ///
@@ -30,15 +30,11 @@ pub struct Usage {
 impl Usage {
 	/// Remove detail objects that contain only `None` fields.
 	pub fn compact_details(&mut self) {
-		if let Some(details) = &self.prompt_tokens_details
-			&& details.is_empty()
-		{
+		if self.prompt_tokens_details.as_ref().is_some_and(|d| d.is_empty()) {
 			self.prompt_tokens_details = None;
 		}
 
-		if let Some(details) = &self.completion_tokens_details
-			&& details.is_empty()
-		{
+		if self.completion_tokens_details.as_ref().is_some_and(|d| d.is_empty()) {
 			self.completion_tokens_details = None;
 		}
 	}
