@@ -105,7 +105,7 @@ pub struct StreamEnd {
 	/// or `capture_tool_calls` is enabled.
 	/// Note: Since 0.4.0 this includes tool calls as well (for API symmetry with `ChatResponse`);
 	///       use `.captured_tool_calls()` or `.captured_texts()`.
-	pub captured_content: Option<Vec<MessageContent>>,
+	pub captured_content: Option<MessageContent>,
 
 	/// Captured reasoning content if `ChatOptions.capture_reasoning` is enabled.
 	pub captured_reasoning_content: Option<String>,
@@ -117,17 +117,17 @@ impl From<InterStreamEnd> for StreamEnd {
 		let captured_tool_calls = inter_end.captured_tool_calls;
 
 		// -- create public captured_content
-		let mut captured_content: Option<Vec<MessageContent>> = None;
+		let mut captured_content: Option<MessageContent> = None;
 		if let Some(captured_text_content) = captured_text_content {
 			// This `captured_text_content` is the concatenation of all text chunks received.
-			captured_content = Some(vec![MessageContent::from_text(captured_text_content)]);
+			captured_content = Some(MessageContent::from_text(captured_text_content));
 		}
 		if let Some(captured_tool_calls) = captured_tool_calls {
 			if let Some(existing_content) = &mut captured_content {
-				existing_content.push(MessageContent::from_tool_calls(captured_tool_calls));
+				existing_content.extend(MessageContent::from_tool_calls(captured_tool_calls));
 			} else {
 				// This `captured_tool_calls` is the concatenation of all tool call chunks received.
-				captured_content = Some(vec![MessageContent::from_tool_calls(captured_tool_calls)]);
+				captured_content = Some(MessageContent::from_tool_calls(captured_tool_calls));
 			}
 		}
 
@@ -146,79 +146,38 @@ impl StreamEnd {
 	/// This is the concatenation of all streamed text chunks.
 	pub fn captured_first_text(&self) -> Option<&str> {
 		let captured_content = self.captured_content.as_ref()?;
-
-		for content_item in captured_content {
-			if let Some(content) = content_item.first_text() {
-				return Some(content);
-			}
-		}
-		None
+		captured_content.first_text()
 	}
 
 	/// Consumes `self` and returns the first captured text, if any.
 	/// This is the concatenation of all streamed text chunks.
 	pub fn captured_into_first_text(self) -> Option<String> {
 		let captured_content = self.captured_content?;
-
-		for content_item in captured_content {
-			if let Some(content) = content_item.into_first_text() {
-				return Some(content);
-			}
-		}
-		None
+		captured_content.into_first_text()
 	}
 
 	/// Returns all captured text segments, if any.
 	pub fn captured_texts(&self) -> Option<Vec<&str>> {
 		let captured_content = self.captured_content.as_ref()?;
-
-		let mut all_texts = Vec::new();
-		for content_item in captured_content {
-			if let Some(content) = content_item.first_text() {
-				all_texts.push(content);
-			}
-		}
-		Some(all_texts)
+		Some(captured_content.texts())
 	}
 
 	/// Consumes `self` and returns all captured text segments, if any.
 	pub fn into_texts(self) -> Option<Vec<String>> {
 		let captured_content = self.captured_content?;
-
-		let mut all_texts = Vec::new();
-
-		for content_item in captured_content {
-			if let Some(content) = content_item.into_first_text() {
-				all_texts.push(content);
-			}
-		}
-		Some(all_texts)
+		Some(captured_content.into_texts())
 	}
 
 	/// Returns all captured tool calls, if any.
 	pub fn captured_tool_calls(&self) -> Option<Vec<&ToolCall>> {
 		let captured_content = self.captured_content.as_ref()?;
-
-		let mut all_tool_calls: Vec<&ToolCall> = Vec::new();
-		for content_item in captured_content {
-			let tool_calls = content_item.tool_calls();
-			all_tool_calls.extend(tool_calls);
-		}
-
-		Some(all_tool_calls)
+		Some(captured_content.tool_calls())
 	}
 
 	/// Consumes `self` and returns all captured tool calls, if any.
 	pub fn captured_into_tool_calls(self) -> Option<Vec<ToolCall>> {
 		let captured_content = self.captured_content?;
-
-		let mut all_tool_calls: Vec<ToolCall> = Vec::new();
-		for content_item in captured_content {
-			let tool_calls = content_item.into_tool_calls();
-			all_tool_calls.extend(tool_calls);
-		}
-
-		Some(all_tool_calls)
+		Some(captured_content.into_tool_calls())
 	}
 }
 
