@@ -62,9 +62,22 @@ impl Client {
 		let model = self.default_model(model)?;
 		let target = self.config().resolve_service_target(model).await?;
 		let model = target.model.clone();
+		let auth_data = target.auth.clone();
 
-		let WebRequestData { headers, payload, url } =
-			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
+		let WebRequestData {
+			mut url,
+			mut headers,
+			payload,
+		} = AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
+
+		if let AuthData::RequestOverride {
+			url: override_url,
+			headers: override_headers,
+		} = auth_data
+		{
+			url = override_url;
+			headers = override_headers;
+		};
 
 		let web_res =
 			self.web_client()
@@ -102,9 +115,9 @@ impl Client {
 			payload,
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
 
-		// TODO: Need to check this.
-		//       This was part of the 429c5cee2241dbef9f33699b9c91202233c22816 commit
-		//       But now it is missing in the the exec_chat(..) above, which is probably an issue.
+        // TODO: Need to check this.
+        //       This was part of the 429c5cee2241dbef9f33699b9c91202233c22816 commit
+        //       But now it is missing in the the exec_chat(..) above, which is probably an issue.
 		if let AuthData::RequestOverride {
 			url: override_url,
 			headers: override_headers,
