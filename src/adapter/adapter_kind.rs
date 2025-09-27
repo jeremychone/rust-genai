@@ -18,9 +18,11 @@ use tracing::info;
 ///
 #[derive(Debug, Clone, Copy, Display, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AdapterKind {
-	/// For OpenAI and also can be used for OpenAI compatible APIs
+	/// For OpenAI Chat Completions and also can be used for OpenAI compatible APIs
 	/// NOTE: This adapter share some behavior that other adapters can use while still providing some variant
 	OpenAI,
+	/// For OpenAI Responses API
+	OpenAIResp,
 	/// Gemini adapter supports gemini native protocol. e.g., support thinking budget.
 	Gemini,
 	/// Anthopric native protocol as well
@@ -51,6 +53,7 @@ impl AdapterKind {
 	pub fn as_str(&self) -> &'static str {
 		match self {
 			AdapterKind::OpenAI => "OpenAI",
+			AdapterKind::OpenAIResp => "OpenAIResp",
 			AdapterKind::Gemini => "Gemini",
 			AdapterKind::Anthropic => "Anthropic",
 			AdapterKind::Fireworks => "Fireworks",
@@ -69,6 +72,7 @@ impl AdapterKind {
 	pub fn as_lower_str(&self) -> &'static str {
 		match self {
 			AdapterKind::OpenAI => "openai",
+			AdapterKind::OpenAIResp => "openai_resp",
 			AdapterKind::Gemini => "gemini",
 			AdapterKind::Anthropic => "anthropic",
 			AdapterKind::Fireworks => "fireworks",
@@ -86,6 +90,7 @@ impl AdapterKind {
 	pub fn from_lower_str(name: &str) -> Option<Self> {
 		match name {
 			"openai" => Some(AdapterKind::OpenAI),
+			"openai_resp" => Some(AdapterKind::OpenAIResp),
 			"gemini" => Some(AdapterKind::Gemini),
 			"anthropic" => Some(AdapterKind::Anthropic),
 			"fireworks" => Some(AdapterKind::Fireworks),
@@ -108,6 +113,7 @@ impl AdapterKind {
 	pub fn default_key_env_name(&self) -> Option<&'static str> {
 		match self {
 			AdapterKind::OpenAI => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::OpenAIResp => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Anthropic => Some(AnthropicAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Fireworks => Some(FireworksAdapter::API_KEY_DEFAULT_ENV_NAME),
@@ -168,7 +174,11 @@ impl AdapterKind {
 			|| model.starts_with("text-embedding")
 		// migh be a little generic on this one
 		{
-			Ok(Self::OpenAI)
+			if model.starts_with("gpt") && model.ends_with("codex") {
+				Ok(Self::OpenAIResp)
+			} else {
+				Ok(Self::OpenAI)
+			}
 		} else if model.starts_with("gemini") {
 			Ok(Self::Gemini)
 		} else if model.starts_with("claude") {

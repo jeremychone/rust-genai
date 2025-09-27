@@ -334,7 +334,7 @@ impl OpenAIAdapter {
 	pub(super) fn into_usage(adapter: AdapterKind, usage_value: Value) -> Usage {
 		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
 		let usage = serde_json::from_value(usage_value).map_err(|err| {
-			error!("Fail to deserilaize uage. Cause: {err}");
+			error!("Fail to deserialize usage. Cause: {err}");
 			err
 		});
 		let mut usage: Usage = usage.unwrap_or_default();

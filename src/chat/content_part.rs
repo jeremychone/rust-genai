@@ -211,6 +211,14 @@ impl Binary {
 	pub fn is_pdf(&self) -> bool {
 		self.content_type.trim().eq_ignore_ascii_case("application/pdf")
 	}
+
+	/// Generate the web or data url from this binary
+	pub fn into_url(self) -> String {
+		match self.source {
+			BinarySource::Url(url) => url,
+			BinarySource::Base64(b64_content) => format!("data:{};base64,{b64_content}", self.content_type),
+		}
+	}
 }
 
 // endregion: --- Binary

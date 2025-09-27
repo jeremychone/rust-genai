@@ -90,8 +90,30 @@ pub async fn common_test_chat_verbosity_ok(model: &str) -> TestResult<()> {
 	let content_high = chat_res.first_text().ok_or("Should have content")?;
 
 	// -- Check Content
-	let ratio = content_high.len() / content_low.len();
-	assert!(ratio >= 2, "The verbosity high was not high enough compared to the low");
+	let ratio = content_high.len() as f64 / content_low.len() as f64;
+	assert!(
+		ratio >= 2.,
+		"The verbosity high was not high enough compared to the low. Ratio {ratio}"
+	);
+
+	Ok(())
+}
+
+pub async fn common_test_chat_top_system_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (deactivate to see the differences)
+		ChatMessage::user("Why is the sky blue?"),
+	])
+	.with_system("Be very concise, and at end with 'Thank you'");
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let content_txt = chat_res.content.joined_texts().ok_or("Should have texts")?;
+	assert_contains(&content_txt, "Thank you");
 
 	Ok(())
 }
@@ -339,6 +361,8 @@ pub async fn common_test_chat_cache_implicit_simple_ok(model: &str) -> TestResul
 	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 	// sleep 500ms
 	tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+	tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check Content
@@ -357,7 +381,7 @@ pub async fn common_test_chat_cache_implicit_simple_ok(model: &str) -> TestResul
 		.ok_or("Should have prompt_tokens_details")?;
 	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
 
-	assert!(cached_tokens > 0, " cached_tokens should be greater than 0");
+	assert!(cached_tokens > 0, "cached_tokens should be greater than 0");
 	assert!(total_tokens > 0, "total_tokens should be > 0");
 
 	Ok(())

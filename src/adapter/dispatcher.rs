@@ -1,5 +1,4 @@
 use super::groq::GroqAdapter;
-use crate::ModelIden;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
@@ -9,6 +8,7 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::openai_resp::OpenAIRespAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::adapter::zhipu::ZhipuAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -16,6 +16,7 @@ use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse}
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
+use crate::{Error, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -30,6 +31,7 @@ impl AdapterDispatcher {
 	pub fn default_endpoint(kind: AdapterKind) -> Endpoint {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::default_endpoint(),
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::default_endpoint(),
 			AdapterKind::Gemini => GeminiAdapter::default_endpoint(),
 			AdapterKind::Anthropic => AnthropicAdapter::default_endpoint(),
 			AdapterKind::Fireworks => FireworksAdapter::default_endpoint(),
@@ -47,6 +49,7 @@ impl AdapterDispatcher {
 	pub fn default_auth(kind: AdapterKind) -> AuthData {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::default_auth(),
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::default_auth(),
 			AdapterKind::Gemini => GeminiAdapter::default_auth(),
 			AdapterKind::Anthropic => AnthropicAdapter::default_auth(),
 			AdapterKind::Fireworks => FireworksAdapter::default_auth(),
@@ -64,6 +67,7 @@ impl AdapterDispatcher {
 	pub async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
 		match kind {
 			AdapterKind::OpenAI => OpenAIAdapter::all_model_names(kind).await,
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::all_model_names(kind).await,
 			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind).await,
 			AdapterKind::Anthropic => AnthropicAdapter::all_model_names(kind).await,
 			AdapterKind::Fireworks => FireworksAdapter::all_model_names(kind).await,
@@ -81,6 +85,7 @@ impl AdapterDispatcher {
 	pub fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
 		match model.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Gemini => GeminiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Anthropic => AnthropicAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Fireworks => FireworksAdapter::get_service_url(model, service_type, endpoint),
@@ -104,6 +109,9 @@ impl AdapterDispatcher {
 		let adapter_kind = &target.model.adapter_kind;
 		match adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::OpenAIResp => {
+				OpenAIRespAdapter::to_web_request_data(target, service_type, chat_req, options_set)
+			}
 			AdapterKind::Gemini => GeminiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Anthropic => {
 				AnthropicAdapter::to_web_request_data(target, service_type, chat_req, options_set)
@@ -129,6 +137,7 @@ impl AdapterDispatcher {
 	) -> Result<ChatResponse> {
 		match model_iden.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Fireworks => FireworksAdapter::to_chat_response(model_iden, web_response, options_set),
@@ -150,6 +159,10 @@ impl AdapterDispatcher {
 	) -> Result<ChatStreamResponse> {
 		match model_iden.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::OpenAIResp => Err(Error::AdapterNotSupported {
+				adapter_kind: model_iden.adapter_kind,
+				feature: "stream".to_string(),
+			}),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Fireworks => FireworksAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
@@ -172,6 +185,10 @@ impl AdapterDispatcher {
 		let adapter_kind = &target.model.adapter_kind;
 		match adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::OpenAIResp => Err(Error::AdapterNotSupported {
+				adapter_kind: target.model.adapter_kind,
+				feature: "embed".to_string(),
+			}),
 			AdapterKind::Gemini => GeminiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Anthropic => AnthropicAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Fireworks => FireworksAdapter::to_embed_request_data(target, embed_req, options_set),
@@ -193,6 +210,10 @@ impl AdapterDispatcher {
 	) -> Result<EmbedResponse> {
 		match model_iden.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::OpenAIResp => Err(Error::AdapterNotSupported {
+				adapter_kind: model_iden.adapter_kind,
+				feature: "embed".to_string(),
+			}),
 			AdapterKind::Gemini => GeminiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Anthropic => AnthropicAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Fireworks => FireworksAdapter::to_embed_response(model_iden, web_response, options_set),
