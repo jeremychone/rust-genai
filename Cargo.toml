@@ -1,6 +1,6 @@
 [package]
 name = "genai"
-version = "0.4.0-alpha.18-WIP"
+version = "0.4.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Multi-AI Providers Library for Rust. (OpenAI, Gemini, Anthropic, xAI, Ollama, Groq, DeepSeek, Grok)"
@@ -34,7 +34,7 @@ derive_more = { version = "2", features = ["from", "display"] }
 value-ext = "0.1.2" 
 
 [dev-dependencies]
-simple-fs = "0.7.0"
+simple-fs = "0.8.0"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 serial_test = "3.2.0"
 base64 = "0.22.0"  # Check for the latest version

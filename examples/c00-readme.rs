@@ -9,14 +9,14 @@ const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 // or namespaced with simple anme "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
 const MODEL_FIREWORKS: &str = "accounts/fireworks/models/qwen3-30b-a3b";
-const MODEL_TOGETHER: &str = "together::meta-llama/Llama-3-8b-chat-hf";
+const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
 const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "llama-3.1-8b-instant";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZHIPU: &str = "glm-4-plus";
-const MODEL_COHERE: &str = "command-light";
+const MODEL_COHERE: &str = "command-r7b-12-2024";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`

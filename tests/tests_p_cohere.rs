@@ -4,8 +4,8 @@ use crate::support::{TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-const MODEL: &str = "command-light";
-const MODEL_NS: &str = "cohere::command-light";
+const MODEL: &str = "command-r7b-12-2024";
+const MODEL_NS: &str = "cohere::command-r7b-12-2024";
 
 // region:    --- Chat
 
