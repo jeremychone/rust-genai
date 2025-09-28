@@ -100,6 +100,9 @@ pub enum Error {
 	#[display("Adapter '{adapter_kind}' does not support feature '{feature}'")]
 	AdapterNotSupported { adapter_kind: AdapterKind, feature: String },
 
+	#[display("Internal error: {_0}")]
+	Internal(String),
+
 	// -- Externals
 	#[display("Failed to clone EventSource request: {_0}")]
 	#[from]

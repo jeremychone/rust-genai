@@ -51,7 +51,7 @@ async fn test_embed_request_single_ok() -> TestResult<()> {
 	let response = client.exec_embed(MODEL, embed_req, None).await?;
 
 	assert_eq!(response.embedding_count(), 1);
-	let embedding = response.first_embedding().unwrap();
+	let embedding = response.first_embedding().ok_or("Should have embedding")?;
 	assert!(embedding.dimensions() > 0);
 
 	println!("✓ EmbedRequest single: {} dimensions", embedding.dimensions());
@@ -90,11 +90,11 @@ async fn test_embed_different_models_ok() -> TestResult<()> {
 
 	// Test small model
 	let response_small = client.embed(MODEL, text, None).await?;
-	let dims_small = response_small.first_embedding().unwrap().dimensions();
+	let dims_small = response_small.first_embedding().ok_or("Should have embedding")?.dimensions();
 
 	// Test large model
 	let response_large = client.embed(MODEL_LARGE, text, None).await?;
-	let dims_large = response_large.first_embedding().unwrap().dimensions();
+	let dims_large = response_large.first_embedding().ok_or("Should have embedding")?.dimensions();
 
 	// Large model should have more dimensions
 	assert!(dims_large >= dims_small);
@@ -132,7 +132,7 @@ async fn test_embed_empty_text_should_work() -> TestResult<()> {
 	let response = client.embed(MODEL, text, None).await?;
 
 	assert_eq!(response.embedding_count(), 1);
-	let embedding = response.first_embedding().unwrap();
+	let embedding = response.first_embedding().ok_or("Should have embedding")?;
 	assert!(embedding.dimensions() > 0);
 
 	println!("✓ Empty text embedding: {} dimensions", embedding.dimensions());
@@ -164,8 +164,8 @@ async fn test_embed_response_methods_ok() -> TestResult<()> {
 	assert_eq!(owned_vectors.len(), 2);
 
 	// Test first embedding access
-	let first = response.first_embedding().unwrap();
-	let first_vector = response.first_vector().unwrap();
+	let first = response.first_embedding().ok_or("Should have embedding")?;
+	let first_vector = response.first_vector().ok_or("should have first vector")?;
 	assert_eq!(first.vector(), first_vector);
 
 	println!("✓ Response utility methods work correctly");
@@ -191,7 +191,7 @@ async fn test_embed_with_openai_specific_options_ok() -> TestResult<()> {
 
 	let response = client.embed(MODEL, text, Some(&options)).await?;
 
-	let embedding = response.first_embedding().unwrap();
+	let embedding = response.first_embedding().ok_or("Should have embedding")?;
 	assert!(embedding.dimensions() > 0);
 	assert!(response.usage.prompt_tokens.is_some());
 

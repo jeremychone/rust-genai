@@ -59,7 +59,7 @@ impl Adapter for OllamaAdapter {
 		Ok(models)
 	}
 
-	fn get_service_url(model_iden: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(model_iden: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		OpenAIAdapter::util_get_service_url(model_iden, service_type, endpoint)
 	}
 

@@ -62,12 +62,14 @@ impl Adapter for AnthropicAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		let base_url = endpoint.base_url();
-		match service_type {
+		let url = match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}messages"),
 			ServiceType::Embed => format!("{base_url}embeddings"), // Anthropic doesn't support embeddings yet
-		}
+		};
+
+		Ok(url)
 	}
 
 	fn to_web_request_data(
@@ -82,7 +84,7 @@ impl Adapter for AnthropicAdapter {
 		let api_key = get_api_key(auth, &model)?;
 
 		// -- url
-		let url = Self::get_service_url(&model, service_type, endpoint);
+		let url = Self::get_service_url(&model, service_type, endpoint)?;
 
 		// -- headers
 		let headers = Headers::from(vec![

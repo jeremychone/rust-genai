@@ -103,7 +103,7 @@ pub fn to_embed_request_data(
 		&model,
 		ServiceType::Embed,
 		service_target.endpoint,
-	);
+	)?;
 
 	Ok(WebRequestData { url, headers, payload })
 }

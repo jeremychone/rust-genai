@@ -66,8 +66,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 	let chat_request = chat_request.append_message(ChatMessage::user("Why is the sky blue?"));
 
 	// -- Executed
-	let stream = client.exec_chat_stream(MODEL, chat_request, None).await.unwrap();
+	let stream = client.exec_chat_stream(MODEL, chat_request, None).await?;
 
-	print_chat_stream(stream, None).await.unwrap();
+	print_chat_stream(stream, None).await?;
 	Ok(())
 }

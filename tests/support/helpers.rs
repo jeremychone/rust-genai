@@ -43,7 +43,7 @@ bitflags::bitflags! {
 impl std::fmt::Debug for Check {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let mut buffer = String::new();
-		to_writer(self, &mut buffer).unwrap();
+		to_writer(self, &mut buffer)?;
 		write!(f, "{buffer}")
 	}
 }

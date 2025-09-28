@@ -42,16 +42,17 @@ impl Adapter for CohereAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		let base_url = endpoint.base_url();
-		match service_type {
+		let url = match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => format!("{base_url}chat"),
 			ServiceType::Embed => {
 				//HACK: Cohere embeddings use v2 API, but base_url is v1, so we need to replace it
 				let base_without_version = base_url.trim_end_matches("v1/");
 				format!("{base_without_version}v2/embed")
 			}
-		}
+		};
+		Ok(url)
 	}
 
 	fn to_web_request_data(
@@ -66,7 +67,7 @@ impl Adapter for CohereAdapter {
 		let api_key = get_api_key(auth, &model)?;
 
 		// -- url
-		let url = Self::get_service_url(&model, service_type, endpoint);
+		let url = Self::get_service_url(&model, service_type, endpoint)?;
 
 		// -- headers
 		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));

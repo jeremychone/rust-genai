@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	match client.embed(MODEL_OPENAI_SMALL, text, None).await {
 		Ok(response) => {
-			let embedding = response.first_embedding().unwrap();
+			let embedding = response.first_embedding().ok_or("should have embedding")?;
 			println!("   Model: {}", response.model_iden.model_name);
 			println!("   Dimensions: {}", embedding.dimensions());
 			println!(
@@ -109,7 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	match client.embed(MODEL_OPENAI_SMALL, "Hello with options", Some(&options)).await {
 		Ok(response) => {
-			let embedding = response.first_embedding().unwrap();
+			let embedding = response.first_embedding().ok_or("Should have embedding")?;
 			println!("   Requested dimensions: 512");
 			println!("   Actual dimensions: {}", embedding.dimensions());
 			println!(
@@ -139,7 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.await
 	{
 		Ok(response) => {
-			let embedding = response.first_embedding().unwrap();
+			let embedding = response.first_embedding().ok_or("Should have embedding")?;
 			println!("   ✓ Cohere embedding: {} dimensions", embedding.dimensions());
 		}
 		Err(e) => println!("   ✗ Cohere error: {e}",),
@@ -156,7 +156,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.await
 	{
 		Ok(response) => {
-			let embedding = response.first_embedding().unwrap();
+			let embedding = response.first_embedding().ok_or("Should have embedding")?;
 			println!("   ✓ Gemini embedding: {} dimensions", embedding.dimensions());
 		}
 		Err(e) => println!("   ✗ Gemini error: {e}",),
@@ -171,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		print!("   Testing {model}: ",);
 		match client.embed(model, test_text, None).await {
 			Ok(response) => {
-				let embedding = response.first_embedding().unwrap();
+				let embedding = response.first_embedding().ok_or("Should have embedding")?;
 				println!("{} dimensions", embedding.dimensions());
 			}
 			Err(e) => println!("Error - {e}",),

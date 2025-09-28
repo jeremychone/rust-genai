@@ -42,7 +42,7 @@ impl Adapter for OpenAIRespAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		Self::util_get_service_url(model, service_type, endpoint)
 	}
 
@@ -68,7 +68,7 @@ impl Adapter for OpenAIRespAdapter {
 		let api_key = get_api_key(auth, &model)?;
 
 		// -- url
-		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint);
+		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
 
 		// -- headers
 		let mut headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
@@ -284,19 +284,24 @@ impl OpenAIRespAdapter {
 		service_type: ServiceType,
 		// -- utility arguments
 		default_endpoint: Endpoint,
-	) -> String {
+	) -> Result<String> {
 		let base_url = default_endpoint.base_url();
 		// Parse into URL and query-params
-		let base_url = reqwest::Url::parse(base_url).unwrap();
+		let base_url = reqwest::Url::parse(base_url)
+			.map_err(|err| Error::Internal(format!("Cannot parse url: {base_url}. Cause:\n{err}")))?;
 		let original_query_params = base_url.query().to_owned();
 
 		let suffix = match service_type {
 			ServiceType::Chat | ServiceType::ChatStream => "responses",
 			ServiceType::Embed => "embeddings", // TODO: Probably needs to say not supported
 		};
-		let mut full_url = base_url.join(suffix).unwrap();
+		let mut full_url = base_url.join(suffix).map_err(|err| {
+			Error::Internal(format!(
+				"Cannot joing url suffix '{suffix}' for base_url '{base_url}'. Cause:\n{err}"
+			))
+		})?;
 		full_url.set_query(original_query_params);
-		full_url.to_string()
+		Ok(full_url.to_string())
 	}
 
 	/// Takes the genai ChatMessages and builds the OpenAIChatRequestParts

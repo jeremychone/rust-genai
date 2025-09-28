@@ -357,12 +357,12 @@ pub async fn common_test_chat_cache_implicit_simple_ok(model: &str) -> TestResul
 	]);
 
 	// -- Exec
-	// Execute twice
+	// Execute three times
 	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
 	// sleep 500ms
-	tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+	tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
-	tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+	tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	// -- Check Content
@@ -835,7 +835,7 @@ pub async fn common_test_embed_single_simple_ok_with_usage_check(model: &str, ex
 	assert!(!response.is_batch());
 
 	// -- Check Embedding
-	let embedding = response.first_embedding().unwrap();
+	let embedding = response.first_embedding().ok_or("Should have embedding")?;
 	assert_eq!(embedding.index(), 0);
 	assert!(embedding.dimensions() > 0);
 	assert_eq!(embedding.vector().len(), embedding.dimensions());
@@ -845,12 +845,12 @@ pub async fn common_test_embed_single_simple_ok_with_usage_check(model: &str, ex
 
 	if expect_usage {
 		assert!(response.usage.prompt_tokens.is_some());
-		assert!(response.usage.prompt_tokens.unwrap() > 0);
+		assert!(response.usage.prompt_tokens.ok_or("should have prompt token")? > 0);
 		assert!(response.usage.total_tokens.is_some());
 		println!(
 			"✓ Single embedding: {} dimensions, {} tokens",
 			embedding.dimensions(),
-			response.usage.prompt_tokens.unwrap()
+			response.usage.prompt_tokens.ok_or("Should have prompt_tokens")?
 		);
 	} else {
 		// Some providers (like Gemini) don't provide usage information for embeddings
@@ -886,7 +886,7 @@ pub async fn common_test_embed_single_with_options_ok_with_usage_check(
 	let response = client.embed(model, text, Some(&options)).await?;
 
 	// -- Check
-	let embedding = response.first_embedding().unwrap();
+	let embedding = response.first_embedding().ok_or("Should have embedding")?;
 	assert!(embedding.dimensions() > 0);
 
 	// Usage check (provider-dependent)
@@ -940,13 +940,13 @@ pub async fn common_test_embed_batch_simple_ok_with_usage_check(model: &str, exp
 
 	// -- Check Usage (provider-dependent)
 	if expect_usage {
-		assert!(response.usage.prompt_tokens.is_some());
-		assert!(response.usage.prompt_tokens.unwrap() > 0);
+		let prompt_tokens = response.usage.prompt_tokens.ok_or("Should have prompt tokens")?;
+		assert!(prompt_tokens > 0);
 		println!(
 			"✓ Batch embedding: {} texts, {} dimensions each, {} tokens",
 			response.embedding_count(),
 			first_dims,
-			response.usage.prompt_tokens.unwrap()
+			prompt_tokens
 		);
 	} else {
 		// Some providers (like Gemini) don't provide usage information for embeddings
@@ -992,7 +992,7 @@ pub async fn common_test_embed_provider_specific_options_ok_with_usage_check(
 	let response = client.embed(model, text, Some(&options)).await?;
 
 	// -- Check
-	let embedding = response.first_embedding().unwrap();
+	let embedding = response.first_embedding().ok_or("Should have embedding")?;
 	assert!(embedding.dimensions() > 0);
 
 	// Usage check (provider-dependent)

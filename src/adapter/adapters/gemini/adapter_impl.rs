@@ -55,14 +55,15 @@ impl Adapter for GeminiAdapter {
 
 	/// NOTE: As Google Gemini has decided to put their API_KEY in the URL,
 	///       this will return the URL without the API_KEY in it. The API_KEY will need to be added by the caller.
-	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		let base_url = endpoint.base_url();
 		let (model_name, _) = model.model_name.as_model_name_and_namespace();
-		match service_type {
+		let url = match service_type {
 			ServiceType::Chat => format!("{base_url}models/{model_name}:generateContent"),
 			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent"),
 			ServiceType::Embed => format!("{base_url}models/{model_name}:embedContent"), // Gemini embeddings API
-		}
+		};
+		Ok(url)
 	}
 
 	fn to_web_request_data(
@@ -183,8 +184,7 @@ impl Adapter for GeminiAdapter {
 
 		// -- url
 		let provider_model = model.from_name(provider_model_name);
-		let url = Self::get_service_url(&provider_model, service_type, endpoint);
-		let url = url.to_string();
+		let url = Self::get_service_url(&provider_model, service_type, endpoint)?;
 
 		Ok(WebRequestData { url, headers, payload })
 	}

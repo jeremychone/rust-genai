@@ -57,7 +57,7 @@ impl Adapter for GroqAdapter {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
-	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		OpenAIAdapter::util_get_service_url(model, service_type, endpoint)
 	}
 

@@ -82,7 +82,7 @@ impl AdapterDispatcher {
 		}
 	}
 
-	pub fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> String {
+	pub fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		match model.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::OpenAIResp => OpenAIRespAdapter::get_service_url(model, service_type, endpoint),

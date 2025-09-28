@@ -119,7 +119,9 @@ impl futures::Stream for OpenAIStreamer {
 							&& delta_tool_calls != Value::Null
 						{
 							// Check if there's a tool call in the delta
-							if delta_tool_calls.is_array() && !delta_tool_calls.as_array().unwrap().is_empty() {
+							if let Some(delta_tool_calls) = delta_tool_calls.as_array()
+								&& !delta_tool_calls.is_empty()
+							{
 								// Extract the first tool call object as a mutable value
 								let mut tool_call_obj = delta_tool_calls[0].clone();
 
