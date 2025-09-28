@@ -174,7 +174,7 @@ impl AdapterKind {
 			|| model.starts_with("text-embedding")
 		// migh be a little generic on this one
 		{
-			if model.starts_with("gpt") && model.ends_with("codex") {
+			if model.starts_with("gpt") && model.contains("codex") {
 				Ok(Self::OpenAIResp)
 			} else {
 				Ok(Self::OpenAI)

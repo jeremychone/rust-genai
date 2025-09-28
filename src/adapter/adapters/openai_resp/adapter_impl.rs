@@ -90,7 +90,7 @@ impl Adapter for OpenAIRespAdapter {
 		// -- compute reasoning_effort and eventual trimmed model_name
 		// For now, just for openai AdapterKind
 		let (reasoning_effort, model_name): (Option<ReasoningEffort>, &str) =
-			if matches!(adapter_kind, AdapterKind::OpenAI) {
+			if matches!(adapter_kind, AdapterKind::OpenAIResp) {
 				let (reasoning_effort, model_name) = chat_options
 					.reasoning_effort()
 					.cloned()
