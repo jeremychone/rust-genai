@@ -11,6 +11,9 @@ _*
 *.lockb
 *.log
 
+# -- AIPack related
+ako-config.jsonc
+
 # -- Rust
 target/
 # !Cargo.lock # commented by default

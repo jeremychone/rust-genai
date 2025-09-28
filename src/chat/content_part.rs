@@ -234,7 +234,7 @@ pub enum BinarySource {
 
 	/// The base64 string of the image
 	///
-	/// NOTE: Here we use an Arc<str> to avoid cloning large amounts of data when cloning a ChatRequest.
+	/// NOTE: Here we use an `Arc<str>` to avoid cloning large amounts of data when cloning a ChatRequest.
 	///       The overhead is minimal compared to cloning relatively large data.
 	///       The downside is that it will be an Arc even when used only once, but for this particular data type, the net benefit is positive.
 	Base64(Arc<str>),
