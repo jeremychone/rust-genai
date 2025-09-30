@@ -28,6 +28,12 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_reasoning_ok() -> TestResult<()> {
+	// For now, do not test Check::REASONING, for OpenAI as it is not captured
+	common_tests::common_test_chat_reasoning_ok(MODEL, Some(Check::REASONING_USAGE)).await
+}
+
+#[tokio::test]
 async fn test_chat_verbosity_ok() -> TestResult<()> {
 	common_tests::common_test_chat_verbosity_ok(MODEL).await
 }
@@ -87,7 +93,8 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
+	// NOTE: For now the OpenAI Adapter do not capture the thinking as not available in chat completions
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL, Some(Check::REASONING_USAGE)).await
 }
 
 // endregion: --- Chat Stream Tests

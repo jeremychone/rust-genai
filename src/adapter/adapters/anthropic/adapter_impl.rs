@@ -3,7 +3,7 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, MessageContent, PromptTokensDetails, ToolCall, Usage,
+	ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
@@ -17,6 +17,10 @@ use value_ext::JsonValueExt;
 
 pub struct AnthropicAdapter;
 
+const REASONING_LOW: u32 = 1024;
+const REASONING_MEDIUM: u32 = 8000;
+const REASONING_HIGH: u32 = 24000;
+
 // NOTE: For Anthropic, the max_tokens must be specified.
 //       To avoid surprises, the default value for genai is the maximum for a given model.
 // Current logic:
@@ -27,7 +31,7 @@ pub struct AnthropicAdapter;
 // For max model tokens see: https://docs.anthropic.com/en/docs/about-claude/models/overview
 //
 // fall back
-const MAX_TOKENS_64K: u32 = 64000; // claude-3-7-sonnet, claude-sonnet-4
+const MAX_TOKENS_64K: u32 = 64000; // claude-3-7-sonnet, claude-sonnet-4.x
 // custom
 const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
 const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
@@ -35,12 +39,9 @@ const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
-	"claude-opus-4-20250514",
-	"claude-sonnet-4-20250514",
-	"claude-3-7-sonnet-latest",
+	"claude-opus-4-1-20250805",
+	"claude-sonnet-4-5-20250929",
 	"claude-3-5-haiku-latest",
-	"claude-3-opus-20240229",
-	"claude-3-haiku-20240307",
 ];
 
 impl AnthropicAdapter {
@@ -100,8 +101,44 @@ impl Adapter for AnthropicAdapter {
 			tools,
 		} = Self::into_anthropic_request_parts(chat_req)?;
 
+		// -- Extract Model Name and Reasoning
+		let (raw_model_name, _) = model.model_name.as_model_name_and_namespace();
+
+		let (model_name, thinking_budget) = match (raw_model_name, options_set.reasoning_effort()) {
+			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
+			(model, None) => {
+				// let model_name: &str = &model.model_name;
+				if let Some((prefix, last)) = raw_model_name.rsplit_once('-') {
+					let reasoning = match last {
+						"zero" => None,    // That will disable thinking
+						"minimal" => None, // That will disable thinking
+						"low" => Some(REASONING_LOW),
+						"medium" => Some(REASONING_MEDIUM),
+						"high" => Some(REASONING_HIGH),
+						_ => None,
+					};
+					// create the model name if there was a `-..` reasoning suffix
+					let model = if reasoning.is_some() { prefix } else { model };
+					(model, reasoning)
+				} else {
+					(model, None)
+				}
+			}
+			// If reasoning effort, turn the low, medium, budget ones into Budget
+			(model, Some(effort)) => {
+				let effort = match effort {
+					// -- When minimal, same a zeror
+					ReasoningEffort::Minimal => None,
+					ReasoningEffort::Low => Some(REASONING_LOW),
+					ReasoningEffort::Medium => Some(REASONING_MEDIUM),
+					ReasoningEffort::High => Some(REASONING_HIGH),
+					ReasoningEffort::Budget(budget) => Some(*budget),
+				};
+				(model, effort)
+			}
+		};
+
 		// -- Build the basic payload
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
 		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"model": model_name.to_string(),
@@ -115,6 +152,17 @@ impl Adapter for AnthropicAdapter {
 
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
+		}
+
+		// -- Set the reasoning effort
+		if let Some(budget) = thinking_budget {
+			payload.x_insert(
+				"thinking",
+				json!({
+					"type": "enabled",
+					"budget_tokens": budget
+				}),
+			)?;
 		}
 
 		// -- Add supported ChatOptions
@@ -162,6 +210,7 @@ impl Adapter for AnthropicAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
+
 		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 
 		// -- Capture the provider_model_iden
@@ -182,24 +231,28 @@ impl Adapter for AnthropicAdapter {
 		let json_content_items: Vec<Value> = body.x_take("content")?;
 
 		let mut text_content: Vec<String> = Vec::new();
+		let mut reasoning_content: Vec<String> = Vec::new();
 		// Note: here tool_calls is probably the exception, so not creating the vector if not needed
 		let mut tool_calls: Vec<ToolCall> = vec![];
 
 		for mut item in json_content_items {
 			let typ: &str = item.x_get_as("type")?;
-			if typ == "text" {
-				text_content.push(item.x_take("text")?);
-			} else if typ == "tool_use" {
-				let call_id = item.x_take::<String>("id")?;
-				let fn_name = item.x_take::<String>("name")?;
-				// if not found, will be Value::Null
-				let fn_arguments = item.x_take::<Value>("input").unwrap_or_default();
-				let tool_call = ToolCall {
-					call_id,
-					fn_name,
-					fn_arguments,
-				};
-				tool_calls.push(tool_call);
+			match typ {
+				"text" => text_content.push(item.x_take("text")?),
+				"thinking" => reasoning_content.push(item.x_take("thinking")?),
+				"tool_use" => {
+					let call_id = item.x_take::<String>("id")?;
+					let fn_name = item.x_take::<String>("name")?;
+					// if not found, will be Value::Null
+					let fn_arguments = item.x_take::<Value>("input").unwrap_or_default();
+					let tool_call = ToolCall {
+						call_id,
+						fn_name,
+						fn_arguments,
+					};
+					tool_calls.push(tool_call);
+				}
+				_ => (),
 			}
 		}
 
@@ -211,9 +264,15 @@ impl Adapter for AnthropicAdapter {
 			content.push(text_content.join("\n"));
 		}
 
+		let reasoning_content = if !reasoning_content.is_empty() {
+			Some(reasoning_content.join("\n"))
+		} else {
+			None
+		};
+
 		Ok(ChatResponse {
 			content,
-			reasoning_content: None,
+			reasoning_content,
 			model_iden,
 			provider_model_iden,
 			usage,

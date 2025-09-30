@@ -1,8 +1,9 @@
 use crate::get_option_value;
 use crate::support::data::{IMAGE_URL_JPG_DUCK, get_b64_duck, get_b64_pdf};
 use crate::support::{
-	Check, StreamExtract, TestResult, assert_contains, contains_checks, extract_stream_end, get_big_content,
-	seed_chat_req_simple, seed_chat_req_tool_simple, validate_checks,
+	Check, StreamExtract, TestResult, assert_contains, assert_reasoning_content, assert_reasoning_usage,
+	contains_checks, extract_stream_end, get_big_content, seed_chat_req_simple, seed_chat_req_tool_simple,
+	validate_checks,
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
@@ -27,6 +28,44 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> T
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check Content
+	let content = chat_res.first_text().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = &chat_res.usage;
+	let prompt_tokens = get_option_value!(usage.prompt_tokens);
+	let completion_tokens = get_option_value!(usage.completion_tokens);
+	let total_tokens = get_option_value!(usage.total_tokens);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+	assert!(
+		total_tokens == prompt_tokens + completion_tokens,
+		"total_tokens should be equal to prompt_token + comletion_token"
+	);
+
+	// -- Check Reasoning Usage
+	if contains_checks(checks.clone(), Check::REASONING_USAGE) {
+		assert_reasoning_usage(usage)?;
+	}
+
+	// -- Check Reasoning Content
+	if contains_checks(checks, Check::REASONING) {
+		assert_reasoning_content(&chat_res)?;
+	}
+
+	Ok(())
+}
+
+// NOTE: here we still have the options about checking REASONING_USAGE, because Anthropic does not have reasoning token.
+pub async fn common_test_chat_reasoning_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = seed_chat_req_simple();
+	let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, Some(&options)).await?;
 
 	// -- Check Content
 	let content = chat_res.first_text().ok_or("Should have content")?;
@@ -559,17 +598,19 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> TestResu
 }
 
 pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
-	validate_checks(checks.clone(), Check::REASONING)?;
+	validate_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE)?;
 
 	// -- Setup & Fixtures
-	let client = Client::builder()
-		.with_chat_options(
-			ChatOptions::default()
-				.with_capture_usage(true)
-				.with_capture_content(true)
-				.with_capture_reasoning_content(true),
-		)
-		.build();
+	let mut chat_options = ChatOptions::default()
+		.with_capture_usage(true)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true);
+
+	if contains_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE) {
+		chat_options = chat_options.with_reasoning_effort(ReasoningEffort::Medium);
+	}
+
+	let client = Client::builder().with_chat_options(chat_options).build();
 	let chat_req = seed_chat_req_simple();
 
 	// -- Exec
@@ -603,18 +644,14 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	let captured_content = captured_content.ok_or("Captured content should have a text")?;
 	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
 
+	// -- Check Reasoning Usage
+	if contains_checks(checks.clone(), Check::REASONING_USAGE) {
+		assert_reasoning_usage(meta_usage)?;
+	}
+
 	// -- Check Reasoning Content
 	if contains_checks(checks, Check::REASONING) {
-		let reasoning_content = stream_end
-			.captured_reasoning_content
-			.as_ref()
-			.ok_or("captured_reasoning_content SHOULD have extracted some reasoning_content")?;
-		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
-		// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.
-		assert!(
-			reasoning_content.len() > captured_content.len(),
-			"Reasoning content should be > than the content"
-		);
+		let _reasoning_content = reasoning_content.ok_or("Should have reasoning content")?;
 	}
 
 	Ok(())

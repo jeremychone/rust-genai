@@ -1,5 +1,7 @@
 //! Some assert convenient functions
 
+use crate::support::TestResult;
+use genai::chat::{ChatResponse, Usage};
 use std::convert::Into;
 use std::fmt::Formatter;
 
@@ -20,6 +22,32 @@ where
 		!container.contains(val),
 		"Should not contain: {val}\nBut was: {container:?}"
 	);
+}
+
+pub fn assert_reasoning_usage(usage: &Usage) -> TestResult<()> {
+	let reasoning_tokens = usage
+		.completion_tokens_details
+		.as_ref()
+		.and_then(|v| v.reasoning_tokens)
+		.ok_or("should have reasoning_tokens")?;
+	assert!(reasoning_tokens > 0, "reasoning_usage should be > 0");
+
+	Ok(())
+}
+
+pub fn assert_reasoning_content(chat_res: &ChatResponse) -> TestResult<()> {
+	let reasoning_content = chat_res
+		.reasoning_content
+		.as_deref()
+		.ok_or("SHOULD have extracted some reasoning_content")?;
+	let content = chat_res.content.joined_texts().unwrap_or_default();
+	assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
+	// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.
+	assert!(
+		reasoning_content.len() > content.len(),
+		"Reasoning content should be > than the content"
+	);
+	Ok(())
 }
 
 // region:    --- Support Types

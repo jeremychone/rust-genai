@@ -6,11 +6,11 @@ use genai::resolver::AuthData;
 use serial_test::serial;
 
 // "claude-3-haiku-20240307" cheapest
-// "claude-3-5-haiku-latest"
 // "claude-3-7-sonnet-latest" (fail on test_chat_json_mode_ok)
 // "claude-sonnet-4-20250514" (fail on test_chat_json_mode_ok)
 //
 const MODEL: &str = "claude-3-5-haiku-latest";
+const MODEL_THINKING: &str = "claude-sonnet-4-5-20250929";
 const MODEL_NS: &str = "anthropic::claude-3-5-haiku-latest";
 
 // region:    --- Chat
@@ -19,6 +19,13 @@ const MODEL_NS: &str = "anthropic::claude-3-5-haiku-latest";
 #[serial(anthropic)]
 async fn test_chat_simple_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+#[serial(anthropic)]
+async fn test_chat_reasoning_ok() -> TestResult<()> {
+	// NOTE: Does not test REASONING_USAGE as Anthropic does not report it
+	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, Some(Check::REASONING)).await
 }
 
 #[tokio::test]
@@ -87,6 +94,7 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 #[tokio::test]
 #[serial(anthropic)]
 async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
+	// Anthropic does not seem to support reasoning for testing
 	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
 }
 // endregion: --- Chat Stream Tests
@@ -148,7 +156,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-3-7-sonnet-latest").await
+	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-sonnet-4-5-20250929").await
 }
 
 // endregion: --- List
