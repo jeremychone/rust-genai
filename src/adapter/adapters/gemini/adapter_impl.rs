@@ -82,16 +82,16 @@ impl Adapter for GeminiAdapter {
 		let headers = Headers::from(("x-goog-api-key".to_string(), api_key.to_string()));
 
 		// -- Reasoning Budget
-		let (provider_model_name, reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
+		let (provider_model_name, reasoning_budget) = match (model_name, options_set.reasoning_effort()) {
 			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
 			(model, None) => {
 				// let model_name: &str = &model.model_name;
 				if let Some((prefix, last)) = model_name.rsplit_once('-') {
 					let reasoning = match last {
-						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
-						"low" => Some(ReasoningEffort::Budget(REASONING_LOW)),
-						"medium" => Some(ReasoningEffort::Budget(REASONING_MEDIUM)),
-						"high" => Some(ReasoningEffort::Budget(REASONING_HIGH)),
+						"zero" => Some(REASONING_ZERO),
+						"low" => Some(REASONING_LOW),
+						"medium" => Some(REASONING_MEDIUM),
+						"high" => Some(REASONING_HIGH),
 						_ => None,
 					};
 					// create the model name if there was a `-..` reasoning suffix
@@ -106,11 +106,11 @@ impl Adapter for GeminiAdapter {
 			(model, Some(effort)) => {
 				let effort = match effort {
 					// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
-					ReasoningEffort::Minimal => ReasoningEffort::Budget(REASONING_LOW),
-					ReasoningEffort::Low => ReasoningEffort::Budget(REASONING_LOW),
-					ReasoningEffort::Medium => ReasoningEffort::Budget(REASONING_MEDIUM),
-					ReasoningEffort::High => ReasoningEffort::Budget(REASONING_HIGH),
-					ReasoningEffort::Budget(budget) => ReasoningEffort::Budget(*budget),
+					ReasoningEffort::Minimal => REASONING_LOW,
+					ReasoningEffort::Low => REASONING_LOW,
+					ReasoningEffort::Medium => REASONING_MEDIUM,
+					ReasoningEffort::High => REASONING_HIGH,
+					ReasoningEffort::Budget(budget) => *budget,
 				};
 				(model, Some(effort))
 			}
@@ -129,7 +129,7 @@ impl Adapter for GeminiAdapter {
 		});
 
 		// -- Set the reasoning effort
-		if let Some(ReasoningEffort::Budget(budget)) = reasoning_effort {
+		if let Some(budget) = reasoning_budget {
 			payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
 		}
 
