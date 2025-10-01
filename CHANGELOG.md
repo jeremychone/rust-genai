@@ -1,5 +1,9 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-09-30 - [v0.4.1](https://github.com/jeremychone/rust-genai/compare/v0.4.0...v0.4.1)
+
+- `^` anthropic - add reasoning support
+
 ## 2025-09-28 - [v0.4.0](https://github.com/jeremychone/rust-genai/compare/v0.3.5...v0.4.0)
 
 Some **API Changes** - See [migration-v_0_3_to_0_4](doc/migration/migration-v_0_3_to_0_4.md)
