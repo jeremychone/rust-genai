@@ -73,17 +73,17 @@ pub enum Error {
 		webc_error: webc::Error,
 	},
 
+	#[display("Error event in stream for model '{model_iden}'. Body: {body}")]
+	ChatResponse {
+		model_iden: ModelIden,
+		body: serde_json::Value,
+	},
+
 	// -- Chat Stream
 	#[display("Failed to parse stream data for model '{model_iden}'.\nCause: {serde_error}")]
 	StreamParse {
 		model_iden: ModelIden,
 		serde_error: serde_json::Error,
-	},
-
-	#[display("Error event in stream for model '{model_iden}'. Body: {body}")]
-	StreamEventError {
-		model_iden: ModelIden,
-		body: serde_json::Value,
 	},
 
 	#[display("Web stream error for model '{model_iden}'.\nCause: {cause}")]

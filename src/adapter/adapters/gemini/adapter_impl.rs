@@ -267,7 +267,7 @@ impl GeminiAdapter {
 	pub(super) fn body_to_gemini_chat_response(model_iden: &ModelIden, mut body: Value) -> Result<GeminiChatResponse> {
 		// If the body has an `error` property, then it is assumed to be an error.
 		if body.get("error").is_some() {
-			return Err(Error::StreamEventError {
+			return Err(Error::ChatResponse {
 				model_iden: model_iden.clone(),
 				body,
 			});
@@ -276,7 +276,22 @@ impl GeminiAdapter {
 		let mut content: Vec<GeminiChatContent> = Vec::new();
 
 		// -- Read multipart
-		let parts = body.x_take::<Vec<Value>>("/candidates/0/content/parts")?;
+		let parts = match body.x_take::<Vec<Value>>("/candidates/0/content/parts") {
+			Ok(parts) => parts,
+			Err(_) => {
+				let finish_reason = body.x_remove::<String>("/candidates/finishReason").ok();
+				let usage_metadata = body.x_remove::<Value>("/usageMetadata").ok();
+				let body = json!({
+					"finishReason": finish_reason,
+					"usageMetadata": usage_metadata,
+				});
+				return Err(Error::ChatResponse {
+					model_iden: model_iden.clone(),
+					body,
+				});
+			}
+		};
+
 		for mut part in parts {
 			// -- Capture eventual function call
 			if let Ok(fn_call_value) = part.x_take::<Value>("functionCall") {
