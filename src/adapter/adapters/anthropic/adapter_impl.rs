@@ -230,15 +230,15 @@ impl Adapter for AnthropicAdapter {
 		//       but loses the fact that they were originally separate items.
 		let json_content_items: Vec<Value> = body.x_take("content")?;
 
-		let mut text_content: Vec<String> = Vec::new();
 		let mut reasoning_content: Vec<String> = Vec::new();
-		// Note: here tool_calls is probably the exception, so not creating the vector if not needed
-		let mut tool_calls: Vec<ToolCall> = vec![];
 
 		for mut item in json_content_items {
 			let typ: &str = item.x_get_as("type")?;
 			match typ {
-				"text" => text_content.push(item.x_take("text")?),
+				"text" => {
+					let part = ContentPart::from_text(item.x_take::<String>("text")?);
+					content.push(part);
+				}
 				"thinking" => reasoning_content.push(item.x_take("thinking")?),
 				"tool_use" => {
 					let call_id = item.x_take::<String>("id")?;
@@ -250,18 +250,12 @@ impl Adapter for AnthropicAdapter {
 						fn_name,
 						fn_arguments,
 					};
-					tool_calls.push(tool_call);
+
+					let part = ContentPart::ToolCall(tool_call);
+					content.push(part);
 				}
 				_ => (),
 			}
-		}
-
-		if !tool_calls.is_empty() {
-			content.extend(MessageContent::from(tool_calls));
-		}
-
-		if !text_content.is_empty() {
-			content.push(text_content.join("\n"));
 		}
 
 		let reasoning_content = if !reasoning_content.is_empty() {
