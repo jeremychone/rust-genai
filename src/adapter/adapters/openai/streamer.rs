@@ -135,13 +135,11 @@ impl futures::Stream for OpenAIStreamer {
 										.unwrap_or_else(|_| format!("call_{index}"));
 									let fn_name = function.x_take::<String>("name").unwrap_or_default();
 									let arguments = function.x_take::<String>("arguments").unwrap_or_default();
-									// Create the tool call
-									let fn_arguments = serde_json::from_str(&arguments)
-										.unwrap_or(serde_json::Value::String(arguments.clone()));
+									// Don't parse yet - accumulate as string first
 									let mut tool_call = crate::chat::ToolCall {
 										call_id,
 										fn_name,
-										fn_arguments: fn_arguments.clone(),
+										fn_arguments: serde_json::Value::String(arguments.clone()),
 									};
 
 									// Capture the tool call if enabled
@@ -149,19 +147,22 @@ impl futures::Stream for OpenAIStreamer {
 										match &mut self.captured_data.tool_calls {
 											Some(calls) => {
 												self.captured_data.tool_calls = Some({
-													// When fn_arguments can not be parsed, we need to append the arguments to the existing fn_arguments as json string
-													let mut captured_fn_argments = String::new();
-													if calls[index as usize].fn_arguments.is_string() {
-														captured_fn_argments.push_str(
-															calls[index as usize].fn_arguments.as_str().unwrap_or(""),
-														);
-														captured_fn_argments.push_str(&arguments);
+													// Accumulate arguments as strings, don't parse until complete
+													let accumulated = if let Some(existing) = calls[index as usize].fn_arguments.as_str() {
+														format!("{}{}", existing, arguments)
+													} else {
+														arguments.clone()
+													};
+													
+													// Store as string (will be parsed at stream end)
+													calls[index as usize].fn_arguments = serde_json::Value::String(accumulated);
+													
+													// Update call_id and fn_name on first chunk
+													if !tool_call.fn_name.is_empty() {
+														calls[index as usize].call_id = tool_call.call_id.clone();
+														calls[index as usize].fn_name = tool_call.fn_name.clone();
 													}
-													let fn_arguments = serde_json::from_str(&captured_fn_argments)
-														.unwrap_or(serde_json::Value::String(
-															captured_fn_argments.clone(),
-														));
-													calls[index as usize].fn_arguments = fn_arguments.clone();
+													
 													tool_call = calls[index as usize].clone();
 													calls.to_vec()
 												})
