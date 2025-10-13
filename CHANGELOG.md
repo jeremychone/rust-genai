@@ -1,5 +1,12 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+
+## 2025-10-12 - [v0.4.2](https://github.com/jeremychone/rust-genai/compare/v0.4.1...v0.4.2)
+
+- `.` test - make the common_test_chat_stop_sequences_ok more resilient
+- `^` Anthropic - preserve the content order as it appears in the JSON array (#89)
+- `.` Gemini - when no response, return error with finishReason and usageMetadata
+
 ## 2025-09-30 - [v0.4.1](https://github.com/jeremychone/rust-genai/compare/v0.4.0...v0.4.1)
 
 - `^` anthropic - add reasoning support
