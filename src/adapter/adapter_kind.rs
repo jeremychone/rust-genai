@@ -1,5 +1,6 @@
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::cerebras::CerebrasAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
 use crate::adapter::fireworks::FireworksAdapter;
@@ -45,6 +46,8 @@ pub enum AdapterKind {
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
 	Ollama,
+	/// Cerebras (OpenAI-compatible protocol)
+	Cerebras,
 }
 
 /// Serialization/Parse implementations
@@ -65,6 +68,7 @@ impl AdapterKind {
 			AdapterKind::Zhipu => "Zhipu",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
+			AdapterKind::Cerebras => "Cerebras",
 		}
 	}
 
@@ -84,6 +88,7 @@ impl AdapterKind {
 			AdapterKind::Zhipu => "zhipu",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
+			AdapterKind::Cerebras => "cerebras",
 		}
 	}
 
@@ -102,6 +107,7 @@ impl AdapterKind {
 			"zhipu" => Some(AdapterKind::Zhipu),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
+			"cerebras" => Some(AdapterKind::Cerebras),
 			_ => None,
 		}
 	}
@@ -125,6 +131,7 @@ impl AdapterKind {
 			AdapterKind::Zhipu => Some(ZhipuAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
+			AdapterKind::Cerebras => Some(CerebrasAdapter::API_KEY_DEFAULT_ENV_NAME),
 		}
 	}
 }
@@ -149,6 +156,7 @@ impl AdapterKind {
 	/// Other Some adapters have to have model name namespaced to be used,
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
+	/// - e.g., for cerebras with `cerebras::llama-3.1-8b`
 	///
 	/// And all adapters can be force namspaced as well.
 	///

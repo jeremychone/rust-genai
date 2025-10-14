@@ -1,0 +1,23 @@
+repos:
+  - repo: local
+    hooks:
+      - id: rust-fmt
+        name: rustfmt
+        entry: cargo fmt --all -- --check
+        language: system
+        pass_filenames: false
+      - id: rust-clippy
+        name: clippy
+        entry: cargo clippy --all-targets -- -D warnings
+        language: system
+        pass_filenames: false
+      - id: rust-build
+        name: cargo build
+        entry: cargo build --verbose
+        language: system
+        pass_filenames: false
+      - id: rust-test-compile
+        name: cargo test (no run)
+        entry: cargo test --no-run
+        language: system
+        pass_filenames: false
