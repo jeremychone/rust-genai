@@ -106,10 +106,8 @@ impl futures::Stream for CerebrasStreamer {
 							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
 						}
 						// If we do not have content, then log a trace message
-						else {
-							// TODO: use tracing debug
-							tracing::warn!("EMPTY CHOICE CONTENT");
-						}
+						// TODO: use tracing debug
+						tracing::warn!("EMPTY CHOICE CONTENT");
 					}
 					// -- Usage message
 					else {
