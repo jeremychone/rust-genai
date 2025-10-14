@@ -43,3 +43,5 @@ gcp_auth = "0.12.3"
 # Mock server dependencies
 wiremock = "0.6.5"
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
+# Test utilities
+scopeguard = "1.2.0"

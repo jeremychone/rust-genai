@@ -11,6 +11,7 @@ pub(super) mod nebius;
 pub(super) mod ollama;
 pub(super) mod openai;
 pub(super) mod openai_resp;
+pub(super) mod openrouter;
 pub(super) mod together;
 pub(super) mod xai;
 pub(super) mod zhipu;

@@ -8,6 +8,7 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::openrouter::OpenRouterAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::adapter::zhipu::ZhipuAdapter;
 use crate::{ModelName, Result};
@@ -26,6 +27,8 @@ pub enum AdapterKind {
 	OpenAIResp,
 	/// Gemini adapter supports gemini native protocol. e.g., support thinking budget.
 	Gemini,
+	/// For OpenRouter (OpenAI-compatible protocol)
+	OpenRouter,
 	/// Anthopric native protocol as well
 	Anthropic,
 	/// For fireworks.ai, mostly OpenAI.
@@ -59,6 +62,7 @@ impl AdapterKind {
 			AdapterKind::OpenAIResp => "OpenAIResp",
 			AdapterKind::Gemini => "Gemini",
 			AdapterKind::Anthropic => "Anthropic",
+			AdapterKind::OpenRouter => "OpenRouter",
 			AdapterKind::Fireworks => "Fireworks",
 			AdapterKind::Together => "Together",
 			AdapterKind::Groq => "Groq",
@@ -79,6 +83,7 @@ impl AdapterKind {
 			AdapterKind::OpenAIResp => "openai_resp",
 			AdapterKind::Gemini => "gemini",
 			AdapterKind::Anthropic => "anthropic",
+			AdapterKind::OpenRouter => "openrouter",
 			AdapterKind::Fireworks => "fireworks",
 			AdapterKind::Together => "together",
 			AdapterKind::Groq => "groq",
@@ -98,6 +103,7 @@ impl AdapterKind {
 			"openai_resp" => Some(AdapterKind::OpenAIResp),
 			"gemini" => Some(AdapterKind::Gemini),
 			"anthropic" => Some(AdapterKind::Anthropic),
+			"openrouter" => Some(AdapterKind::OpenRouter),
 			"fireworks" => Some(AdapterKind::Fireworks),
 			"together" => Some(AdapterKind::Together),
 			"groq" => Some(AdapterKind::Groq),
@@ -122,6 +128,7 @@ impl AdapterKind {
 			AdapterKind::OpenAIResp => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Anthropic => Some(AnthropicAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::OpenRouter => Some(OpenRouterAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Fireworks => Some(FireworksAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Together => Some(TogetherAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
@@ -170,6 +177,16 @@ impl AdapterKind {
 			} else {
 				info!("No AdapterKind found for '{ns}'")
 			}
+		}
+
+		// -- Special handling for OpenRouter models (they start with provider names)
+		if model.contains('/')
+			&& (model.starts_with("openai/")
+				|| model.starts_with("anthropic/")
+				|| model.starts_with("meta-llama/")
+				|| model.starts_with("google/"))
+		{
+			return Ok(Self::OpenRouter);
 		}
 
 		// -- Resolve from modelname
