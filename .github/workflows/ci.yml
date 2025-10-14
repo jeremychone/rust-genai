@@ -40,4 +40,7 @@ jobs:
         run: cargo test --no-run
 
       - name: Provider tests skipped
-        run: echo "Live provider tests require API keys and are not run in CI."
+        run: |
+          echo "Live provider tests require API keys and are not run in CI."
+          echo "Cerebras adapter compilation test:"
+          cargo test --test tests_p_cerebras --no-run

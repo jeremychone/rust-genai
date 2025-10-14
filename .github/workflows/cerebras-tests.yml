@@ -1,0 +1,78 @@
+name: Cerebras Provider Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'src/adapter/adapters/cerebras/**'
+      - 'tests/tests_p_cerebras.rs'
+      - 'examples/c11-cerebras.rs'
+  pull_request:
+    branches: [ "**" ]
+    paths:
+      - 'src/adapter/adapters/cerebras/**'
+      - 'tests/tests_p_cerebras.rs'
+      - 'examples/c11-cerebras.rs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cerebras-tests:
+    name: Cerebras Integration Tests
+    runs-on: ubuntu-latest
+    
+    if: vars.CEREBRAS_API_KEY != ''
+    
+    env:
+      CEREBRAS_API_KEY: ${{ vars.CEREBRAS_API_KEY }}
+      RUSTFLAGS: -Dwarnings
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Format check
+        run: cargo fmt --all -- --check
+      
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      
+      - name: Build
+        run: cargo build --verbose
+      
+      - name: Run Cerebras tests
+        run: |
+          echo "Running Cerebras provider tests..."
+          cargo test --test tests_p_cerebras -- --nocapture
+        env:
+          CEREBRAS_API_KEY: ${{ vars.CEREBRAS_API_KEY }}
+      
+      - name: Run Cerebras example
+        run: |
+          echo "Running Cerebras example..."
+          cargo run --example c11-cerebras
+        env:
+          CEREBRAS_API_KEY: ${{ vars.CEREBRAS_API_KEY }}
+
+  cerebras-tests-skipped:
+    name: Cerebras Tests Skipped
+    runs-on: ubuntu-latest
+    
+    if: vars.CEREBRAS_API_KEY == ''
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Skip tests
+        run: |
+          echo "CEREBRAS_API_KEY not configured - skipping live tests"
+          echo "To enable Cerebras tests, add CEREBRAS_API_KEY as a repository variable"
