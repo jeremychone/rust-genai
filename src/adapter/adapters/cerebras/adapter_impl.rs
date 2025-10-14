@@ -6,6 +6,7 @@ use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
+use reqwest_eventsource::EventSource;
 
 pub struct CerebrasAdapter;
 
@@ -64,7 +65,14 @@ impl Adapter for CerebrasAdapter {
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+		let event_source = EventSource::new(reqwest_builder)?;
+		let cerebras_stream = super::streamer::CerebrasStreamer::new(event_source, model_iden.clone(), options_set);
+		let chat_stream = crate::chat::ChatStream::from_inter_stream(cerebras_stream);
+
+		Ok(ChatStreamResponse {
+			model_iden,
+			stream: chat_stream,
+		})
 	}
 
 	fn to_embed_request_data(
