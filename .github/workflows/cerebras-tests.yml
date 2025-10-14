@@ -1,5 +1,6 @@
 name: Cerebras Provider Tests
 
+# Tests Cerebras adapter integration with live API calls
 on:
   push:
     branches: [ main, master, develop ]
