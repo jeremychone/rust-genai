@@ -8,11 +8,13 @@
 mod asserts;
 mod data;
 mod helpers;
+mod openrouter_utils;
 mod seeders;
 mod test_error;
 
 pub use asserts::*;
 pub use helpers::*;
+pub use openrouter_utils::*;
 pub use seeders::*;
 pub use test_error::*;
 
