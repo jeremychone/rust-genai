@@ -118,7 +118,13 @@ impl MessageContent {
 
 	/// Return all text parts as &str.
 	pub fn texts(&self) -> Vec<&str> {
-		self.parts.iter().filter_map(|p| p.as_text()).collect()
+		let mut texts = Vec::with_capacity(self.parts.len());
+		for part in &self.parts {
+			if let Some(text) = part.as_text() {
+				texts.push(text);
+			}
+		}
+		texts
 	}
 
 	/// Consume and return all text parts as owned Strings.
@@ -128,13 +134,13 @@ impl MessageContent {
 
 	/// Return references to all ToolCall parts.
 	pub fn tool_calls(&self) -> Vec<&ToolCall> {
-		self.parts
-			.iter()
-			.filter_map(|p| match p {
-				ContentPart::ToolCall(tc) => Some(tc),
-				_ => None,
-			})
-			.collect()
+		let mut calls = Vec::with_capacity(self.parts.len());
+		for part in &self.parts {
+			if let ContentPart::ToolCall(tc) = part {
+				calls.push(tc);
+			}
+		}
+		calls
 	}
 
 	/// Consume and return all ToolCall parts.
@@ -150,13 +156,13 @@ impl MessageContent {
 
 	/// Return references to all ToolResponse parts.
 	pub fn tool_responses(&self) -> Vec<&ToolResponse> {
-		self.parts
-			.iter()
-			.filter_map(|p| match p {
-				ContentPart::ToolResponse(tr) => Some(tr),
-				_ => None,
-			})
-			.collect()
+		let mut responses = Vec::with_capacity(self.parts.len());
+		for part in &self.parts {
+			if let ContentPart::ToolResponse(tr) = part {
+				responses.push(tr);
+			}
+		}
+		responses
 	}
 
 	/// Consume and return all ToolResponse parts.
@@ -211,39 +217,25 @@ impl MessageContent {
 
 	/// Join all text parts, separating segments with a blank line.
 	pub fn joined_texts(&self) -> Option<String> {
-		let texts = self.texts();
-		if texts.is_empty() {
-			return None;
-		}
+		let mut texts = self.parts.iter().filter_map(|part| part.as_text());
+		let first = texts.next()?;
 
-		if texts.len() == 1 {
-			return texts.first().map(|s| s.to_string());
-		}
-
-		let mut combined = String::new();
+		let mut combined = String::from(first);
 		for text in texts {
-			if !combined.is_empty() {
-				support::combine_text_with_empty_line(&mut combined, text);
-			}
+			support::combine_text_with_empty_line(&mut combined, text);
 		}
 		Some(combined)
 	}
 
 	/// Consume and join all text parts, separating segments with a blank line.
 	pub fn into_joined_texts(self) -> Option<String> {
-		let texts = self.into_texts();
-		if texts.is_empty() {
-			return None;
-		}
+		let mut texts = self.into_parts().into_iter().filter_map(|part| part.into_text());
+		let mut combined = texts.next()?;
 
-		if texts.len() == 1 {
-			return texts.into_iter().next();
-		}
-
-		let mut combined = String::new();
 		for text in texts {
 			support::combine_text_with_empty_line(&mut combined, &text);
 		}
+
 		Some(combined)
 	}
 }

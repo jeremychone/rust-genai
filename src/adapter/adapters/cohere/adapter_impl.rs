@@ -229,8 +229,9 @@ impl CohereAdapter {
 		model_iden: ModelIden, // for error only
 		mut chat_req: ChatRequest,
 	) -> Result<CohereChatRequestParts> {
-		let mut chat_history: Vec<Value> = Vec::new();
-		let mut systems: Vec<String> = Vec::new();
+		let history_capacity = chat_req.messages.len();
+		let mut chat_history: Vec<Value> = Vec::with_capacity(history_capacity);
+		let mut systems: Vec<String> = Vec::with_capacity(history_capacity + usize::from(chat_req.system.is_some()));
 
 		// -- Add the eventual system as preamble
 		if let Some(system) = chat_req.system {

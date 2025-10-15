@@ -309,7 +309,9 @@ impl OpenAIRespAdapter {
 	/// - All messages get added with the corresponding roles (tools are not supported for now)
 	///
 	fn into_openai_request_parts(_model_iden: &ModelIden, chat_req: ChatRequest) -> Result<OpenAIRespRequestParts> {
-		let mut input_items: Vec<Value> = Vec::new();
+		let message_capacity = chat_req.messages.len();
+		let mut input_items: Vec<Value> =
+			Vec::with_capacity(message_capacity.saturating_mul(2) + usize::from(chat_req.system.is_some()));
 
 		// -- Process the system
 		if let Some(system_msg) = chat_req.system {
@@ -332,15 +334,16 @@ impl OpenAIRespAdapter {
 
 				// User - For now support Text and Binary
 				ChatRole::User => {
-					// -- If we have only text, then, we jjust returned the joined_texts
-					if msg.content.is_text_only() {
+					let content = msg.content;
+					// -- If we have only text, then, we just return the joined_texts
+					if content.is_text_only() {
 						// NOTE: for now, if no content, just return empty string (respect current logic)
-						let content = json!(msg.content.joined_texts().unwrap_or_else(String::new));
+						let content = json!(content.joined_texts().unwrap_or_else(String::new));
 						input_items.push(json! ({"role": "user", "content": content}));
 					} else {
-						let mut values: Vec<Value> = Vec::new();
+						let mut values: Vec<Value> = Vec::with_capacity(content.len());
 
-						for part in msg.content {
+						for part in content {
 							match part {
 								// -- Simple Text
 								ContentPart::Text(content) => {
@@ -404,9 +407,10 @@ impl OpenAIRespAdapter {
 				ChatRole::Assistant => {
 					// Here we make sure if multiple text content part, we keep them in the same assistant message
 					// In the new OpenAI Responses API, the tool call are just items out of assistant message
-					let mut item_message_content: Vec<Value> = Vec::new();
+					let content = msg.content;
+					let mut item_message_content: Vec<Value> = Vec::with_capacity(content.len());
 
-					for part in msg.content {
+					for part in content {
 						match part {
 							ContentPart::Text(text) => {
 								item_message_content.push(json!({

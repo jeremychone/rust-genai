@@ -146,28 +146,14 @@ impl futures::Stream for OpenAIStreamer {
 
 									// Capture the tool call if enabled
 									if self.options.capture_tool_calls {
-										match &mut self.captured_data.tool_calls {
-											Some(calls) => {
-												self.captured_data.tool_calls = Some({
-													// When fn_arguments can not be parsed, we need to append the arguments to the existing fn_arguments as json string
-													let mut captured_fn_argments = String::new();
-													if calls[index as usize].fn_arguments.is_string() {
-														captured_fn_argments.push_str(
-															calls[index as usize].fn_arguments.as_str().unwrap_or(""),
-														);
-														captured_fn_argments.push_str(&arguments);
-													}
-													let fn_arguments = serde_json::from_str(&captured_fn_argments)
-														.unwrap_or(serde_json::Value::String(
-															captured_fn_argments.clone(),
-														));
-													calls[index as usize].fn_arguments = fn_arguments.clone();
-													tool_call = calls[index as usize].clone();
-													calls.to_vec()
-												})
-											}
-											None => self.captured_data.tool_calls = Some(vec![tool_call.clone()]),
-										}
+										let calls = self.captured_data.tool_calls.get_or_insert_with(Vec::new);
+										tool_call = capture_tool_call_chunk(
+											calls,
+											index as usize,
+											tool_call,
+											fn_arguments.clone(),
+											&arguments,
+										);
 									}
 
 									// Return the ToolCallChunk event
@@ -239,5 +225,137 @@ impl futures::Stream for OpenAIStreamer {
 			}
 		}
 		Poll::Pending
+	}
+}
+
+fn capture_tool_call_chunk(
+	calls: &mut Vec<crate::chat::ToolCall>,
+	index: usize,
+	incoming: crate::chat::ToolCall,
+	fn_arguments: Value,
+	raw_arguments: &str,
+) -> crate::chat::ToolCall {
+	if calls.len() <= index {
+		calls.resize_with(index + 1, || crate::chat::ToolCall {
+			call_id: String::new(),
+			fn_name: String::new(),
+			fn_arguments: Value::Null,
+		});
+	}
+
+	let captured_call = &mut calls[index];
+
+	if captured_call.call_id.is_empty() {
+		captured_call.call_id = incoming.call_id.clone();
+	}
+
+	if captured_call.fn_name.is_empty() {
+		captured_call.fn_name = incoming.fn_name.clone();
+	}
+
+	if captured_call.fn_arguments.is_null() {
+		captured_call.fn_arguments = fn_arguments.clone();
+	} else if captured_call.fn_arguments.is_string() {
+		if let Some(existing) = captured_call.fn_arguments.as_str() {
+			let mut combined = String::with_capacity(existing.len() + raw_arguments.len());
+			combined.push_str(existing);
+			combined.push_str(raw_arguments);
+
+			captured_call.fn_arguments = serde_json::from_str(&combined).unwrap_or(Value::String(combined));
+		}
+	} else if let (Value::Object(existing), Value::Object(new)) =
+		(&mut captured_call.fn_arguments, fn_arguments.clone())
+	{
+		existing.extend(new);
+	} else {
+		captured_call.fn_arguments = fn_arguments;
+	}
+
+	captured_call.clone()
+}
+
+#[cfg(test)]
+mod tests {
+	use super::capture_tool_call_chunk;
+	use crate::chat::ToolCall;
+	use serde_json::{Value, json};
+
+	fn tool_call_template(id: &str) -> ToolCall {
+		ToolCall {
+			call_id: id.to_string(),
+			fn_name: "test".to_string(),
+			fn_arguments: Value::Null,
+		}
+	}
+
+	#[test]
+	fn merges_string_chunks_into_object() {
+		let mut calls = Vec::new();
+		let template = tool_call_template("call_0");
+
+		let first = capture_tool_call_chunk(
+			&mut calls,
+			0,
+			template.clone(),
+			Value::String("{\"unit\":".to_string()),
+			"{\"unit\":",
+		);
+		assert!(first.fn_arguments.is_string());
+		assert_eq!(calls.len(), 1);
+
+		let second = capture_tool_call_chunk(
+			&mut calls,
+			0,
+			template.clone(),
+			Value::String("\"celsius\"}".to_string()),
+			"\"celsius\"}",
+		);
+		let args = second.fn_arguments.as_object().expect("object after merge");
+		assert_eq!(args.get("unit").and_then(|v| v.as_str()), Some("celsius"));
+	}
+
+	#[test]
+	fn extends_object_arguments() {
+		let mut calls = Vec::new();
+		let template = tool_call_template("call_0");
+
+		let _ = capture_tool_call_chunk(
+			&mut calls,
+			0,
+			template.clone(),
+			Value::String("{\"unit\":".to_string()),
+			"{\"unit\":",
+		);
+		let _ = capture_tool_call_chunk(
+			&mut calls,
+			0,
+			template.clone(),
+			Value::String("\"celsius\"}".to_string()),
+			"\"celsius\"}",
+		);
+		let merged = capture_tool_call_chunk(
+			&mut calls,
+			0,
+			template.clone(),
+			json!({ "location": "Paris" }),
+			"{\"location\":\"Paris\"}",
+		);
+
+		let args = merged.fn_arguments.as_object().expect("object");
+		assert_eq!(args.get("unit").and_then(|v| v.as_str()), Some("celsius"));
+		assert_eq!(args.get("location").and_then(|v| v.as_str()), Some("Paris"));
+	}
+
+	#[test]
+	fn grows_call_buffer_for_new_index() {
+		let mut calls = Vec::new();
+		let template = tool_call_template("call_2");
+
+		let merged = capture_tool_call_chunk(&mut calls, 2, template.clone(), json!({ "foo": 1 }), "{\"foo\":1}");
+
+		assert_eq!(calls.len(), 3);
+		assert_eq!(merged.call_id, "call_2");
+		let args = merged.fn_arguments.as_object().expect("object");
+		assert_eq!(args.get("foo").and_then(|v| v.as_i64()), Some(1));
 	}
 }

@@ -273,8 +273,6 @@ impl GeminiAdapter {
 			});
 		}
 
-		let mut content: Vec<GeminiChatContent> = Vec::new();
-
 		// -- Read multipart
 		let parts = match body.x_take::<Vec<Value>>("/candidates/0/content/parts") {
 			Ok(parts) => parts,
@@ -291,6 +289,8 @@ impl GeminiAdapter {
 				});
 			}
 		};
+
+		let mut content: Vec<GeminiChatContent> = Vec::with_capacity(parts.len());
 
 		for mut part in parts {
 			// -- Capture eventual function call
@@ -399,8 +399,9 @@ impl GeminiAdapter {
 		model_iden: &ModelIden, // use for error reporting
 		chat_req: ChatRequest,
 	) -> Result<GeminiChatRequestParts> {
-		let mut contents: Vec<Value> = Vec::new();
-		let mut systems: Vec<String> = Vec::new();
+		let message_count = chat_req.messages.len();
+		let mut contents: Vec<Value> = Vec::with_capacity(message_count);
+		let mut systems: Vec<String> = Vec::with_capacity(message_count + usize::from(chat_req.system.is_some()));
 
 		if let Some(system) = chat_req.system {
 			systems.push(system);
@@ -416,8 +417,9 @@ impl GeminiAdapter {
 					}
 				}
 				ChatRole::User => {
-					let mut parts_values: Vec<Value> = Vec::new();
-					for part in msg.content {
+					let content = msg.content;
+					let mut parts_values: Vec<Value> = Vec::with_capacity(content.len());
+					for part in content {
 						match part {
 							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
 							ContentPart::Binary(binary) => {
@@ -464,8 +466,9 @@ impl GeminiAdapter {
 					contents.push(json!({"role": "user", "parts": parts_values}));
 				}
 				ChatRole::Assistant => {
-					let mut parts_values: Vec<Value> = Vec::new();
-					for part in msg.content {
+					let content = msg.content;
+					let mut parts_values: Vec<Value> = Vec::with_capacity(content.len());
+					for part in content {
 						match part {
 							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
 							ContentPart::ToolCall(tool_call) => {
@@ -486,8 +489,9 @@ impl GeminiAdapter {
 					}
 				}
 				ChatRole::Tool => {
-					let mut parts_values: Vec<Value> = Vec::new();
-					for part in msg.content {
+					let content = msg.content;
+					let mut parts_values: Vec<Value> = Vec::with_capacity(content.len());
+					for part in content {
 						match part {
 							ContentPart::ToolCall(tool_call) => {
 								parts_values.push(json!({
@@ -530,10 +534,10 @@ impl GeminiAdapter {
 
 		// -- Build tools
 		let tools = if let Some(req_tools) = chat_req.tools {
-			let mut tools: Vec<Value> = Vec::new();
+			let mut tools: Vec<Value> = Vec::with_capacity(req_tools.len());
 			// Note: This is to add only one function_declarations in the tools as per the gemini spec
 			//       The rest are builtins
-			let mut function_declarations: Vec<Value> = Vec::new();
+			let mut function_declarations: Vec<Value> = Vec::with_capacity(req_tools.len());
 			for req_tool in req_tools {
 				// -- if it is a builtin tool
 				if matches!(

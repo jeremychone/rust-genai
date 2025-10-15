@@ -367,7 +367,8 @@ impl OpenAIAdapter {
 	/// - `genai::ChatRequest.system`, if present, is added as the first message with role 'system'.
 	/// - All messages get added with the corresponding roles (tools are not supported for now)
 	fn into_openai_request_parts(_model_iden: &ModelIden, chat_req: ChatRequest) -> Result<OpenAIRequestParts> {
-		let mut messages: Vec<Value> = Vec::new();
+		let mut messages: Vec<Value> =
+			Vec::with_capacity(chat_req.messages.len() + usize::from(chat_req.system.is_some()));
 
 		// -- Process the system
 		if let Some(system_msg) = chat_req.system {
@@ -388,14 +389,16 @@ impl OpenAIAdapter {
 
 				// User - For now support Text and Binary
 				ChatRole::User => {
+					let content = msg.content;
+					let is_text_only = content.is_text_only();
 					// -- If we have only text, then, we jjust returned the joined_texts
-					if msg.content.is_text_only() {
+					if is_text_only {
 						// NOTE: for now, if no content, just return empty string (respect current logic)
-						let content = json!(msg.content.joined_texts().unwrap_or_else(String::new));
+						let content = json!(content.joined_texts().unwrap_or_else(String::new));
 						messages.push(json! ({"role": "user", "content": content}));
 					} else {
-						let mut values: Vec<Value> = Vec::new();
-						for part in msg.content {
+						let mut values: Vec<Value> = Vec::with_capacity(content.len());
+						for part in content {
 							match part {
 								ContentPart::Text(content) => values.push(json!({"type": "text", "text": content})),
 								ContentPart::Binary(binary) => {
@@ -456,9 +459,10 @@ impl OpenAIAdapter {
 				// Assistant - For now support Text and ToolCalls
 				ChatRole::Assistant => {
 					// -- If we have only text, then, we jjust returned the joined_texts
-					let mut texts: Vec<String> = Vec::new();
-					let mut tool_calls: Vec<Value> = Vec::new();
-					for part in msg.content {
+					let content = msg.content;
+					let mut texts: Vec<String> = Vec::with_capacity(content.len());
+					let mut tool_calls: Vec<Value> = Vec::with_capacity(content.len());
+					for part in content {
 						match part {
 							ContentPart::Text(text) => texts.push(text),
 							ContentPart::ToolCall(tool_call) => {
@@ -491,8 +495,8 @@ impl OpenAIAdapter {
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
 							messages.push(json!({
-								"role": "tool",
-								"content": tool_response.content,
+									"role": "tool",
+									"content": tool_response.content,
 								"tool_call_id": tool_response.call_id,
 							}))
 						}

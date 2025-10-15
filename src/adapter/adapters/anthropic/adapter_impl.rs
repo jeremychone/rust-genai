@@ -355,9 +355,11 @@ impl AnthropicAdapter {
 	/// Takes the GenAI ChatMessages and constructs the System string and JSON Messages for Anthropic.
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
 	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
-		let mut messages: Vec<Value> = Vec::new();
+		let message_count = chat_req.messages.len();
+		let mut messages: Vec<Value> = Vec::with_capacity(message_count);
 		// (content, is_cache_control)
-		let mut systems: Vec<(String, bool)> = Vec::new();
+		let mut systems: Vec<(String, bool)> =
+			Vec::with_capacity(message_count + usize::from(chat_req.system.is_some()));
 
 		// NOTE: For now, this means the first System cannot have a cache control
 		//       so that we do not change too much.
@@ -379,13 +381,14 @@ impl AnthropicAdapter {
 
 				// User message: text, binary (image/document), and tool_result supported.
 				ChatRole::User => {
-					if msg.content.is_text_only() {
-						let text = msg.content.joined_texts().unwrap_or_else(String::new);
+					let content = msg.content;
+					if content.is_text_only() {
+						let text = content.joined_texts().unwrap_or_else(String::new);
 						let content = apply_cache_control_to_text(is_cache_control, text);
 						messages.push(json!({"role": "user", "content": content}));
 					} else {
-						let mut values: Vec<Value> = Vec::new();
-						for part in msg.content {
+						let mut values: Vec<Value> = Vec::with_capacity(content.len());
+						for part in content {
 							match part {
 								ContentPart::Text(text) => {
 									values.push(json!({"type": "text", "text": text}));
@@ -457,11 +460,12 @@ impl AnthropicAdapter {
 
 				// Assistant can mix text and tool_use entries.
 				ChatRole::Assistant => {
-					let mut values: Vec<Value> = Vec::new();
+					let content = msg.content;
+					let mut values: Vec<Value> = Vec::with_capacity(content.len());
 					let mut has_tool_use = false;
 					let mut has_text = false;
 
-					for part in msg.content {
+					for part in content {
 						match part {
 							ContentPart::Text(text) => {
 								has_text = true;
@@ -501,8 +505,9 @@ impl AnthropicAdapter {
 
 				// Tool responses are represented as user tool_result items in Anthropic.
 				ChatRole::Tool => {
-					let mut values: Vec<Value> = Vec::new();
-					for part in msg.content {
+					let content = msg.content;
+					let mut values: Vec<Value> = Vec::with_capacity(content.len());
+					for part in content {
 						if let ContentPart::ToolResponse(tool_response) = part {
 							values.push(json!({
 								"type": "tool_result",
@@ -531,7 +536,7 @@ impl AnthropicAdapter {
 			}
 			// Now build the system multi part
 			let system: Value = if last_cache_idx > 0 {
-				let mut parts: Vec<Value> = Vec::new();
+				let mut parts: Vec<Value> = Vec::with_capacity(systems.len());
 				for (idx, (content, _)) in systems.iter().enumerate() {
 					let idx = idx as i32;
 					if idx == last_cache_idx {
