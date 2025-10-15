@@ -1,5 +1,6 @@
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::cerebras::CerebrasAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
 use crate::adapter::fireworks::FireworksAdapter;
@@ -7,6 +8,7 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::openrouter::OpenRouterAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::adapter::zhipu::ZhipuAdapter;
 use crate::{ModelName, Result};
@@ -25,6 +27,8 @@ pub enum AdapterKind {
 	OpenAIResp,
 	/// Gemini adapter supports gemini native protocol. e.g., support thinking budget.
 	Gemini,
+	/// For OpenRouter (OpenAI-compatible protocol)
+	OpenRouter,
 	/// Anthopric native protocol as well
 	Anthropic,
 	/// For fireworks.ai, mostly OpenAI.
@@ -45,6 +49,8 @@ pub enum AdapterKind {
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
 	Ollama,
+	/// Cerebras (OpenAI-compatible protocol)
+	Cerebras,
 }
 
 /// Serialization/Parse implementations
@@ -56,6 +62,7 @@ impl AdapterKind {
 			AdapterKind::OpenAIResp => "OpenAIResp",
 			AdapterKind::Gemini => "Gemini",
 			AdapterKind::Anthropic => "Anthropic",
+			AdapterKind::OpenRouter => "OpenRouter",
 			AdapterKind::Fireworks => "Fireworks",
 			AdapterKind::Together => "Together",
 			AdapterKind::Groq => "Groq",
@@ -65,6 +72,7 @@ impl AdapterKind {
 			AdapterKind::Zhipu => "Zhipu",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
+			AdapterKind::Cerebras => "Cerebras",
 		}
 	}
 
@@ -75,6 +83,7 @@ impl AdapterKind {
 			AdapterKind::OpenAIResp => "openai_resp",
 			AdapterKind::Gemini => "gemini",
 			AdapterKind::Anthropic => "anthropic",
+			AdapterKind::OpenRouter => "openrouter",
 			AdapterKind::Fireworks => "fireworks",
 			AdapterKind::Together => "together",
 			AdapterKind::Groq => "groq",
@@ -84,6 +93,7 @@ impl AdapterKind {
 			AdapterKind::Zhipu => "zhipu",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
+			AdapterKind::Cerebras => "cerebras",
 		}
 	}
 
@@ -93,6 +103,7 @@ impl AdapterKind {
 			"openai_resp" => Some(AdapterKind::OpenAIResp),
 			"gemini" => Some(AdapterKind::Gemini),
 			"anthropic" => Some(AdapterKind::Anthropic),
+			"openrouter" => Some(AdapterKind::OpenRouter),
 			"fireworks" => Some(AdapterKind::Fireworks),
 			"together" => Some(AdapterKind::Together),
 			"groq" => Some(AdapterKind::Groq),
@@ -102,6 +113,7 @@ impl AdapterKind {
 			"zhipu" => Some(AdapterKind::Zhipu),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
+			"cerebras" => Some(AdapterKind::Cerebras),
 			_ => None,
 		}
 	}
@@ -116,6 +128,7 @@ impl AdapterKind {
 			AdapterKind::OpenAIResp => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Anthropic => Some(AnthropicAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::OpenRouter => Some(OpenRouterAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Fireworks => Some(FireworksAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Together => Some(TogetherAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
@@ -125,6 +138,7 @@ impl AdapterKind {
 			AdapterKind::Zhipu => Some(ZhipuAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
+			AdapterKind::Cerebras => Some(CerebrasAdapter::API_KEY_DEFAULT_ENV_NAME),
 		}
 	}
 }
@@ -149,6 +163,7 @@ impl AdapterKind {
 	/// Other Some adapters have to have model name namespaced to be used,
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
+	/// - e.g., for cerebras with `cerebras::llama-3.1-8b`
 	///
 	/// And all adapters can be force namspaced as well.
 	///
@@ -162,6 +177,16 @@ impl AdapterKind {
 			} else {
 				info!("No AdapterKind found for '{ns}'")
 			}
+		}
+
+		// -- Special handling for OpenRouter models (they start with provider names)
+		if model.contains('/')
+			&& (model.starts_with("openai/")
+				|| model.starts_with("anthropic/")
+				|| model.starts_with("meta-llama/")
+				|| model.starts_with("google/"))
+		{
+			return Ok(Self::OpenRouter);
 		}
 
 		// -- Resolve from modelname

@@ -1,0 +1,54 @@
+name: Cerebras Manual Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of test to run'
+        required: true
+        default: 'compile'
+        type: choice
+        options:
+        - compile
+        - live
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Cerebras Test
+    runs-on: ubuntu-latest
+    
+    env:
+      RUSTFLAGS: -Dwarnings
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Compile Cerebras code
+        run: |
+          echo "Testing Cerebras adapter compilation..."
+          cargo build --verbose
+          cargo test --test tests_p_cerebras --no-run
+      
+      - name: Run live tests (if API key available)
+        if: ${{ github.event.inputs.test_type == 'live' && vars.CEREBRAS_API_KEY != '' }}
+        run: |
+          echo "Running live Cerebras tests..."
+          cargo test --test tests_p_cerebras -- --nocapture
+        env:
+          CEREBRAS_API_KEY: ${{ vars.CEREBRAS_API_KEY }}
+      
+      - name: Skip live tests (no API key)
+        if: ${{ github.event.inputs.test_type == 'live' && vars.CEREBRAS_API_KEY == '' }}
+        run: |
+          echo "CEREBRAS_API_KEY not configured - skipping live tests"
+          echo "To enable live tests, add CEREBRAS_API_KEY as a repository variable"
