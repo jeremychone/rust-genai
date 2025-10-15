@@ -241,8 +241,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Add the Google Vertex AI variants.
 - May add the Azure OpenAI variant (not sure yet).
 
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+
+- Development setup
+- Running tests (including live API tests)
+- Code quality standards
+- Submitting changes
+
 ## Links
 
 - crates.io: [crates.io/crates/genai](https://crates.io/crates/genai)
 - GitHub: [github.com/jeremychone/rust-genai](https://github.com/jeremychone/rust-genai)
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Sponsored by [BriteSnow](https://britesnow.com) (Jeremy Chone's consulting company)

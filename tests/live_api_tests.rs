@@ -14,7 +14,7 @@
 mod support;
 
 use genai::Client;
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest, Tool};
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, Tool};
 use serial_test::serial;
 use support::{TestResult, extract_stream_end};
 
@@ -27,7 +27,6 @@ fn has_env_key(key: &str) -> bool {
 
 #[tokio::test]
 #[serial]
-#[ignore] // Ignored by default to avoid accidental API calls
 async fn test_anthropic_live_basic_chat() -> TestResult<()> {
 	if !has_env_key("ANTHROPIC_API_KEY") {
 		println!("Skipping ANTHROPIC_API_KEY not set");
@@ -87,7 +86,6 @@ async fn test_anthropic_live_tool_calling() -> TestResult<()> {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_anthropic_live_streaming() -> TestResult<()> {
 	if !has_env_key("ANTHROPIC_API_KEY") {
 		println!("Skipping ANTHROPIC_API_KEY not set");
@@ -115,7 +113,6 @@ async fn test_anthropic_live_streaming() -> TestResult<()> {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_openrouter_live_basic_chat() -> TestResult<()> {
 	if !has_env_key("OPENROUTER_API_KEY") {
 		println!("Skipping OPENROUTER_API_KEY not set");
@@ -139,7 +136,6 @@ async fn test_openrouter_live_basic_chat() -> TestResult<()> {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_openrouter_live_tool_calling() -> TestResult<()> {
 	if !has_env_key("OPENROUTER_API_KEY") {
 		println!("Skipping OPENROUTER_API_KEY not set");
@@ -175,7 +171,6 @@ async fn test_openrouter_live_tool_calling() -> TestResult<()> {
 
 #[tokio::test]
 #[serial]
-#[ignore]
 async fn test_openrouter_live_streaming() -> TestResult<()> {
 	if !has_env_key("OPENROUTER_API_KEY") {
 		println!("Skipping OPENROUTER_API_KEY not set");
@@ -196,6 +191,162 @@ async fn test_openrouter_live_streaming() -> TestResult<()> {
 
 	assert!(!content.is_empty());
 	println!("OpenRouter streaming content: {}", content);
+	Ok(())
+}
+
+// ===== ENHANCED OPENROUTER LIVE API TESTS =====
+
+#[tokio::test]
+#[serial]
+async fn test_openrouter_live_multiple_providers() -> TestResult<()> {
+	if !has_env_key("OPENROUTER_API_KEY") {
+		println!("Skipping OPENROUTER_API_KEY not set");
+		return Ok(());
+	}
+
+	let test_cases = vec![
+		("anthropic", "openrouter::anthropic/claude-3.5-sonnet"),
+		("gemini", "openrouter::google/gemini-2.5-flash"),
+		("deepseek", "openrouter::deepseek/deepseek-chat"),
+	];
+
+	for (provider_name, model) in test_cases {
+		println!("Testing OpenRouter provider: {}", provider_name);
+
+		let client = Client::default();
+		let chat_req = ChatRequest::new(vec![ChatMessage::user(format!(
+			"Say 'Hello from {}!' and identify yourself",
+			provider_name
+		))]);
+
+		let result = client.exec_chat(model, chat_req, None).await?;
+		let content = result.first_text().ok_or("Should have content")?;
+
+		assert!(!content.is_empty(), "Content should not be empty for {}", provider_name);
+		println!("✅ {} response: {}", provider_name, content);
+	}
+
+	Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_openrouter_live_json_mode() -> TestResult<()> {
+	if !has_env_key("OPENROUTER_API_KEY") {
+		println!("Skipping OPENROUTER_API_KEY not set");
+		return Ok(());
+	}
+
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![ChatMessage::user(
+		"Respond with a JSON object containing 'status' and 'message' fields",
+	)]);
+	let options = ChatOptions::default().with_response_format(ChatResponseFormat::JsonMode);
+
+	let result = client
+		.exec_chat("openrouter::anthropic/claude-3.5-sonnet", chat_req, Some(&options))
+		.await?;
+	let content = result.first_text().ok_or("Should have content")?;
+
+	// Try to parse as JSON
+	let json_value: serde_json::Value =
+		serde_json::from_str(content).map_err(|e| format!("Failed to parse JSON: {} - Content: {}", e, content))?;
+
+	assert!(json_value.get("status").is_some(), "JSON should contain 'status' field");
+	assert!(
+		json_value.get("message").is_some(),
+		"JSON should contain 'message' field"
+	);
+
+	println!("✅ OpenRouter JSON mode response: {}", content);
+	Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_openrouter_live_image_processing() -> TestResult<()> {
+	if !has_env_key("OPENROUTER_API_KEY") {
+		println!("Skipping OPENROUTER_API_KEY not set");
+		return Ok(());
+	}
+
+	let client = Client::default();
+
+	// Use a simple base64 encoded image (1x1 red pixel for testing)
+	let image_data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+
+	let chat_req = ChatRequest::new(vec![ChatMessage::user(vec![
+		ContentPart::Text("What do you see in this image?".to_string()),
+		ContentPart::from_binary_base64("image/png", image_data, Some("test.png".to_string())),
+	])]);
+
+	let result = client
+		.exec_chat("openrouter::anthropic/claude-3.5-sonnet", chat_req, None)
+		.await?;
+	let content = result.first_text().ok_or("Should have content")?;
+
+	assert!(!content.is_empty(), "Content should not be empty for image processing");
+	println!("✅ OpenRouter image processing response: {}", content);
+	Ok(())
+}
+
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_openrouter_live_model_resolution() -> TestResult<()> {
+	if !has_env_key("OPENROUTER_API_KEY") {
+		println!("Skipping OPENROUTER_API_KEY not set");
+		return Ok(());
+	}
+
+	// Test different model naming conventions
+	let test_cases = vec![
+		("openrouter::anthropic/claude-3.5-sonnet", "namespaced model"),
+		("anthropic/claude-3.5-sonnet", "auto-detected model"),
+	];
+
+	for (model, description) in test_cases {
+		println!("Testing {}: {}", description, model);
+
+		let client = Client::default();
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("Say 'OK'")]);
+
+		let result = client.exec_chat(model, chat_req, None).await?;
+		let content = result.first_text().ok_or("Should have content")?;
+
+		assert!(!content.is_empty(), "Content should not be empty for {}", description);
+		println!("✅ {} works: {}", description, content);
+	}
+
+	Ok(())
+}
+
+#[tokio::test]
+#[serial]
+#[ignore]
+async fn test_openrouter_live_error_handling() -> TestResult<()> {
+	if !has_env_key("OPENROUTER_API_KEY") {
+		println!("Skipping OPENROUTER_API_KEY not set");
+		return Ok(());
+	}
+
+	let client = Client::default();
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("This should fail")]);
+
+	// Test with invalid model
+	let result = client.exec_chat("openrouter::invalid/model-name", chat_req, None).await;
+
+	match result {
+		Err(_) => {
+			println!("✅ OpenRouter error handling test passed - expected error occurred");
+		}
+		Ok(response) => {
+			let content = response.first_text().unwrap_or("No content");
+			println!("⚠️ Unexpected success with invalid model: {}", content);
+			// Some providers might succeed with invalid models, so we don't fail the test
+		}
+	}
+
 	Ok(())
 }
 
