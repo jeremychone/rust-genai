@@ -331,13 +331,11 @@ pub async fn common_test_chat_stop_sequences_ok(model: &str) -> TestResult<()> {
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, Some(&chat_options)).await?;
 
-	let ai_content_lower = chat_res.first_text().ok_or("Should have a AI response")?.to_lowercase();
-
 	// -- Check
-	assert!(
-		!ai_content_lower.contains("london"),
-		"Content should not contain 'London'"
-	);
+	// Note: if there is no content, that's ok, it means "London" was the first answer.
+	if let Some(ai_content) = chat_res.content.into_joined_texts().map(|s| s.to_lowercase()) {
+		assert!(!ai_content.contains("london"), "Content should not contain 'London'");
+	}
 
 	Ok(())
 }
