@@ -17,6 +17,10 @@ cargo test --test live_api_tests -- --nocapture
 
 # Run specific test file
 cargo test --test live_api_tests
+
+# Run model list verification tests
+cargo test --test test_verify_model_lists -- --nocapture
+cargo test --test test_adapter_consistency -- --nocapture
 ```
 
 ### Code Quality
@@ -98,13 +102,27 @@ Currently supports these AI providers:
 - Cohere
 - Cerebras
 - Z.AI (GLM models, OpenAI-compatible API)
+- Zhipu
 - And more...
+
+### Supported Models by Provider
+
+**DeepSeek**: `deepseek-chat`, `deepseek-reasoner`, `deepseek-coder`
+
+**Z.AI**: `glm-4.6`, `glm-4.5`, `glm-4`, `glm-4.1v`, `glm-4.5v`, `vidu`, `vidu-q1`, `vidu-2.0`
+- Note: Z.AI does not support turbo models
+
+**Groq**: 19 models including Llama 4, Llama 3.3, vision models, and reasoning models
+- Full list in `src/adapter/adapters/groq/adapter_impl.rs`
 
 ## Testing Guidelines
 
 - Keep fast unit tests inline with `mod tests {}`; put multi-crate checks in `tests/` or `test_*.sh`
 - Scope runs with `cargo test -p crate test`; add regression coverage for new failure modes
 - Live API tests require real API keys and are located in `/tests/live_api_tests.rs`
+- Model list verification tests ensure hardcoded model lists match actual adapter code:
+  - `test_adapter_consistency`: Verifies test expectations match adapter source files
+  - `test_verify_model_lists`: Tests model resolution against provider APIs
 
 ## Rust Performance Practices
 

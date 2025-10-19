@@ -11,15 +11,12 @@ use reqwest::RequestBuilder;
 pub struct ZAiAdapter;
 
 // Z.AI model names
-// Based on available information, Z.AI supports GLM models
-// Note: This list may need updating based on actual Z.AI API documentation
+// Based on https://z.ai/model-api documentation
+// These are the models Z.AI supports
 pub(in crate::adapter) const MODELS: &[&str] = &[
-	"glm-4.6",
-	"glm-4",
-	"glm-3-turbo",
-	// If Z.AI also supports Claude models, they would be listed here
-	// "claude-3-5-sonnet-20241022",
-	// "claude-3-5-haiku-20241022",
+	"glm-4.6", "glm-4.5", "glm-4", "glm-4.1v", "glm-4.5v", "vidu", "vidu-q1",
+	"vidu-2.0",
+	// Note: No turbo models are supported by Z.AI
 ];
 
 impl ZAiAdapter {
