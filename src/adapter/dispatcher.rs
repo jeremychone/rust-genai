@@ -13,6 +13,7 @@ use crate::adapter::openai_resp::OpenAIRespAdapter;
 use crate::adapter::openrouter::OpenRouterAdapter;
 
 use crate::adapter::xai::XaiAdapter;
+use crate::adapter::zai::ZAiAdapter;
 use crate::adapter::zhipu::ZhipuAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
@@ -47,6 +48,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::default_endpoint(),
 			AdapterKind::Ollama => OllamaAdapter::default_endpoint(),
 			AdapterKind::Cerebras => CerebrasAdapter::default_endpoint(),
+			AdapterKind::ZAi => ZAiAdapter::default_endpoint(),
 			AdapterKind::OpenRouter => Endpoint::from_static("https://openrouter.ai/api/v1/"),
 		}
 	}
@@ -67,6 +69,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::default_auth(),
 			AdapterKind::Ollama => OllamaAdapter::default_auth(),
 			AdapterKind::Cerebras => CerebrasAdapter::default_auth(),
+			AdapterKind::ZAi => ZAiAdapter::default_auth(),
 			AdapterKind::OpenRouter => AuthData::from_env(OpenRouterAdapter::API_KEY_DEFAULT_ENV_NAME),
 		}
 	}
@@ -87,6 +90,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::all_model_names(kind).await,
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
 			AdapterKind::Cerebras => CerebrasAdapter::all_model_names(kind).await,
+			AdapterKind::ZAi => ZAiAdapter::all_model_names(kind).await,
 			AdapterKind::OpenRouter => OpenRouterAdapter::all_model_names(kind).await,
 		}
 	}
@@ -107,6 +111,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Cerebras => CerebrasAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::ZAi => ZAiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::OpenRouter => OpenRouterAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
@@ -139,6 +144,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Cerebras => CerebrasAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::ZAi => ZAiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::OpenRouter => {
 				OpenRouterAdapter::to_web_request_data(target, service_type, chat_req, options_set)
 			}
@@ -165,6 +171,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Cerebras => CerebrasAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::ZAi => ZAiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
 	}
@@ -192,6 +199,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Cerebras => CerebrasAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::ZAi => ZAiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
 	}
@@ -220,6 +228,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Cerebras => CerebrasAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::ZAi => ZAiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_embed_request_data(target, embed_req, options_set),
 		}
 	}
@@ -247,6 +256,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Cerebras => CerebrasAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::ZAi => ZAiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_embed_response(model_iden, web_response, options_set),
 		}
 	}

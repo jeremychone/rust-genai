@@ -10,6 +10,7 @@ use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::openrouter::OpenRouterAdapter;
 use crate::adapter::xai::XaiAdapter;
+use crate::adapter::zai::{self, ZAiAdapter};
 use crate::adapter::zhipu::ZhipuAdapter;
 use crate::{ModelName, Result};
 use derive_more::Display;
@@ -51,6 +52,8 @@ pub enum AdapterKind {
 	Ollama,
 	/// Cerebras (OpenAI-compatible protocol)
 	Cerebras,
+	/// Z.AI (Anthropic-compatible protocol)
+	ZAi,
 }
 
 /// Serialization/Parse implementations
@@ -73,6 +76,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 			AdapterKind::Cerebras => "Cerebras",
+			AdapterKind::ZAi => "ZAi",
 		}
 	}
 
@@ -94,6 +98,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 			AdapterKind::Cerebras => "cerebras",
+			AdapterKind::ZAi => "zai",
 		}
 	}
 
@@ -114,6 +119,7 @@ impl AdapterKind {
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			"cerebras" => Some(AdapterKind::Cerebras),
+			"zai" => Some(AdapterKind::ZAi),
 			_ => None,
 		}
 	}
@@ -139,6 +145,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 			AdapterKind::Cerebras => Some(CerebrasAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::ZAi => Some(ZAiAdapter::API_KEY_DEFAULT_ENV_NAME),
 		}
 	}
 }
@@ -170,7 +177,7 @@ impl AdapterKind {
 	/// Note: At this point, this will never fail as the fallback is the Ollama adapter.
 	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
-		// -- First check if namespaced
+		// -- First check if namespaced (explicit :: namespace has priority)
 		if let (_, Some(ns)) = ModelName::model_name_and_namespace(model) {
 			if let Some(adapter) = Self::from_lower_str(ns) {
 				return Ok(adapter);
@@ -180,7 +187,9 @@ impl AdapterKind {
 		}
 
 		// -- Special handling for OpenRouter models (they start with provider names)
+		//    Only catch patterns without explicit :: namespace
 		if model.contains('/')
+			&& !model.contains("::")  // Don't override explicit namespaces
 			&& (model.starts_with("openai/")
 				|| model.starts_with("anthropic/")
 				|| model.starts_with("meta-llama/")
@@ -208,6 +217,8 @@ impl AdapterKind {
 			Ok(Self::Gemini)
 		} else if model.starts_with("claude") {
 			Ok(Self::Anthropic)
+		} else if zai::MODELS.contains(&model) {
+			Ok(Self::ZAi)
 		} else if model.contains("fireworks") {
 			Ok(Self::Fireworks)
 		} else if groq::MODELS.contains(&model) {
