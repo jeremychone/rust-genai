@@ -655,6 +655,37 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	Ok(())
 }
 
+/// Just making the tool request, and checking the tool call response
+/// `complete_check` if for LLMs that are better at giving back the unit and weather.
+pub async fn common_test_chat_stream_tool_capture_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = seed_chat_req_tool_simple();
+	let mut chat_options = ChatOptions::default().with_capture_tool_calls(true);
+
+	// -- Exec
+	let chat_res = client.exec_chat_stream(model, chat_req, Some(&chat_options)).await?;
+
+	// Extract Stream content
+	let StreamExtract {
+		stream_end,
+		content,
+		reasoning_content,
+	} = extract_stream_end(chat_res.stream).await?;
+
+	// -- Check
+	let mut tool_calls = stream_end.captured_tool_calls().ok_or("Should have captured tools")?;
+	if tool_calls.is_empty() {
+		return Err("Should have tool calls in chat_res".into());
+	}
+	let tool_call = tool_calls.pop().ok_or("Should have at least one tool call")?;
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("city")?, "Paris");
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("country")?, "France");
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("unit")?, "C");
+
+	Ok(())
+}
+
 // endregion: --- Chat Stream Tests
 
 // region:    --- Binaries

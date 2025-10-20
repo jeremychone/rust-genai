@@ -2,7 +2,7 @@ use crate::adapter::AdapterKind;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai::OpenAIAdapter;
-use crate::chat::ChatOptionsSet;
+use crate::chat::{ChatOptionsSet, ToolCall};
 use crate::{Error, ModelIden, Result};
 use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
@@ -58,11 +58,48 @@ impl futures::Stream for OpenAIStreamer {
 							None
 						};
 
+						// -- Process the captured_tool_calls
+						// NOTE: here we attempt to parse the `fn_arguments` if it is string, because it means that it was accumulated
+						let captured_tool_calls = if let Some(tools_calls) = self.captured_data.tool_calls.take() {
+							let tools_calls: Vec<ToolCall> = tools_calls
+								.into_iter()
+								.map(|tool_call| {
+									// extrat
+									let ToolCall {
+										call_id,
+										fn_name,
+										fn_arguments,
+									} = tool_call;
+									// parse fn_arguments if needed
+									let fn_arguments = match fn_arguments {
+										Value::String(fn_arguments_string) => {
+											// NOTE: Here we are resilient for now, if we cannot parse, just return the original String
+											match serde_json::from_str::<Value>(&fn_arguments_string) {
+												Ok(fn_arguments) => fn_arguments,
+												Err(_) => Value::String(fn_arguments_string),
+											}
+										}
+										_ => fn_arguments,
+									};
+
+									ToolCall {
+										call_id,
+										fn_name,
+										fn_arguments,
+									}
+								})
+								.collect();
+							Some(tools_calls)
+						} else {
+							None
+						};
+
+						// Return the internal stream end
 						let inter_stream_end = InterStreamEnd {
 							captured_usage,
 							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
-							captured_tool_calls: self.captured_data.tool_calls.take(),
+							captured_tool_calls,
 						};
 
 						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
@@ -148,21 +185,24 @@ impl futures::Stream for OpenAIStreamer {
 											Some(calls) => {
 												self.captured_data.tool_calls = Some({
 													// Accumulate arguments as strings, don't parse until complete
-													let accumulated = if let Some(existing) = calls[index as usize].fn_arguments.as_str() {
+													let accumulated = if let Some(existing) =
+														calls[index as usize].fn_arguments.as_str()
+													{
 														format!("{}{}", existing, arguments)
 													} else {
 														arguments.clone()
 													};
-													
+
 													// Store as string (will be parsed at stream end)
-													calls[index as usize].fn_arguments = serde_json::Value::String(accumulated);
-													
+													calls[index as usize].fn_arguments =
+														serde_json::Value::String(accumulated);
+
 													// Update call_id and fn_name on first chunk
 													if !tool_call.fn_name.is_empty() {
 														calls[index as usize].call_id = tool_call.call_id.clone();
 														calls[index as usize].fn_name = tool_call.fn_name.clone();
 													}
-													
+
 													tool_call = calls[index as usize].clone();
 													calls.to_vec()
 												})
