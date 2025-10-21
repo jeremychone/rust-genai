@@ -10,7 +10,7 @@ use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::openai_resp::OpenAIRespAdapter;
 use crate::adapter::xai::XaiAdapter;
-use crate::adapter::zhipu::ZhipuAdapter;
+use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
@@ -40,7 +40,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::default_endpoint(),
 			AdapterKind::Xai => XaiAdapter::default_endpoint(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_endpoint(),
-			AdapterKind::Zhipu => ZhipuAdapter::default_endpoint(),
+			AdapterKind::Zai => ZaiAdapter::default_endpoint(),
 			AdapterKind::Cohere => CohereAdapter::default_endpoint(),
 			AdapterKind::Ollama => OllamaAdapter::default_endpoint(),
 		}
@@ -58,7 +58,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::default_auth(),
 			AdapterKind::Xai => XaiAdapter::default_auth(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_auth(),
-			AdapterKind::Zhipu => ZhipuAdapter::default_auth(),
+			AdapterKind::Zai => ZaiAdapter::default_auth(),
 			AdapterKind::Cohere => CohereAdapter::default_auth(),
 			AdapterKind::Ollama => OllamaAdapter::default_auth(),
 		}
@@ -76,7 +76,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::all_model_names(kind).await,
 			AdapterKind::Xai => XaiAdapter::all_model_names(kind).await,
 			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind).await,
-			AdapterKind::Zhipu => ZhipuAdapter::all_model_names(kind).await,
+			AdapterKind::Zai => ZaiAdapter::all_model_names(kind).await,
 			AdapterKind::Cohere => CohereAdapter::all_model_names(kind).await,
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
 		}
@@ -94,7 +94,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Xai => XaiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::DeepSeek => DeepSeekAdapter::get_service_url(model, service_type, endpoint),
-			AdapterKind::Zhipu => ZhipuAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Zai => ZaiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Cohere => CohereAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(model, service_type, endpoint),
 		}
@@ -124,7 +124,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_web_request_data(target, service_type, chat_req, options_set),
-			AdapterKind::Zhipu => ZhipuAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Zai => ZaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 		}
@@ -146,7 +146,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response, options_set),
-			AdapterKind::Zhipu => ZhipuAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Zai => ZaiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
@@ -171,7 +171,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
-			AdapterKind::Zhipu => ZhipuAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Zai => ZaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
@@ -197,7 +197,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_request_data(target, embed_req, options_set),
-			AdapterKind::Zhipu => ZhipuAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Zai => ZaiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_request_data(target, embed_req, options_set),
 		}
@@ -222,7 +222,7 @@ impl AdapterDispatcher {
 			AdapterKind::Nebius => NebiusAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Xai => XaiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_response(model_iden, web_response, options_set),
-			AdapterKind::Zhipu => ZhipuAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Zai => ZaiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_response(model_iden, web_response, options_set),
 		}

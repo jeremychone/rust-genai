@@ -5,7 +5,7 @@ use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
 const MODEL: &str = "glm-4-plus";
-const MODEL_NS: &str = "zhipu::glm-4-plus";
+const MODEL_NS: &str = "zai::glm-4-plus";
 const MODEL_V: &str = "glm-4v-flash"; // Visual language model does not support function calling
 
 // region:    --- Chat
@@ -106,7 +106,7 @@ async fn test_tool_full_flow_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_resolver_auth_ok() -> TestResult<()> {
-	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("ZHIPU_API_KEY")).await
+	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("ZAI_API_KEY")).await
 }
 
 // endregion: --- Resolver Tests
@@ -115,7 +115,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Zhipu, "glm-4-plus").await
+	common_tests::common_test_list_models(AdapterKind::Zai, "glm-4-plus").await
 }
 
 // endregion: --- List
