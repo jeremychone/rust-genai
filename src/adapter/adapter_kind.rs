@@ -8,7 +8,7 @@ use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
-use crate::adapter::zhipu::ZhipuAdapter;
+use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -39,8 +39,8 @@ pub enum AdapterKind {
 	Xai,
 	/// For DeepSeek (Mostly use OpenAI)
 	DeepSeek,
-	/// For Zhipu (Mostly use OpenAI)
-	Zhipu,
+	/// For ZAI (Mostly use OpenAI)
+	Zai,
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
@@ -62,7 +62,7 @@ impl AdapterKind {
 			AdapterKind::Nebius => "Nebius",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
-			AdapterKind::Zhipu => "Zhipu",
+			AdapterKind::Zai => "Zai",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 		}
@@ -81,7 +81,7 @@ impl AdapterKind {
 			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
-			AdapterKind::Zhipu => "zhipu",
+			AdapterKind::Zai => "zai",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 		}
@@ -99,7 +99,7 @@ impl AdapterKind {
 			"nebius" => Some(AdapterKind::Nebius),
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
-			"zhipu" => Some(AdapterKind::Zhipu),
+			"zai" => Some(AdapterKind::Zai),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			_ => None,
@@ -122,7 +122,7 @@ impl AdapterKind {
 			AdapterKind::Nebius => Some(NebiusAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Zhipu => Some(ZhipuAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Zai => Some(ZaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 		}
@@ -149,6 +149,7 @@ impl AdapterKind {
 	/// Other Some adapters have to have model name namespaced to be used,
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
+	/// - e.g., for ZAI coding plan with `coding::glm-4.6`
 	///
 	/// And all adapters can be force namspaced as well.
 	///
@@ -157,6 +158,11 @@ impl AdapterKind {
 	pub fn from_model(model: &str) -> Result<Self> {
 		// -- First check if namespaced
 		if let (_, Some(ns)) = ModelName::model_name_and_namespace(model) {
+			// Special handling: "zai" namespace should route to ZAI for coding endpoint
+			if ns == "zai" {
+				return Ok(AdapterKind::Zai);
+			}
+			
 			if let Some(adapter) = Self::from_lower_str(ns) {
 				return Ok(adapter);
 			} else {
@@ -194,7 +200,7 @@ impl AdapterKind {
 		} else if model.starts_with("grok") {
 			Ok(Self::Xai)
 		} else if model.starts_with("glm") {
-			Ok(Self::Zhipu)
+			Ok(Self::Zai)
 		}
 		// For now, fallback to Ollama
 		else {

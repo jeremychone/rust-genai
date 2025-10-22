@@ -15,7 +15,7 @@ const MODEL_GROQ: &str = "llama-3.1-8b-instant";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
-const MODEL_ZHIPU: &str = "glm-4-plus";
+const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_COHERE: &str = "command-r7b-12-2024";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
@@ -31,7 +31,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
 	(MODEL_OLLAMA, ""),
-	(MODEL_ZHIPU, "ZHIPU_API_KEY"),
+	(MODEL_ZAI, "ZAI_API_KEY"),
 	(MODEL_COHERE, "COHERE_API_KEY"),
 ];
 
@@ -41,7 +41,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - starts_with "command"  -> Cohere
 //  - starts_with "gemini"   -> Gemini
 //  - model in Groq models   -> Groq
-//  - starts_with "glm"      -> Zhipu
+//  - starts_with "glm"      -> ZAI
 //  - For anything else      -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`
