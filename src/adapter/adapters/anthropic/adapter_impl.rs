@@ -41,7 +41,7 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
 	"claude-opus-4-1-20250805",
 	"claude-sonnet-4-5-20250929",
-	"claude-3-5-haiku-latest",
+	"claude-haiku-4-5-20251001",
 ];
 
 impl AnthropicAdapter {
