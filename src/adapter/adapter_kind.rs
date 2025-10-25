@@ -1,4 +1,5 @@
 use crate::adapter::adapters::together::TogetherAdapter;
+use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
@@ -8,7 +9,6 @@ use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
-use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -162,7 +162,7 @@ impl AdapterKind {
 			if ns == "zai" {
 				return Ok(AdapterKind::Zai);
 			}
-			
+
 			if let Some(adapter) = Self::from_lower_str(ns) {
 				return Ok(adapter);
 			} else {

@@ -1,5 +1,6 @@
 use super::groq::GroqAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
+use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
@@ -10,7 +11,6 @@ use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::openai_resp::OpenAIRespAdapter;
 use crate::adapter::xai::XaiAdapter;
-use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
