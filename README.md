@@ -18,7 +18,7 @@ Provides a single, ergonomic API to many generative AI providers, such as Anthro
 
 **NOTE:** Big update with **v0.4.x** - More adapters, PDF and image support, embeddings, custom headers, and transparent support for the OpenAI Responses API (gpt-5-codex)
 
-## v0.4.0 Big Release
+## v0.4.x Big Release
 
 - **What's new**:
     - **PDF and Images** support (thanks to [Andrew Rademacher](https://github.com/AndrewRademacher))
@@ -39,6 +39,8 @@ See:
 
 ## Big Thanks to
 
+- [Bart Carroll](https://github.com/bartCarroll) For [#91](https://github.com/jeremychone/rust-genai/pull/91) Fixed streaming tool calls for openai models
+- [Rui Andrada](https://github.com/shingonoide) For [#95](https://github.com/jeremychone/rust-genai/pull/95) refactoring ZHIPU adapter to ZAI
 - [Adrien](https://github.com/XciD) Extra headers in requests, seed for chat requests, and fixes (with [Julien Chaumond](https://github.com/julien-c) for extra headers)
 - [Andrew Rademacher](https://github.com/AndrewRademacher) for PDF support, Anthropic streamer, and insight on flattening the message content (e.g., ContentParts)
 - [Jesus Santander](https://github.com/jsantanders) Embedding support [PR #83](https://github.com/jeremychone/rust-genai/pull/83)
