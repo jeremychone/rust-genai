@@ -1,5 +1,5 @@
 use crate::get_option_value;
-use crate::support::data::{IMAGE_URL_JPG_DUCK, get_b64_duck, get_b64_pdf};
+use crate::support::data::{get_b64_audio, get_b64_duck, get_b64_pdf, IMAGE_URL_JPG_DUCK};
 use crate::support::{
 	Check, StreamExtract, TestResult, assert_contains, assert_reasoning_content, assert_reasoning_usage,
 	contains_checks, extract_stream_end, get_big_content, seed_chat_req_simple, seed_chat_req_tool_simple,
@@ -727,6 +727,26 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> TestResult<()> {
 	// -- Check
 	let res = chat_res.first_text().ok_or("Should have text result")?;
 	assert_contains(res, "duck");
+
+	Ok(())
+}
+
+pub async fn common_test_chat_audio_b64_ok(model: &str) -> TestResult<()> {
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Transcribe the audio");
+	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
+	chat_req = chat_req.append_message(ChatMessage::user(vec![
+		ContentPart::from_binary_base64("audio/wav", get_b64_audio()?, None),
+	]));
+
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.first_text().ok_or("Should have text result")?;
+	assert_contains(res, "That's one small step for man, one giant leap for mankind.");
 
 	Ok(())
 }

@@ -7,6 +7,7 @@ use genai::resolver::AuthData;
 // note: "gpt-4o-mini" has issue when image & pdf
 // as for 2025-08-08 gpt-5-mini does not support temperature & stop sequence
 const MODEL: &str = "gpt-5-mini";
+const AUDIO_MODEL: &str = "gpt-audio-mini";
 const MODEL2: &str = "gpt-4.1-mini"; // for temperature & stop sequence
 const MODEL_NS: &str = "openai::gpt-4.1-mini";
 
@@ -115,6 +116,11 @@ async fn test_chat_binary_image_url_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_image_b64_ok(MODEL).await
+}
+
+#[tokio::test]
+async fn test_chat_binary_audio_b64_ok() -> TestResult<()> {
+	common_tests::common_test_chat_audio_b64_ok(AUDIO_MODEL).await
 }
 
 #[tokio::test]

@@ -13,6 +13,10 @@ pub fn get_b64_duck() -> TestResult<String> {
 	get_b64_file("./tests/data/duck-small.jpg")
 }
 
+pub fn get_b64_audio() -> TestResult<String> {
+	get_b64_file("./tests/data/phrase_neil_armstrong.wav")
+}
+
 pub fn get_b64_pdf() -> TestResult<String> {
 	get_b64_file("./tests/data/small.pdf")
 }
