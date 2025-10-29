@@ -153,6 +153,14 @@ impl ContentPart {
 		}
 	}
 
+	/// Returns true if this part is a binary audio (content_type starts with "audio/").
+	pub fn is_audio(&self) -> bool {
+		match self {
+			ContentPart::Binary(binary) => binary.content_type.trim().to_ascii_lowercase().starts_with("audio/"),
+			_ => false,
+		}
+	}
+
 	#[allow(unused)]
 	/// Returns true if this part is a PDF binary (content_type equals "application/pdf").
 	pub fn is_pdf(&self) -> bool {
@@ -205,6 +213,11 @@ impl Binary {
 	/// Returns true if this binary is an image (content_type starts with "image/").
 	pub fn is_image(&self) -> bool {
 		self.content_type.trim().to_ascii_lowercase().starts_with("image/")
+	}
+
+	/// Returns true if this binary is an audio file (content_type starts with "audio/").
+	pub fn is_audio(&self) -> bool {
+		self.content_type.trim().to_ascii_lowercase().starts_with("audio/")
 	}
 
 	/// Returns true if this binary is a PDF (content_type equals "application/pdf").

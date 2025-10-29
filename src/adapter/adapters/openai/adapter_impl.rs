@@ -27,6 +27,8 @@ const MODELS: &[&str] = &[
 	"gpt-5",
 	"gpt-5-mini",
 	"gpt-5-nano",
+    "gpt-audio-mini",
+    "gpt-audio"
 ];
 
 impl OpenAIAdapter {
@@ -399,12 +401,32 @@ impl OpenAIAdapter {
 							match part {
 								ContentPart::Text(content) => values.push(json!({"type": "text", "text": content})),
 								ContentPart::Binary(binary) => {
+									let is_audio = binary.is_audio();
 									let is_image = binary.is_image();
 									let Binary {
 										content_type, source, ..
 									} = binary;
 
-									if is_image {
+									if is_audio {
+										match &source {
+											BinarySource::Url(_url) => {
+												warn!("OpenAI doesn't support audio from URL, need to handle it gracefully");
+											}
+											BinarySource::Base64(content) => {
+												let mut format = content_type.split('/').last().unwrap_or("");
+												if format == "mpeg" {
+													format = "mp3";
+												}
+												values.push(json!({
+													"type": "input_audio",
+													"input_audio": {
+														"data": content,
+														"format": format
+													}
+												}));
+											}
+										}
+									} else if is_image {
 										match &source {
 											BinarySource::Url(url) => {
 												values.push(json!({"type": "image_url", "image_url": {"url": url}}))
