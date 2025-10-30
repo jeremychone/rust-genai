@@ -332,6 +332,11 @@ impl OpenAIAdapter {
 		if let Some(seed) = options_set.seed() {
 			payload.x_insert("seed", seed)?;
 		}
+		if let Some(service_tier) = options_set.service_tier()
+			&& let Some(keyword) = service_tier.as_keyword()
+		{
+			payload.x_insert("service_tier", keyword)?;
+		}
 
 		Ok(WebRequestData { url, headers, payload })
 	}

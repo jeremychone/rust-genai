@@ -36,6 +36,9 @@ pub enum Error {
 	#[display("Failed to parse reasoning. Actual: '{actual}'")]
 	ReasoningParsingError { actual: String },
 
+	#[display("Failed to parse service tier. Actual: '{actual}'")]
+	ServiceTierParsing { actual: String },
+
 	// -- Chat Output
 	#[display("No chat response from model '{model_iden}'")]
 	NoChatResponse { model_iden: ModelIden },

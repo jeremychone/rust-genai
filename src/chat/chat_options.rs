@@ -63,6 +63,9 @@ pub struct ChatOptions {
 	/// Seed for repeatability, if supported.
 	pub seed: Option<u64>,
 
+	/// Service tier preference (OpenAI-specific, for flex processing).
+	pub service_tier: Option<ServiceTier>,
+
 	/// Additional HTTP headers to include with the request.
 	pub extra_headers: Option<Headers>,
 }
@@ -150,6 +153,12 @@ impl ChatOptions {
 	/// Sets the deterministic seed.
 	pub fn with_seed(mut self, value: u64) -> Self {
 		self.seed = Some(value);
+		self
+	}
+
+	/// Sets the service tier preference (OpenAI-specific).
+	pub fn with_service_tier(mut self, value: ServiceTier) -> Self {
+		self.service_tier = Some(value);
 		self
 	}
 
@@ -332,6 +341,70 @@ impl std::str::FromStr for Verbosity {
 
 // endregion: --- Verbosity
 
+// region:    --- ServiceTier
+
+/// OpenAI service tier preference for flex processing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ServiceTier {
+	/// Flex processing - lower costs, slower response times
+	Flex,
+	/// Auto - standard processing (default)
+	Auto,
+	/// Default - standard processing
+	Default,
+}
+
+impl ServiceTier {
+	/// Returns the lowercase variant name.
+	pub fn variant_name(&self) -> &'static str {
+		match self {
+			ServiceTier::Flex => "flex",
+			ServiceTier::Auto => "auto",
+			ServiceTier::Default => "default",
+		}
+	}
+
+	/// Returns the keyword for API usage.
+	pub fn as_keyword(&self) -> Option<&'static str> {
+		match self {
+			ServiceTier::Flex => Some("flex"),
+			ServiceTier::Auto => Some("auto"),
+			ServiceTier::Default => Some("default"),
+		}
+	}
+
+	/// Parses a service tier keyword.
+	pub fn from_keyword(name: &str) -> Option<Self> {
+		match name {
+			"flex" => Some(ServiceTier::Flex),
+			"auto" => Some(ServiceTier::Auto),
+			"default" => Some(ServiceTier::Default),
+			_ => None,
+		}
+	}
+}
+
+impl std::fmt::Display for ServiceTier {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			ServiceTier::Flex => write!(f, "flex"),
+			ServiceTier::Auto => write!(f, "auto"),
+			ServiceTier::Default => write!(f, "default"),
+		}
+	}
+}
+
+impl std::str::FromStr for ServiceTier {
+	type Err = Error;
+
+	/// Parses a service tier keyword.
+	fn from_str(s: &str) -> Result<Self> {
+		Self::from_keyword(s).ok_or(Error::ServiceTierParsing { actual: s.to_string() })
+	}
+}
+
+// endregion: --- ServiceTier
+
 // region:    --- ChatOptionsSet
 
 /// This is an internal crate struct to resolve the ChatOptions value in a cascading manner.
@@ -438,6 +511,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.seed)
 			.or_else(|| self.client.and_then(|client| client.seed))
+	}
+
+	pub fn service_tier(&self) -> Option<&ServiceTier> {
+		self.chat
+			.and_then(|chat| chat.service_tier.as_ref())
+			.or_else(|| self.client.and_then(|client| client.service_tier.as_ref()))
 	}
 
 	pub fn extra_headers(&self) -> Option<&Headers> {
