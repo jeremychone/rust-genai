@@ -1,5 +1,3 @@
-use crate::adapter::adapters::together::TogetherAdapter;
-use crate::adapter::adapters::zai::{self, ZaiAdapter};
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cerebras::CerebrasAdapter;
 use crate::adapter::cohere::CohereAdapter;
@@ -10,7 +8,9 @@ use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::openrouter::OpenRouterAdapter;
+use crate::adapter::together::TogetherAdapter;
 use crate::adapter::xai::XaiAdapter;
+use crate::adapter::zai::{self, ZaiAdapter};
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
