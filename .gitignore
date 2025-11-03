@@ -41,6 +41,11 @@ out/
 *.ogg
 *.avi
 
+# Audio
+*.mp3
+*.wav
+*.flac
+
 # Images
 *.icns
 *.ico
