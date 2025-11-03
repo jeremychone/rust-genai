@@ -24,6 +24,16 @@ target/
 dist/
 out/
 
+# Doc Files
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+*.doc
+*.xls
+*.ppt
+*.page
+
 # Data Files
 *.db3
 *.parquet
@@ -54,7 +64,9 @@ out/
 *.png
 *.bmp
 
-!tests/data/*.jpg
+# -- Test data (one by one)
+!tests/data/duck-small.jpg
+!tests/data/small.pdf
 
 # -- Nodejs
 node_modules/
