@@ -1,4 +1,5 @@
 use crate::adapter::adapters::together::TogetherAdapter;
+use crate::adapter::adapters::zai::{self, ZaiAdapter};
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::cerebras::CerebrasAdapter;
 use crate::adapter::cohere::CohereAdapter;
@@ -10,8 +11,6 @@ use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::openrouter::OpenRouterAdapter;
 use crate::adapter::xai::XaiAdapter;
-use crate::adapter::zai::{self, ZAiAdapter};
-use crate::adapter::zhipu::ZhipuAdapter;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -44,16 +43,14 @@ pub enum AdapterKind {
 	Xai,
 	/// For DeepSeek (Mostly use OpenAI)
 	DeepSeek,
-	/// For Zhipu (Mostly use OpenAI)
-	Zhipu,
+	/// For ZAI (OpenAI-compatible protocol)
+	Zai,
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
 	Ollama,
 	/// Cerebras (OpenAI-compatible protocol)
 	Cerebras,
-	/// Z.AI (Anthropic-compatible protocol)
-	ZAi,
 }
 
 /// Serialization/Parse implementations
@@ -72,11 +69,10 @@ impl AdapterKind {
 			AdapterKind::Nebius => "Nebius",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
-			AdapterKind::Zhipu => "Zhipu",
+			AdapterKind::Zai => "Zai",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 			AdapterKind::Cerebras => "Cerebras",
-			AdapterKind::ZAi => "ZAi",
 		}
 	}
 
@@ -94,11 +90,10 @@ impl AdapterKind {
 			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
-			AdapterKind::Zhipu => "zhipu",
+			AdapterKind::Zai => "zai",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 			AdapterKind::Cerebras => "cerebras",
-			AdapterKind::ZAi => "zai",
 		}
 	}
 
@@ -115,11 +110,10 @@ impl AdapterKind {
 			"nebius" => Some(AdapterKind::Nebius),
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
-			"zhipu" => Some(AdapterKind::Zhipu),
+			"zai" => Some(AdapterKind::Zai),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			"cerebras" => Some(AdapterKind::Cerebras),
-			"zai" => Some(AdapterKind::ZAi),
 			_ => None,
 		}
 	}
@@ -141,11 +135,10 @@ impl AdapterKind {
 			AdapterKind::Nebius => Some(NebiusAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Zhipu => Some(ZhipuAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Zai => Some(ZaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 			AdapterKind::Cerebras => Some(CerebrasAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::ZAi => Some(ZAiAdapter::API_KEY_DEFAULT_ENV_NAME),
 		}
 	}
 }
@@ -171,6 +164,7 @@ impl AdapterKind {
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
 	/// - e.g., for cerebras with `cerebras::llama-3.1-8b`
+	/// - e.g., for ZAI coding plan with `coding::glm-4.6`
 	///
 	/// And all adapters can be force namspaced as well.
 	///
@@ -179,6 +173,11 @@ impl AdapterKind {
 	pub fn from_model(model: &str) -> Result<Self> {
 		// -- First check if namespaced (explicit :: namespace has priority)
 		if let (_, Some(ns)) = ModelName::model_name_and_namespace(model) {
+			// Special handling: "zai" namespace should route to ZAI for coding endpoint
+			if ns == "zai" {
+				return Ok(AdapterKind::Zai);
+			}
+
 			if let Some(adapter) = Self::from_lower_str(ns) {
 				return Ok(adapter);
 			} else {
@@ -218,7 +217,7 @@ impl AdapterKind {
 		} else if model.starts_with("claude") {
 			Ok(Self::Anthropic)
 		} else if zai::MODELS.contains(&model) {
-			Ok(Self::ZAi)
+			Ok(Self::Zai)
 		} else if model.contains("fireworks") {
 			Ok(Self::Fireworks)
 		} else if groq::MODELS.contains(&model) {
@@ -230,7 +229,7 @@ impl AdapterKind {
 		} else if model.starts_with("grok") {
 			Ok(Self::Xai)
 		} else if model.starts_with("glm") {
-			Ok(Self::Zhipu)
+			Ok(Self::Zai)
 		}
 		// For now, fallback to Ollama
 		else {

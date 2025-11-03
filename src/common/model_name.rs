@@ -69,6 +69,48 @@ impl Deref for ModelName {
 
 // endregion: --- Froms
 
+// region:    --- EQ
+
+// PartialEq implementations for various string types
+impl PartialEq<str> for ModelName {
+	fn eq(&self, other: &str) -> bool {
+		&*self.0 == other
+	}
+}
+
+impl PartialEq<&str> for ModelName {
+	fn eq(&self, other: &&str) -> bool {
+		&*self.0 == *other
+	}
+}
+
+impl PartialEq<String> for ModelName {
+	fn eq(&self, other: &String) -> bool {
+		&*self.0 == other
+	}
+}
+
+// Symmetric implementations (allow "string" == model_name)
+impl PartialEq<ModelName> for str {
+	fn eq(&self, other: &ModelName) -> bool {
+		self == &*other.0
+	}
+}
+
+impl PartialEq<ModelName> for &str {
+	fn eq(&self, other: &ModelName) -> bool {
+		*self == &*other.0
+	}
+}
+
+impl PartialEq<ModelName> for String {
+	fn eq(&self, other: &ModelName) -> bool {
+		self == &*other.0
+	}
+}
+
+// endregion: --- EQ
+
 // TODO: replace with derive_more Display
 impl std::fmt::Display for ModelName {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

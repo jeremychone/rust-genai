@@ -1,6 +1,13 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 
+## 2025-10-25 - [v0.4.3](https://github.com/jeremychone/rust-genai/compare/v0.4.2...v0.4.3)
+
+- `!` Refactor ZHIPU adapter to ZAI with namespace-based endpoint routing (#95)
+- `-` openai - stream tool - Fix streaming too issue (#91)
+- `.` added ModelName partial eq implementations for string types (#94)
+- `.` anthropic - update model name for haiku 4.5
+
 ## 2025-10-12 - [v0.4.2](https://github.com/jeremychone/rust-genai/compare/v0.4.1...v0.4.2)
 
 - `.` test - make the common_test_chat_stop_sequences_ok more resilient

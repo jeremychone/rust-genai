@@ -97,6 +97,12 @@ async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_capture_all_ok(MODEL, Some(Check::REASONING_USAGE)).await
 }
 
+#[tokio::test]
+async fn test_chat_stream_tool_capture_ok() -> TestResult<()> {
+	// NOTE: For now the OpenAI Adapter do not capture the thinking as not available in chat completions
+	common_tests::common_test_chat_stream_tool_capture_ok(MODEL).await
+}
+
 // endregion: --- Chat Stream Tests
 
 // region:    --- Binary Tests

@@ -31,7 +31,7 @@ const REASONING_HIGH: u32 = 24000;
 // For max model tokens see: https://docs.anthropic.com/en/docs/about-claude/models/overview
 //
 // fall back
-const MAX_TOKENS_64K: u32 = 64000; // claude-3-7-sonnet, claude-sonnet-4.x
+const MAX_TOKENS_64K: u32 = 64000; // claude-3-7-sonnet, claude-sonnet-4.x, claude-haiku-4-5
 // custom
 const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
 const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
@@ -41,7 +41,7 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MODELS: &[&str] = &[
 	"claude-opus-4-1-20250805",
 	"claude-sonnet-4-5-20250929",
-	"claude-3-5-haiku-latest",
+	"claude-haiku-4-5-20251001",
 ];
 
 impl AnthropicAdapter {
@@ -181,7 +181,10 @@ impl Adapter for AnthropicAdapter {
 		// const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
 		let max_tokens = options_set.max_tokens().unwrap_or_else(|| {
 			// most likely models used, so put first. Also a little wider with `claude-sonnet` (since name from version 4)
-			if model_name.contains("claude-sonnet") || model_name.contains("claude-3-7-sonnet") {
+			if model_name.contains("claude-sonnet")
+				|| model_name.contains("claude-haiku")
+				|| model_name.contains("claude-3-7-sonnet")
+			{
 				MAX_TOKENS_64K
 			} else if model_name.contains("claude-opus-4") {
 				MAX_TOKENS_32K

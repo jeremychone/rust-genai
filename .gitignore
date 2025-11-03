@@ -6,6 +6,7 @@
 _*
 # '_' in src dir, ok.
 !**/src/**/_*
+!**/spec/**/_*
 
 *.lock
 *.lockb
