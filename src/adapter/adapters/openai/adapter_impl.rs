@@ -27,8 +27,8 @@ const MODELS: &[&str] = &[
 	"gpt-5",
 	"gpt-5-mini",
 	"gpt-5-nano",
-    "gpt-audio-mini",
-    "gpt-audio"
+	"gpt-audio-mini",
+	"gpt-audio",
 ];
 
 impl OpenAIAdapter {
@@ -415,10 +415,12 @@ impl OpenAIAdapter {
 									if is_audio {
 										match &source {
 											BinarySource::Url(_url) => {
-												warn!("OpenAI doesn't support audio from URL, need to handle it gracefully");
+												warn!(
+													"OpenAI doesn't support audio from URL, need to handle it gracefully"
+												);
 											}
 											BinarySource::Base64(content) => {
-												let mut format = content_type.split('/').last().unwrap_or("");
+												let mut format = content_type.split('/').next_back().unwrap_or("");
 												if format == "mpeg" {
 													format = "mp3";
 												}
