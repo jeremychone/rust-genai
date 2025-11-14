@@ -19,6 +19,13 @@ async fn test_chat_reasoning_minimal_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok("gpt-5-mini-minimal", None).await
 }
 
+// gpt-5-pro (different api than gpt-5)
+// expensive, so, will be commented most of the time.
+// #[tokio::test]
+// async fn test_chat_gpt_5_pro_simple_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_simple_ok("gpt-5-pro", None).await
+// }
+
 // endregion: --- Provider Specific
 
 // region:    --- Chat
