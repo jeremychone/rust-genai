@@ -7,7 +7,7 @@ use genai::resolver::AuthData;
 // note: "gpt-4o-mini" has issue when image & pdf
 // as for 2025-08-08 gpt-5-mini does not support temperature & stop sequence
 const MODEL_LATEST: &str = "gpt-5.1";
-const MODEL_GPT_5_MINI: &str = "gpt-5-mini"; // p
+const MODEL_GPT_5_MINI: &str = "gpt-5-mini"; // for the streaming reasoning test
 const AUDIO_MODEL: &str = "gpt-audio-mini";
 const MODEL2: &str = "gpt-4.1-mini"; // for temperature & stop sequence
 const MODEL_NS: &str = "openai::gpt-4.1-mini";
@@ -44,7 +44,7 @@ async fn test_chat_reasoning_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_verbosity_ok() -> TestResult<()> {
-	common_tests::common_test_chat_verbosity_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_verbosity_ok(MODEL_GPT_5_MINI).await
 }
 
 #[tokio::test]
@@ -83,7 +83,7 @@ async fn test_chat_stop_sequences_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_cache_implicit_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL_GPT_5_MINI).await
 }
 
 // endregion: --- Chat Implicit Cache
