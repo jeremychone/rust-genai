@@ -1,5 +1,11 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2025-11-14 - [v0.4.4](https://github.com/jeremychone/rust-genai/compare/v0.4.3...v0.4.4)
+
+- `+` openai - adding support for gpt-5-pro (must be mapped to OpenaiResp adapter)
+- `+` Add support for openai audio_type content part for voice agent support. ([PR #96](https://github.com/jeremychone/rust-genai/pull/96) thanks to [Vagmi Mudumbai](https://github.com/vagmi))
+- `+` Add support for OpenAI `service_tier` parameter. ([PR #98](https://github.com/jeremychone/rust-genai/pull/98) thanks to [Himmelschmidt](https://github.com/Himmelschmidt))
+
 
 ## 2025-10-25 - [v0.4.3](https://github.com/jeremychone/rust-genai/compare/v0.4.2...v0.4.3)
 

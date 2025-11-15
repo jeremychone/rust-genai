@@ -39,8 +39,10 @@ See:
 
 ## Big Thanks to
 
-- [Bart Carroll](https://github.com/bartCarroll) For [#91](https://github.com/jeremychone/rust-genai/pull/91) Fixed streaming tool calls for openai models
-- [Rui Andrada](https://github.com/shingonoide) For [#95](https://github.com/jeremychone/rust-genai/pull/95) refactoring ZHIPU adapter to ZAI
+- [Vagmi Mudumbai](https://github.com/vagmi)) for [#96](https://github.com/jeremychone/rust-genai/pull/96) openai audio_type
+- [Himmelschmidt](https://github.com/Himmelschmidt) for [#98](https://github.com/jeremychone/rust-genai/pull/98) openai service_tier
+- [Bart Carroll](https://github.com/bartCarroll) for [#91](https://github.com/jeremychone/rust-genai/pull/91) Fixed streaming tool calls for openai models
+- [Rui Andrada](https://github.com/shingonoide) for [#95](https://github.com/jeremychone/rust-genai/pull/95) refactoring ZHIPU adapter to ZAI
 - [Adrien](https://github.com/XciD) Extra headers in requests, seed for chat requests, and fixes (with [Julien Chaumond](https://github.com/julien-c) for extra headers)
 - [Andrew Rademacher](https://github.com/AndrewRademacher) for PDF support, Anthropic streamer, and insight on flattening the message content (e.g., ContentParts)
 - [Jesus Santander](https://github.com/jsantanders) Embedding support [PR #83](https://github.com/jeremychone/rust-genai/pull/83)
