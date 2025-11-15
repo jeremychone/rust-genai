@@ -15,7 +15,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{Error, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
@@ -79,6 +79,17 @@ impl AdapterDispatcher {
 			AdapterKind::Zai => ZaiAdapter::all_model_names(kind).await,
 			AdapterKind::Cohere => CohereAdapter::all_model_names(kind).await,
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
+		}
+	}
+
+	pub async fn all_model_names_with_target(
+		kind: AdapterKind,
+		target: ServiceTarget,
+		web_client: &WebClient,
+	) -> Result<Vec<String>> {
+		match kind {
+			AdapterKind::Ollama => OllamaAdapter::all_model_names_with_service_target(kind, target, web_client).await,
+			_ => Self::all_model_names(kind).await,
 		}
 	}
 

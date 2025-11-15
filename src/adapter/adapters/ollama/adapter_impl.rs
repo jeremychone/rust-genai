@@ -1,5 +1,6 @@
 //! API DOC: https://github.com/ollama/ollama/blob/main/docs/openai.md
 
+use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
@@ -32,31 +33,14 @@ impl Adapter for OllamaAdapter {
 	/// TODO: This will use the default endpoint.
 	///       Later, we might add another function with an endpoint, so the user can provide a custom endpoint.
 	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		// FIXME: This is hardcoded to the default endpoint; it should take the endpoint as an argument.
-		let endpoint = Self::default_endpoint();
-		let base_url = endpoint.base_url();
-		let url = format!("{base_url}models");
+		let web_client = crate::webc::WebClient::default();
+		let target = ServiceTarget {
+			endpoint: Self::default_endpoint(),
+			auth: Self::default_auth(),
+			model: ModelIden::new(adapter_kind, "__ollama_list_models__"),
+		};
 
-		// TODO: Need to get the WebClient from the client.
-		let web_c = crate::webc::WebClient::default();
-		let mut res = web_c.do_get(&url, &[]).await.map_err(|webc_error| Error::WebAdapterCall {
-			adapter_kind,
-			webc_error,
-		})?;
-
-		let mut models: Vec<String> = Vec::new();
-
-		if let Value::Array(models_value) = res.body.x_take("data")? {
-			for mut model in models_value {
-				let model_name: String = model.x_take("id")?;
-				models.push(model_name);
-			}
-		} else {
-			// TODO: Need to add tracing
-			// error!("OllamaAdapter::list_models did not have any models {res:?}");
-		}
-
-		Ok(models)
+		Self::all_model_names_with_service_target(adapter_kind, target, &web_client).await
 	}
 
 	fn get_service_url(model_iden: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
@@ -102,5 +86,56 @@ impl Adapter for OllamaAdapter {
 		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::embed::EmbedResponse> {
 		OpenAIAdapter::to_embed_response(model_iden, web_response, options_set)
+	}
+}
+
+impl OllamaAdapter {
+	pub(crate) async fn all_model_names_with_service_target(
+		adapter_kind: AdapterKind,
+		target: ServiceTarget,
+		web_client: &crate::webc::WebClient,
+	) -> Result<Vec<String>> {
+		let ServiceTarget { endpoint, auth, model } = target;
+
+		let mut url = format!("{}models", endpoint.base_url());
+		let mut headers: Vec<(String, String)> = Vec::new();
+
+		match auth {
+			AuthData::RequestOverride {
+				url: override_url,
+				headers: override_headers,
+			} => {
+				url = override_url;
+				headers.extend(override_headers.into_iter());
+			}
+			auth => {
+				let api_key = get_api_key(auth, &model)?;
+				if !api_key.is_empty() {
+					headers.push(("Authorization".to_string(), format!("Bearer {api_key}")));
+				}
+			}
+		}
+
+		let mut res = web_client
+			.do_get(&url, &headers)
+			.await
+			.map_err(|webc_error| Error::WebAdapterCall {
+				adapter_kind,
+				webc_error,
+			})?;
+
+		let mut models: Vec<String> = Vec::new();
+
+		if let Value::Array(models_value) = res.body.x_take("data")? {
+			for mut model in models_value {
+				let model_name: String = model.x_take("id")?;
+				models.push(model_name);
+			}
+		} else {
+			// TODO: Need to add tracing
+			// error!("OllamaAdapter::list_models did not have any models {res:?}");
+		}
+
+		Ok(models)
 	}
 }

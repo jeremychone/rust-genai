@@ -12,7 +12,7 @@ impl Client {
 	///
 	/// - Non-Ollama adapters use a static list.
 	///
-	/// - Ollama queries the default host (http://localhost:11434/v1/).
+	/// - Ollama queries the resolved host (defaults to http://localhost:11434/v1/).
 	///
 	/// - May evolve to accept a custom endpoint.
 	///
@@ -21,6 +21,45 @@ impl Client {
 	/// - Adapters should filter non-chat models until more skills are supported.
 	///   Future: `model_names(adapter_kind, Option<&[Skill]>)`.
 	pub async fn all_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
+		if adapter_kind == AdapterKind::Ollama {
+			let placeholder_model = ModelIden::new(adapter_kind, "__ollama_list_models__");
+			let config = self.config();
+
+			let auth = if let Some(auth_resolver) = config.auth_resolver() {
+				auth_resolver
+					.resolve(placeholder_model.clone())
+					.await
+					.map_err(|resolver_error| Error::Resolver {
+						model_iden: placeholder_model.clone(),
+						resolver_error,
+					})?
+					.unwrap_or_else(|| AdapterDispatcher::default_auth(adapter_kind))
+			} else {
+				AdapterDispatcher::default_auth(adapter_kind)
+			};
+
+			let mut service_target = ServiceTarget {
+				endpoint: AdapterDispatcher::default_endpoint(adapter_kind),
+				auth,
+				model: placeholder_model.clone(),
+			};
+
+			if let Some(resolver) = config.service_target_resolver() {
+				service_target = resolver
+					.resolve(service_target)
+					.await
+					.map_err(|resolver_error| Error::Resolver {
+						model_iden: placeholder_model.clone(),
+						resolver_error,
+					})?;
+			}
+
+			let models =
+				AdapterDispatcher::all_model_names_with_target(adapter_kind, service_target, self.web_client()).await?;
+
+			return Ok(models);
+		}
+
 		let models = AdapterDispatcher::all_model_names(adapter_kind).await?;
 		Ok(models)
 	}
