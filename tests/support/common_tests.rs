@@ -20,7 +20,7 @@ use value_ext::JsonValueExt;
 // region:    --- Chat
 
 pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
-	validate_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE)?;
+	validate_checks(checks.clone(), Check::REASONING_CONTENT | Check::REASONING_USAGE)?;
 
 	// -- Setup & Fixtures
 	let client = Client::default();
@@ -50,7 +50,7 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> T
 	}
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		assert_reasoning_content(&chat_res)?;
 	}
 
@@ -93,7 +93,7 @@ pub async fn common_test_chat_reasoning_ok(model: &str, checks: Option<Check>) -
 	}
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		let reasoning_content = chat_res
 			.reasoning_content
 			.as_deref()
@@ -512,7 +512,7 @@ pub async fn common_test_chat_cache_explicit_system_ok(model: &str) -> TestResul
 // region:    --- Chat Stream Tests
 
 pub async fn common_test_chat_stream_simple_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
-	validate_checks(checks.clone(), Check::REASONING)?;
+	validate_checks(checks.clone(), Check::REASONING_CONTENT)?;
 
 	// -- Setup & Fixtures
 	let client = Client::default();
@@ -541,7 +541,7 @@ pub async fn common_test_chat_stream_simple_ok(model: &str, checks: Option<Check
 	);
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		let reasoning_content =
 			reasoning_content.ok_or("extract_stream_end SHOULD have extracted some reasoning_content")?;
 		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
@@ -596,7 +596,7 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> TestResu
 }
 
 pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
-	validate_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE)?;
+	validate_checks(checks.clone(), Check::REASONING_CONTENT | Check::REASONING_USAGE)?;
 
 	// -- Setup & Fixtures
 	let mut chat_options = ChatOptions::default()
@@ -604,7 +604,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 		.with_capture_content(true)
 		.with_capture_reasoning_content(true);
 
-	if contains_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE) {
+	if contains_checks(checks.clone(), Check::REASONING_CONTENT | Check::REASONING_USAGE) {
 		chat_options = chat_options.with_reasoning_effort(ReasoningEffort::Medium);
 	}
 
@@ -648,7 +648,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	}
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		let _reasoning_content = reasoning_content.ok_or("Should have reasoning content")?;
 	}
 

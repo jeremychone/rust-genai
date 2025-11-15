@@ -25,7 +25,7 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[serial(anthropic)]
 async fn test_chat_reasoning_ok() -> TestResult<()> {
 	// NOTE: Does not test REASONING_USAGE as Anthropic does not report it
-	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, Some(Check::REASONING)).await
+	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, Some(Check::REASONING_CONTENT)).await
 }
 
 #[tokio::test]

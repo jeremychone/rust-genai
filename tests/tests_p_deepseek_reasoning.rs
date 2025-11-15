@@ -11,7 +11,7 @@ const MODEL: &str = "deepseek-reasoner";
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL, Some(Check::REASONING)).await
+	common_tests::common_test_chat_simple_ok(MODEL, Some(Check::REASONING_CONTENT)).await
 }
 
 #[tokio::test]
@@ -47,7 +47,7 @@ async fn test_chat_reasoning_normalize_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_stream_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL, Some(Check::REASONING)).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL, Some(Check::REASONING_CONTENT)).await
 }
 
 #[tokio::test]
@@ -57,7 +57,7 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL, Some(Check::REASONING)).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL, Some(Check::REASONING_CONTENT)).await
 }
 
 // endregion: --- Chat Stream Tests
