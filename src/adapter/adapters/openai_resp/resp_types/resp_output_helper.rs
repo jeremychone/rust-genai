@@ -39,6 +39,7 @@ impl ContentPart {
 					call_id,
 					fn_name,
 					fn_arguments,
+					thought_signatures: None,
 				};
 
 				parts.push(tool_call.into());

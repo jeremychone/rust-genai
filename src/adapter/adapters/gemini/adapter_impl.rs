@@ -208,14 +208,40 @@ impl Adapter for GeminiAdapter {
 			usage,
 		} = gemini_response;
 
-		// FIXME: Needs to take the content list
-		let mut content: MessageContent = MessageContent::default();
+		let mut thoughts: Vec<String> = Vec::new();
+		let mut texts: Vec<String> = Vec::new();
+		let mut tool_calls: Vec<ToolCall> = Vec::new();
+
 		for g_item in gemini_content {
 			match g_item {
-				GeminiChatContent::Text(text) => content.push(text),
-				GeminiChatContent::ToolCall(tool_call) => content.push(tool_call),
+				GeminiChatContent::Text(text) => texts.push(text),
+				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
+				GeminiChatContent::ThoughtSignature(thought) => thoughts.push(thought),
 			}
 		}
+
+		let thought_signatures_for_call = (!thoughts.is_empty() && !tool_calls.is_empty()).then(|| thoughts.clone());
+		let mut parts: Vec<ContentPart> = thoughts.into_iter().map(ContentPart::ThoughtSignature).collect();
+
+		if let Some(signatures) = thought_signatures_for_call {
+			if let Some(first_call) = tool_calls.first_mut() {
+				first_call.thought_signatures = Some(signatures);
+			}
+		}
+
+		if !texts.is_empty() {
+			let total_len: usize = texts.iter().map(|t| t.len()).sum();
+			let mut combined_text = String::with_capacity(total_len);
+			for text in texts {
+				combined_text.push_str(&text);
+			}
+			if !combined_text.is_empty() {
+				parts.push(ContentPart::Text(combined_text));
+			}
+		}
+
+		parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
+		let content = MessageContent::from_parts(parts);
 
 		Ok(ChatResponse {
 			content,
@@ -293,6 +319,28 @@ impl GeminiAdapter {
 		};
 
 		for mut part in parts {
+			// -- Capture eventual thought signature
+			{
+				if let Some(thought) = part
+					.x_take::<Value>("thoughtSignature")
+					.ok()
+					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
+				{
+					content.push(GeminiChatContent::ThoughtSignature(thought));
+				}
+				// Note: sometime the thought is in "thought" (undocumented, but observed in some cases or older models?)
+				//       But for Gemini 3 it is thoughtSignature. Keeping this just in case or for backward compat if it was used.
+				//       Actually, let's stick to thoughtSignature as per docs, but if we see "thought" we might want to capture it too.
+				//       Let's check for "thought" if "thoughtSignature" was not found.
+				else if let Some(thought) = part
+					.x_take::<Value>("thought")
+					.ok()
+					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
+				{
+					content.push(GeminiChatContent::ThoughtSignature(thought));
+				}
+			}
+
 			// -- Capture eventual function call
 			if let Ok(fn_call_value) = part.x_take::<Value>("functionCall") {
 				let tool_call = ToolCall {
@@ -300,6 +348,7 @@ impl GeminiAdapter {
 					call_id: fn_call_value.x_get("name").unwrap_or("".to_string()), // TODO: Handle this, gemini does not return the call_id
 					fn_name: fn_call_value.x_get("name").unwrap_or("".to_string()),
 					fn_arguments: fn_call_value.x_get("args").unwrap_or(Value::Null),
+					thought_signatures: None,
 				};
 				content.push(GeminiChatContent::ToolCall(tool_call))
 			}
@@ -458,6 +507,11 @@ impl GeminiAdapter {
 									}
 								}));
 							}
+							ContentPart::ThoughtSignature(thought) => {
+								parts_values.push(json!({
+									"thoughtSignature": thought
+								}));
+							}
 						}
 					}
 
@@ -465,21 +519,53 @@ impl GeminiAdapter {
 				}
 				ChatRole::Assistant => {
 					let mut parts_values: Vec<Value> = Vec::new();
+					let mut pending_thought: Option<String> = None;
 					for part in msg.content {
 						match part {
-							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
+							ContentPart::Text(text) => {
+								if let Some(thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": thought}));
+								}
+								parts_values.push(json!({"text": text}));
+							}
 							ContentPart::ToolCall(tool_call) => {
-								parts_values.push(json!({
-									"functionCall": {
+								let mut part_obj = serde_json::Map::new();
+								part_obj.insert(
+									"functionCall".to_string(),
+									json!({
 										"name": tool_call.fn_name,
 										"args": tool_call.fn_arguments,
-									}
-								}));
+									}),
+								);
+
+								if let Some(thought) = pending_thought.take() {
+									// Inject thoughtSignature alongside functionCall in the same Part object
+									part_obj.insert("thoughtSignature".to_string(), json!(thought));
+								}
+
+								parts_values.push(Value::Object(part_obj));
+							}
+							ContentPart::ThoughtSignature(thought) => {
+								if let Some(prev_thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": prev_thought}));
+								}
+								pending_thought = Some(thought);
 							}
 							// Ignore unsupported parts for Assistant role
-							ContentPart::Binary(_) => {}
-							ContentPart::ToolResponse(_) => {}
+							ContentPart::Binary(_) => {
+								if let Some(thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": thought}));
+								}
+							}
+							ContentPart::ToolResponse(_) => {
+								if let Some(thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": thought}));
+								}
+							}
 						}
+					}
+					if let Some(thought) = pending_thought {
+						parts_values.push(json!({"thoughtSignature": thought}));
 					}
 					if !parts_values.is_empty() {
 						contents.push(json!({"role": "model", "parts": parts_values}));
@@ -508,10 +594,15 @@ impl GeminiAdapter {
 									}
 								}));
 							}
+							ContentPart::ThoughtSignature(thought) => {
+								parts_values.push(json!({
+									"thoughtSignature": thought
+								}));
+							}
 							_ => {
 								return Err(Error::MessageContentTypeNotSupported {
 									model_iden: model_iden.clone(),
-									cause: "ChatRole::Tool can only contain ToolCall or ToolResponse content parts",
+									cause: "ChatRole::Tool can only contain ToolCall, ToolResponse, or Thought content parts",
 								});
 							}
 						}
@@ -580,6 +671,7 @@ pub(super) struct GeminiChatResponse {
 pub(super) enum GeminiChatContent {
 	Text(String),
 	ToolCall(ToolCall),
+	ThoughtSignature(String),
 }
 
 struct GeminiChatRequestParts {

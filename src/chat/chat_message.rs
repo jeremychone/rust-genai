@@ -1,4 +1,4 @@
-use crate::chat::{MessageContent, ToolCall, ToolResponse};
+use crate::chat::{ContentPart, MessageContent, ToolCall, ToolResponse};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
@@ -57,6 +57,16 @@ impl ChatMessage {
 		self.options = Some(options.into());
 		self
 	}
+
+	/// Convenience: build an assistant message that contains an optional list
+	/// of thought signatures followed by tool calls. Useful for providers
+	/// (e.g., Gemini 3) that require the thought signature to appear before
+	/// tool calls in the assistant turn when continuing a tool-use exchange.
+	pub fn assistant_tool_calls_with_thoughts(tool_calls: Vec<ToolCall>, thought_signatures: Vec<String>) -> Self {
+		let mut parts: Vec<ContentPart> = thought_signatures.into_iter().map(ContentPart::ThoughtSignature).collect();
+		parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
+		ChatMessage::assistant(MessageContent::from_parts(parts))
+	}
 }
 // region:    --- MessageOptions
 
@@ -105,6 +115,13 @@ pub enum ChatRole {
 /// Will create a Assisttant ChatMessage with this vect of tool
 impl From<Vec<ToolCall>> for ChatMessage {
 	fn from(tool_calls: Vec<ToolCall>) -> Self {
+		if let Some(first) = tool_calls.first() {
+			if let Some(thoughts) = &first.thought_signatures {
+				let mut parts: Vec<ContentPart> = thoughts.iter().cloned().map(ContentPart::ThoughtSignature).collect();
+				parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
+				return ChatMessage::assistant(MessageContent::from_parts(parts));
+			}
+		}
 		Self {
 			role: ChatRole::Assistant,
 			content: MessageContent::from(tool_calls),

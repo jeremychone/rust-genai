@@ -46,6 +46,7 @@ pub struct StreamerCapturedData {
 	pub content: Option<String>,
 	pub reasoning_content: Option<String>,
 	pub tool_calls: Option<Vec<crate::chat::ToolCall>>,
+	pub thought_signatures: Option<Vec<String>>,
 }
 
 // endregion: --- Streamer Captured Data
