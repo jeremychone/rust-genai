@@ -3,7 +3,6 @@ use genai::Client;
 use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest, Tool, ToolResponse};
 use genai::chat::{ChatStreamEvent, ToolCall};
-use genai::resolver::AuthData;
 use serde_json::json;
 use tracing_subscriber::EnvFilter;
 

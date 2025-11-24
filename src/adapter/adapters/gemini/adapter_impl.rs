@@ -223,10 +223,10 @@ impl Adapter for GeminiAdapter {
 		let thought_signatures_for_call = (!thoughts.is_empty() && !tool_calls.is_empty()).then(|| thoughts.clone());
 		let mut parts: Vec<ContentPart> = thoughts.into_iter().map(ContentPart::ThoughtSignature).collect();
 
-		if let Some(signatures) = thought_signatures_for_call {
-			if let Some(first_call) = tool_calls.first_mut() {
-				first_call.thought_signatures = Some(signatures);
-			}
+		if let Some(signatures) = thought_signatures_for_call
+			&& let Some(first_call) = tool_calls.first_mut()
+		{
+			first_call.thought_signatures = Some(signatures);
 		}
 
 		if !texts.is_empty() {

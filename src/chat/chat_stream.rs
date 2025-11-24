@@ -133,15 +133,15 @@ impl From<InterStreamEnd> for StreamEnd {
 				.collect::<Vec<_>>();
 			// Also attach thoughts to the first tool call so that
 			// ChatMessage::from(Vec<ToolCall>) can auto-prepend them.
-			if let Some(tool_calls) = captured_tool_calls.as_mut() {
-				if let Some(first_call) = tool_calls.first_mut() {
-					first_call.thought_signatures = Some(
-						thoughts_content
-							.iter()
-							.filter_map(|p| p.as_thought_signature().map(|s| s.to_string()))
-							.collect(),
-					);
-				}
+			if let Some(tool_calls) = captured_tool_calls.as_mut()
+				&& let Some(first_call) = tool_calls.first_mut()
+			{
+				first_call.thought_signatures = Some(
+					thoughts_content
+						.iter()
+						.filter_map(|p| p.as_thought_signature().map(|s| s.to_string()))
+						.collect(),
+				);
 			}
 			if let Some(existing_content) = &mut captured_content {
 				existing_content.extend_front(thoughts_content);

@@ -115,12 +115,12 @@ pub enum ChatRole {
 /// Will create a Assisttant ChatMessage with this vect of tool
 impl From<Vec<ToolCall>> for ChatMessage {
 	fn from(tool_calls: Vec<ToolCall>) -> Self {
-		if let Some(first) = tool_calls.first() {
-			if let Some(thoughts) = &first.thought_signatures {
-				let mut parts: Vec<ContentPart> = thoughts.iter().cloned().map(ContentPart::ThoughtSignature).collect();
-				parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
-				return ChatMessage::assistant(MessageContent::from_parts(parts));
-			}
+		if let Some(first) = tool_calls.first()
+			&& let Some(thoughts) = &first.thought_signatures
+		{
+			let mut parts: Vec<ContentPart> = thoughts.iter().cloned().map(ContentPart::ThoughtSignature).collect();
+			parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
+			return ChatMessage::assistant(MessageContent::from_parts(parts));
 		}
 		Self {
 			role: ChatRole::Assistant,
