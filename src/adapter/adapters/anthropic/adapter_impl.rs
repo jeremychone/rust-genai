@@ -31,18 +31,14 @@ const REASONING_HIGH: u32 = 24000;
 // For max model tokens see: https://docs.anthropic.com/en/docs/about-claude/models/overview
 //
 // fall back
-const MAX_TOKENS_64K: u32 = 64000; // claude-3-7-sonnet, claude-sonnet-4.x, claude-haiku-4-5
+const MAX_TOKENS_64K: u32 = 64000; // 3-7-sonnet, connet-4.x, opus-5-x, haiku-4-5
 // custom
 const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
 const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
 const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-const MODELS: &[&str] = &[
-	"claude-opus-4-1-20250805",
-	"claude-sonnet-4-5-20250929",
-	"claude-haiku-4-5-20251001",
-];
+const MODELS: &[&str] = &["claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5"];
 
 impl AnthropicAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "ANTHROPIC_API_KEY";
@@ -174,8 +170,7 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
 		}
 
-		//const MAX_TOKENS_64K: u32 = 64000; // claude-sonnet-4, claude-3-7-sonnet,
-		// custom
+		// const MAX_TOKENS_64K: u32 = 64000; // claude-opus-4-5 claude-sonnet-4, claude-3-7-sonnet,
 		// const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
 		// const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
 		// const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
@@ -184,6 +179,7 @@ impl Adapter for AnthropicAdapter {
 			if model_name.contains("claude-sonnet")
 				|| model_name.contains("claude-haiku")
 				|| model_name.contains("claude-3-7-sonnet")
+				|| model_name.contains("claude-opus-4-5")
 			{
 				MAX_TOKENS_64K
 			} else if model_name.contains("claude-opus-4") {
