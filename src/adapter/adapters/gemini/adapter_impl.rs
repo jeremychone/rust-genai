@@ -18,6 +18,7 @@ pub struct GeminiAdapter;
 // Note: Those model names are just informative, as the Gemini AdapterKind is selected on `startsWith("gemini")`
 const MODELS: &[&str] = &[
 	//
+	"gemini-3-pro-preview",
 	"gemini-2.5-pro",
 	"gemini-2.5-flash",
 	"gemini-2.5-flash-lite",
