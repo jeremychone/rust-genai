@@ -7,7 +7,7 @@ use simple_fs::SPath;
 use std::fs::File;
 use std::io::Read;
 
-pub const IMAGE_URL_JPG_DUCK: &str = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Bucephala-albeola-010.jpg/440px-Bucephala-albeola-010.jpg";
+pub const IMAGE_URL_JPG_DUCK: &str = "https://aipack.ai/images/test-duck.jpg";
 pub const AUDIO_TEST_FILE_PATH: &str = "./tests/data/phrase_neil_armstrong.wav";
 
 /// Get the base64 of the image above (but resized/lower to fit 5kb)

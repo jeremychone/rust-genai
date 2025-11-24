@@ -6,7 +6,7 @@ use genai::chat::{ChatMessage, ChatRequest, ContentPart};
 use tracing_subscriber::EnvFilter;
 
 const MODEL: &str = "gpt-4o-mini";
-const IMAGE_URL: &str = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg";
+const IMAGE_URL: &str = "https://aipack.ai/images/test-duck.jpg";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
