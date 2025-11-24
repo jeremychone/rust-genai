@@ -47,6 +47,29 @@ impl MessageContent {
 		self.parts.push(part.into());
 	}
 
+	/// Insert one part at the given index (mutating).
+	pub fn insert(&mut self, index: usize, part: impl Into<ContentPart>) {
+		self.parts.insert(index, part.into());
+	}
+
+	/// Prepend one part to the beginning (mutating).
+	pub fn prepend(&mut self, part: impl Into<ContentPart>) {
+		self.parts.insert(0, part.into());
+	}
+
+	/// Prepend multiple parts while preserving their original order.
+	pub fn extend_front<I>(&mut self, iter: I)
+	where
+		I: IntoIterator<Item = ContentPart>,
+	{
+		// Collect then insert in reverse so that the first element in `iter`
+		// ends up closest to the front after all insertions.
+		let collected: Vec<ContentPart> = iter.into_iter().collect();
+		for part in collected.into_iter().rev() {
+			self.parts.insert(0, part);
+		}
+	}
+
 	/// Extend with an iterator of parts, returning self.
 	pub fn extended<I>(mut self, iter: I) -> Self
 	where

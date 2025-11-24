@@ -394,6 +394,7 @@ impl OpenAIRespAdapter {
 								// TODO: Probably need to warn if it is a ToolCalls type of content
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
+								ContentPart::ThoughtSignature(_) => (),
 							}
 						}
 						input_items.push(json! ({"role": "user", "content": values}));
@@ -434,8 +435,9 @@ impl OpenAIRespAdapter {
 							}
 
 							// TODO: Probably need towarn on this one (probably need to add binary here)
-							ContentPart::Binary(_) => (),
-							ContentPart::ToolResponse(_) => (),
+							ContentPart::Binary(_) => {}
+							ContentPart::ToolResponse(_) => {}
+							ContentPart::ThoughtSignature(_) => {}
 						}
 					}
 

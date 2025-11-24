@@ -91,7 +91,8 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 			ChatStreamEvent::Start => (), // nothing to do
 			ChatStreamEvent::Chunk(s_chunk) => content.push(s_chunk.content),
 			ChatStreamEvent::ReasoningChunk(s_chunk) => reasoning_content.push(s_chunk.content),
-			ChatStreamEvent::ToolCallChunk(_) => (), // ignore tool call chunks for now
+			ChatStreamEvent::ThoughtSignatureChunk(_) => (), // ignore thought signature chunks for now
+			ChatStreamEvent::ToolCallChunk(_) => (),         // ignore tool call chunks for now
 			ChatStreamEvent::End(s_end) => {
 				stream_end = Some(s_end);
 				break;

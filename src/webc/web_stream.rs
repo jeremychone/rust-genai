@@ -175,45 +175,91 @@ fn new_with_pretty_json_array(
 	buff_string: String,
 	partial_message: &mut Option<String>,
 ) -> Result<BuffResponse, crate::webc::Error> {
-	let buff_str = buff_string.trim();
+	let mut buff_str = buff_string.as_str();
 
 	let mut messages: Vec<String> = Vec::new();
 
-	// -- Capture the array start/end and each eventual sub-object (assuming only one sub-object)
-	let (array_start, rest_str) = match buff_str.strip_prefix('[') {
-		Some(rest) => (Some("["), rest.trim()),
-		None => (None, buff_str),
-	};
-
-	// Remove the eventual ',' prefix and suffix.
-	let rest_str = rest_str.strip_prefix(',').unwrap_or(rest_str);
-	let rest_str = rest_str.strip_suffix(',').unwrap_or(rest_str);
-
-	let (rest_str, array_end) = match rest_str.strip_suffix(']') {
-		Some(rest) => (rest.trim(), Some("]")),
-		None => (rest_str, None),
-	};
-
-	// -- Prep the BuffResponse
-	if let Some(array_start) = array_start {
-		messages.push(array_start.to_string());
+	// -- 1. Prepend partial message if any
+	let full_string_holder: String;
+	if let Some(partial) = partial_message.take() {
+		full_string_holder = format!("{}{}", partial, buff_str);
+		buff_str = full_string_holder.as_str();
 	}
-	if !rest_str.is_empty() {
-		let full_str = if let Some(partial) = partial_message.take() {
-			format!("{partial}{rest_str}")
-		} else {
-			rest_str.to_string()
-		};
 
-		if serde_json::from_str::<serde_json::Value>(&full_str).is_ok() {
-			messages.push(full_str);
+	// -- 2. Process the buffer
+	// We want to extract valid JSON objects.
+	// The stream is expected to be: `[` (optional), `{...}`, `,`, `{...}`, `]` (optional)
+	// We need to be robust against whitespace and commas.
+
+	let mut depth = 0;
+	let mut in_string = false;
+	let mut escape = false;
+	let mut start_idx = 0;
+	let mut last_idx = 0; // Track the end of the last processed object
+
+	for (idx, c) in buff_str.char_indices() {
+		if in_string {
+			if escape {
+				escape = false;
+			} else if c == '\\' {
+				escape = true;
+			} else if c == '"' {
+				in_string = false;
+			}
 		} else {
-			*partial_message = Some(full_str);
+			match c {
+				'"' => in_string = true,
+				'{' => {
+					if depth == 0 {
+						start_idx = idx;
+					}
+					depth += 1;
+				}
+				'}' => {
+					depth -= 1;
+					if depth == 0 {
+						// Found a complete JSON object
+						// idx is the byte index of '}'. We want to include it.
+						// '}' is 1 byte, so end range is idx + 1
+						let json_str = &buff_str[start_idx..idx + 1];
+
+						// Verify it's valid JSON (optional but good for safety)
+						if serde_json::from_str::<serde_json::Value>(json_str).is_ok() {
+							messages.push(json_str.to_string());
+						} else {
+							// Should not happen if logic is correct
+							tracing::warn!("WebStream: Extracted block failed JSON validation: {}", json_str);
+						}
+						// Update last_idx to point after this object
+						last_idx = idx + 1;
+					}
+				}
+				'[' => {
+					if depth == 0 {
+						messages.push("[".to_string());
+						last_idx = idx + 1;
+					}
+				}
+				']' => {
+					if depth == 0 {
+						messages.push("]".to_string());
+						last_idx = idx + 1;
+					}
+				}
+				_ => {
+					// Ignore other characters outside of objects (whitespace, commas)
+				}
+			}
 		}
 	}
-	// We ignore the comma
-	if let Some(array_end) = array_end {
-		messages.push(array_end.to_string());
+
+	// -- 3. Handle remaining partial
+	// last_idx points to the byte after the last successfully processed object/token
+	if last_idx < buff_str.len() {
+		let remaining = &buff_str[last_idx..];
+		if !remaining.trim().is_empty() {
+			*partial_message = Some(remaining.to_string());
+		}
 	}
 
 	// -- Return the buff response
