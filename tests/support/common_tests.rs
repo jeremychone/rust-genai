@@ -58,11 +58,15 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> T
 }
 
 // NOTE: here we still have the options about checking REASONING_USAGE, because Anthropic does not have reasoning token.
-pub async fn common_test_chat_reasoning_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
+pub async fn common_test_chat_reasoning_ok(
+	model: &str,
+	reasoning_effort: ReasoningEffort,
+	checks: Option<Check>,
+) -> TestResult<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
 	let chat_req = seed_chat_req_simple();
-	let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+	let options = ChatOptions::default().with_reasoning_effort(reasoning_effort);
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, Some(&options)).await?;

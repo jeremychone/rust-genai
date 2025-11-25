@@ -2,6 +2,7 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
+use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 
 // note: "gpt-4o-mini" has issue when image & pdf
@@ -39,7 +40,7 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_chat_reasoning_ok() -> TestResult<()> {
 	// For now, do not test Check::REASONING, for OpenAI as it is not captured
-	common_tests::common_test_chat_reasoning_ok(MODEL_LATEST, Some(Check::REASONING_USAGE)).await
+	common_tests::common_test_chat_reasoning_ok(MODEL_LATEST, ReasoningEffort::High, Some(Check::REASONING_USAGE)).await
 }
 
 #[tokio::test]

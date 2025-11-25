@@ -30,6 +30,16 @@ const REASONING_LOW: u32 = 1000;
 const REASONING_MEDIUM: u32 = 8000;
 const REASONING_HIGH: u32 = 24000;
 
+fn get_gemini_thinking_budget_value(effort: &ReasoningEffort) -> u32 {
+	// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
+	match effort {
+		ReasoningEffort::Budget(budget) => *budget,
+		ReasoningEffort::Low | ReasoningEffort::Minimal => REASONING_LOW,
+		ReasoningEffort::Medium => REASONING_MEDIUM,
+		ReasoningEffort::High => REASONING_HIGH,
+	}
+}
+
 // curl \
 //   -H 'Content-Type: application/json' \
 //   -d '{"contents":[{"parts":[{"text":"Explain how AI works"}]}]}' \
@@ -83,16 +93,16 @@ impl Adapter for GeminiAdapter {
 		let headers = Headers::from(("x-goog-api-key".to_string(), api_key.to_string()));
 
 		// -- Reasoning Budget
-		let (provider_model_name, reasoning_budget) = match (model_name, options_set.reasoning_effort()) {
-			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
+		let (provider_model_name, computed_reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
+			// No explicity reasoning_effort, try to infer from model name suffix (supports -zero)
 			(model, None) => {
 				// let model_name: &str = &model.model_name;
 				if let Some((prefix, last)) = model_name.rsplit_once('-') {
 					let reasoning = match last {
-						"zero" => Some(REASONING_ZERO),
-						"low" => Some(REASONING_LOW),
-						"medium" => Some(REASONING_MEDIUM),
-						"high" => Some(REASONING_HIGH),
+						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
+						"low" => Some(ReasoningEffort::Low),
+						"medium" => Some(ReasoningEffort::Medium),
+						"high" => Some(ReasoningEffort::High),
 						_ => None,
 					};
 					// create the model name if there was a `-..` reasoning suffix
@@ -107,11 +117,11 @@ impl Adapter for GeminiAdapter {
 			(model, Some(effort)) => {
 				let effort = match effort {
 					// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
-					ReasoningEffort::Minimal => REASONING_LOW,
-					ReasoningEffort::Low => REASONING_LOW,
-					ReasoningEffort::Medium => REASONING_MEDIUM,
-					ReasoningEffort::High => REASONING_HIGH,
-					ReasoningEffort::Budget(budget) => *budget,
+					ReasoningEffort::Minimal => ReasoningEffort::Low,
+					ReasoningEffort::Low => ReasoningEffort::Low,
+					ReasoningEffort::Medium => ReasoningEffort::Medium,
+					ReasoningEffort::High => ReasoningEffort::High,
+					ReasoningEffort::Budget(budget) => ReasoningEffort::Budget(*budget),
 				};
 				(model, Some(effort))
 			}
@@ -130,8 +140,28 @@ impl Adapter for GeminiAdapter {
 		});
 
 		// -- Set the reasoning effort
-		if let Some(budget) = reasoning_budget {
-			payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
+		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
+			// -- For gemini-3 use the thinkingLevel if Low or High (does not support mediume for now)
+			if provider_model_name.contains("gemini-3") {
+				match computed_reasoning_effort {
+					ReasoningEffort::Low | ReasoningEffort::Minimal => {
+						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "LOW")?;
+					}
+					ReasoningEffort::High => {
+						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "HIGH")?;
+					}
+					// Fallback on thinkingBudget
+					other => {
+						let budget = get_gemini_thinking_budget_value(&other);
+						payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
+					}
+				}
+			}
+			// -- Otherwise, Do thinking budget
+			else {
+				let budget = get_gemini_thinking_budget_value(&computed_reasoning_effort);
+				payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
+			}
 		}
 
 		// Note: It's unclear from the spec if the content of systemInstruction should have a role.

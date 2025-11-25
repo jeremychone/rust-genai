@@ -2,10 +2,12 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
+use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 
 // "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite"
 // "gemini-2.5-flash-zero"
+const MODEL_GPRO_3: &str = "gemini-3-pro-preview";
 const MODEL: &str = "gemini-2.5-flash";
 const MODEL_NS: &str = "gemini::gemini-2.5-flash";
 
@@ -14,6 +16,16 @@ const MODEL_NS: &str = "gemini::gemini-2.5-flash";
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+async fn test_chat_reasoning_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(
+		MODEL_GPRO_3,
+		ReasoningEffort::Low,
+		Some(Check::REASONING_USAGE | Check::REASONING_USAGE),
+	)
+	.await
 }
 
 #[tokio::test]
