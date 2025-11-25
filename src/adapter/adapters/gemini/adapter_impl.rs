@@ -100,6 +100,7 @@ impl Adapter for GeminiAdapter {
 				if let Some((prefix, last)) = model_name.rsplit_once('-') {
 					let reasoning = match last {
 						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
+						"minimal" => Some(ReasoningEffort::Low),
 						"low" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
 						"high" => Some(ReasoningEffort::High),
