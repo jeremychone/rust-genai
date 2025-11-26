@@ -2,7 +2,6 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::openai::ToWebRequestCustom;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::Binary;
 use crate::chat::{
 	BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
 	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, ToolCall, Usage,
@@ -411,19 +410,21 @@ impl OpenAIAdapter {
 								ContentPart::Binary(binary) => {
 									let is_audio = binary.is_audio();
 									let is_image = binary.is_image();
-									let Binary {
-										content_type, source, ..
-									} = binary;
+
+									// let Binary {
+									// 	content_type, source, ..
+									// } = binary;
 
 									if is_audio {
-										match &source {
+										match &binary.source {
 											BinarySource::Url(_url) => {
 												warn!(
 													"OpenAI doesn't support audio from URL, need to handle it gracefully"
 												);
 											}
 											BinarySource::Base64(content) => {
-												let mut format = content_type.split('/').next_back().unwrap_or("");
+												let mut format =
+													binary.content_type.split('/').next_back().unwrap_or("");
 												if format == "mpeg" {
 													format = "mp3";
 												}
@@ -437,38 +438,18 @@ impl OpenAIAdapter {
 											}
 										}
 									} else if is_image {
-										match &source {
-											BinarySource::Url(url) => {
-												values.push(json!({"type": "image_url", "image_url": {"url": url}}))
-											}
-											BinarySource::Base64(content) => {
-												let image_url = format!("data:{};base64,{}", content_type, content);
-												values
-													.push(json!({"type": "image_url", "image_url": {"url": image_url}}))
-											}
-										}
+										let image_url = binary.into_url();
+										values.push(json!({"type": "image_url", "image_url": {"url": image_url}}));
+									} else if matches!(&binary.source, BinarySource::Url(_)) {
+										// TODO: Need to return error
+										warn!("OpenAI doesn't support file from URL, need to handle it gracefully");
 									} else {
-										match &source {
-											BinarySource::Url(_url) => {
-												// TODO: Need to return error
-												warn!(
-													"OpenAI doesn't support file from URL, need to handle it gracefully"
-												);
-											}
-											BinarySource::Base64(content) => {
-												let file_data = format!("data:{};base64,{}", content_type, content);
-												values.push(json!({"type": "file", "file": {
-													"filename": binary.name,
-													"file_data": file_data
-												}}))
-											}
-										}
-
-										// "type": "file",
-										// "file": {
-										//     "filename": "draconomicon.pdf",
-										//     "file_data": f"data:application/pdf;base64,{base64_string}",
-										// }
+										let filename = binary.name.clone();
+										let file_base64_url = binary.into_url();
+										values.push(json!({"type": "file", "file": {
+											"filename": filename,
+											"file_data": file_base64_url
+										}}))
 									}
 								}
 

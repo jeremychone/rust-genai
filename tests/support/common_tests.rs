@@ -1,5 +1,7 @@
 use crate::get_option_value;
-use crate::support::data::{IMAGE_URL_JPG_DUCK, get_b64_audio, get_b64_duck, get_b64_pdf, has_audio_file};
+use crate::support::data::{
+	IMAGE_URL_JPG_DUCK, TEST_IMAGE_FILE_PATH, get_b64_audio, get_b64_duck, get_b64_pdf, has_audio_file,
+};
 use crate::support::{
 	Check, StreamExtract, TestResult, assert_contains, assert_reasoning_content, assert_reasoning_usage,
 	contains_checks, extract_stream_end, get_big_content, seed_chat_req_simple, seed_chat_req_tool_simple,
@@ -724,6 +726,27 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> TestResult<()> {
 	chat_req = chat_req.append_message(ChatMessage::user(vec![
 		ContentPart::from_text("What is in this picture?"),
 		ContentPart::from_binary_base64("image/jpeg", get_b64_duck()?, None),
+	]));
+
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.first_text().ok_or("Should have text result")?;
+	assert_contains(res, "duck");
+
+	Ok(())
+}
+
+pub async fn common_test_chat_image_file_ok(model: &str) -> TestResult<()> {
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
+	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
+	chat_req = chat_req.append_message(ChatMessage::user(vec![
+		ContentPart::from_text("What is in this picture?"),
+		ContentPart::from_binary_file(TEST_IMAGE_FILE_PATH)?,
 	]));
 
 	let chat_res = client.exec_chat(model, chat_req, None).await?;

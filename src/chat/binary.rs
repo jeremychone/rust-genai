@@ -104,7 +104,18 @@ impl Binary {
 	pub fn into_url(self) -> String {
 		match self.source {
 			BinarySource::Url(url) => url,
-			BinarySource::Base64(b64_content) => format!("data:{};base64,{b64_content}", self.content_type),
+			BinarySource::Base64(b64_content) => {
+				// NOTE: Openai does not support filename in the URL.
+				// let filename_section: Cow<str> = if let Some(name) = self.name {
+				// 	let name = normalize_name(&name);
+				// 	format!("filename={name};").into()
+				// } else {
+				// 	"".into()
+				// };
+				let filename_section = "";
+
+				format!("data:{};{filename_section}base64,{b64_content}", self.content_type)
+			}
 		}
 	}
 }
@@ -131,3 +142,23 @@ pub enum BinarySource {
 // No `Local` location; this would require handling errors like "file not found" etc.
 // Such a file can be easily provided by the user as Base64, and we can implement a convenient
 // TryFrom<File> to Base64 version. All LLMs accept local images only as Base64.
+
+// region:    --- Support
+
+#[allow(unused)]
+fn normalize_name(input: &str) -> String {
+	input
+		.chars()
+		.map(|c| {
+			match c {
+				// allowed
+				'a'..='z' | 'A'..='Z' | '0'..='9' | '.' | '_' | '-' | '(' | ')' => c,
+
+				// everything else becomes '-'
+				_ => '-',
+			}
+		})
+		.collect()
+}
+
+// endregion: --- Support

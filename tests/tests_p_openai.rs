@@ -128,6 +128,11 @@ async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_binary_image_file_ok() -> TestResult<()> {
+	common_tests::common_test_chat_image_file_ok(MODEL_LATEST).await
+}
+
+#[tokio::test]
 async fn test_chat_binary_audio_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_audio_b64_ok(AUDIO_MODEL).await
 }
