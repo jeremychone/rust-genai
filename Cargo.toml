@@ -29,6 +29,9 @@ reqwest = {version = "0.12", default-features = false, features = ["json", "rust
 reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
 bytes = "1.6"
+# -- File
+base64 = "0.22.0" 
+mime_guess = "=2.0.5"
 # -- Others
 derive_more = { version = "2", features = ["from", "display"] }
 value-ext = "0.1.2" 

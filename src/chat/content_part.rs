@@ -1,6 +1,8 @@
+use crate::Result;
 use crate::chat::{ToolCall, ToolResponse};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use std::sync::Arc;
 
 // region:    --- Content Part
@@ -63,6 +65,37 @@ impl ContentPart {
 			content_type: content_type.into(),
 			source: BinarySource::Url(url.into()),
 		})
+	}
+
+	/// Create a binary content part from a file path.
+	///
+	/// Reads the file, determines the MIME type from the file extension,
+	/// and base64-encodes the content.
+	///
+	/// - file_path: Path to the file to read.
+	///
+	/// Returns an error if the file cannot be read.
+	pub fn from_binary_file(file_path: impl AsRef<Path>) -> Result<ContentPart> {
+		let file_path = file_path.as_ref();
+
+		// Read the file content
+		let content = std::fs::read(file_path)
+			.map_err(|e| crate::Error::Internal(format!("Failed to read file '{}': {}", file_path.display(), e)))?;
+
+		// Determine MIME type from extension
+		let content_type = mime_guess::from_path(file_path).first_or_octet_stream().to_string();
+
+		// Base64 encode
+		let b64_content = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &content);
+
+		// Extract file name
+		let name = file_path.file_name().and_then(|n| n.to_str()).map(String::from);
+
+		Ok(ContentPart::Binary(Binary {
+			name,
+			content_type,
+			source: BinarySource::Base64(b64_content.into()),
+		}))
 	}
 }
 
