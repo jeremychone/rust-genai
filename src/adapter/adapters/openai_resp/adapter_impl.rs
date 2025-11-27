@@ -20,7 +20,10 @@ pub struct OpenAIRespAdapter;
 // Latest models
 const MODELS: &[&str] = &[
 	//
+	"gpt-5-pro",
 	"gpt-5-codex",
+	"gpt-5.1-codex",
+	"gpt-5.1-codex-mini",
 ];
 
 impl OpenAIRespAdapter {
