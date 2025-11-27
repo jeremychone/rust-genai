@@ -4,8 +4,12 @@ use genai::Client;
 use genai::chat::{ChatMessage, ChatRequest, ContentPart};
 use tracing_subscriber::EnvFilter;
 
-const MODEL: &str = "gpt-5.1-codex";
-const IMAGE_URL: &str = "https://aipack.ai/images/test-duck.jpg";
+const MODEL: &str = "gpt-5.1";
+// const MODEL: &str = "claude-sonnet-4-5";
+
+// const IMAGE_URL: &str = "https://aipack.ai/images/test-duck.jpg";
+
+const IMAGE_SOME_PATH: &str = "tests/data/duck-small.jpg";
 const IMAGE_OTHER_ONE_PATH: &str = "tests/data/other-one.png";
 
 #[tokio::main]
@@ -19,11 +23,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	chat_req = chat_req
-		.append_message(ChatMessage::user(vec![ContentPart::from_binary_url(
-			"image/jpg",
-			IMAGE_URL,
-			None,
-		)]))
+		.append_message(ChatMessage::user(vec![
+			ContentPart::from_text("here is the file: 'some-image.jpg'"), // To test when name is different, should take precedence
+			ContentPart::from_binary_file(IMAGE_SOME_PATH)?,
+		]))
 		.append_message(ChatMessage::user(vec![
 			ContentPart::from_text("here is the file: 'other-one.png'"), // this is the most model portable way to provide image name/info
 			ContentPart::from_binary_file(IMAGE_OTHER_ONE_PATH)?,
@@ -51,6 +54,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 		println!();
 	}
+
+	// NOTE: For web url image, we can `from_binary_url` but not supported by all models (e.g., Anthropic does not support those)
+	// ContentPart::from_binary_url(
+	// 			"image/jpg",
+	// 			IMAGE_URL,
+	// 			None,
+	// 		)
 
 	Ok(())
 }
