@@ -1,12 +1,12 @@
 //! This example demonstrates how to properly attach image to the conversations
 
 use genai::Client;
-use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest, ContentPart};
 use tracing_subscriber::EnvFilter;
 
-const MODEL: &str = "gpt-4o-mini";
+const MODEL: &str = "gpt-5.1-codex";
 const IMAGE_URL: &str = "https://aipack.ai/images/test-duck.jpg";
+const IMAGE_OTHER_ONE_PATH: &str = "tests/data/other-one.png";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,20 +17,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let client = Client::default();
 
-	let question = "What is in this picture?";
-
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
-	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
-	chat_req = chat_req.append_message(ChatMessage::user(vec![
-		ContentPart::from_text(question),
-		ContentPart::from_binary_url("image/jpg", IMAGE_URL, None),
-	]));
+	chat_req = chat_req
+		.append_message(ChatMessage::user(vec![ContentPart::from_binary_url(
+			"image/jpg",
+			IMAGE_URL,
+			None,
+		)]))
+		.append_message(ChatMessage::user(vec![
+			ContentPart::from_text("here is the file: 'other-one.png'"), // this is the most model portable way to provide image name/info
+			ContentPart::from_binary_file(IMAGE_OTHER_ONE_PATH)?,
+		]));
 
-	println!("\n--- Question:\n{question}");
-	let chat_res = client.exec_chat_stream(MODEL, chat_req.clone(), None).await?;
+	let questions = [
+		"What is the first image about? and what is the file name for this image if you have it?",
+		"What is the second image about? and what is the file name for this image if you have it?",
+	];
 
-	println!("\n--- Answer: (streaming)");
-	let _assistant_answer = print_chat_stream(chat_res, None).await?;
+	for question in questions {
+		println!("\nQuestion: {question}");
+
+		let chat_req = chat_req.clone().append_message(ChatMessage::user(question));
+		let chat_res = client.exec_chat(MODEL, chat_req, None).await?;
+
+		let usage = chat_res.usage;
+		let response_content = chat_res.content.joined_texts().ok_or("Should have response")?;
+
+		println!("\nAnswer: {response_content}");
+		println!(
+			"prompt: {:?} tokens  |  completion: {:?} tokens",
+			usage.prompt_tokens, usage.completion_tokens
+		);
+
+		println!();
+	}
 
 	Ok(())
 }

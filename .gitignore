@@ -66,6 +66,7 @@ out/
 
 # -- Test data (one by one)
 !tests/data/duck-small.jpg
+!tests/data/other-one.png
 !tests/data/small.pdf
 
 # -- Nodejs
