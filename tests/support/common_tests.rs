@@ -1,6 +1,7 @@
 use crate::get_option_value;
 use crate::support::data::{
-	IMAGE_URL_JPG_DUCK, TEST_IMAGE_FILE_PATH, get_b64_audio, get_b64_duck, get_b64_pdf, has_audio_file,
+	AUDIO_TEST_FILE_PATH, IMAGE_URL_JPG_DUCK, TEST_IMAGE_FILE_PATH, get_b64_audio, get_b64_duck, get_b64_pdf,
+	has_audio_file,
 };
 use crate::support::{
 	Check, StreamExtract, TestResult, assert_contains, assert_reasoning_content, assert_reasoning_usage,
@@ -769,12 +770,11 @@ pub async fn common_test_chat_audio_b64_ok(model: &str) -> TestResult<()> {
 
 	// -- Build & Exec
 	let mut chat_req = ChatRequest::default().with_system("Transcribe the audio");
-	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
-	chat_req = chat_req.append_message(ChatMessage::user(vec![ContentPart::from_binary_base64(
-		"audio/wav",
-		get_b64_audio()?,
-		None,
-	)]));
+	let cp_audio = ContentPart::from_binary_file(AUDIO_TEST_FILE_PATH)?;
+	// similar as the from_binary_file but manual
+	// let cp_audio = ContentPart::from_binary_base64("audio/wav", get_b64_audio()?, None);
+
+	chat_req = chat_req.append_message(ChatMessage::user(vec![cp_audio]));
 
 	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
