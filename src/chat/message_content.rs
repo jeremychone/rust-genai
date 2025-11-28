@@ -1,5 +1,5 @@
 /// Note: MessageContent is used for ChatRequest and ChatResponse.
-use crate::chat::{ContentPart, ToolCall, ToolResponse};
+use crate::chat::{Binary, ContentPart, ToolCall, ToolResponse};
 use serde::{Deserialize, Serialize};
 
 /// Message content container used in ChatRequest and ChatResponse.
@@ -147,6 +147,14 @@ impl MessageContent {
 	/// Consume and return all text parts as owned Strings.
 	pub fn into_texts(self) -> Vec<String> {
 		self.parts.into_iter().filter_map(|p| p.into_text()).collect()
+	}
+
+	pub fn binaries(&self) -> Vec<&Binary> {
+		self.parts.iter().filter_map(|p| p.as_binary()).collect()
+	}
+
+	pub fn into_binaries(self) -> Vec<Binary> {
+		self.parts.into_iter().filter_map(|p| p.into_binary()).collect()
 	}
 
 	/// Return references to all ToolCall parts.
