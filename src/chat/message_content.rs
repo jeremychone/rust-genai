@@ -86,6 +86,15 @@ impl Extend<ContentPart> for MessageContent {
 	}
 }
 
+/// Computed accessors
+impl MessageContent {
+	/// Returns an approximate in-memory size of this `MessageContent`, in bytes,
+	/// computed as the sum of the sizes of all parts.
+	pub fn size(&self) -> usize {
+		self.parts.iter().map(|p| p.size()).sum()
+	}
+}
+
 // region:    --- Iterator Support
 
 use crate::support;

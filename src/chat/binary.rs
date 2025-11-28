@@ -120,6 +120,27 @@ impl Binary {
 	}
 }
 
+/// Computed assessors
+impl Binary {
+	/// Returns an approximate in-memory size of this `Binary`, in bytes,
+	/// computed as the sum of the UTF-8 lengths of:
+	/// - `content_type`
+	/// - `name` (if any)
+	/// - the underlying URL or base64 string in `source`.
+	///
+	/// This does **not** return the decoded byte length of the file.
+	/// This does **not** return the size of the URL content
+	pub fn size(&self) -> usize {
+		let mut size = self.content_type.len();
+		size += self.name.as_ref().map(|n| n.len()).unwrap_or_default();
+		size += match &self.source {
+			BinarySource::Url(url) => url.len(),
+			BinarySource::Base64(data) => data.len(),
+		};
+		size
+	}
+}
+
 // region:    --- BinarySource
 
 /// Origin of a binary payload.

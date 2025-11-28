@@ -42,6 +42,31 @@ pub struct Tool {
 	pub config: Option<Value>,
 }
 
+/// Computed accessors
+impl Tool {
+	/// Returns an approximate in-memory size of this `Tool`, in bytes,
+	/// computed as the sum of the UTF-8 lengths of:
+	/// - `name`
+	/// - `description` (if any)
+	/// - JSON-serialized `schema` (if any)
+	/// - JSON-serialized `config` (if any)
+	pub fn size(&self) -> usize {
+		let mut size = self.name.len();
+		size += self.description.as_ref().map(|d| d.len()).unwrap_or_default();
+		size += self
+			.schema
+			.as_ref()
+			.map(|s| serde_json::to_string(s).map(|j| j.len()).unwrap_or_default())
+			.unwrap_or_default();
+		size += self
+			.config
+			.as_ref()
+			.map(|c| serde_json::to_string(c).map(|j| j.len()).unwrap_or_default())
+			.unwrap_or_default();
+		size
+	}
+}
+
 /// Constructor
 impl Tool {
 	/// Create a new tool with the given name.

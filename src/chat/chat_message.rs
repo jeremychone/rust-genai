@@ -51,6 +51,16 @@ impl ChatMessage {
 	}
 }
 
+/// Computed accessors
+impl ChatMessage {
+	/// Returns an approximate in-memory size of this `ChatMessage`, in bytes,
+	/// computed as the size of the content plus.
+	pub fn size(&self) -> usize {
+		// Note: Do not include the role len
+		self.content.size()
+	}
+}
+
 impl ChatMessage {
 	/// Attaches options to this message.
 	pub fn with_options(mut self, options: impl Into<MessageOptions>) -> Self {

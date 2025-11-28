@@ -163,6 +163,25 @@ impl ContentPart {
 	}
 }
 
+/// Computed accessors
+impl ContentPart {
+	/// Returns an approximate in-memory size of this `ContentPart`, in bytes.
+	///
+	/// - For `Text` and `ThoughtSignature`: the UTF-8 length of the string.
+	/// - For `Binary`: delegates to `Binary::size()`.
+	/// - For `ToolCall`: delegates to `ToolCall::size()`.
+	/// - For `ToolResponse`: delegates to `ToolResponse::size()`.
+	pub fn size(&self) -> usize {
+		match self {
+			ContentPart::Text(text) => text.len(),
+			ContentPart::Binary(binary) => binary.size(),
+			ContentPart::ToolCall(tool_call) => tool_call.size(),
+			ContentPart::ToolResponse(tool_response) => tool_response.size(),
+			ContentPart::ThoughtSignature(thought) => thought.len(),
+		}
+	}
+}
+
 /// is_.. Accessors
 impl ContentPart {
 	#[allow(unused)]
