@@ -1,6 +1,7 @@
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::bigmodel::BigModelAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
 use crate::adapter::fireworks::FireworksAdapter;
@@ -41,6 +42,8 @@ pub enum AdapterKind {
 	DeepSeek,
 	/// For ZAI (Mostly use OpenAI)
 	Zai,
+	/// For big model (only accessible via namespace bigmodel::)
+	BigModel,
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
@@ -63,6 +66,7 @@ impl AdapterKind {
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
 			AdapterKind::Zai => "Zai",
+			AdapterKind::BigModel => "BigModel",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 		}
@@ -82,6 +86,7 @@ impl AdapterKind {
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
 			AdapterKind::Zai => "zai",
+			AdapterKind::BigModel => "BigModel",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 		}
@@ -100,6 +105,7 @@ impl AdapterKind {
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
 			"zai" => Some(AdapterKind::Zai),
+			"bigmodel" => Some(AdapterKind::BigModel),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			_ => None,
@@ -123,6 +129,7 @@ impl AdapterKind {
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Zai => Some(ZaiAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::BigModel => Some(BigModelAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 		}
@@ -158,6 +165,9 @@ impl AdapterKind {
 	pub fn from_model(model: &str) -> Result<Self> {
 		// -- First check if namespaced
 		if let (_, Some(ns)) = ModelName::model_name_and_namespace(model) {
+			// JC-NOTE-2025-11-30: We should not need a special way to handle zai for this, since it should match to zai already.
+			//                     Now, for 0.5.0, I am planning to change the logic to have `zai-coding::` namespace (so, adapters will have some namespace 'aliases')
+			//                     See reasoning here: https://github.com/jeremychone/rust-genai/pull/76#issuecomment-3594311524
 			// Special handling: "zai" namespace should route to ZAI for coding endpoint
 			if ns == "zai" {
 				return Ok(AdapterKind::Zai);
