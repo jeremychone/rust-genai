@@ -123,6 +123,11 @@ async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_binary_image_file_ok() -> TestResult<()> {
+	common_tests::common_test_chat_image_file_ok(MODEL).await
+}
+
+#[tokio::test]
 async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
 }
