@@ -108,8 +108,10 @@ impl WebResponse {
 		let body = if ct.starts_with("application/json") {
 			res.json::<Value>().await?
 		} else {
+			let body = res.text().await?;
 			return Err(Error::ResponseFailedNotJson {
 				content_type: ct.to_string(),
+				body,
 			});
 		};
 
