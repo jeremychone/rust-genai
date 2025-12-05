@@ -212,7 +212,7 @@ impl AdapterKind {
 /// Inner api to return
 impl AdapterKind {
 	fn from_model_namespace(model: &str) -> Option<Self> {
-		let (_, namespace) = ModelName::split_as_model_name_and_namespace(model);
+		let (namespace, _) = ModelName::split_as_namespace_and_name(model);
 		let namespace = namespace?;
 
 		// -- First, check if simple adapter lower string match

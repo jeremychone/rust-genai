@@ -7,35 +7,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct ModelName(Arc<str>);
 
-/// Utilities
 impl ModelName {
-	pub fn has_namespace(&self, namespace: &str) -> bool {
-		if let Some(ns) = self.namespace() {
-			ns == namespace
-		} else {
-			false
-		}
+	pub fn namespace_is(&self, namespace: &str) -> bool {
+		self.namespace() == Some(namespace)
 	}
 
 	pub fn namespace(&self) -> Option<&str> {
-		self.as_model_name_and_namespace().1
+		self.namespace_and_name().0
 	}
 
-	/// Calling the `model_name_and_namespace`
-	pub(crate) fn as_model_name_and_namespace(&self) -> (&str, Option<&str>) {
-		Self::split_as_model_name_and_namespace(&self.0)
+	/// Returns `(namespace, name)`
+	pub fn namespace_and_name(&self) -> (Option<&str>, &str) {
+		Self::split_as_namespace_and_name(&self.0)
 	}
 
-	/// e.g., `openai::gpt4.1` ("gpt4.1", Some("openai"))
-	///       `gpt4.1` ("gpt4.1", None)
-	pub(crate) fn split_as_model_name_and_namespace(model: &str) -> (&str, Option<&str>) {
+	/// e.g.:
+	/// `openai::gpt4.1` → (Some("openai"), "gpt4.1")
+	/// `gpt4.1`         → (None, "gpt4.1")
+	pub(crate) fn split_as_namespace_and_name(model: &str) -> (Option<&str>, &str) {
 		if let Some(ns_idx) = model.find("::") {
 			let ns: &str = &model[..ns_idx];
 			let name: &str = &model[(ns_idx + 2)..];
-			// TODO: assess what to do when name or ns is empty
-			(name, Some(ns))
+			(Some(ns), name)
 		} else {
-			(model, None)
+			(None, model)
 		}
 	}
 }

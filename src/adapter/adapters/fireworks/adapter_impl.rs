@@ -59,7 +59,7 @@ impl Adapter for FireworksAdapter {
 		if !target.model.model_name.contains('/') {
 			target.model = target.model.from_name(format!(
 				"accounts/fireworks/models/{}",
-				target.model.model_name.as_model_name_and_namespace().0
+				target.model.model_name.namespace_and_name().1
 			))
 		}
 		// NOTE: Fireworks max_tokens is set at 2K by default, which is unpractical for most task.

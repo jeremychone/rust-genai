@@ -108,7 +108,7 @@ impl Adapter for AnthropicAdapter {
 		} = Self::into_anthropic_request_parts(chat_req)?;
 
 		// -- Extract Model Name and Reasoning
-		let (raw_model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, raw_model_name) = model.model_name.namespace_and_name();
 
 		// -- Reasoning Budget
 		let (model_name, computed_reasoning_effort) = match (raw_model_name, options_set.reasoning_effort()) {

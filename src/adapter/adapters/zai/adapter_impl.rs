@@ -17,7 +17,7 @@ struct ZaiModelEndpoint {
 impl ZaiModelEndpoint {
 	/// Parse ModelIden to determine if it's a coding model and return endpoint
 	fn from_model(model: &ModelIden) -> Self {
-		let (_, namespace) = model.model_name.as_model_name_and_namespace();
+		let (namespace, _) = model.model_name.namespace_and_name();
 
 		// Check if namespace is "zai" to route to coding endpoint
 		let endpoint = match namespace {

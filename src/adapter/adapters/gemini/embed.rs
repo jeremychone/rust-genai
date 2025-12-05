@@ -83,9 +83,6 @@ pub fn to_embed_request_data(
 	let ServiceTarget { model, auth, .. } = service_target;
 	let api_key = get_api_key(auth, &model)?;
 
-	// Extract the actual model name (without namespace) - not needed for Gemini request body
-	let (_model_name, _) = model.model_name.as_model_name_and_namespace();
-
 	// Build headers - Gemini uses x-goog-api-key header
 	let mut headers = Headers::from(vec![
 		("x-goog-api-key".to_string(), api_key),
@@ -97,8 +94,9 @@ pub fn to_embed_request_data(
 		headers.merge_with(custom_headers);
 	}
 
+	// Extract the actual model name (without namespace) - not needed for Gemini request body
 	// Get the model name for the request
-	let (model_name, _) = model.model_name.as_model_name_and_namespace();
+	let (_, model_name) = model.model_name.namespace_and_name();
 	let full_model_name = format!("models/{model_name}",);
 
 	// Convert EmbedRequest to Gemini format and determine URL

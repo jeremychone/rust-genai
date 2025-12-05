@@ -80,7 +80,7 @@ impl Adapter for CohereAdapter {
 		} = Self::into_cohere_request_parts(model.clone(), chat_req)?;
 
 		// -- Build the basic payload
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"model": model_name.to_string(),

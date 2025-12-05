@@ -64,7 +64,7 @@ impl Adapter for OpenAIRespAdapter {
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 		let adapter_kind = model.adapter_kind;
 
 		// -- api_key

@@ -83,7 +83,7 @@ pub fn to_embed_request_data(
 	let api_key = get_api_key(auth, &model)?;
 
 	// Extract the actual model name (without namespace)
-	let (model_name, _) = model.model_name.as_model_name_and_namespace();
+	let (_, model_name) = model.model_name.namespace_and_name();
 
 	// Build headers
 	let mut headers = Headers::from(vec![

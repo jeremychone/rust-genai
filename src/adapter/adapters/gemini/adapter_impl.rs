@@ -68,7 +68,7 @@ impl Adapter for GeminiAdapter {
 	///       this will return the URL without the API_KEY in it. The API_KEY will need to be added by the caller.
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		let base_url = endpoint.base_url();
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 		let url = match service_type {
 			ServiceType::Chat => format!("{base_url}models/{model_name}:generateContent"),
 			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent"),
@@ -84,7 +84,7 @@ impl Adapter for GeminiAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { endpoint, auth, model } = target;
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
