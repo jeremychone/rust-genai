@@ -353,6 +353,20 @@ impl From<ToolResponse> for MessageContent {
 	}
 }
 
+impl From<ContentPart> for MessageContent {
+	fn from(part: ContentPart) -> Self {
+		Self { parts: vec![part] }
+	}
+}
+
+impl From<Binary> for MessageContent {
+	fn from(bin: Binary) -> Self {
+		Self {
+			parts: vec![bin.into()],
+		}
+	}
+}
+
 impl From<Vec<ContentPart>> for MessageContent {
 	fn from(parts: Vec<ContentPart>) -> Self {
 		Self { parts }
