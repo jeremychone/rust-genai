@@ -10,10 +10,10 @@ use crate::adapter::groq::{self, GroqAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
+use crate::adapter::zai;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use tracing::info;
 
 /// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
 ///
@@ -164,23 +164,11 @@ impl AdapterKind {
 	///       This might change in the future, hence the Result return type.
 	pub fn from_model(model: &str) -> Result<Self> {
 		// -- First check if namespaced
-		if let (_, Some(ns)) = ModelName::model_name_and_namespace(model) {
-			// JC-NOTE-2025-11-30: We should not need a special way to handle zai for this, since it should match to zai already.
-			//                     Now, for 0.5.0, I am planning to change the logic to have `zai-coding::` namespace (so, adapters will have some namespace 'aliases')
-			//                     See reasoning here: https://github.com/jeremychone/rust-genai/pull/76#issuecomment-3594311524
-			// Special handling: "zai" namespace should route to ZAI for coding endpoint
-			if ns == "zai" {
-				return Ok(AdapterKind::Zai);
-			}
+		if let Some(adapter) = Self::from_model_namespace(model) {
+			return Ok(adapter);
+		};
 
-			if let Some(adapter) = Self::from_lower_str(ns) {
-				return Ok(adapter);
-			} else {
-				info!("No AdapterKind found for '{ns}'")
-			}
-		}
-
-		// -- Resolve from modelname
+		// -- Otherwise, Resolve from modelname
 		if model.starts_with("o3")
 			|| model.starts_with("o4")
 			|| model.starts_with("o1")
@@ -218,3 +206,29 @@ impl AdapterKind {
 		}
 	}
 }
+
+// region:    --- Support
+
+/// Inner api to return
+impl AdapterKind {
+	fn from_model_namespace(model: &str) -> Option<Self> {
+		let (_, namespace) = ModelName::split_as_model_name_and_namespace(model);
+		let namespace = namespace?;
+
+		// -- First, check if simple adapter lower string match
+		if let Some(adapter) = Self::from_lower_str(namespace) {
+			Some(adapter)
+		}
+		// -- Second, custom, for now, we harcode this exceptin here (might become more generic later)
+		else if namespace == zai::ZAI_CODING_NAMESPACE {
+			Some(Self::Zai)
+		}
+		//
+		// -- Otherwise, no adapter from namespace, because no matching namespace
+		else {
+			None
+		}
+	}
+}
+
+// endregion: --- Support

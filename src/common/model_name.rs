@@ -9,14 +9,26 @@ pub struct ModelName(Arc<str>);
 
 /// Utilities
 impl ModelName {
+	pub fn has_namespace(&self, namespace: &str) -> bool {
+		if let Some(ns) = self.namespace() {
+			ns == namespace
+		} else {
+			false
+		}
+	}
+
+	pub fn namespace(&self) -> Option<&str> {
+		self.as_model_name_and_namespace().1
+	}
+
 	/// Calling the `model_name_and_namespace`
 	pub(crate) fn as_model_name_and_namespace(&self) -> (&str, Option<&str>) {
-		Self::model_name_and_namespace(&self.0)
+		Self::split_as_model_name_and_namespace(&self.0)
 	}
 
 	/// e.g., `openai::gpt4.1` ("gpt4.1", Some("openai"))
 	///       `gpt4.1` ("gpt4.1", None)
-	pub(crate) fn model_name_and_namespace(model: &str) -> (&str, Option<&str>) {
+	pub(crate) fn split_as_model_name_and_namespace(model: &str) -> (&str, Option<&str>) {
 		if let Some(ns_idx) = model.find("::") {
 			let ns: &str = &model[..ns_idx];
 			let name: &str = &model[(ns_idx + 2)..];

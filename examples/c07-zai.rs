@@ -12,7 +12,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::builder().build();
 
 	// Test cases demonstrating automatic endpoint routing
-	let test_cases = vec![("glm-4.6", "Regular ZAI model"), ("zai::glm-4.6", "Coding subscription model")];
+	let test_cases = vec![
+		("glm-4.6", "Regular ZAI model"),
+		("zai-coding::glm-4.6", "Coding subscription model"),
+	];
 
 	for (model_name, description) in test_cases {
 		println!("\n=== {} ===", description);

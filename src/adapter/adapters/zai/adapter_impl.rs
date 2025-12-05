@@ -7,6 +7,8 @@ use crate::webc::WebResponse;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
+pub const ZAI_CODING_NAMESPACE: &str = "zai-coding";
+
 /// Helper structure to hold ZAI model parsing information
 struct ZaiModelEndpoint {
 	endpoint: Endpoint,
@@ -19,7 +21,7 @@ impl ZaiModelEndpoint {
 
 		// Check if namespace is "zai" to route to coding endpoint
 		let endpoint = match namespace {
-			Some("zai") => Endpoint::from_static("https://api.z.ai/api/coding/paas/v4/"),
+			Some(ZAI_CODING_NAMESPACE) => Endpoint::from_static("https://api.z.ai/api/coding/paas/v4/"),
 			_ => ZaiAdapter::default_endpoint(),
 		};
 
