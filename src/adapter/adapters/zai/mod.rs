@@ -8,12 +8,12 @@
 //! ZAI supports two different API endpoints using the ServiceTargetResolver pattern:
 //!
 //! ### Regular API (Credit-based) (default for those models or with `zai::` namespace)
-//! - Endpoint: `https://api.z.ai/api/paas/v4/`
+//! - Endpoint: `<https://api.z.ai/api/paas/v4/>`
 //! - Models: `glm-4.6`, `glm-4.5`, etc.
 //! - Usage: Standard API calls billed per token
 //!
 //! ### Coding Plan (Subscription-based only with the `zai-coding::` namepace)  
-//! - Endpoint: `https://api.z.ai/api/coding/paas/v4/`
+//! - Endpoint: `<https://api.z.ai/api/coding/paas/v4/>`
 //! - Models: `zai-coding::glm-4.6`, `zai-coding::glm-4.5`, etc.
 //! - Usage: Fixed monthly subscription for coding tasks
 //!

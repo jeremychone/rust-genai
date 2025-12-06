@@ -1,4 +1,4 @@
-//! API DOC: https://github.com/ollama/ollama/blob/main/docs/openai.md
+//! API DOC: <https://github.com/ollama/ollama/blob/main/docs/openai.md>
 
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -14,7 +14,7 @@ use value_ext::JsonValueExt;
 pub struct OllamaAdapter;
 
 /// Note: For now, it uses the OpenAI compatibility layer
-///       (https://github.com/ollama/ollama/blob/main/docs/openai.md)
+///       (<https://github.com/ollama/ollama/blob/main/docs/openai.md>)
 ///       Since the base Ollama API supports `application/x-ndjson` for streaming, whereas others support `text/event-stream`
 impl Adapter for OllamaAdapter {
 	fn default_endpoint() -> Endpoint {

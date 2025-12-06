@@ -1,5 +1,5 @@
 //! Gemini Embeddings API implementation
-//! API Documentation: https://ai.google.dev/gemini-api/docs/embeddings
+//! API Documentation: <https://ai.google.dev/gemini-api/docs/embeddings>
 
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, ServiceType, WebRequestData};

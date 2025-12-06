@@ -49,7 +49,7 @@ impl ModelIden {
 	}
 
 	/// Creates a new `ModelIden` with the specified name, or clones the existing one if the name is the same.
-	/// NOTE: Might be deprecated in favor of [`from_name`]
+	/// NOTE: Might be deprecated in favor of [`ModelIden::from_name`]
 	pub fn from_optional_name(&self, new_name: Option<String>) -> ModelIden {
 		if let Some(new_name) = new_name {
 			self.from_name(new_name)

@@ -1,5 +1,5 @@
 //! Cohere Embeddings API implementation
-//! API Documentation: https://docs.cohere.com/reference/embed
+//! API Documentation: <https://docs.cohere.com/reference/embed>
 
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, ServiceType, WebRequestData};
