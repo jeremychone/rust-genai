@@ -68,7 +68,11 @@ pub async fn common_test_chat_reasoning_ok(
 ) -> TestResult<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
-	let chat_req = seed_chat_req_simple();
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (deactivate to see the differences)
+		ChatMessage::system("Answer in one sentence. But make think hard to make sure it is not a trick question."),
+		ChatMessage::user("Why is the sky red?"),
+	]);
 	let options = ChatOptions::default().with_reasoning_effort(reasoning_effort);
 
 	// -- Exec

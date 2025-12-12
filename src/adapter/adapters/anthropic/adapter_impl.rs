@@ -21,13 +21,25 @@ const REASONING_LOW: u32 = 1024;
 const REASONING_MEDIUM: u32 = 8000;
 const REASONING_HIGH: u32 = 24000;
 
-fn get_anthropic_thinking_budget_value(effort: &ReasoningEffort) -> u32 {
-	match effort {
-		ReasoningEffort::Budget(budget) => *budget,
-		ReasoningEffort::Low | ReasoningEffort::Minimal => REASONING_LOW,
-		ReasoningEffort::Medium => REASONING_MEDIUM,
-		ReasoningEffort::High => REASONING_HIGH,
+fn insert_anthropic_thinking_budget_value(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
+	let thinking_budget = match effort {
+		ReasoningEffort::None => None,
+		ReasoningEffort::Budget(budget) => Some(*budget),
+		ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
+		ReasoningEffort::Medium => Some(REASONING_MEDIUM),
+		ReasoningEffort::High => Some(REASONING_HIGH),
+	};
+
+	if let Some(thinking_budget) = thinking_budget {
+		payload.x_insert(
+			"thinking",
+			json!({
+				"type": "enabled",
+				"budget_tokens": thinking_budget
+			}),
+		)?;
 	}
+	Ok(())
 }
 
 // NOTE: For Anthropic, the max_tokens must be specified.
@@ -117,7 +129,8 @@ impl Adapter for AnthropicAdapter {
 				// let model_name: &str = &model.model_name;
 				if let Some((prefix, last)) = raw_model_name.rsplit_once('-') {
 					let reasoning = match last {
-						"zero" => None, // That will disable thinking
+						"zero" => None,
+						"None" => Some(ReasoningEffort::Low),
 						"minimal" => Some(ReasoningEffort::Low),
 						"low" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
@@ -133,17 +146,7 @@ impl Adapter for AnthropicAdapter {
 				}
 			}
 			// If reasoning effort, turn the low, medium, budget ones into Budget
-			(model, Some(effort)) => {
-				let effort = match effort {
-					// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
-					ReasoningEffort::Minimal => ReasoningEffort::Low,
-					ReasoningEffort::Low => ReasoningEffort::Low,
-					ReasoningEffort::Medium => ReasoningEffort::Medium,
-					ReasoningEffort::High => ReasoningEffort::High,
-					ReasoningEffort::Budget(budget) => ReasoningEffort::Budget(*budget),
-				};
-				(model, Some(effort))
-			}
+			(model, Some(effort)) => (model, Some(effort.clone())),
 		};
 
 		// -- Build the basic payload
@@ -179,7 +182,9 @@ impl Adapter for AnthropicAdapter {
 					ReasoningEffort::Low => "low",
 					ReasoningEffort::Medium => "medium",
 					ReasoningEffort::High => "high",
-					ReasoningEffort::Budget(_) => "", // for now, will not set
+					// -- for now, will not set
+					ReasoningEffort::Budget(_) => "",
+					ReasoningEffort::None => "",
 				};
 				if !effort.is_empty() {
 					payload.x_insert(
@@ -192,14 +197,7 @@ impl Adapter for AnthropicAdapter {
 			}
 
 			// -- All models, including opus-4-5, we see the thinking budget
-			let budget = get_anthropic_thinking_budget_value(&computed_reasoning_effort);
-			payload.x_insert(
-				"thinking",
-				json!({
-					"type": "enabled",
-					"budget_tokens": budget
-				}),
-			)?;
+			insert_anthropic_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
 		}
 
 		// -- Add supported ChatOptions

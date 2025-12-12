@@ -188,50 +188,59 @@ impl ChatOptions {
 /// Provider-specific hint for reasoning intensity/budget.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReasoningEffort {
-	Minimal,
+	None,
 	Low,
 	Medium,
 	High,
 	Budget(u32),
+
+	// Legacy reasoning for <= gpt-5
+	Minimal,
 }
 
 impl ReasoningEffort {
 	/// Returns the lowercase variant name.
 	pub fn variant_name(&self) -> &'static str {
 		match self {
-			ReasoningEffort::Minimal => "minimal",
+			ReasoningEffort::None => "none",
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
 			ReasoningEffort::Budget(_) => "budget",
+			// Legacy
+			ReasoningEffort::Minimal => "minimal",
 		}
 	}
 
 	/// Returns a keyword for non-`Budget` variants; `None` for `Budget(_)`.
 	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
-			ReasoningEffort::Minimal => Some("minimal"),
+			ReasoningEffort::None => Some("none"),
 			ReasoningEffort::Low => Some("low"),
 			ReasoningEffort::Medium => Some("medium"),
 			ReasoningEffort::High => Some("high"),
 			ReasoningEffort::Budget(_) => None,
+			// Legacy
+			ReasoningEffort::Minimal => Some("minimal"),
 		}
 	}
 
 	/// Parses a verbosity keyword.
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
-			"minimal" => Some(ReasoningEffort::Minimal),
+			"none" => Some(ReasoningEffort::None),
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
+			// legacy
+			"minimal" => Some(ReasoningEffort::Minimal),
 			_ => None,
 		}
 	}
 
-	/// If `model_name` ends with `-<verbosity>`, returns the parsed verbosity and the trimmed name.
+	/// If `model_name` ends with `-reasoning_effort`, returns the parsed verbosity and the trimmed name.
 	///
-	/// Returns `(verbosity, trimmed_model_name)`.
+	/// Returns `(reasosing_effort?, trimmed_model_name)`.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		if let Some((prefix, last)) = model_name.rsplit_once('-')
 			&& let Some(effort) = ReasoningEffort::from_keyword(last)
@@ -245,11 +254,13 @@ impl ReasoningEffort {
 impl std::fmt::Display for ReasoningEffort {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			ReasoningEffort::Minimal => write!(f, "minimal"),
+			ReasoningEffort::None => write!(f, "none"),
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),
 			ReasoningEffort::Budget(n) => write!(f, "{n}"),
+			// Legacy
+			ReasoningEffort::Minimal => write!(f, "minimal"),
 		}
 	}
 }
