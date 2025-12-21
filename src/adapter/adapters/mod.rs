@@ -7,6 +7,7 @@ pub(super) mod deepseek;
 pub(super) mod fireworks;
 pub(super) mod gemini;
 pub(super) mod groq;
+pub(super) mod mimo;
 pub(super) mod nebius;
 pub(super) mod ollama;
 pub(super) mod openai;
