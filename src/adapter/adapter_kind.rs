@@ -7,6 +7,7 @@ use crate::adapter::deepseek::{self, DeepSeekAdapter};
 use crate::adapter::fireworks::FireworksAdapter;
 use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::{self, GroqAdapter};
+use crate::adapter::mimo::{self, MimoAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
@@ -34,6 +35,8 @@ pub enum AdapterKind {
 	Together,
 	/// Reuse some of the OpenAI adapter behavior, customize some (e.g., normalize thinking budget)
 	Groq,
+	/// For Mimo (Mostly use OpenAI)
+	Mimo,
 	/// For Nebius (Mostly use OpenAI)
 	Nebius,
 	/// For xAI (Mostly use OpenAI)
@@ -62,6 +65,7 @@ impl AdapterKind {
 			AdapterKind::Fireworks => "Fireworks",
 			AdapterKind::Together => "Together",
 			AdapterKind::Groq => "Groq",
+			AdapterKind::Mimo => "Mimo",
 			AdapterKind::Nebius => "Nebius",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
@@ -82,6 +86,7 @@ impl AdapterKind {
 			AdapterKind::Fireworks => "fireworks",
 			AdapterKind::Together => "together",
 			AdapterKind::Groq => "groq",
+			AdapterKind::Mimo => "mimo",
 			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
@@ -101,6 +106,7 @@ impl AdapterKind {
 			"fireworks" => Some(AdapterKind::Fireworks),
 			"together" => Some(AdapterKind::Together),
 			"groq" => Some(AdapterKind::Groq),
+			"mimo" => Some(AdapterKind::Mimo),
 			"nebius" => Some(AdapterKind::Nebius),
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
@@ -125,6 +131,7 @@ impl AdapterKind {
 			AdapterKind::Fireworks => Some(FireworksAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Together => Some(TogetherAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Mimo => Some(MimoAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Nebius => Some(NebiusAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
@@ -191,6 +198,8 @@ impl AdapterKind {
 			Ok(Self::Fireworks)
 		} else if groq::MODELS.contains(&model) {
 			Ok(Self::Groq)
+		} else if mimo::MODELS.contains(&model) {
+			Ok(Self::Mimo)
 		} else if model.starts_with("command") || model.starts_with("embed-") {
 			Ok(Self::Cohere)
 		} else if deepseek::MODELS.contains(&model) {

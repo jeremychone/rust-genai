@@ -1,6 +1,6 @@
 # genai - Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**, **Groq**, **DeepSeek** (deepseek.com & Groq), **Cohere** (more to come)
+Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**, **Groq**, **DeepSeek** (deepseek.com & Groq), **Cohere**, **Mimo** (more to come)
 
 Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
 
@@ -97,6 +97,7 @@ const MODEL_GROQ: &str = "llama-3.1-8b-instant";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 const MODEL_XAI: &str = "grok-beta";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
+const MODEL_MIMO: &str = "mimo-v2-flash";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
@@ -109,6 +110,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_GROQ, "GROQ_API_KEY"),
 	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
+	(MODEL_MIMO, "MIMO_API_KEY"),
 	(MODEL_OLLAMA, ""),
 ];
 
@@ -118,6 +120,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - starts_with "command"  -> Cohere
 //  - starts_with "gemini"   -> Gemini
 //  - model in Groq models   -> Groq
+//  - starts_with "mimo"     -> Mimo
 //  - For anything else      -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`
@@ -205,7 +208,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## ChatOptions
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo
 
 | Property      | OpenAI Compatibles (*1) | Anthropic                   | Gemini `generationConfig.` | Cohere        |
 |---------------|-------------------------|-----------------------------|----------------------------|---------------|
@@ -225,7 +228,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo
 	- For **Groq**, the property `x_groq.usage.`  
 	- At this point, **Ollama** does not emit input/output tokens when streaming due to the Ollama OpenAI compatibility layer limitation. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
 	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider (or None)
