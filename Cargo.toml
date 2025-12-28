@@ -23,23 +23,23 @@ tokio-stream = "0.1"
 # -- Json
 serde = { version = "1", features = ["derive", "rc"] } # Opted to rc for Arc<T> serialization
 serde_json = "1"
-serde_with = "3.12.0"
+serde_with = "3"
 # -- Web
 reqwest = {version = "0.12", default-features = false, features = ["json", "rustls-tls"]}
 reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
 bytes = "1.6"
 # -- File
-base64 = "0.22.0" 
-mime_guess = "=2.0.5"
+base64 = "0.22.0"
+mime_guess = "2"
 # -- Others
 derive_more = { version = "2", features = ["from", "display"] }
-value-ext = "0.1.2" 
+value-ext = "0.1.2"
 
 [dev-dependencies]
-simple-fs = "0.8.0"
+simple-fs = "0.9.2"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
-serial_test = "3.2.0"
+serial_test = "3.2"
 base64 = "0.22.0"  # Check for the latest version
-bitflags = "2.8.0"
-gcp_auth = "0.12.3"
+bitflags = "2.8"
+gcp_auth = "0.12"
