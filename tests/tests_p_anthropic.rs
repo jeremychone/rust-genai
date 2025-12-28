@@ -164,7 +164,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-sonnet-4-5-20250929").await
+	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-sonnet-4-5").await
 }
 
 // endregion: --- List
