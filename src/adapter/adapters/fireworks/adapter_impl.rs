@@ -68,9 +68,13 @@ impl Adapter for FireworksAdapter {
 		// NOTE: The `genai` strategy is to set a large max_tokens value, letting the model enforce its own lower limit by default to avoid unpleasant and confusing surprises.
 		//       Users can use [`ChatOptions`] to specify a specific max_tokens value.
 		// NOTE: As mentioned in the Fireworks FAQ above, typically, for Fireworks-hosted models the top max_tokens is equal to the context window.
-		//       Since, Qwen3 models are at 256k, so we will use this upper bound (without going to the 1M/10M of Llama 4).
+		//       Since, Qwen3 models are at 256k, so we will use this upper bound (without going to the 1M/10M of Llama 4) for non-streaming.
+		//       However, since anything over 5k requires streaming API, we cap the default to 5k for non-streaming here so that the request doesn't fail.
 		let custom = ToWebRequestCustom {
-			default_max_tokens: Some(256_000),
+			default_max_tokens: match service_type {
+				ServiceType::ChatStream => Some(256_000),
+				_ => Some(5_000),
+			},
 		};
 
 		OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options, Some(custom))
