@@ -193,7 +193,7 @@ impl Adapter for GeminiAdapter {
 				}
 				true
 			});
-			payload.x_insert("/generationConfig/responseSchema", schema)?;
+			payload.x_insert("/generationConfig/responseJsonSchema", schema)?;
 		}
 
 		// -- Add supported ChatOptions
