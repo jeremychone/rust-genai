@@ -253,7 +253,9 @@ impl futures::Stream for OpenAIStreamer {
 
 								// Return the Event
 								return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
-							} else if let Some(reasoning_content) = reasoning_content {
+							} else if let Some(reasoning_content) = reasoning_content
+								&& !reasoning_content.is_empty()
+							{
 								// Add to the captured_content if chat options allow it
 								if self.options.capture_reasoning_content {
 									match self.captured_data.reasoning_content {
