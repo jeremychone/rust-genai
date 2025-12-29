@@ -160,10 +160,10 @@ impl futures::Stream for OpenAIStreamer {
 						{
 							// Check if there's a tool call in the delta
 							if let Some(delta_tool_calls) = delta_tool_calls.as_array()
-								&& !delta_tool_calls.is_empty()
+								&& let Some(tool_call_obj_val) = delta_tool_calls.get(0)
 							{
 								// Extract the first tool call object as a mutable value
-								let mut tool_call_obj = delta_tool_calls[0].clone();
+								let mut tool_call_obj = tool_call_obj_val.clone();
 
 								// Extract tool call data
 								if let (Ok(index), Ok(mut function)) = (
@@ -177,41 +177,34 @@ impl futures::Stream for OpenAIStreamer {
 									let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 									// Don't parse yet - accumulate as string first
 									let mut tool_call = crate::chat::ToolCall {
-										call_id,
-										fn_name,
+										call_id: call_id.clone(),
+										fn_name: fn_name.clone(),
 										fn_arguments: serde_json::Value::String(arguments.clone()),
 										thought_signatures: None,
 									};
 
 									// Capture the tool call if enabled
 									if self.options.capture_tool_calls {
-										match &mut self.captured_data.tool_calls {
-											Some(calls) => {
-												self.captured_data.tool_calls = Some({
-													// Accumulate arguments as strings, don't parse until complete
-													let accumulated = if let Some(existing) =
-														calls[index as usize].fn_arguments.as_str()
-													{
-														format!("{}{}", existing, arguments)
-													} else {
-														arguments.clone()
-													};
+										let calls = self.captured_data.tool_calls.get_or_insert_with(Vec::new);
+										let idx = index as usize;
 
-													// Store as string (will be parsed at stream end)
-													calls[index as usize].fn_arguments =
-														serde_json::Value::String(accumulated);
-
-													// Update call_id and fn_name on first chunk
-													if !tool_call.fn_name.is_empty() {
-														calls[index as usize].call_id = tool_call.call_id.clone();
-														calls[index as usize].fn_name = tool_call.fn_name.clone();
-													}
-
-													tool_call = calls[index as usize].clone();
-													calls.to_vec()
-												})
+										if let Some(call) = calls.get_mut(idx) {
+											// Accumulate arguments as strings, don't parse until complete
+											if let Some(existing) = call.fn_arguments.as_str() {
+												let accumulated = format!("{existing}{arguments}");
+												call.fn_arguments = Value::String(accumulated);
 											}
-											None => self.captured_data.tool_calls = Some(vec![tool_call.clone()]),
+
+											// Update call_id and fn_name on first chunk that has them
+											if !fn_name.is_empty() {
+												call.call_id = call_id.clone();
+												call.fn_name = fn_name.clone();
+											}
+											tool_call = call.clone();
+										} else {
+											// If it doesn't exist, we add it.
+											// We use resize to handle potential gaps (though unlikely in streaming).
+											calls.resize(idx + 1, tool_call.clone());
 										}
 									}
 
@@ -225,20 +218,12 @@ impl futures::Stream for OpenAIStreamer {
 						// -- Content / Reasoning Content
 						// Some providers (e.g., Ollama) emit reasoning in `delta.reasoning` and send empty content.
 						else {
-							let content = first_choice
-								.x_take::<Option<String>>("/delta/content")
-								.ok()
-								.flatten();
+							let content = first_choice.x_take::<Option<String>>("/delta/content").ok().flatten();
 							let reasoning_content = first_choice
 								.x_take::<Option<String>>("/delta/reasoning_content")
 								.ok()
 								.flatten()
-								.or_else(|| {
-									first_choice
-										.x_take::<Option<String>>("/delta/reasoning")
-										.ok()
-										.flatten()
-								});
+								.or_else(|| first_choice.x_take::<Option<String>>("/delta/reasoning").ok().flatten());
 
 							if let Some(content) = content
 								&& !content.is_empty()
