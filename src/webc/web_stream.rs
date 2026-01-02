@@ -288,33 +288,27 @@ fn process_buff_string_delimited(
 	partial_message: &mut Option<String>,
 	delimiter: &str,
 ) -> Result<BuffResponse, crate::webc::Error> {
-	let mut first_message: Option<String> = None;
-	let mut candidate_message: Option<String> = None;
-	let mut next_messages: Option<Vec<String>> = None;
+	let full_string = if let Some(partial) = partial_message.take() {
+		format!("{partial}{buff_string}")
+	} else {
+		buff_string
+	};
 
-	let parts = buff_string.split(delimiter);
+	let mut parts: Vec<String> = full_string.split(delimiter).map(|s| s.to_string()).collect();
 
-	for part in parts {
-		// If we already have a candidate, the candidate becomes the message
-		if let Some(candidate_message) = candidate_message.take() {
-			// If candidate is empty, we skip
-			if !candidate_message.is_empty() {
-				let message = candidate_message.to_string();
-				if first_message.is_none() {
-					first_message = Some(message);
-				} else {
-					next_messages.get_or_insert_with(Vec::new).push(message);
-				}
-			} else {
-				continue;
-			}
-		} else {
-			// And then, this part becomes the candidate
-			if let Some(partial) = partial_message.take() {
-				candidate_message = Some(format!("{partial}{part}"));
-			} else {
-				candidate_message = Some(part.to_string());
-			}
+	// The last part is the new partial (what's after the last delimiter)
+	let candidate_message = parts.pop();
+
+	// Filter out empty strings that result from multiple delimiters (e.g., \n\n\n\n)
+	let mut messages: Vec<String> = parts.into_iter().filter(|s| !s.is_empty()).collect();
+
+	let mut first_message = None;
+	let mut next_messages = None;
+
+	if !messages.is_empty() {
+		first_message = Some(messages.remove(0));
+		if !messages.is_empty() {
+			next_messages = Some(messages);
 		}
 	}
 

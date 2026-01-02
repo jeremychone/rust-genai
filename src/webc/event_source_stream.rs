@@ -49,7 +49,6 @@ impl Stream for EventSourceStream {
 
 			match nx {
 				Poll::Ready(Some(Ok(raw_event))) => {
-					println!("->> {raw_event}");
 					let mut data = String::new();
 					for line in raw_event.lines() {
 						let line = line.trim();
