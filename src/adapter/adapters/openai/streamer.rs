@@ -3,15 +3,15 @@ use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai::OpenAIAdapter;
 use crate::chat::{ChatOptionsSet, ToolCall};
+use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
-use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
 
 pub struct OpenAIStreamer {
-	inner: EventSource,
+	inner: EventSourceStream,
 	options: StreamerOptions,
 
 	// -- Set by the poll_next
@@ -21,8 +21,7 @@ pub struct OpenAIStreamer {
 }
 
 impl OpenAIStreamer {
-	// TODO: Problem - need the ChatOptions `.capture_content` and `.capture_usage`
-	pub fn new(inner: EventSource, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSourceStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
@@ -277,7 +276,10 @@ impl futures::Stream for OpenAIStreamer {
 				}
 				Some(Err(err)) => {
 					tracing::error!("Error: {}", err);
-					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err.into()))));
+					return Poll::Ready(Some(Err(Error::WebStream {
+						model_iden: self.options.model_iden.clone(),
+						cause: err.to_string(),
+					})));
 				}
 				None => {
 					return Poll::Ready(None);

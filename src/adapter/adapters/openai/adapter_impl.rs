@@ -7,11 +7,10 @@ use crate::chat::{
 	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{EventSourceStream, WebResponse};
 use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::error;
@@ -146,7 +145,7 @@ impl Adapter for OpenAIAdapter {
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		let event_source = EventSource::new(reqwest_builder)?;
+		let event_source = EventSourceStream::new(reqwest_builder);
 		let openai_stream = OpenAIStreamer::new(event_source, model_iden.clone(), options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 

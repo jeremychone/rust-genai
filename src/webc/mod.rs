@@ -4,12 +4,13 @@
 
 mod error;
 mod web_client;
-// For when not using `text/event-stream`
 mod web_stream;
+mod event_source_stream;
 
 pub(crate) use error::Result;
 pub(crate) use web_client::*;
 pub(crate) use web_stream::*;
+pub(crate) use event_source_stream::*;
 
 // Only public for external use
 pub use error::Error;
