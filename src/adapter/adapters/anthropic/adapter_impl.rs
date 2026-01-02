@@ -6,11 +6,10 @@ use crate::chat::{
 	ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{EventSourceStream, WebResponse};
 use crate::{Headers, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 use serde_json::{Value, json};
 use tracing::warn;
 use value_ext::JsonValueExt;
@@ -319,7 +318,7 @@ impl Adapter for AnthropicAdapter {
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		let event_source = EventSource::new(reqwest_builder)?;
+		let event_source = EventSourceStream::new(reqwest_builder);
 		let anthropic_stream = AnthropicStreamer::new(event_source, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
 		Ok(ChatStreamResponse {

@@ -26,7 +26,6 @@ serde_json = "1"
 serde_with = "3"
 # -- Web
 reqwest = {version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"]}
-reqwest-eventsource = "0.6"
 eventsource-stream = "0.2"
 bytes = "1.6"
 # -- File

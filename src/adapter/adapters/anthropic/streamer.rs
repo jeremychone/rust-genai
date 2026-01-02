@@ -1,15 +1,15 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, ToolCall, Usage};
+use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
-use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
 
 pub struct AnthropicStreamer {
-	inner: EventSource,
+	inner: EventSourceStream,
 	options: StreamerOptions,
 
 	// -- Set by the poll_next
@@ -27,7 +27,7 @@ enum InProgressBlock {
 }
 
 impl AnthropicStreamer {
-	pub fn new(inner: EventSource, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSourceStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
@@ -196,7 +196,10 @@ impl futures::Stream for AnthropicStreamer {
 				}
 				Some(Err(err)) => {
 					tracing::error!("Error: {}", err);
-					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err.into()))));
+					return Poll::Ready(Some(Err(Error::WebStream {
+						model_iden: self.options.model_iden.clone(),
+						cause: err.to_string(),
+					})));
 				}
 				None => return Poll::Ready(None),
 			}

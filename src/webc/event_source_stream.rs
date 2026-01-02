@@ -18,6 +18,7 @@ pub enum Event {
 
 #[derive(Debug)]
 pub struct Message {
+	pub event: String,
 	pub data: String,
 }
 
@@ -49,6 +50,7 @@ impl Stream for EventSourceStream {
 
 			match nx {
 				Poll::Ready(Some(Ok(raw_event))) => {
+					let mut event = "message".to_string();
 					let mut data = String::new();
 					for line in raw_event.lines() {
 						let line = line.trim();
@@ -57,8 +59,9 @@ impl Stream for EventSourceStream {
 							continue;
 						}
 
-						// We only care about "data:" lines for now
-						if let Some(d) = line.strip_prefix("data:") {
+						if let Some(e) = line.strip_prefix("event:") {
+							event = e.trim().to_string();
+						} else if let Some(d) = line.strip_prefix("data:") {
 							if !data.is_empty() {
 								data.push('\n');
 							}
@@ -71,7 +74,7 @@ impl Stream for EventSourceStream {
 						continue;
 					}
 
-					return Poll::Ready(Some(Ok(Event::Message(Message { data }))));
+					return Poll::Ready(Some(Ok(Event::Message(Message { event, data }))));
 				}
 				Poll::Ready(Some(Err(e))) => {
 					// Convert Box<dyn Error> to Box<dyn Error + Send + Sync>

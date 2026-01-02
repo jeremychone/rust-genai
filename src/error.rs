@@ -107,16 +107,9 @@ pub enum Error {
 	Internal(String),
 
 	// -- Externals
-	#[display("Failed to clone EventSource request: {_0}")]
-	#[from]
-	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
-
 	#[display("JSON value extension error: {_0}")]
 	#[from]
 	JsonValueExt(JsonValueExtError),
-
-	#[display("Reqwest EventSource error: {_0}")]
-	ReqwestEventSource(Box<reqwest_eventsource::Error>),
 
 	#[display("Serde JSON error: {_0}")]
 	#[from]

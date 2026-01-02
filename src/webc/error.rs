@@ -27,10 +27,6 @@ pub enum Error {
 	#[display("Reqwest error: {_0}")]
 	#[from]
 	Reqwest(reqwest::Error),
-
-	#[display("Failed to clone EventSource request: {_0}")]
-	#[from]
-	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
 }
 
 // region:    --- Error Boilerplate
