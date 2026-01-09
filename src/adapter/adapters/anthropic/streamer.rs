@@ -73,26 +73,10 @@ impl futures::Stream for AnthropicStreamer {
 								Ok("text") => self.in_progress_block = InProgressBlock::Text,
 								Ok("thinking") => self.in_progress_block = InProgressBlock::Thinking,
 								Ok("tool_use") => {
-									// If a tool call does not require any parameters, Claude may respond
-									// with an empty JSON object as the `input` of the content_start_block event,
-									// and then an empty string as the `input` of the following `content_block_delta` event.
-									let input = if let Ok(input) = data.x_get::<String>("/content_block/input") {
-										input
-									} else if let Ok(obj) = data.x_take::<Map<_, _>>("/content_block/input") {
-										serde_json::to_string(&obj).map_err(|_| {
-											value_ext::JsonValueExtError::PropertyValueNotOfType {
-												name: "/content_block/input".to_string(),
-												not_of_type: "map",
-											}
-										})?
-									} else {
-										String::new()
-									};
-
 									self.in_progress_block = InProgressBlock::ToolUse {
 										id: data.x_take("/content_block/id")?,
 										name: data.x_take("/content_block/name")?,
-										input,
+										input: String::new(),
 									};
 								}
 								Ok(txt) => {
@@ -148,10 +132,16 @@ impl futures::Stream for AnthropicStreamer {
 						"content_block_stop" => {
 							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text) {
 								InProgressBlock::ToolUse { id, name, input } => {
+									let fn_arguments = if input.is_empty() {
+										Value::Object(Map::new())
+									} else {
+										serde_json::from_str(&input)?
+									};
+
 									let tc = ToolCall {
 										call_id: id,
 										fn_name: name,
-										fn_arguments: serde_json::from_str(&input)?,
+										fn_arguments,
 										thought_signatures: None,
 									};
 
