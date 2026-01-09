@@ -3,7 +3,7 @@ use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -73,10 +73,26 @@ impl futures::Stream for AnthropicStreamer {
 								Ok("text") => self.in_progress_block = InProgressBlock::Text,
 								Ok("thinking") => self.in_progress_block = InProgressBlock::Thinking,
 								Ok("tool_use") => {
+									// If a tool call does not require any parameters, Claude may respond
+									// with an empty JSON object as the `input` of the content_start_block event,
+									// and then an empty string as the `input` of the following `content_block_delta` event.
+									let input = if let Ok(input) = data.x_get::<String>("/content_block/input") {
+										input
+									} else if let Ok(obj) = data.x_take::<Map<_, _>>("/content_block/input") {
+										serde_json::to_string(&obj).map_err(|_| {
+											value_ext::JsonValueExtError::PropertyValueNotOfType {
+												name: "/content_block/input".to_string(),
+												not_of_type: "map",
+											}
+										})?
+									} else {
+										String::new()
+									};
+
 									self.in_progress_block = InProgressBlock::ToolUse {
 										id: data.x_take("/content_block/id")?,
 										name: data.x_take("/content_block/name")?,
-										input: String::new(),
+										input,
 									};
 								}
 								Ok(txt) => {
