@@ -3,14 +3,14 @@
 // region:    --- Modules
 
 mod error;
+mod event_source_stream;
 mod web_client;
 mod web_stream;
-mod event_source_stream;
 
 pub(crate) use error::Result;
+pub(crate) use event_source_stream::*;
 pub(crate) use web_client::*;
 pub(crate) use web_stream::*;
-pub(crate) use event_source_stream::*;
 
 // Only public for external use
 pub use error::Error;

@@ -1,9 +1,9 @@
 mod support;
 
 use crate::support::{TestResult, common_tests, seed_chat_req_simple};
+use genai::Client;
 use genai::adapter::AdapterKind;
 use genai::chat::ChatStreamEvent;
-use genai::Client;
 use genai::resolver::AuthData;
 use serial_test::serial;
 use tokio_stream::StreamExt;
@@ -93,10 +93,7 @@ async fn test_chat_stream_reasoning_chunk_ok() -> TestResult<()> {
 			_ => {}
 		}
 	}
-	assert!(
-		!reasoning_content.is_empty(),
-		"reasoning_content should not be empty"
-	);
+	assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
 
 	Ok(())
 }
