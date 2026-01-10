@@ -3,7 +3,7 @@ use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -132,10 +132,16 @@ impl futures::Stream for AnthropicStreamer {
 						"content_block_stop" => {
 							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text) {
 								InProgressBlock::ToolUse { id, name, input } => {
+									let fn_arguments = if input.is_empty() {
+										Value::Object(Map::new())
+									} else {
+										serde_json::from_str(&input)?
+									};
+
 									let tc = ToolCall {
 										call_id: id,
 										fn_name: name,
-										fn_arguments: serde_json::from_str(&input)?,
+										fn_arguments,
 										thought_signatures: None,
 									};
 
