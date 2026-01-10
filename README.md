@@ -1,6 +1,6 @@
 # genai - Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**, **Groq**, **DeepSeek** (deepseek.com & Groq), **Cohere**, **Mimo** (more to come)
+Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**.
 
 Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
 
@@ -16,50 +16,57 @@ Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-
 
 Provides a single, ergonomic API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-**NOTE:** Big update with **v0.4.x** - More adapters, PDF and image support, embeddings, custom headers, and transparent support for the OpenAI Responses API (gpt-5-codex)
+**NOTE:** Big update with **v0.5.0** - New adapters (BigModel, MIMO), Gemini Thinking support, Anthropic Reasoning Effort, and a more robust internal streaming engine.
 
-## v0.4.x Big Release
+## v0.5.0 - (2026-01-09)
 
 - **What's new**:
-    - **PDF and Images** support (thanks to [Andrew Rademacher](https://github.com/AndrewRademacher))
-    - **Embedding** support (thanks to [Jesus Santander](https://github.com/jsantanders))
-    - **Custom Headers** support (for AWS Bedrock, Vertex, etc.) (thanks to [Adrien](https://github.com/XciD)/[Julien Chaumond](https://github.com/julien-c))
-    - **Simpler, flatter `MessageContent`** multi-part format (API change) (thanks to [Andrew Rademacher](https://github.com/AndrewRademacher) for insights)
-    - **Raw body capture** with `ChatOptions::with_capture_raw_body(true)` (thanks to [4t145](https://github.com/4t145))
-    - **Transparent gpt-5-codex support with the Responses API**, even if gpt-5-codex uses a new API protocol (OpenAI Responses API)
+    - **New Adapters**: BigModel.cn and MIMO model adapter (thanks to [Akagi201](https://github.com/Akagi201)).
+    - **zai - change namespace strategy** with (zai:: for default, and zai-codding:: for subscription, same Adapter)
+    - **Gemini Thinking & Thought**: Full support for Gemini Thought signatures (thanks to [Himmelschmidt](https://github.com/Himmelschmidt)) and thinking levels.
+    - **Reasoning Effort Control**: Support for `ReasoningEffort` for Anthropic (Claude 3.7/4.5) and Gemini (Thinking levels), including `ReasoningEffort::None`.
+    - **Content & Binary Improvements**: Enhanced binary/PDF API and size tracking.
+    - **Internal Stream Refactor**: Switched to a unified `EventSourceStream` and `WebStream` for better reliability and performance across all providers.
+    - **Dependency Upgrade**: Now using `reqwest 0.13`.
 - **What's still awesome**:
-    - Normalized and ergonomic Chat API across all providers
-    - Most providers built in (OpenAI, Gemini, Anthropic, xAI, Groq, Together.ai, Fireworks.ai, ...)
-    - Native protocol support for Gemini and Anthropic protocols, for example allowing full budget controls with Gemini models
-    - Can override auth, endpoint, and headers to connect to AWS Bedrock, Vertex AI, etc.
+    - Normalized and ergonomic Chat API across all major providers.
+    - Native protocol support for Gemini and Anthropic protocols (Reasoning/Thinking controls).
+    - PDF, Image, and Embedding support.
+    - Custom Auth, Endpoint, and Header overrides.
 
 See:
-    - [migration from v0.3 to v0.4](doc/migration/migration-v_0_3_to_0_4.md)
     - [CHANGELOG](CHANGELOG.md)
 
 ## Big Thanks to
 
-- [Vagmi Mudumbai](https://github.com/vagmi)) for [#96](https://github.com/jeremychone/rust-genai/pull/96) openai audio_type
-- [Himmelschmidt](https://github.com/Himmelschmidt) for [#98](https://github.com/jeremychone/rust-genai/pull/98) openai service_tier
-- [Bart Carroll](https://github.com/bartCarroll) for [#91](https://github.com/jeremychone/rust-genai/pull/91) Fixed streaming tool calls for openai models
-- [Rui Andrada](https://github.com/shingonoide) for [#95](https://github.com/jeremychone/rust-genai/pull/95) refactoring ZHIPU adapter to ZAI
-- [Adrien](https://github.com/XciD) Extra headers in requests, seed for chat requests, and fixes (with [Julien Chaumond](https://github.com/julien-c) for extra headers)
-- [Andrew Rademacher](https://github.com/AndrewRademacher) for PDF support, Anthropic streamer, and insight on flattening the message content (e.g., ContentParts)
-- [Jesus Santander](https://github.com/jsantanders) Embedding support [PR #83](https://github.com/jeremychone/rust-genai/pull/83)
-- [4t145](https://github.com/4t145) for raw body capture [PR #68](https://github.com/jeremychone/rust-genai/pull/68)
-- [Vagmi Mudumbai](https://github.com/vagmi) exec_chat bug fix [PR #86](https://github.com/jeremychone/rust-genai/pull/86)
-- [Maximilian Goisser](https://github.com/hobofan) Fix OpenAI adapter to use ServiceTarget
-- [ClanceyLu](https://github.com/ClanceyLu) for Tool Use Streaming support, web configuration support, and fixes
-- [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some Ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
-- [@una-spirito](https://github.com/luna-spirito) for Gemini `ReasoningEffort::Budget` support
-- [@jBernavaPrah](https://github.com/jBernavaPrah) for adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
-- [@GustavoWidman](https://github.com/GustavoWidman) for the initial Gemini tool/function support! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
-- [@AdamStrojek](https://github.com/AdamStrojek) for initial image support [PR #36](https://github.com/jeremychone/rust-genai/pull/36)
-- [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
-- [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
-- [@tusharmath](https://github.com/tusharmath) for making webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
-- [@giangndm](https://github.com/giangndm) for making stream Send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
-- [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
+- v0.5.x
+  - [BinaryMuse](https://github.com/BinaryMuse) for [#114](https://github.com/jeremychone/rust-genai/pull/114) Anthropic ToolCalls streaming fix
+  - [Himmelschmidt](https://github.com/Himmelschmidt) for [#111](https://github.com/jeremychone/rust-genai/pull/111) Gemini `responseJsonSchema` support, [#103](https://github.com/jeremychone/rust-genai/pull/103) error body capture, and Gemini Thought signatures
+  - [malyavi-nochum](https://github.com/malyavi-nochum) for [#109](https://github.com/jeremychone/rust-genai/pull/109) Fireworks default streaming fix
+  - [mengdehong](https://github.com/mengdehong) for [#108](https://github.com/jeremychone/rust-genai/pull/108) Ollama reasoning streaming fix
+  - [Akagi201](https://github.com/Akagi201) for [#105](https://github.com/jeremychone/rust-genai/pull/105) MIMO model adapter
+- v0.1.x .. v0.4.x
+  - [Vagmi Mudumbai](https://github.com/vagmi) for [#96](https://github.com/jeremychone/rust-genai/pull/96) openai audio_type
+  - [Himmelschmidt](https://github.com/Himmelschmidt) for [#98](https://github.com/jeremychone/rust-genai/pull/98) openai service_tier
+  - [Bart Carroll](https://github.com/bartCarroll) for [#91](https://github.com/jeremychone/rust-genai/pull/91) Fixed streaming tool calls for openai models
+  - [Rui Andrada](https://github.com/shingonoide) for [#95](https://github.com/jeremychone/rust-genai/pull/95) refactoring ZHIPU adapter to ZAI
+  - [Adrien](https://github.com/XciD) Extra headers in requests, seed for chat requests, and fixes (with [Julien Chaumond](https://github.com/julien-c) for extra headers)
+  - [Andrew Rademacher](https://github.com/AndrewRademacher) for PDF support, Anthropic streamer
+  - [Jesus Santander](https://github.com/jsantanders) Embedding support [PR #83](https://github.com/jeremychone/rust-genai/pull/83)
+  - [4t145](https://github.com/4t145) for raw body capture [PR #68](https://github.com/jeremychone/rust-genai/pull/68)
+  - [Vagmi Mudumbai](https://github.com/vagmi) exec_chat bug fix [PR #86](https://github.com/jeremychone/rust-genai/pull/86)
+  - [Maximilian Goisser](https://github.com/hobofan) Fix OpenAI adapter to use ServiceTarget
+  - [ClanceyLu](https://github.com/ClanceyLu) for Tool Use Streaming support, web configuration support, and fixes
+  - [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some Ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
+  - [@una-spirito](https://github.com/luna-spirito) for Gemini `ReasoningEffort::Budget` support
+  - [@jBernavaPrah](https://github.com/jBernavaPrah) for adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
+  - [@GustavoWidman](https://github.com/GustavoWidman) for the initial Gemini tool/function support! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
+  - [@AdamStrojek](https://github.com/AdamStrojek) for initial image support [PR #36](https://github.com/jeremychone/rust-genai/pull/36)
+  - [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
+  - [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
+  - [@tusharmath](https://github.com/tusharmath) for making webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
+  - [@giangndm](https://github.com/giangndm) for making stream Send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
+  - [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
 
 ## Usage examples
 
@@ -91,13 +98,16 @@ use genai::Client;
 
 const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
-const MODEL_COHERE: &str = "command-light";
+// or namespaced with simple name "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
+const MODEL_FIREWORKS: &str = "accounts/fireworks/models/qwen3-30b-a3b";
+const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
 const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "llama-3.1-8b-instant";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
-const MODEL_XAI: &str = "grok-beta";
+const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
-const MODEL_MIMO: &str = "mimo-v2-flash";
+const MODEL_ZAI: &str = "glm-4-plus";
+const MODEL_COHERE: &str = "command-r7b-12-2024";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
@@ -105,13 +115,15 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- De/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
-	(MODEL_COHERE, "COHERE_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
+	(MODEL_FIREWORKS, "FIREWORKS_API_KEY"),
+	(MODEL_TOGETHER, "TOGETHER_API_KEY"),
 	(MODEL_GROQ, "GROQ_API_KEY"),
 	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
-	(MODEL_MIMO, "MIMO_API_KEY"),
 	(MODEL_OLLAMA, ""),
+	(MODEL_ZAI, "ZAI_API_KEY"),
+	(MODEL_COHERE, "COHERE_API_KEY"),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
@@ -120,7 +132,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - starts_with "command"  -> Cohere
 //  - starts_with "gemini"   -> Gemini
 //  - model in Groq models   -> Groq
-//  - starts_with "mimo"     -> Mimo
+//  - starts_with "glm"      -> ZAI
 //  - For anything else      -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`
@@ -208,7 +220,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## ChatOptions
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, Together, Fireworks, Nebius, Zai
 
 | Property      | OpenAI Compatibles (*1) | Anthropic                   | Gemini `generationConfig.` | Cohere        |
 |---------------|-------------------------|-----------------------------|----------------------------|---------------|
