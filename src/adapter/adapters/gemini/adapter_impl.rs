@@ -550,6 +550,8 @@ impl GeminiAdapter {
 				ChatRole::Assistant => {
 					let mut parts_values: Vec<Value> = Vec::new();
 					let mut pending_thought: Option<String> = None;
+					let mut is_first_tool_call = true;
+
 					for part in msg.content {
 						match part {
 							ContentPart::Text(text) => {
@@ -568,12 +570,27 @@ impl GeminiAdapter {
 									}),
 								);
 
-								if let Some(thought) = pending_thought.take() {
-									// Inject thoughtSignature alongside functionCall in the same Part object
-									part_obj.insert("thoughtSignature".to_string(), json!(thought));
+								match pending_thought.take() {
+									Some(thought) => {
+										// Inject thoughtSignature alongside functionCall in the same Part object
+										part_obj.insert("thoughtSignature".to_string(), json!(thought));
+									}
+									None => {
+										// For Gemini 3 models, if there haven't been any thoughts, and this is
+										// still the first tool call, we are required to inject a special flag.
+										// See: https://ai.google.dev/gemini-api/docs/thought-signatures#faqs
+										let is_gemini_3 = model_iden.model_name.contains("gemini-3");
+										if is_gemini_3 && is_first_tool_call {
+											part_obj.insert(
+												"thoughtSignature".to_string(),
+												json!("skip_thought_signature_validator"),
+											);
+										}
+									}
 								}
 
 								parts_values.push(Value::Object(part_obj));
+								is_first_tool_call = false;
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								if let Some(prev_thought) = pending_thought.take() {
