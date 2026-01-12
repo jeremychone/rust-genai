@@ -218,12 +218,7 @@ impl OpenAIAdapter {
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
 
 		// -- headers
-		let mut headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
-
-		// -- extra headers
-		if let Some(extra_headers) = options_set.extra_headers() {
-			headers.merge_with(extra_headers);
-		}
+		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
 

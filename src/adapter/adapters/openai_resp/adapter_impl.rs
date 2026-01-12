@@ -73,12 +73,7 @@ impl Adapter for OpenAIRespAdapter {
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
 
 		// -- headers
-		let mut headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
-
-		// -- extra headers
-		if let Some(extra_headers) = chat_options.extra_headers() {
-			headers.merge_with(extra_headers);
-		}
+		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
 		// -- for new v1/responses/ for now do not support stream
 		let stream = matches!(service_type, ServiceType::ChatStream);
