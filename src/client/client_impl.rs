@@ -70,6 +70,10 @@ impl Client {
 			payload,
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
 
+		if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
+			headers.merge_with(&extra_headers);
+		}
+
 		if let AuthData::RequestOverride {
 			url: override_url,
 			headers: override_headers,
@@ -114,6 +118,10 @@ impl Client {
 			mut headers,
 			payload,
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
+
+		if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
+			headers.merge_with(&extra_headers);
+		}
 
 		// TODO: Need to check this.
 		//       This was part of the 429c5cee2241dbef9f33699b9c91202233c22816 commit
