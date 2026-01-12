@@ -135,10 +135,10 @@ impl futures::Stream for BedrockStreamer {
 									}
 								}
 								InProgressBlock::ToolUse { input, .. } => {
-									if let Some(tool_input) = delta.get("toolUse") {
-										if let Some(partial) = tool_input.get("input").and_then(|v| v.as_str()) {
-											input.push_str(partial);
-										}
+									if let Some(tool_input) = delta.get("toolUse")
+										&& let Some(partial) = tool_input.get("input").and_then(|v| v.as_str())
+									{
+										input.push_str(partial);
 									}
 								}
 								InProgressBlock::Reasoning => {

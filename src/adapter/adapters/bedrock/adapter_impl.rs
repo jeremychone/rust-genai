@@ -394,31 +394,30 @@ impl Adapter for BedrockAdapter {
 		let mut content: MessageContent = MessageContent::default();
 		let mut reasoning_content: Option<String> = None;
 
-		if let Ok(output) = body.x_take::<Value>("output") {
-			if let Ok(message) = output.x_get::<Value>("message") {
-				if let Ok(content_blocks) = message.x_get::<Vec<Value>>("content") {
-					for mut block in content_blocks {
-						// Text content
-						if let Ok(text) = block.x_take::<String>("text") {
-							content.push(ContentPart::Text(text));
-						}
-						// Tool use content
-						else if let Ok(mut tool_use) = block.x_take::<Value>("toolUse") {
-							let call_id = tool_use.x_take::<String>("toolUseId")?;
-							let fn_name = tool_use.x_take::<String>("name")?;
-							let fn_arguments = tool_use.x_take::<Value>("input").unwrap_or(Value::Null);
+		if let Ok(output) = body.x_take::<Value>("output")
+			&& let Ok(message) = output.x_get::<Value>("message")
+			&& let Ok(content_blocks) = message.x_get::<Vec<Value>>("content")
+		{
+			for mut block in content_blocks {
+				// Text content
+				if let Ok(text) = block.x_take::<String>("text") {
+					content.push(ContentPart::Text(text));
+				}
+				// Tool use content
+				else if let Ok(mut tool_use) = block.x_take::<Value>("toolUse") {
+					let call_id = tool_use.x_take::<String>("toolUseId")?;
+					let fn_name = tool_use.x_take::<String>("name")?;
+					let fn_arguments = tool_use.x_take::<Value>("input").unwrap_or(Value::Null);
 
-							content.push(ContentPart::ToolCall(ToolCall {
-								call_id,
-								fn_name,
-								fn_arguments,
-							}));
-						}
-						// Reasoning/thinking content (if supported by model)
-						else if let Ok(thinking) = block.x_take::<String>("reasoningContent") {
-							reasoning_content = Some(thinking);
-						}
-					}
+					content.push(ContentPart::ToolCall(ToolCall {
+						call_id,
+						fn_name,
+						fn_arguments,
+					}));
+				}
+				// Reasoning/thinking content (if supported by model)
+				else if let Ok(thinking) = block.x_take::<String>("reasoningContent") {
+					reasoning_content = Some(thinking);
 				}
 			}
 		}
