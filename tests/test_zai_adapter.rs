@@ -7,8 +7,8 @@ use genai::chat::{ChatMessage, ChatRequest};
 async fn test_zai_model_resolution() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::default();
 
-	// Test that Z.AI models resolve correctly
-	let zai_models = vec!["glm-4.6", "glm-4", "glm-3-turbo"];
+	// Test that Z.AI models resolve correctly (only models in ZAI MODELS list)
+	let zai_models = vec!["glm-4.6", "glm-4", "glm-4.5", "vidu"];
 
 	for model in zai_models {
 		let target = client.resolve_service_target(model).await?;
@@ -21,10 +21,15 @@ async fn test_zai_model_resolution() -> Result<(), Box<dyn std::error::Error>> {
 	assert_eq!(format!("{:?}", target.model.adapter_kind), "ZAi");
 	println!("✅ zai::glm-4.6 -> ZAi");
 
-	// Test that other GLM models not in list go to Zhipu (not Ollama)
+	// Test that other GLM models not in Z.AI list go to Zhipu (not Ollama)
 	let target = client.resolve_service_target("glm-2").await?;
 	assert_eq!(format!("{:?}", target.model.adapter_kind), "Zhipu");
 	println!("✅ glm-2 -> Zhipu (not in Z.AI list, goes to Zhipu instead)");
+
+	// Test that glm-3-turbo (not supported by Z.AI) goes to Zhipu
+	let target = client.resolve_service_target("glm-3-turbo").await?;
+	assert_eq!(format!("{:?}", target.model.adapter_kind), "Zhipu");
+	println!("✅ glm-3-turbo -> Zhipu (turbo models not supported by Z.AI)");
 
 	println!("\n✨ Z.AI model resolution tests passed!");
 	Ok(())
