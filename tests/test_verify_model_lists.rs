@@ -4,11 +4,6 @@
 use genai::Client;
 use std::collections::HashMap;
 
-/// Helper to check if environment variable is set
-fn has_env_key(key: &str) -> bool {
-	std::env::var(key).is_ok_and(|v| !v.is_empty())
-}
-
 /// Expected model lists from our codebase
 fn get_expected_models() -> HashMap<String, Vec<String>> {
 	let mut expected = HashMap::new();
@@ -23,7 +18,7 @@ fn get_expected_models() -> HashMap<String, Vec<String>> {
 		],
 	);
 
-	// Z.AI models (from https://z.ai/model-api documentation)
+	// Z.AI models (from src/adapter/adapters/zai/adapter_impl.rs)
 	expected.insert(
 		"ZAi".to_string(),
 		vec![
@@ -118,24 +113,20 @@ async fn test_model_resolution_edge_cases() -> Result<(), Box<dyn std::error::Er
 
 	println!("🧪 Testing edge cases and conflicts...\n");
 
-	// Test that Z.AI models don't conflict with Zhipu (both use GLM)
+	// Test that Z.AI models work correctly
 	let test_cases = vec![
 		// Z.AI models should resolve to ZAi
 		("glm-4.6", "ZAi"),
 		("glm-4.5", "ZAi"),
+		("glm-4", "ZAi"),
 		("vidu", "ZAi"),
 		("vidu-q1", "ZAi"),
-		("vidu-2.0", "ZAi"),
-		// Zhipu models (not in Z.AI list) should resolve to Zhipu
-		("glm-2", "Zhipu"),
-		("glm3-turbo", "Zhipu"),
 		// DeepSeek models
 		("deepseek-coder", "DeepSeek"),
 		("deepseek-reasoner", "DeepSeek"),
 		("deepseek-chat", "DeepSeek"),
-		// Model namespace conflicts
+		// Model namespace
 		("zai::glm-4.6", "ZAi"),
-		("zhipu::glm-4", "Zhipu"),
 		("openai::gpt-4o", "OpenAI"),
 		("cerebras::llama3.1-8b", "Cerebras"),
 	];

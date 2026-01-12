@@ -41,10 +41,10 @@ fn read_adapter_models() -> HashMap<String, Vec<String>> {
 			let cleaned = line.split("//").next().unwrap_or(line); // Remove comments
 			for part in cleaned.split(',') {
 				let trimmed = part.trim();
-				if let Some(model) = trimmed.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
-					if !model.is_empty() {
-						model_list.push(model.to_string());
-					}
+				if let Some(model) = trimmed.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+					&& !model.is_empty()
+				{
+					model_list.push(model.to_string());
 				}
 			}
 		}
@@ -53,24 +53,24 @@ fn read_adapter_models() -> HashMap<String, Vec<String>> {
 	}
 
 	// DeepSeek models
-	if let Ok(content) = std::fs::read_to_string(base_path.join("src/adapter/adapters/deepseek/adapter_impl.rs")) {
-		if let Some(model_list) = extract_model_array(&content, "pub(in crate::adapter) const MODELS: &[&str] = &[") {
-			models.insert("DeepSeek".to_string(), model_list);
-		}
+	if let Ok(content) = std::fs::read_to_string(base_path.join("src/adapter/adapters/deepseek/adapter_impl.rs"))
+		&& let Some(model_list) = extract_model_array(&content, "pub(in crate::adapter) const MODELS: &[&str] = &[")
+	{
+		models.insert("DeepSeek".to_string(), model_list);
 	}
 
 	// Z.AI models
-	if let Ok(content) = std::fs::read_to_string(base_path.join("src/adapter/adapters/zai/adapter_impl.rs")) {
-		if let Some(model_list) = extract_model_array(&content, "pub(in crate::adapter) const MODELS: &[&str] = &[") {
-			models.insert("ZAi".to_string(), model_list);
-		}
+	if let Ok(content) = std::fs::read_to_string(base_path.join("src/adapter/adapters/zai/adapter_impl.rs"))
+		&& let Some(model_list) = extract_model_array(&content, "pub(in crate::adapter) const MODELS: &[&str] = &[")
+	{
+		models.insert("ZAi".to_string(), model_list);
 	}
 
 	// Groq models
-	if let Ok(content) = std::fs::read_to_string(base_path.join("src/adapter/adapters/groq/adapter_impl.rs")) {
-		if let Some(model_list) = extract_model_array(&content, "pub(in crate::adapter) const MODELS: &[&str] = &[") {
-			models.insert("Groq".to_string(), model_list);
-		}
+	if let Ok(content) = std::fs::read_to_string(base_path.join("src/adapter/adapters/groq/adapter_impl.rs"))
+		&& let Some(model_list) = extract_model_array(&content, "pub(in crate::adapter) const MODELS: &[&str] = &[")
+	{
+		models.insert("Groq".to_string(), model_list);
 	}
 
 	models
