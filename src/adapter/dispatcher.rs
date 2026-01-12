@@ -1,6 +1,7 @@
 use super::groq::GroqAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::bedrock::BedrockAdapter;
 use crate::adapter::cerebras::CerebrasAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
@@ -50,6 +51,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::default_endpoint(),
 			AdapterKind::ZAi => ZAiAdapter::default_endpoint(),
 			AdapterKind::OpenRouter => Endpoint::from_static("https://openrouter.ai/api/v1/"),
+			AdapterKind::Bedrock => BedrockAdapter::default_endpoint(),
 		}
 	}
 
@@ -71,6 +73,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::default_auth(),
 			AdapterKind::ZAi => ZAiAdapter::default_auth(),
 			AdapterKind::OpenRouter => AuthData::from_env(OpenRouterAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Bedrock => BedrockAdapter::default_auth(),
 		}
 	}
 
@@ -92,6 +95,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::all_model_names(kind).await,
 			AdapterKind::ZAi => ZAiAdapter::all_model_names(kind).await,
 			AdapterKind::OpenRouter => OpenRouterAdapter::all_model_names(kind).await,
+			AdapterKind::Bedrock => BedrockAdapter::all_model_names(kind).await,
 		}
 	}
 
@@ -113,6 +117,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::ZAi => ZAiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::OpenRouter => OpenRouterAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Bedrock => BedrockAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
 
@@ -148,6 +153,7 @@ impl AdapterDispatcher {
 			AdapterKind::OpenRouter => {
 				OpenRouterAdapter::to_web_request_data(target, service_type, chat_req, options_set)
 			}
+			AdapterKind::Bedrock => BedrockAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 		}
 	}
 
@@ -173,6 +179,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::ZAi => ZAiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Bedrock => BedrockAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
 	}
 
@@ -201,6 +208,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::ZAi => ZAiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Bedrock => BedrockAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
 	}
 
@@ -230,6 +238,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::ZAi => ZAiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Bedrock => BedrockAdapter::to_embed_request_data(target, embed_req, options_set),
 		}
 	}
 
@@ -258,6 +267,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cerebras => CerebrasAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::ZAi => ZAiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::OpenRouter => OpenRouterAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Bedrock => BedrockAdapter::to_embed_response(model_iden, web_response, options_set),
 		}
 	}
 }

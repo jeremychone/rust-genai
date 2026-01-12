@@ -56,6 +56,8 @@ The project includes comprehensive live API tests that require real API keys:
 - `ANTHROPIC_API_KEY` - For Anthropic tests
 - `CEREBRAS_API_KEY` - For Cerebras tests (optional)
 - `ZAI_API_KEY` - For Z.AI tests (optional)
+- `AWS_BEARER_TOKEN_BEDROCK` - For AWS Bedrock tests (optional, Bearer token API key)
+- `AWS_REGION` - For AWS Bedrock tests (optional, defaults to us-east-1)
 
 Live API tests are located in `/tests/live_api_tests.rs` and include:
 - Basic chat functionality
@@ -93,6 +95,7 @@ The library uses an adapter pattern to normalize APIs across different AI provid
 Currently supports these AI providers:
 - OpenAI (including gpt-5-codex via Responses API)
 - Anthropic
+- AWS Bedrock (Claude, Llama, Titan, Mistral, Cohere models via Converse API)
 - Gemini (native protocol support)
 - OpenRouter
 - Groq
@@ -106,6 +109,11 @@ Currently supports these AI providers:
 - And more...
 
 ### Supported Models by Provider
+
+**AWS Bedrock**: Claude, Llama, Titan, Mistral, Cohere, and AI21 models via Converse API
+- Example model IDs: `anthropic.claude-3-5-sonnet-20241022-v2:0`, `meta.llama3-70b-instruct-v1:0`
+- Full list in `src/adapter/adapters/bedrock/adapter_impl.rs`
+- Uses Bearer token authentication (set `AWS_BEARER_TOKEN_BEDROCK` environment variable)
 
 **DeepSeek**: `deepseek-chat`, `deepseek-reasoner`, `deepseek-coder`
 

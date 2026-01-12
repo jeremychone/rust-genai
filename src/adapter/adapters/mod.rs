@@ -1,6 +1,7 @@
 mod support;
 
 pub(super) mod anthropic;
+pub(super) mod bedrock;
 pub(super) mod cerebras;
 pub(super) mod cohere;
 pub(super) mod deepseek;

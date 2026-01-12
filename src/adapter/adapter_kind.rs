@@ -1,5 +1,6 @@
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::bedrock::{self, BedrockAdapter};
 use crate::adapter::cerebras::CerebrasAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::{self, DeepSeekAdapter};
@@ -54,6 +55,8 @@ pub enum AdapterKind {
 	Cerebras,
 	/// Z.AI (Anthropic-compatible protocol)
 	ZAi,
+	/// AWS Bedrock (uses Converse API with AWS SigV4 authentication)
+	Bedrock,
 }
 
 /// Serialization/Parse implementations
@@ -77,6 +80,7 @@ impl AdapterKind {
 			AdapterKind::Ollama => "Ollama",
 			AdapterKind::Cerebras => "Cerebras",
 			AdapterKind::ZAi => "ZAi",
+			AdapterKind::Bedrock => "Bedrock",
 		}
 	}
 
@@ -99,6 +103,7 @@ impl AdapterKind {
 			AdapterKind::Ollama => "ollama",
 			AdapterKind::Cerebras => "cerebras",
 			AdapterKind::ZAi => "zai",
+			AdapterKind::Bedrock => "bedrock",
 		}
 	}
 
@@ -120,6 +125,7 @@ impl AdapterKind {
 			"ollama" => Some(AdapterKind::Ollama),
 			"cerebras" => Some(AdapterKind::Cerebras),
 			"zai" => Some(AdapterKind::ZAi),
+			"bedrock" => Some(AdapterKind::Bedrock),
 			_ => None,
 		}
 	}
@@ -146,6 +152,8 @@ impl AdapterKind {
 			AdapterKind::Ollama => None,
 			AdapterKind::Cerebras => Some(CerebrasAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::ZAi => Some(ZAiAdapter::API_KEY_DEFAULT_ENV_NAME),
+			// Bedrock uses Bearer token authentication
+			AdapterKind::Bedrock => Some(BedrockAdapter::API_KEY_ENV),
 		}
 	}
 }
@@ -231,6 +239,10 @@ impl AdapterKind {
 			Ok(Self::Xai)
 		} else if model.starts_with("glm") {
 			Ok(Self::Zhipu)
+		}
+		// AWS Bedrock models (provider.model-name format)
+		else if bedrock::MODELS.contains(&model) {
+			Ok(Self::Bedrock)
 		}
 		// For now, fallback to Ollama
 		else {

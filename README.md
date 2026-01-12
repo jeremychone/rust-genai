@@ -1,6 +1,6 @@
 # genai - Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **XAI/Grok**, **Ollama**, **Groq**, **DeepSeek** (deepseek.com & Groq), **Cohere**, **Cerebras**, **Z.AI** (GLM models), **Zhipu** (more to come)
+Currently natively supports: **OpenAI**, **Anthropic**, **AWS Bedrock**, **Gemini**, **XAI/Grok**, **Ollama**, **Groq**, **DeepSeek** (deepseek.com & Groq), **Cohere**, **Cerebras**, **Z.AI** (GLM models), **Zhipu** (more to come)
 
 Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
 
@@ -65,7 +65,7 @@ See:
 
 ## Key Features
 
-- Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek, Cerebras (Direct chat and stream) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- Native Multi-AI Provider/Model: OpenAI, Anthropic, AWS Bedrock, Gemini, Ollama, Groq, xAI, DeepSeek, Cerebras (Direct chat and stream) (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
@@ -231,13 +231,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total amount of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
 
 
+## AWS Bedrock Support
+
+AWS Bedrock is now natively supported with Bearer token authentication:
+
+```rust
+// Set environment variable
+// export AWS_BEARER_TOKEN_BEDROCK="your-api-key"
+// export AWS_REGION="us-east-1" (optional, defaults to us-east-1)
+
+let client = Client::default();
+let chat_req = ChatRequest::new(vec![
+    ChatMessage::user("Hello from Bedrock!")
+]);
+
+// Use Titan models directly
+let response = client.exec_chat("bedrock::amazon.titan-text-express-v1", chat_req, None).await?;
+
+// Or use explicit model IDs
+let response = client.exec_chat("amazon.titan-text-lite-v1", chat_req, None).await?;
+```
+
+**Supported Models:**
+- Amazon Titan: `amazon.titan-text-express-v1`, `amazon.titan-text-lite-v1`, `amazon.titan-text-premier-v1:0`
+- Anthropic Claude: `anthropic.claude-3-5-sonnet-20241022-v2:0`, `anthropic.claude-3-5-haiku-20241022-v1:0`, etc.
+- Meta Llama: `meta.llama3-70b-instruct-v1:0`, `meta.llama3-8b-instruct-v1:0`, etc.
+- Mistral: `mistral.mistral-large-2407-v1:0`, `mistral.mistral-7b-instruct-v0:2`, etc.
+- Cohere: `cohere.command-r-plus-v1:0`, `cohere.command-r-v1:0`
+- AI21: `ai21.jamba-1-5-large-v1:0`, `ai21.jamba-1-5-mini-v1:0`
+
+**Limitations:**
+- Streaming requires AWS SigV4 (not supported with Bearer token)
+- Titan models don't support system messages or tool calling
+- Claude/Llama models may require inference profiles
+
+See [AWS Bedrock API Keys documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-use.html) for setup.
+
 ## Notes on Possible Direction
 
 - Will add more data on ChatResponse and ChatStream, especially metadata about usage.
 - Add vision/image support to chat messages and responses.
 - Add function calling support to chat messages and responses.
 - Add `embed` and `embed_batch`.
-- Add the AWS Bedrock variants (e.g., Mistral and Anthropic). Most of the work will be on the "interesting" token signature scheme; trying to avoid bringing in large SDKs, this might be a lower-priority feature.
 - Add the Google Vertex AI variants.
 - May add the Azure OpenAI variant (not sure yet).
 
