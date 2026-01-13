@@ -7,6 +7,8 @@ use std::error::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use crate::error::Error as GenaiError;
+
 /// WebStream is a simple web stream implementation that splits the stream messages by a given delimiter.
 /// - It is intended to be a pragmatic solution for services that do not adhere to the `text/event-stream` format and content type.
 /// - For providers that support the standard `text/event-stream`, `genai` uses the `reqwest-eventsource`/`eventsource-stream` crates.
@@ -74,6 +76,26 @@ impl Stream for WebStream {
 			if let Some(ref mut fut) = this.response_future {
 				match Pin::new(fut).poll(cx) {
 					Poll::Ready(Ok(response)) => {
+						// Check HTTP status before proceeding with the stream
+						let status = response.status();
+						if !status.is_success() {
+							this.response_future = None;
+							// For error responses, we need to read the body to get the error message
+							// Store a future that reads the body and returns an error
+							let error_future = async move {
+								let body = response
+									.text()
+									.await
+									.unwrap_or_else(|e| format!("Failed to read error body: {}", e));
+								Err::<Response, Box<dyn Error>>(Box::new(GenaiError::HttpError {
+									status,
+									canonical_reason: status.canonical_reason().unwrap_or("Unknown").to_string(),
+									body,
+								}))
+							};
+							this.response_future = Some(Box::pin(error_future));
+							continue;
+						}
 						let bytes_stream = response.bytes_stream().map_err(|e| Box::new(e) as Box<dyn Error>);
 						this.bytes_stream = Some(Box::pin(bytes_stream));
 						this.response_future = None;

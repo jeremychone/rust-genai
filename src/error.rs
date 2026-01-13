@@ -2,6 +2,7 @@ use crate::adapter::AdapterKind;
 use crate::chat::ChatRole;
 use crate::{ModelIden, resolver, webc};
 use derive_more::{Display, From};
+use reqwest::StatusCode;
 use value_ext::JsonValueExtError;
 
 /// GenAI main Result type alias (with genai::Error)
@@ -91,6 +92,13 @@ pub enum Error {
 
 	#[display("Web stream error for model '{model_iden}'.\nCause: {cause}")]
 	WebStream { model_iden: ModelIden, cause: String },
+
+	#[display("HTTP error.\nStatus: {status} {canonical_reason}\nBody: {body}")]
+	HttpError {
+		status: StatusCode,
+		canonical_reason: String,
+		body: String,
+	},
 
 	// -- Modules
 	#[display("Resolver error for model '{model_iden}'.\nCause: {resolver_error}")]
