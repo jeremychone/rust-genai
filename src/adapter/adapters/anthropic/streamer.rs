@@ -199,6 +199,7 @@ impl futures::Stream for AnthropicStreamer {
 					return Poll::Ready(Some(Err(Error::WebStream {
 						model_iden: self.options.model_iden.clone(),
 						cause: err.to_string(),
+						error: err,
 					})));
 				}
 				None => return Poll::Ready(None),

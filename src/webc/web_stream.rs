@@ -3,11 +3,10 @@ use futures::stream::TryStreamExt;
 use futures::{Future, Stream};
 use reqwest::{RequestBuilder, Response};
 use std::collections::VecDeque;
-use std::error::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use crate::error::Error as GenaiError;
+use crate::error::{BoxError, Error as GenaiError};
 
 /// WebStream is a simple web stream implementation that splits the stream messages by a given delimiter.
 /// - It is intended to be a pragmatic solution for services that do not adhere to the `text/event-stream` format and content type.
@@ -19,8 +18,8 @@ use crate::error::Error as GenaiError;
 pub struct WebStream {
 	stream_mode: StreamMode,
 	reqwest_builder: Option<RequestBuilder>,
-	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>> + Send>>>,
-	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>> + Send>>>,
+	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, BoxError>> + Send>>>,
+	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, BoxError>> + Send>>>,
 	// If a poll was a partial message, then we keep the previous part
 	partial_message: Option<String>,
 	// If a poll retrieved multiple messages, we keep them to be sent in the next poll
@@ -59,7 +58,7 @@ impl WebStream {
 }
 
 impl Stream for WebStream {
-	type Item = Result<String, Box<dyn Error>>;
+	type Item = Result<String, BoxError>;
 
 	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		let this = self.get_mut();
@@ -87,7 +86,7 @@ impl Stream for WebStream {
 									.text()
 									.await
 									.unwrap_or_else(|e| format!("Failed to read error body: {}", e));
-								Err::<Response, Box<dyn Error>>(Box::new(GenaiError::HttpError {
+								Err::<Response, BoxError>(Box::new(GenaiError::HttpError {
 									status,
 									canonical_reason: status.canonical_reason().unwrap_or("Unknown").to_string(),
 									body,
@@ -96,7 +95,7 @@ impl Stream for WebStream {
 							this.response_future = Some(Box::pin(error_future));
 							continue;
 						}
-						let bytes_stream = response.bytes_stream().map_err(|e| Box::new(e) as Box<dyn Error>);
+						let bytes_stream = response.bytes_stream().map_err(|e| Box::new(e) as BoxError);
 						this.bytes_stream = Some(Box::pin(bytes_stream));
 						this.response_future = None;
 					}
@@ -113,7 +112,7 @@ impl Stream for WebStream {
 					Poll::Ready(Some(Ok(bytes))) => {
 						let buff_string = match String::from_utf8(bytes.to_vec()) {
 							Ok(s) => s,
-							Err(e) => return Poll::Ready(Some(Err(Box::new(e) as Box<dyn Error>))),
+							Err(e) => return Poll::Ready(Some(Err(Box::new(e) as BoxError))),
 						};
 
 						// -- Iterate through the parts
@@ -167,7 +166,7 @@ impl Stream for WebStream {
 			}
 
 			if let Some(reqwest_builder) = this.reqwest_builder.take() {
-				let fut = async move { reqwest_builder.send().await.map_err(|e| Box::new(e) as Box<dyn Error>) };
+				let fut = async move { reqwest_builder.send().await.map_err(|e| Box::new(e) as BoxError) };
 				this.response_future = Some(Box::pin(fut));
 				continue;
 			}
