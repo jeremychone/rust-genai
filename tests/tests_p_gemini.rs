@@ -126,6 +126,51 @@ async fn test_tool_simple_ok() -> TestResult<()> {
 async fn test_tool_full_flow_ok() -> TestResult<()> {
 	common_tests::common_test_tool_full_flow_ok(MODEL).await
 }
+
+#[tokio::test]
+async fn test_tool_deterministic_history_gemini_3_ok() -> TestResult<()> {
+	use genai::chat::{ChatMessage, ChatRequest, Tool, ToolCall, ToolResponse};
+	use serde_json::json;
+
+	let client = genai::Client::default();
+
+	let weather_tool = Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city": { "type": "string" },
+			"unit": { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "unit"]
+	}));
+
+	// Pre-seed history with a "synthetic" tool call (missing thought signatures)
+	let messages = vec![
+		ChatMessage::user("What's the weather like in Paris?"),
+		ChatMessage::assistant(vec![ToolCall {
+			call_id: "call_123".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: json!({"city": "Paris", "unit": "C"}),
+			thought_signatures: None,
+		}]),
+		ChatMessage::from(ToolResponse::new(
+			"call_123".to_string(),
+			json!({"temperature": 15, "condition": "Cloudy"}).to_string(),
+		)),
+	];
+
+	let chat_req = ChatRequest::new(messages).with_tools(vec![weather_tool]);
+
+	// This verifies that the adapter correctly injects 'skip_thought_signature_validator'.
+	// (Otherwise Gemini 3 would return a 400 error.)
+	let chat_res = client.exec_chat(MODEL_GPRO_3, chat_req, None).await?;
+
+	assert!(
+		chat_res.first_text().is_some(),
+		"Expected a text response from the model"
+	);
+
+	Ok(())
+}
 // endregion: --- Tool Tests
 
 // region:    --- Resolver Tests
