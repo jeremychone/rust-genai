@@ -1,0 +1,34 @@
+# Big Thanks to
+
+- v0.5.1
+  - [anagrius](https://github.com/anagrius) for [#119](https://github.com/jeremychone/rust-genai/pull/119) openai_resp assistant content fix
+  - [BinaryMuse](https://github.com/BinaryMuse) for [#117](https://github.com/jeremychone/rust-genai/pull/117) WebStream status check and [#116](https://github.com/jeremychone/rust-genai/pull/116) extra headers fix
+  - [vlmutolo](https://github.com/vlmutolo) for [#115](https://github.com/jeremychone/rust-genai/pull/115) Gemini 3 tool thoughtSignature fix
+- v0.5.x
+  - [BinaryMuse](https://github.com/BinaryMuse) for [#114](https://github.com/jeremychone/rust-genai/pull/114) Anthropic ToolCalls streaming fix
+  - [Himmelschmidt](https://github.com/Himmelschmidt) for [#111](https://github.com/jeremychone/rust-genai/pull/111) Gemini `responseJsonSchema` support, [#103](https://github.com/jeremychone/rust-genai/pull/103) error body capture, and Gemini Thought signatures
+  - [malyavi-nochum](https://github.com/malyavi-nochum) for [#109](https://github.com/jeremychone/rust-genai/pull/109) Fireworks default streaming fix
+  - [mengdehong](https://github.com/mengdehong) for [#108](https://github.com/jeremychone/rust-genai/pull/108) Ollama reasoning streaming fix
+  - [Akagi201](https://github.com/Akagi201) for [#105](https://github.com/jeremychone/rust-genai/pull/105) MIMO model adapter
+- v0.1.x .. v0.4.x
+  - [Vagmi Mudumbai](https://github.com/vagmi) for [#96](https://github.com/jeremychone/rust-genai/pull/96) openai audio_type
+  - [Himmelschmidt](https://github.com/Himmelschmidt) for [#98](https://github.com/jeremychone/rust-genai/pull/98) openai service_tier
+  - [Bart Carroll](https://github.com/bartCarroll) for [#91](https://github.com/jeremychone/rust-genai/pull/91) Fixed streaming tool calls for openai models
+  - [Rui Andrada](https://github.com/shingonoide) for [#95](https://github.com/jeremychone/rust-genai/pull/95) refactoring ZHIPU adapter to ZAI
+  - [Adrien](https://github.com/XciD) Extra headers in requests, seed for chat requests, and fixes (with [Julien Chaumond](https://github.com/julien-c) for extra headers)
+  - [Andrew Rademacher](https://github.com/AndrewRademacher) for PDF support, Anthropic streamer
+  - [Jesus Santander](https://github.com/jsantanders) Embedding support [PR #83](https://github.com/jeremychone/rust-genai/pull/83)
+  - [4t145](https://github.com/4t145) for raw body capture [PR #68](https://github.com/jeremychone/rust-genai/pull/68)
+  - [Vagmi Mudumbai](https://github.com/vagmi) exec_chat bug fix [PR #86](https://github.com/jeremychone/rust-genai/pull/86)
+  - [Maximilian Goisser](https://github.com/hobofan) Fix OpenAI adapter to use ServiceTarget
+  - [ClanceyLu](https://github.com/ClanceyLu) for tool use streaming support, web configuration support, and fixes
+  - [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some Ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
+  - [@una-spirito](https://github.com/luna-spirito) for Gemini `ReasoningEffort::Budget` support
+  - [@jBernavaPrah](https://github.com/jBernavaPrah) for adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
+  - [@GustavoWidman](https://github.com/GustavoWidman) for the initial Gemini tool/function support! [PR #41](https://github.com/jeremychone/rust-genai/pull/41)
+  - [@AdamStrojek](https://github.com/AdamStrojek) for initial image support [PR #36](https://github.com/jeremychone/rust-genai/pull/36)
+  - [@semtexzv](https://github.com/semtexzv) for `stop_sequences` Anthropic support [PR #34](https://github.com/jeremychone/rust-genai/pull/34)
+  - [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
+  - [@tusharmath](https://github.com/tusharmath) for making webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
+  - [@giangndm](https://github.com/giangndm) for making stream Send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
+  - [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2), implement Groq completions

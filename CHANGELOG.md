@@ -1,5 +1,13 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2026-01-17 - [v0.5.1](https://github.com/jeremychone/rust-genai/compare/v0.5.0...v0.5.1)
+
+`!` `Error::WebStream` - added error field to preserve original error
+`^` gemini - allow empty tool `thoughtSignature` for Gemini 3 (#115)
+`-` webc - check HTTP status in `WebStream` before processing byte stream (#117)
+`-` client - ensure extra headers are applied in `exec_chat` and `exec_chat_stream` (#116)
+`-` openai_resp - fix assistant message content to use `output_text` (#119)
+
 ## 2026-01-09 - [v0.5.0](https://github.com/jeremychone/rust-genai/compare/v0.4.4...v0.5.0)
 
 - `!` zai - change namespace strategy with (zai:: for default, and zai-codding:: for subscription, same Adapter)
