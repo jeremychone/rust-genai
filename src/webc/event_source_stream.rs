@@ -1,3 +1,4 @@
+use crate::error::BoxError;
 use crate::webc::WebStream;
 use futures::Stream;
 use reqwest::RequestBuilder;
@@ -33,7 +34,7 @@ impl EventSourceStream {
 }
 
 impl Stream for EventSourceStream {
-	type Item = Result<Event, Box<dyn std::error::Error + Send + Sync>>;
+	type Item = Result<Event, BoxError>;
 
 	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		let this = self.get_mut();
@@ -77,8 +78,7 @@ impl Stream for EventSourceStream {
 					return Poll::Ready(Some(Ok(Event::Message(Message { event, data }))));
 				}
 				Poll::Ready(Some(Err(e))) => {
-					// Convert Box<dyn Error> to Box<dyn Error + Send + Sync>
-					return Poll::Ready(Some(Err(e.to_string().into())));
+					return Poll::Ready(Some(Err(e)));
 				}
 				Poll::Ready(None) => return Poll::Ready(None),
 				Poll::Pending => return Poll::Pending,
