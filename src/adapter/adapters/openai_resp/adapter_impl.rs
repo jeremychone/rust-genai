@@ -408,7 +408,7 @@ impl OpenAIRespAdapter {
 						match part {
 							ContentPart::Text(text) => {
 								item_message_content.push(json!({
-										"type": "input_text",
+										"type": "output_text",
 										"text": text
 								}));
 							}
@@ -498,3 +498,63 @@ struct OpenAIRespRequestParts {
 }
 
 // endregion: --- Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::AdapterKind;
+	use crate::chat::ChatMessage;
+
+	/// Test that assistant message text content uses "output_text" type (not "input_text").
+	///
+	/// This is required by OpenAI's Responses API - assistant content is model output,
+	/// so it must use "output_text". Using "input_text" causes:
+	/// "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'."
+	#[test]
+	fn test_assistant_message_uses_output_text_content_type() {
+		let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-codex");
+
+		// Create a chat request with an assistant message
+		let chat_req = ChatRequest::default()
+			.with_system("You are a helpful assistant.")
+			.append_message(ChatMessage::user("What's the weather?"))
+			.append_message(ChatMessage::assistant("The weather is sunny."));
+
+		// Serialize to OpenAI Responses API format
+		let parts =
+			OpenAIRespAdapter::into_openai_request_parts(&model_iden, chat_req).expect("Should serialize successfully");
+
+		// Find the assistant message in input_items
+		let assistant_msg = parts
+			.input_items
+			.iter()
+			.find(|item| {
+				item.get("type").and_then(|t| t.as_str()) == Some("message")
+					&& item.get("role").and_then(|r| r.as_str()) == Some("assistant")
+			})
+			.expect("Should have an assistant message");
+
+		// Check the content uses "output_text" type
+		let content = assistant_msg
+			.get("content")
+			.and_then(|c| c.as_array())
+			.expect("Assistant message should have content array");
+
+		assert!(!content.is_empty(), "Content should not be empty");
+
+		let first_content = &content[0];
+		let content_type = first_content
+			.get("type")
+			.and_then(|t| t.as_str())
+			.expect("Content should have a type");
+
+		assert_eq!(
+			content_type, "output_text",
+			"Assistant message content should use 'output_text' type, not 'input_text'"
+		);
+	}
+}
+
+// endregion: --- Tests
