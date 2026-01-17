@@ -1,8 +1,8 @@
-# genai - Multi-AI Providers Library for Rust
+# genai, Multi-AI Providers Library for Rust
 
 Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**.
 
-Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
+Also supports a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
 <div align="center">
 
@@ -12,17 +12,17 @@ Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-
 
 </div>
 
-<br />
+[Docs for LLMs](doc/for-llm/api-reference-for-llm.md)
 
-Provides a single, ergonomic API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
+Provides a single, ergonomic API for many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-**NOTE:** Big update with **v0.5.0** - New adapters (BigModel, MIMO), Gemini Thinking support, Anthropic Reasoning Effort, and a more robust internal streaming engine.
+**NOTE:** Big update with **v0.5.0**: New adapters (BigModel, MIMO), Gemini Thinking support, Anthropic Reasoning Effort, and a more robust internal streaming engine.
 
 ## v0.5.0 - (2026-01-09)
 
 - **What's new**:
-    - **New Adapters**: BigModel.cn and MIMO model adapter (thanks to [Akagi201](https://github.com/Akagi201)).
-    - **zai - change namespace strategy** with (zai:: for default, and zai-codding:: for subscription, same Adapter)
+    - **New Adapters**: BigModel.cn and the MIMO model adapter (thanks to [Akagi201](https://github.com/Akagi201)).
+    - **zai: changed namespace strategy**, with (zai:: for default, and zai-codding:: for subscription, same adapter)
     - **Gemini Thinking & Thought**: Full support for Gemini Thought signatures (thanks to [Himmelschmidt](https://github.com/Himmelschmidt)) and thinking levels.
     - **Reasoning Effort Control**: Support for `ReasoningEffort` for Anthropic (Claude 3.7/4.5) and Gemini (Thinking levels), including `ReasoningEffort::None`.
     - **Content & Binary Improvements**: Enhanced binary/PDF API and size tracking.
@@ -31,8 +31,8 @@ Provides a single, ergonomic API to many generative AI providers, such as Anthro
 - **What's still awesome**:
     - Normalized and ergonomic Chat API across all major providers.
     - Native protocol support for Gemini and Anthropic protocols (Reasoning/Thinking controls).
-    - PDF, Image, and Embedding support.
-    - Custom Auth, Endpoint, and Header overrides.
+    - PDF, image, and embedding support.
+    - Custom auth, endpoint, and header overrides.
 
 See:
     - [CHANGELOG](CHANGELOG.md)
@@ -56,7 +56,7 @@ See:
   - [4t145](https://github.com/4t145) for raw body capture [PR #68](https://github.com/jeremychone/rust-genai/pull/68)
   - [Vagmi Mudumbai](https://github.com/vagmi) exec_chat bug fix [PR #86](https://github.com/jeremychone/rust-genai/pull/86)
   - [Maximilian Goisser](https://github.com/hobofan) Fix OpenAI adapter to use ServiceTarget
-  - [ClanceyLu](https://github.com/ClanceyLu) for Tool Use Streaming support, web configuration support, and fixes
+  - [ClanceyLu](https://github.com/ClanceyLu) for tool use streaming support, web configuration support, and fixes
   - [@SilasMarvin](https://github.com/SilasMarvin) for fixing content/tools issues with some Ollama models [PR #55](https://github.com/jeremychone/rust-genai/pull/55)
   - [@una-spirito](https://github.com/luna-spirito) for Gemini `ReasoningEffort::Budget` support
   - [@jBernavaPrah](https://github.com/jBernavaPrah) for adding tracing (it was long overdue). [PR #45](https://github.com/jeremychone/rust-genai/pull/45)
@@ -66,17 +66,17 @@ See:
   - [@omarshehab221](https://github.com/omarshehab221) for de/serialize on structs [PR #19](https://github.com/jeremychone/rust-genai/pull/19)
   - [@tusharmath](https://github.com/tusharmath) for making webc::Error [PR #12](https://github.com/jeremychone/rust-genai/pull/12)
   - [@giangndm](https://github.com/giangndm) for making stream Send [PR #10](https://github.com/jeremychone/rust-genai/pull/10)
-  - [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2) - implement Groq completions
+  - [@stargazing-dino](https://github.com/stargazing-dino) for [PR #2](https://github.com/jeremychone/rust-genai/pull/2), implement Groq completions
 
 ## Usage examples
 
 - Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://www.youtube.com/watch?v=zL1BzPVM8-Y&list=PL7r-PXl6ZPcB2zN0XHsYIDaD5yW8I40AE) for a simple example of how I use AI PACK/genai for production coding.
 
-> Note: Feel free to send me a short description and a link to your application or library using genai.
+> Note: Feel free to send me a short description and a link to your application or library that uses genai.
 
 ## Key Features
 
-- Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek (Direct chat and stream) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
@@ -185,7 +185,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [examples/c01-conv.rs](examples/c01-conv.rs) - Shows how to build a conversation flow.
 - [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data (i.e., for api_key) per adapter kind.
 - [examples/c03-mapper.rs](examples/c03-mapper.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
-- [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and per-request level.
+- [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and at the per-request level.
 - [examples/c05-model-names.rs](examples/c05-model-names.rs) - Shows how to get model names per AdapterKind.
 - [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs) - For custom auth, endpoint, and model.
 - [examples/c07-image.rs](examples/c07-image.rs) - Image analysis support
@@ -234,28 +234,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 |-----------------------------|-----------------------------|-------------------------|----------------------------|-----------------------|
 | `prompt_tokens`             | `prompt_tokens`             | `input_tokens` (added)  | `promptTokenCount` (2)     | `input_tokens`        |
 | `completion_tokens`         | `completion_tokens`         | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
-| `total_tokens`              | `total_tokens`              | (computed)              | `totalTokenCount`  (2)     | (computed)            |
+| `total_tokens`              | `total_tokens`              | (computed)              | `totalTokenCount` (2)      | (computed)            |
 | `prompt_tokens_details`     | `prompt_tokens_details`     | `cached/cache_creation` | N/A for now                | N/A for now           |
 | `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
 
-
 - **(1)** - **OpenAI-compatible** notes
 	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo
-	- For **Groq**, the property `x_groq.usage.`  
-	- At this point, **Ollama** does not emit input/output tokens when streaming due to the Ollama OpenAI compatibility layer limitation. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
+	- For **Groq**, the property `x_groq.usage.`
+	- At this point, **Ollama** does not emit input/output tokens when streaming due to a limitation in the Ollama OpenAI compatibility layer. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
 	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider (or None)
 
 - **(2)**: **Gemini** tokens
-	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total amount of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
-
+	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
 
 ## Notes on Possible Direction
 
-- Will add more data on ChatResponse and ChatStream, especially metadata about usage.
+- Will add more data to ChatResponse and ChatStream, especially usage metadata.
 - Add vision/image support to chat messages and responses.
 - Add function calling support to chat messages and responses.
 - Add `embed` and `embed_batch`.
-- Add the AWS Bedrock variants (e.g., Mistral and Anthropic). Most of the work will be on the "interesting" token signature scheme; trying to avoid bringing in large SDKs, this might be a lower-priority feature.
+- Add the AWS Bedrock variants (e.g., Mistral and Anthropic). Most of the work will be on the "interesting" token signature scheme. To avoid bringing in large SDKs, this might be a lower-priority feature.
 - Add the Google Vertex AI variants.
 - May add the Azure OpenAI variant (not sure yet).
 

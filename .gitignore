@@ -24,6 +24,7 @@ target/
 dist/
 out/
 
+*.html
 # Doc Files
 *.pdf
 *.docx
@@ -79,7 +80,7 @@ __pycache__/
 
 
 # -- others
-# Allows .env (make sure only dev info) 
+# Allows .env (make sure only dev info)
 # !.env # Commented by default
 
 # Allow vscode

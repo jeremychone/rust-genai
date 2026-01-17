@@ -530,6 +530,7 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.service_tier.as_ref()))
 	}
 
+	#[allow(unused)]
 	pub fn extra_headers(&self) -> Option<&Headers> {
 		self.chat
 			.and_then(|chat| chat.extra_headers.as_ref())
