@@ -14,7 +14,7 @@ const MODEL_NS: &str = "openai_resp::gpt-5-mini";
 // openai specific
 #[tokio::test]
 async fn test_chat_reasoning_minimal_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok("gpt-5-codex-minimal", None).await
+	common_tests::common_test_chat_simple_ok("gpt-5-minimal", None).await
 }
 
 // endregion: --- Provider Specific
