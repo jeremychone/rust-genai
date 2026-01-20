@@ -28,6 +28,44 @@ async fn test_chat_reasoning_ok() -> TestResult<()> {
 	.await
 }
 
+/// Test that include_thought_summary returns thought summaries in reasoning_content
+#[tokio::test]
+async fn test_chat_include_thought_summary_ok() -> TestResult<()> {
+	use genai::chat::{ChatMessage, ChatOptions, ChatRequest};
+
+	// -- Setup & Fixtures
+	let client = genai::Client::default();
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence but think carefully."),
+		ChatMessage::user("What is the sum of the first 10 prime numbers?"),
+	]);
+
+	let options = ChatOptions::default().with_include_thought_summary(true);
+
+	// -- Exec
+	let chat_res = client.exec_chat(MODEL_GPRO_3, chat_req, Some(&options)).await?;
+
+	// -- Check Content
+	let content_text = chat_res.first_text().ok_or("Should have text content")?;
+	assert!(!content_text.trim().is_empty(), "Content should not be empty");
+
+	// -- Check for reasoning_content (thought summaries go here)
+	// When include_thought_summary is enabled, Gemini returns parts with thought=true
+	// which are captured as reasoning_content
+	let reasoning_content = chat_res
+		.reasoning_content
+		.as_ref()
+		.ok_or("Should have reasoning_content when include_thought_summary is enabled")?;
+
+	assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
+
+	// The thought summary should contain some reasoning about the problem
+	// (sum of first 10 primes: 2+3+5+7+11+13+17+19+23+29 = 129)
+	println!("Thought summary length: {} chars", reasoning_content.len());
+
+	Ok(())
+}
+
 #[tokio::test]
 async fn test_chat_namespaced_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await

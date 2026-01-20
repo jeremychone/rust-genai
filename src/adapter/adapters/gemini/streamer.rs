@@ -102,19 +102,40 @@ impl futures::Stream for GeminiStreamer {
 							let mut stream_text_content: String = String::new();
 							let mut stream_tool_call: Option<ToolCall> = None;
 							let mut stream_thought: Option<String> = None;
+							let mut stream_thought_summary: Option<String> = None;
 
 							for g_content_item in content {
 								match g_content_item {
 									GeminiChatContent::Text(text) => stream_text_content.push_str(&text),
 									GeminiChatContent::ToolCall(tool_call) => stream_tool_call = Some(tool_call),
 									GeminiChatContent::ThoughtSignature(thought) => stream_thought = Some(thought),
+									GeminiChatContent::ThoughtSummary(summary) => {
+										stream_thought_summary = Some(summary)
+									}
 								}
 							}
 
 							// -- Queue Events
-							// Priority: Thought -> Text -> ToolCall
+							// Priority: ThoughtSummary -> Thought -> Text -> ToolCall
 
-							// 1. Thought
+							// 0. Thought Summary (from includeThoughts)
+							if let Some(summary) = stream_thought_summary {
+								// Capture in reasoning_content
+								if self.options.capture_reasoning_content {
+									match self.captured_data.reasoning_content {
+										Some(ref mut c) => c.push_str(&summary),
+										None => self.captured_data.reasoning_content = Some(summary.clone()),
+									}
+								}
+
+								if self.options.capture_usage {
+									self.captured_data.usage = Some(usage.clone());
+								}
+
+								self.pending_events.push_back(InterStreamEvent::ReasoningChunk(summary));
+							}
+
+							// 1. Thought Signature (for tool use validation)
 							if let Some(thought) = stream_thought {
 								// Capture thought
 								match self.captured_data.thought_signatures {

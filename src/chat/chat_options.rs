@@ -68,6 +68,10 @@ pub struct ChatOptions {
 
 	/// Additional HTTP headers to include with the request.
 	pub extra_headers: Option<Headers>,
+
+	/// Include thought summaries in the response (Gemini-specific).
+	/// When enabled with thinking models, the response will include thought summary parts.
+	pub include_thought_summary: Option<bool>,
 }
 
 /// Chainable Setters
@@ -165,6 +169,13 @@ impl ChatOptions {
 	/// Adds extra HTTP headers.
 	pub fn with_extra_headers(mut self, headers: impl Into<Headers>) -> Self {
 		self.extra_headers = Some(headers.into());
+		self
+	}
+
+	/// Enables or disables including thought summaries in the response.
+	/// When enabled with Gemini thinking models, the response will include thought summary parts.
+	pub fn with_include_thought_summary(mut self, value: bool) -> Self {
+		self.include_thought_summary = Some(value);
 		self
 	}
 
@@ -535,6 +546,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.extra_headers.as_ref())
 			.or_else(|| self.client.and_then(|client| client.extra_headers.as_ref()))
+	}
+
+	pub fn include_thought_summary(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.include_thought_summary)
+			.or_else(|| self.client.and_then(|client| client.include_thought_summary))
 	}
 
 	/// Returns true only if there is a ChatResponseFormat::JsonMode

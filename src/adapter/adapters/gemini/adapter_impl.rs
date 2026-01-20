@@ -212,6 +212,11 @@ impl Adapter for GeminiAdapter {
 			payload.x_insert("/generationConfig/topP", top_p)?;
 		}
 
+		// -- Include thought summaries if requested
+		if options_set.include_thought_summary().unwrap_or(false) {
+			payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
+		}
+
 		// -- url
 		let provider_model = model.from_name(provider_model_name);
 		let url = Self::get_service_url(&provider_model, service_type, endpoint)?;
@@ -239,6 +244,7 @@ impl Adapter for GeminiAdapter {
 		} = gemini_response;
 
 		let mut thoughts: Vec<String> = Vec::new();
+		let mut thought_summaries: Vec<String> = Vec::new();
 		let mut texts: Vec<String> = Vec::new();
 		let mut tool_calls: Vec<ToolCall> = Vec::new();
 
@@ -247,6 +253,7 @@ impl Adapter for GeminiAdapter {
 				GeminiChatContent::Text(text) => texts.push(text),
 				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
 				GeminiChatContent::ThoughtSignature(thought) => thoughts.push(thought),
+				GeminiChatContent::ThoughtSummary(summary) => thought_summaries.push(summary),
 			}
 		}
 
@@ -273,9 +280,16 @@ impl Adapter for GeminiAdapter {
 		parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
 		let content = MessageContent::from_parts(parts);
 
+		// Thought summaries from includeThoughts go into reasoning_content
+		let reasoning_content = if !thought_summaries.is_empty() {
+			Some(thought_summaries.join("\n"))
+		} else {
+			None
+		};
+
 		Ok(ChatResponse {
 			content,
-			reasoning_content: None,
+			reasoning_content,
 			model_iden,
 			provider_model_iden,
 			usage,
@@ -349,26 +363,17 @@ impl GeminiAdapter {
 		};
 
 		for mut part in parts {
-			// -- Capture eventual thought signature
+			// -- Check if this part is a thought summary (thought: true boolean)
+			// When includeThoughts is enabled, parts with thought=true contain thought summaries in the text field
+			let is_thought = part.x_take::<bool>("thought").unwrap_or(false);
+
+			// -- Capture eventual thought signature (for tool use validation, different from thought summaries)
+			if let Some(thought_sig) = part
+				.x_take::<Value>("thoughtSignature")
+				.ok()
+				.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
 			{
-				if let Some(thought) = part
-					.x_take::<Value>("thoughtSignature")
-					.ok()
-					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
-				{
-					content.push(GeminiChatContent::ThoughtSignature(thought));
-				}
-				// Note: sometime the thought is in "thought" (undocumented, but observed in some cases or older models?)
-				//       But for Gemini 3 it is thoughtSignature. Keeping this just in case or for backward compat if it was used.
-				//       Actually, let's stick to thoughtSignature as per docs, but if we see "thought" we might want to capture it too.
-				//       Let's check for "thought" if "thoughtSignature" was not found.
-				else if let Some(thought) = part
-					.x_take::<Value>("thought")
-					.ok()
-					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
-				{
-					content.push(GeminiChatContent::ThoughtSignature(thought));
-				}
+				content.push(GeminiChatContent::ThoughtSignature(thought_sig));
 			}
 
 			// -- Capture eventual function call
@@ -383,14 +388,18 @@ impl GeminiAdapter {
 				content.push(GeminiChatContent::ToolCall(tool_call))
 			}
 
-			// -- Capture eventual text
+			// -- Capture eventual text (or thought summary if is_thought is true)
 			if let Some(txt_content) = part
 				.x_take::<Value>("text")
 				.ok()
 				.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
-				.map(GeminiChatContent::Text)
 			{
-				content.push(txt_content)
+				if is_thought {
+					// This is a thought summary from includeThoughts
+					content.push(GeminiChatContent::ThoughtSummary(txt_content));
+				} else {
+					content.push(GeminiChatContent::Text(txt_content));
+				}
 			}
 		}
 		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
@@ -719,6 +728,8 @@ pub(super) enum GeminiChatContent {
 	Text(String),
 	ToolCall(ToolCall),
 	ThoughtSignature(String),
+	/// Thought summary from includeThoughts (thought: true + text)
+	ThoughtSummary(String),
 }
 
 struct GeminiChatRequestParts {
