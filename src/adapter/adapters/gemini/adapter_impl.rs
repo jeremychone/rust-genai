@@ -161,6 +161,8 @@ impl Adapter for GeminiAdapter {
 			else {
 				insert_gemini_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
 			}
+            // -- Always include thoughts when reasoning effort is set since you are already paying for them
+            payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
 		}
 
 		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
@@ -239,6 +241,7 @@ impl Adapter for GeminiAdapter {
 		} = gemini_response;
 
 		let mut thoughts: Vec<String> = Vec::new();
+        let mut reasonings: Vec<String> = Vec::new();
 		let mut texts: Vec<String> = Vec::new();
 		let mut tool_calls: Vec<ToolCall> = Vec::new();
 
@@ -247,6 +250,7 @@ impl Adapter for GeminiAdapter {
 				GeminiChatContent::Text(text) => texts.push(text),
 				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
 				GeminiChatContent::ThoughtSignature(thought) => thoughts.push(thought),
+                GeminiChatContent::Reasoning(reasoning_text) => reasonings.push(reasoning_text),
 			}
 		}
 
@@ -269,13 +273,20 @@ impl Adapter for GeminiAdapter {
 				parts.push(ContentPart::Text(combined_text));
 			}
 		}
+        let mut reasoning_text = String::new();
+        if !reasonings.is_empty() {
+            for reasoning in &reasonings {
+                reasoning_text.push_str(reasoning);
+            }
+        }
 
 		parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
 		let content = MessageContent::from_parts(parts);
 
+
 		Ok(ChatResponse {
 			content,
-			reasoning_content: None,
+			reasoning_content: Some(reasoning_text),
 			model_iden,
 			provider_model_iden,
 			usage,
@@ -351,12 +362,12 @@ impl GeminiAdapter {
 		for mut part in parts {
 			// -- Capture eventual thought signature
 			{
-				if let Some(thought) = part
+				if let Some(thought_signature) = part
 					.x_take::<Value>("thoughtSignature")
 					.ok()
 					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
 				{
-					content.push(GeminiChatContent::ThoughtSignature(thought));
+					content.push(GeminiChatContent::ThoughtSignature(thought_signature));
 				}
 				// Note: sometime the thought is in "thought" (undocumented, but observed in some cases or older models?)
 				//       But for Gemini 3 it is thoughtSignature. Keeping this just in case or for backward compat if it was used.
@@ -365,9 +376,14 @@ impl GeminiAdapter {
 				else if let Some(thought) = part
 					.x_take::<Value>("thought")
 					.ok()
-					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
+					.and_then(|v| if let Value::Bool(v) = v { Some(v) } else { None })
 				{
-					content.push(GeminiChatContent::ThoughtSignature(thought));
+                    if thought {
+                        if let Some(val) = part.x_take::<Value>("text")
+                            .ok().and_then(|v| if let Value::String(v) = v { Some(v) } else {None}) {
+                                content.push(GeminiChatContent::Reasoning(val));
+                            }
+                    }
 				}
 			}
 
@@ -718,6 +734,7 @@ pub(super) struct GeminiChatResponse {
 pub(super) enum GeminiChatContent {
 	Text(String),
 	ToolCall(ToolCall),
+    Reasoning(String),
 	ThoughtSignature(String),
 }
 
