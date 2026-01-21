@@ -29,6 +29,41 @@ impl OpenAIStreamer {
 			captured_data: Default::default(),
 		}
 	}
+
+	/// Captures a single tool call into `captured_data.tool_calls`, merging with existing if needed.
+	/// Returns the (possibly merged) tool call for use in events.
+	fn capture_tool_call(&mut self, index: usize, call_id: String, fn_name: String, arguments: String) -> ToolCall {
+		let tool_call = ToolCall {
+			call_id: call_id.clone(),
+			fn_name: fn_name.clone(),
+			fn_arguments: Value::String(arguments.clone()),
+			thought_signatures: None,
+		};
+
+		if !self.options.capture_tool_calls {
+			return tool_call;
+		}
+
+		let calls = self.captured_data.tool_calls.get_or_insert_with(Vec::new);
+
+		if let Some(existing_call) = calls.get_mut(index) {
+			// Merge with existing: accumulate arguments as strings
+			if let Some(existing_args) = existing_call.fn_arguments.as_str() {
+				let accumulated = format!("{existing_args}{arguments}");
+				existing_call.fn_arguments = Value::String(accumulated);
+			}
+			// Update call_id and fn_name on first chunk that has them
+			if !fn_name.is_empty() {
+				existing_call.call_id = call_id;
+				existing_call.fn_name = fn_name;
+			}
+			existing_call.clone()
+		} else {
+			// New tool call - resize to handle potential gaps (though unlikely in streaming)
+			calls.resize(index + 1, tool_call.clone());
+			tool_call
+		}
+	}
 }
 
 impl futures::Stream for OpenAIStreamer {
@@ -127,6 +162,30 @@ impl futures::Stream for OpenAIStreamer {
 						// as there might be other messages, and the last one contains data: `[DONE]`
 						// NOTE: xAI has no `finish_reason` when not finished, so, need to just account for both null/absent
 						if let Ok(_finish_reason) = first_choice.x_take::<String>("finish_reason") {
+							// NOTE: Some providers (e.g., Ollama) send tool_calls AND finish_reason in the same message.
+							// We need to capture tool_calls here before continuing to the next message.
+							if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls")
+								&& delta_tool_calls != Value::Null
+							{
+								if let Some(delta_tool_calls) = delta_tool_calls.as_array() {
+									for tool_call_obj_val in delta_tool_calls {
+										let mut tool_call_obj = tool_call_obj_val.clone();
+										if let (Ok(index), Ok(mut function)) = (
+											tool_call_obj.x_take::<u32>("index"),
+											tool_call_obj.x_take::<Value>("function"),
+										) {
+											let call_id = tool_call_obj
+												.x_take::<String>("id")
+												.unwrap_or_else(|_| format!("call_{index}"));
+											let fn_name = function.x_take::<String>("name").unwrap_or_default();
+											let arguments = function.x_take::<String>("arguments").unwrap_or_default();
+
+											self.capture_tool_call(index as usize, call_id, fn_name, arguments);
+										}
+									}
+								}
+							}
+
 							// NOTE: For Groq, the usage is captured when finish_reason indicates stopping, and in the `/x_groq/usage`
 							if self.options.capture_usage {
 								match adapter_kind {
@@ -174,38 +233,8 @@ impl futures::Stream for OpenAIStreamer {
 										.unwrap_or_else(|_| format!("call_{index}"));
 									let fn_name = function.x_take::<String>("name").unwrap_or_default();
 									let arguments = function.x_take::<String>("arguments").unwrap_or_default();
-									// Don't parse yet - accumulate as string first
-									let mut tool_call = crate::chat::ToolCall {
-										call_id: call_id.clone(),
-										fn_name: fn_name.clone(),
-										fn_arguments: serde_json::Value::String(arguments.clone()),
-										thought_signatures: None,
-									};
 
-									// Capture the tool call if enabled
-									if self.options.capture_tool_calls {
-										let calls = self.captured_data.tool_calls.get_or_insert_with(Vec::new);
-										let idx = index as usize;
-
-										if let Some(call) = calls.get_mut(idx) {
-											// Accumulate arguments as strings, don't parse until complete
-											if let Some(existing) = call.fn_arguments.as_str() {
-												let accumulated = format!("{existing}{arguments}");
-												call.fn_arguments = Value::String(accumulated);
-											}
-
-											// Update call_id and fn_name on first chunk that has them
-											if !fn_name.is_empty() {
-												call.call_id = call_id.clone();
-												call.fn_name = fn_name.clone();
-											}
-											tool_call = call.clone();
-										} else {
-											// If it doesn't exist, we add it.
-											// We use resize to handle potential gaps (though unlikely in streaming).
-											calls.resize(idx + 1, tool_call.clone());
-										}
-									}
+									let tool_call = self.capture_tool_call(index as usize, call_id, fn_name, arguments);
 
 									// Return the ToolCallChunk event
 									return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tool_call))));
