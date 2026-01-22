@@ -1,6 +1,6 @@
-use crate::adapter::AdapterDispatcher;
+use crate::adapter::{AdapterDispatcher, AdapterKind};
 use crate::chat::ChatOptions;
-use crate::client::ServiceTarget;
+use crate::client::{ModelSpec, ServiceTarget};
 use crate::embed::EmbedOptions;
 use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result, WebConfig};
@@ -152,5 +152,27 @@ impl ClientConfig {
 		};
 
 		Ok(service_target)
+	}
+
+	/// Resolves a [`ModelSpec`] to a [`ServiceTarget`].
+	///
+	/// The resolution behavior depends on the variant:
+	///
+	/// - [`ModelSpec::Name`]: Infers adapter from name, then applies full resolution
+	///   (model mapper, auth resolver, service target resolver).
+	///
+	/// - [`ModelSpec::Iden`]: Skips adapter inference, applies full resolution.
+	///
+	/// - [`ModelSpec::Target`]: Returns the target directly, bypassing all resolution.
+	pub async fn resolve_model_spec(&self, spec: ModelSpec) -> Result<ServiceTarget> {
+		match spec {
+			ModelSpec::Name(name) => {
+				let adapter_kind = AdapterKind::from_model(&name)?;
+				let model = ModelIden::new(adapter_kind, name);
+				self.resolve_service_target(model).await
+			}
+			ModelSpec::Iden(model) => self.resolve_service_target(model).await,
+			ModelSpec::Target(target) => Ok(target),
+		}
 	}
 }
