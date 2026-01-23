@@ -2,7 +2,7 @@ use crate::adapter::{AdapterDispatcher, AdapterKind};
 use crate::chat::ChatOptions;
 use crate::client::{ModelSpec, ServiceTarget};
 use crate::embed::EmbedOptions;
-use crate::resolver::{AuthResolver, ModelMapper, ServiceTargetResolver};
+use crate::resolver::{AuthData, AuthResolver, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result, WebConfig};
 
 /// Configuration for building and customizing a `Client`.
@@ -104,41 +104,65 @@ impl ClientConfig {
 	/// Errors with Error::Resolver if any resolver step fails.
 	pub async fn resolve_service_target(&self, model: ModelIden) -> Result<ServiceTarget> {
 		// -- Resolve the Model first
-		let model = match self.model_mapper() {
+		let model = self.run_model_mapper(model.clone())?;
+
+		// -- Get the auth
+		let auth = self.run_auth_resolver(model.clone()).await?;
+
+		// -- Get the default endpoint
+		// For now, just get the default endpoint; the `resolve_target` will allow overriding it.
+		let endpoint = AdapterDispatcher::default_endpoint(model.adapter_kind);
+
+		// -- Create the default service target
+		let service_target = ServiceTarget {
+			model: model.clone(),
+			auth,
+			endpoint,
+		};
+
+		// -- Resolve the service target
+		let service_target = self.run_service_target_resolver(service_target).await?;
+
+		Ok(service_target)
+	}
+
+	/// Resolves a [`ModelIden`] to a [`ModelIden`] via the [`ModelMapper`] (if any).
+	fn run_model_mapper(&self, model: ModelIden) -> Result<ModelIden> {
+		match self.model_mapper() {
 			Some(model_mapper) => model_mapper.map_model(model.clone()),
 			None => Ok(model.clone()),
 		}
 		.map_err(|resolver_error| Error::Resolver {
 			model_iden: model.clone(),
 			resolver_error,
-		})?;
+		})
+	}
 
-		// -- Get the auth
-		let auth = if let Some(auth) = self.auth_resolver() {
-			// resolve async which may be async
-			auth.resolve(model.clone())
-				.await
-				.map_err(|err| Error::Resolver {
-					model_iden: model.clone(),
-					resolver_error: err,
-				})?
-				// default the resolver resolves to nothing
-				.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind))
-		} else {
-			AdapterDispatcher::default_auth(model.adapter_kind)
-		};
+	/// Resolves a [`ModelIden`] to an [`AuthData`] via the [`AuthResolver`] (if any).
+	async fn run_auth_resolver(&self, model: ModelIden) -> Result<AuthData> {
+		match self.auth_resolver() {
+			Some(auth_resolver) => {
+				let auth_data = auth_resolver
+					.resolve(model.clone())
+					.await
+					.map_err(|err| Error::Resolver {
+						model_iden: model.clone(),
+						resolver_error: err,
+					})?
+					// default the resolver resolves to nothing
+					.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind));
 
-		// -- Get the default endpoint
-		// For now, just get the default endpoint; the `resolve_target` will allow overriding it.
-		let endpoint = AdapterDispatcher::default_endpoint(model.adapter_kind);
+				Ok(auth_data)
+			}
+			None => Ok(AdapterDispatcher::default_auth(model.adapter_kind)),
+		}
+	}
 
-		// -- Resolve the service_target
-		let service_target = ServiceTarget {
-			model: model.clone(),
-			auth,
-			endpoint,
-		};
-		let service_target = match self.service_target_resolver() {
+	/// Resolves a [`ServiceTarget`] via the [`ServiceTargetResolver`] (if any).
+	async fn run_service_target_resolver(&self, service_target: ServiceTarget) -> Result<ServiceTarget> {
+		let model = service_target.model.clone();
+
+		match self.service_target_resolver() {
 			Some(service_target_resolver) => {
 				service_target_resolver
 					.resolve(service_target)
@@ -146,12 +170,10 @@ impl ClientConfig {
 					.map_err(|resolver_error| Error::Resolver {
 						model_iden: model,
 						resolver_error,
-					})?
+					})
 			}
-			None => service_target,
-		};
-
-		Ok(service_target)
+			None => Ok(service_target),
+		}
 	}
 
 	/// Resolves a [`ModelSpec`] to a [`ServiceTarget`].
@@ -172,7 +194,7 @@ impl ClientConfig {
 				self.resolve_service_target(model).await
 			}
 			ModelSpec::Iden(model) => self.resolve_service_target(model).await,
-			ModelSpec::Target(target) => Ok(target),
+			ModelSpec::Target(target) => self.run_service_target_resolver(target).await,
 		}
 	}
 }
