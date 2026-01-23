@@ -47,7 +47,7 @@ impl Client {
 	/// Accepts any type that implements `Into<ModelSpec>`:
 	/// - `&str` or `String`: Model name with full inference
 	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
-	/// - `ServiceTarget`: Returns directly, bypasses resolution
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
 	pub async fn resolve_service_target(&self, model: impl Into<ModelSpec>) -> Result<ServiceTarget> {
 		self.config().resolve_model_spec(model.into()).await
 	}
@@ -57,7 +57,7 @@ impl Client {
 	/// Accepts any type that implements `Into<ModelSpec>`:
 	/// - `&str` or `String`: Model name with full inference
 	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
-	/// - `ServiceTarget`: Uses directly, bypasses resolution
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
 	pub async fn exec_chat(
 		&self,
 		model: impl Into<ModelSpec>,
@@ -110,7 +110,7 @@ impl Client {
 	/// Accepts any type that implements `Into<ModelSpec>`:
 	/// - `&str` or `String`: Model name with full inference
 	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
-	/// - `ServiceTarget`: Uses directly, bypasses resolution
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
 	pub async fn exec_chat_stream(
 		&self,
 		model: impl Into<ModelSpec>,
@@ -191,7 +191,7 @@ impl Client {
 	/// Accepts any type that implements `Into<ModelSpec>`:
 	/// - `&str` or `String`: Model name with full inference
 	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
-	/// - `ServiceTarget`: Uses directly, bypasses resolution
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
 	pub async fn exec_embed(
 		&self,
 		model: impl Into<ModelSpec>,
