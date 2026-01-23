@@ -12,7 +12,7 @@ use crate::{ModelIden, ServiceTarget};
 ///   Skips adapter inference but still resolves auth/endpoint via config.
 ///
 /// - [`ModelSpec::Target`]: A complete [`ServiceTarget`] with endpoint, auth, and model.
-///   Used directly, bypassing all resolution steps.
+///   Used directly, only runs the service target resolver.
 ///
 /// # Examples
 ///
@@ -43,7 +43,7 @@ pub enum ModelSpec {
 	/// Explicit [`ModelIden`] - skips adapter inference, still resolves auth/endpoint.
 	Iden(ModelIden),
 
-	/// Complete [`ServiceTarget`] - used directly, bypasses all resolution.
+	/// Complete [`ServiceTarget`] - used directly, bypasses model mapping and auth resolution
 	Target(ServiceTarget),
 }
 
