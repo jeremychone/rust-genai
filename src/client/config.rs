@@ -185,7 +185,7 @@ impl ClientConfig {
 	///
 	/// - [`ModelSpec::Iden`]: Skips adapter inference, applies full resolution.
 	///
-	/// - [`ModelSpec::Target`]: Returns the target directly, bypassing all resolution.
+	/// - [`ModelSpec::Target`]: Returns the target directly, running only the service target resolver.
 	pub async fn resolve_model_spec(&self, spec: ModelSpec) -> Result<ServiceTarget> {
 		match spec {
 			ModelSpec::Name(name) => {
