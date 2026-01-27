@@ -5,11 +5,12 @@
 
 use crate::resolver::OAuthCredentials;
 
+// Re-export CLAUDE_CODE_SYSTEM_TEXT for backward compatibility
+#[allow(unused_imports)]
+pub use crate::resolver::CLAUDE_CODE_SYSTEM_TEXT;
+
 /// Prefix added to tool names for OAuth requests.
 pub const OAUTH_TOOL_PREFIX: &str = "proxy_";
-
-/// System prompt text for OAuth requests (Claude Code CLI format).
-pub const CLAUDE_CODE_SYSTEM_TEXT: &str = "You are Claude Code, Anthropic's official CLI for Claude.";
 
 /// Anthropic-beta header value for OAuth requests.
 /// Minimal value that works with OAuth tokens.

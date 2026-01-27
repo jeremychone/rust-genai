@@ -11,7 +11,7 @@
 //! ```
 
 use genai::chat::{ChatMessage, ChatRequest};
-use genai::resolver::{AuthData, AuthResolver, OAuthCredentials, OAuthRefreshManager};
+use genai::resolver::{AuthData, AuthResolver, OAuthConfig, OAuthCredentials, OAuthRefreshManager};
 use genai::{Client, ModelIden};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -90,14 +90,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	}
 
-	// Create credentials
-	let mut creds = OAuthCredentials::new(&saved.access_token);
+	// Create credentials with custom OAuth config
+	// Available configs: OAuthConfig::minimal(), full_cloaking(), cli_proxy_api_compat(), none()
+	let oauth_config = OAuthConfig::minimal(); // Only inject system prompt (required)
+
+	let mut creds = OAuthCredentials::new(&saved.access_token).with_oauth_config(oauth_config);
 	if let Some(rt) = &saved.refresh_token {
 		creds = creds.with_refresh_token(rt);
 	}
 	if let Some(exp) = saved.expires_at {
 		creds = creds.with_expires_at(exp as u64);
 	}
+
+	println!("OAuth config: {:?}", creds.oauth_config);
 
 	// Create refresh manager with callbacks
 	let refresh_manager = OAuthRefreshManager::new(creds)

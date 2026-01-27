@@ -3,6 +3,8 @@
 //! This module provides the `OAuthCredentials` struct for handling OAuth tokens
 //! used with Claude Code CLI (tokens starting with `sk-ant-oat-`).
 
+use super::oauth_config::OAuthConfig;
+
 /// OAuth credentials for Claude Code CLI authentication.
 ///
 /// These credentials are used when authenticating with OAuth tokens
@@ -16,11 +18,14 @@ pub struct OAuthCredentials {
 	pub access_token: String,
 
 	/// Optional refresh token for token renewal.
-	/// NOTE: Currently unused, reserved for future token refresh implementation.
 	pub refresh_token: Option<String>,
 
 	/// Optional expiration timestamp (Unix epoch seconds)
 	pub expires_at: Option<u64>,
+
+	/// OAuth configuration for request transformations.
+	/// Controls which workarounds are applied (system prompt, tool prefixing, etc.)
+	pub oauth_config: OAuthConfig,
 }
 
 /// Constructors
@@ -31,6 +36,7 @@ impl OAuthCredentials {
 			access_token: access_token.into(),
 			refresh_token: None,
 			expires_at: None,
+			oauth_config: OAuthConfig::default(),
 		}
 	}
 
@@ -43,6 +49,20 @@ impl OAuthCredentials {
 	/// Set the expiration timestamp.
 	pub fn with_expires_at(mut self, expires_at: u64) -> Self {
 		self.expires_at = Some(expires_at);
+		self
+	}
+
+	/// Set the OAuth configuration for request transformations.
+	///
+	/// # Example
+	/// ```
+	/// use genai::resolver::{OAuthCredentials, OAuthConfig};
+	///
+	/// let creds = OAuthCredentials::new("sk-ant-oat-...")
+	///     .with_oauth_config(OAuthConfig::full_cloaking());
+	/// ```
+	pub fn with_oauth_config(mut self, config: OAuthConfig) -> Self {
+		self.oauth_config = config;
 		self
 	}
 }
@@ -86,6 +106,7 @@ impl std::fmt::Debug for OAuthCredentials {
 			.field("access_token", &"REDACTED")
 			.field("refresh_token", &self.refresh_token.as_ref().map(|_| "REDACTED"))
 			.field("expires_at", &self.expires_at)
+			.field("oauth_config", &self.oauth_config)
 			.finish()
 	}
 }

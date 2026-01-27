@@ -99,13 +99,17 @@ impl Adapter for AnthropicAdapter {
 	) -> Result<WebRequestData> {
 		let ServiceTarget { endpoint, auth, model } = target;
 
-		// -- Detect OAuth mode
+		// -- Detect OAuth mode and get config (before auth is moved)
 		let is_oauth = auth.is_oauth() || {
 			// Also check if the resolved key looks like an OAuth token
 			auth.single_key_value()
 				.map(|k| is_oauth_token(&k))
 				.unwrap_or(false)
 		};
+		let oauth_config = auth
+			.oauth_credentials()
+			.map(|c| c.oauth_config.clone())
+			.unwrap_or_default();
 
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
@@ -259,7 +263,7 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		// -- Apply OAuth transformations if needed
-		let payload = OAuthRequestTransformer::transform(payload, is_oauth);
+		let payload = OAuthRequestTransformer::transform_with_config(payload, is_oauth, &oauth_config);
 
 		Ok(WebRequestData { url, headers, payload })
 	}
