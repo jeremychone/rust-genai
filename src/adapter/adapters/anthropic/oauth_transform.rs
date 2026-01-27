@@ -93,9 +93,9 @@ impl OAuthRequestTransformer {
 				});
 				// Add cache_control to last element if enabled
 				if config.use_cache_control {
-					existing_part.as_object_mut().map(|obj| {
+					if let Some(obj) = existing_part.as_object_mut() {
 						obj.insert("cache_control".to_string(), json!({"type": "ephemeral"}));
-					});
+					}
 				}
 				let _ = payload.x_insert("system", json!([claude_code_part, existing_part]));
 			}
@@ -107,9 +107,9 @@ impl OAuthRequestTransformer {
 				if config.use_cache_control {
 					if let Some(last) = parts_clone.last_mut() {
 						if last.get("cache_control").is_none() {
-							let _ = last.as_object_mut().map(|obj| {
+							if let Some(obj) = last.as_object_mut() {
 								obj.insert("cache_control".to_string(), json!({"type": "ephemeral"}));
-							});
+							}
 						}
 					}
 				}
@@ -123,9 +123,9 @@ impl OAuthRequestTransformer {
 					"text": system_text
 				});
 				if config.use_cache_control {
-					claude_code_only.as_object_mut().map(|obj| {
+					if let Some(obj) = claude_code_only.as_object_mut() {
 						obj.insert("cache_control".to_string(), json!({"type": "ephemeral"}));
-					});
+					}
 				}
 				let _ = payload.x_insert("system", json!([claude_code_only]));
 			}
