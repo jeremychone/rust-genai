@@ -125,6 +125,9 @@ pub async fn refresh_tokens_with_retry(refresh_token: &str, max_retries: u32) ->
 #[derive(Clone)]
 pub struct OAuthRefreshManager {
 	credentials: Arc<tokio::sync::RwLock<OAuthCredentials>>,
+	/// Mutex to serialize refresh operations and prevent race conditions.
+	/// OAuth refresh tokens are single-use, so concurrent refreshes with the same token would fail.
+	refresh_mutex: Arc<tokio::sync::Mutex<()>>,
 	on_refresh: Option<OnRefreshCallback>,
 	on_auth_required: Option<OnAuthRequiredCallback>,
 }
@@ -134,6 +137,7 @@ impl OAuthRefreshManager {
 	pub fn new(credentials: OAuthCredentials) -> Self {
 		Self {
 			credentials: Arc::new(tokio::sync::RwLock::new(credentials)),
+			refresh_mutex: Arc::new(tokio::sync::Mutex::new(())),
 			on_refresh: None,
 			on_auth_required: None,
 		}
@@ -173,12 +177,23 @@ impl OAuthRefreshManager {
 	/// Refresh tokens if needed (proactive refresh).
 	///
 	/// Returns `true` if tokens were refreshed, `false` if no refresh was needed.
+	/// Uses double-check pattern to avoid unnecessary refreshes when multiple
+	/// threads detect expiration simultaneously.
 	pub async fn refresh_if_needed(&self) -> Result<bool, String> {
+		// Quick check without lock
 		if !self.needs_refresh().await {
 			return Ok(false);
 		}
 
-		self.force_refresh().await?;
+		// Acquire refresh lock to serialize refresh operations
+		let _guard = self.refresh_mutex.lock().await;
+
+		// Double-check after acquiring lock (another thread may have refreshed)
+		if !self.needs_refresh().await {
+			return Ok(false);
+		}
+
+		self.do_refresh().await?;
 		Ok(true)
 	}
 
@@ -188,6 +203,13 @@ impl OAuthRefreshManager {
 	/// If the error indicates the refresh token is invalid, the `on_auth_required`
 	/// callback will be called (if set).
 	pub async fn force_refresh(&self) -> Result<(), String> {
+		// Acquire refresh lock to serialize refresh operations
+		let _guard = self.refresh_mutex.lock().await;
+		self.do_refresh().await
+	}
+
+	/// Internal refresh implementation (must be called with refresh_mutex held).
+	async fn do_refresh(&self) -> Result<(), String> {
 		let refresh_token = {
 			let creds = self.credentials.read().await;
 			creds
