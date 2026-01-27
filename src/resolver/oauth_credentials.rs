@@ -15,7 +15,8 @@ pub struct OAuthCredentials {
 	/// The OAuth access token (e.g., `sk-ant-oat-...`)
 	pub access_token: String,
 
-	/// Optional refresh token for token renewal
+	/// Optional refresh token for token renewal.
+	/// NOTE: Currently unused, reserved for future token refresh implementation.
 	pub refresh_token: Option<String>,
 
 	/// Optional expiration timestamp (Unix epoch seconds)
@@ -51,15 +52,17 @@ impl OAuthCredentials {
 	/// Check if the token has expired (with 5 minute buffer).
 	///
 	/// Returns `false` if no expiration time is set.
+	/// Returns `true` (fail-safe) if system time cannot be determined.
 	pub fn is_expired(&self) -> bool {
 		const BUFFER_SECONDS: u64 = 5 * 60; // 5 minutes
 
 		match self.expires_at {
 			Some(expires_at) => {
+				// Fail-safe: if time cannot be determined, consider token expired
 				let now = std::time::SystemTime::now()
 					.duration_since(std::time::UNIX_EPOCH)
 					.map(|d| d.as_secs())
-					.unwrap_or(0);
+					.unwrap_or(u64::MAX);
 
 				now + BUFFER_SECONDS >= expires_at
 			}
@@ -71,7 +74,7 @@ impl OAuthCredentials {
 	///
 	/// OAuth tokens from Claude Code CLI start with `sk-ant-oat-`.
 	pub fn is_oauth_token(token: &str) -> bool {
-		token.contains("sk-ant-oat")
+		token.starts_with("sk-ant-oat-")
 	}
 }
 
@@ -96,7 +99,9 @@ mod tests {
 	#[test]
 	fn test_is_oauth_token() {
 		assert!(OAuthCredentials::is_oauth_token("sk-ant-oat-abc123"));
-		assert!(OAuthCredentials::is_oauth_token("prefix-sk-ant-oat-abc123"));
+		assert!(OAuthCredentials::is_oauth_token("sk-ant-oat-SFMyNTY"));
+		// Should NOT match tokens that don't start with the prefix
+		assert!(!OAuthCredentials::is_oauth_token("prefix-sk-ant-oat-abc123"));
 		assert!(!OAuthCredentials::is_oauth_token("sk-ant-api01-abc123"));
 		assert!(!OAuthCredentials::is_oauth_token("regular-api-key"));
 	}

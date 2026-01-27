@@ -3,6 +3,8 @@
 //! This module provides helper functions for OAuth token handling including
 //! tool name prefixing, user ID generation, and system prompt injection.
 
+use crate::resolver::OAuthCredentials;
+
 /// Prefix added to tool names for OAuth requests.
 pub const OAUTH_TOOL_PREFIX: &str = "proxy_";
 
@@ -22,10 +24,11 @@ pub const OAUTH_ANTHROPIC_BETA: &str = "claude-code-20250219,oauth-2025-04-20,in
 
 /// Check if a token string is an OAuth token.
 ///
-/// OAuth tokens from Claude Code CLI contain `sk-ant-oat`.
+/// OAuth tokens from Claude Code CLI start with `sk-ant-oat-`.
+/// Delegates to [`OAuthCredentials::is_oauth_token`].
 #[inline]
 pub fn is_oauth_token(token: &str) -> bool {
-	token.contains("sk-ant-oat")
+	OAuthCredentials::is_oauth_token(token)
 }
 
 /// Add the `proxy_` prefix to a tool name.
@@ -82,7 +85,9 @@ mod tests {
 	#[test]
 	fn test_is_oauth_token() {
 		assert!(is_oauth_token("sk-ant-oat-abc123"));
-		assert!(is_oauth_token("prefix-sk-ant-oat-abc123"));
+		assert!(is_oauth_token("sk-ant-oat-SFMyNTY"));
+		// Should NOT match tokens that don't start with the prefix
+		assert!(!is_oauth_token("prefix-sk-ant-oat-abc123"));
 		assert!(!is_oauth_token("sk-ant-api01-abc123"));
 		assert!(!is_oauth_token("regular-api-key"));
 	}
