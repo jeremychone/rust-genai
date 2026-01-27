@@ -48,34 +48,19 @@ pub fn strip_tool_prefix(name: &str) -> String {
 /// Generate a fake user ID in the format expected by Claude Code OAuth.
 ///
 /// Format: `user_{64-hex-chars}_account__session_{uuid-v4}`
+///
+/// Uses cryptographic random for the hex part and UUID v4 for the session.
 pub fn generate_fake_user_id() -> String {
-	use std::time::{SystemTime, UNIX_EPOCH};
+	// Generate 32 random bytes -> 64 hex chars
+	let mut hex_bytes = [0u8; 32];
+	getrandom::getrandom(&mut hex_bytes).expect("Failed to generate random bytes");
 
-	// Generate pseudo-random hex string using current time and a simple hash
-	let now = SystemTime::now()
-		.duration_since(UNIX_EPOCH)
-		.map(|d| d.as_nanos())
-		.unwrap_or(0);
+	let hex_part: String = hex_bytes.iter().map(|b| format!("{:02x}", b)).collect();
 
-	// Create a 64-char hex string from time-based hash
-	let hex_part: String = (0..64)
-		.map(|i| {
-			let byte = ((now.wrapping_add(i as u128).wrapping_mul(0x5DEECE66D)) >> (i % 8)) as u8;
-			format!("{:x}", byte & 0x0F)
-		})
-		.collect();
+	// Generate UUID v4 for session
+	let uuid_part = uuid::Uuid::new_v4().to_string();
 
-	// Generate a simple UUID-like string
-	let uuid = format!(
-		"{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
-		(now >> 96) as u32,
-		(now >> 80) as u16,
-		(now >> 64) as u16 & 0x0FFF,
-		((now >> 48) as u16 & 0x3FFF) | 0x8000,
-		now as u64 & 0xFFFFFFFFFFFF
-	);
-
-	format!("user_{}_account__session_{}", hex_part, uuid)
+	format!("user_{}_account__session_{}", hex_part, uuid_part)
 }
 
 #[cfg(test)]
@@ -126,9 +111,12 @@ mod tests {
 
 	#[test]
 	fn test_generate_fake_user_id_uniqueness() {
+		// With cryptographic random, consecutive calls should always be unique
 		let id1 = generate_fake_user_id();
-		std::thread::sleep(std::time::Duration::from_millis(1));
 		let id2 = generate_fake_user_id();
+		let id3 = generate_fake_user_id();
 		assert_ne!(id1, id2);
+		assert_ne!(id2, id3);
+		assert_ne!(id1, id3);
 	}
 }
