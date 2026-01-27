@@ -1,7 +1,7 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::anthropic::oauth_utils::{strip_tool_prefix, OAUTH_TOOL_PREFIX};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, PromptTokensDetails, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -262,6 +262,30 @@ impl AnthropicStreamer {
 					.completion_tokens
 					.get_or_insert(0);
 				*val += output_tokens;
+			}
+
+			// -- Capture cache tokens (only present in message_start)
+			// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
+			// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
+			if message_type == "message_start" {
+				let cache_creation: i32 = data.x_get("/message/usage/cache_creation_input_tokens").unwrap_or(0);
+				let cache_read: i32 = data.x_get("/message/usage/cache_read_input_tokens").unwrap_or(0);
+
+				if cache_creation > 0 || cache_read > 0 {
+					let usage = self.captured_data.usage.get_or_insert(Usage::default());
+
+					// Add cache tokens to prompt_tokens (same as into_usage does)
+					if let Some(ref mut pt) = usage.prompt_tokens {
+						*pt += cache_creation + cache_read;
+					}
+
+					// Set prompt_tokens_details (match into_usage behavior: always Some(value))
+					usage.prompt_tokens_details = Some(PromptTokensDetails {
+						cache_creation_tokens: Some(cache_creation),
+						cached_tokens: Some(cache_read),
+						audio_tokens: None,
+					});
+				}
 			}
 		}
 
