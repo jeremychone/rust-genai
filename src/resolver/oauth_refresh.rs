@@ -3,7 +3,11 @@
 //! This module handles automatic token refresh for OAuth credentials.
 //! Based on CLIProxyAPI implementation.
 
-use crate::resolver::OAuthCredentials;
+use crate::adapter::AdapterKind;
+use crate::resolver::{AuthData, AuthResolver, OAuthCredentials};
+use crate::ModelIden;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 /// OAuth token refresh configuration and constants.
@@ -254,6 +258,55 @@ impl OAuthRefreshManager {
 			|| error_lower.contains("status 401")
 			|| error_lower.contains("status 403")
 			|| error_lower.contains("unauthorized")
+	}
+
+	/// Convert this manager into an `AuthResolver` that automatically refreshes tokens.
+	///
+	/// The returned resolver will:
+	/// 1. Check if the token needs refresh before each request
+	/// 2. Refresh automatically if needed (calling `on_refresh` callback)
+	/// 3. Return the current (possibly refreshed) credentials
+	///
+	/// This is the recommended way to use OAuth with automatic refresh.
+	///
+	/// # Example
+	/// ```ignore
+	/// let refresh_manager = OAuthRefreshManager::new(creds)
+	///     .with_on_refresh(|access, refresh, expires_in| {
+	///         save_tokens_to_file(access, refresh, expires_in);
+	///     });
+	///
+	/// let client = Client::builder()
+	///     .with_auth_resolver(refresh_manager.into_auth_resolver())
+	///     .build();
+	///
+	/// // Now all requests will automatically refresh tokens when needed
+	/// client.exec_chat(MODEL, chat_req, None).await?;
+	/// ```
+	pub fn into_auth_resolver(self) -> AuthResolver {
+		let manager = Arc::new(self);
+
+		AuthResolver::from_resolver_async_fn(move |model_iden: ModelIden| {
+			let manager = manager.clone();
+
+			Box::pin(async move {
+				// Only handle Anthropic models
+				if model_iden.adapter_kind != AdapterKind::Anthropic {
+					return Ok(None);
+				}
+
+				// Refresh if needed (this is async)
+				if let Err(e) = manager.refresh_if_needed().await {
+					// Log error but continue with current token
+					// The API call might still work if the token isn't actually expired
+					tracing::warn!("OAuth token refresh failed: {}", e);
+				}
+
+				// Return current credentials
+				let creds = manager.credentials().await;
+				Ok(Some(AuthData::from_oauth(creds)))
+			}) as Pin<Box<dyn Future<Output = crate::resolver::Result<Option<AuthData>>> + Send>>
+		})
 	}
 }
 
