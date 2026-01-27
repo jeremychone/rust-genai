@@ -78,6 +78,7 @@ report.*.json
 # -- Python
 __pycache__/
 
+CLIProxyAPI
 
 # -- others
 # Allows .env (make sure only dev info)

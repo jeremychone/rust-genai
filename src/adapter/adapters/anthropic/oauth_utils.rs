@@ -8,19 +8,38 @@ use crate::resolver::OAuthCredentials;
 /// Prefix added to tool names for OAuth requests.
 pub const OAUTH_TOOL_PREFIX: &str = "proxy_";
 
-/// System prompt prepended to OAuth requests for Claude Code CLI.
-pub const CLAUDE_CODE_SYSTEM_PROMPT: &str = r#"You are Claude Code, a coding assistant created by Anthropic.
-
-<claude-code-system-prompt>
-You help users with coding tasks by understanding their requirements, analyzing code,
-suggesting implementations, and assisting with debugging. You can access tools to
-read files, write code, and execute commands when appropriate.
-</claude-code-system-prompt>
-
-"#;
+/// System prompt text for OAuth requests (Claude Code CLI format).
+pub const CLAUDE_CODE_SYSTEM_TEXT: &str = "You are Claude Code, Anthropic's official CLI for Claude.";
 
 /// Anthropic-beta header value for OAuth requests.
-pub const OAUTH_ANTHROPIC_BETA: &str = "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,prompt-caching-2024-07-31,pdfs-2024-09-25,token-efficient-tools-2025-02-19";
+/// Minimal value that works with OAuth tokens.
+pub const OAUTH_ANTHROPIC_BETA: &str = "oauth-2025-04-20";
+
+/// User-Agent header value mimicking Claude Code CLI.
+/// Reserved for future use with full cloaking mode.
+#[allow(dead_code)]
+pub const CLAUDE_CLI_USER_AGENT: &str = "claude-cli/1.0.83 (external, cli)";
+
+/// Returns headers that mimic the Claude Code CLI client.
+///
+/// These headers make requests appear as if they come from the official Claude CLI.
+/// Reserved for future use with full cloaking mode.
+#[allow(dead_code)]
+pub fn get_claude_cli_headers() -> Vec<(&'static str, &'static str)> {
+	vec![
+		("X-App", "cli"),
+		("X-Stainless-Helper-Method", "stream"),
+		("X-Stainless-Retry-Count", "0"),
+		("X-Stainless-Runtime-Version", "v24.3.0"),
+		("X-Stainless-Package-Version", "0.55.1"),
+		("X-Stainless-Runtime", "node"),
+		("X-Stainless-Lang", "js"),
+		("X-Stainless-Arch", "x64"),
+		("X-Stainless-Os", "Windows"),
+		("X-Stainless-Timeout", "600"),
+		("User-Agent", CLAUDE_CLI_USER_AGENT),
+	]
+}
 
 /// Check if a token string is an OAuth token.
 ///
@@ -50,6 +69,10 @@ pub fn strip_tool_prefix(name: &str) -> String {
 /// Format: `user_{64-hex-chars}_account__session_{uuid-v4}`
 ///
 /// Uses cryptographic random for the hex part and UUID v4 for the session.
+///
+/// Note: Currently unused as basic OAuth works without user_id injection.
+/// Reserved for future use if Anthropic adds stricter requirements.
+#[allow(dead_code)]
 pub fn generate_fake_user_id() -> String {
 	// Generate 32 random bytes -> 64 hex chars
 	let mut hex_bytes = [0u8; 32];
@@ -71,6 +94,7 @@ mod tests {
 	fn test_is_oauth_token() {
 		assert!(is_oauth_token("sk-ant-oat-abc123"));
 		assert!(is_oauth_token("sk-ant-oat-SFMyNTY"));
+		assert!(is_oauth_token("sk-ant-oat01-abc123")); // New format
 		// Should NOT match tokens that don't start with the prefix
 		assert!(!is_oauth_token("prefix-sk-ant-oat-abc123"));
 		assert!(!is_oauth_token("sk-ant-api01-abc123"));

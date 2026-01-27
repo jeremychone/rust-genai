@@ -72,9 +72,9 @@ impl OAuthCredentials {
 
 	/// Check if a token string is an OAuth token.
 	///
-	/// OAuth tokens from Claude Code CLI start with `sk-ant-oat-`.
+	/// OAuth tokens from Claude Code CLI start with `sk-ant-oat` (e.g., `sk-ant-oat01-...`).
 	pub fn is_oauth_token(token: &str) -> bool {
-		token.starts_with("sk-ant-oat-")
+		token.starts_with("sk-ant-oat")
 	}
 }
 
@@ -100,6 +100,7 @@ mod tests {
 	fn test_is_oauth_token() {
 		assert!(OAuthCredentials::is_oauth_token("sk-ant-oat-abc123"));
 		assert!(OAuthCredentials::is_oauth_token("sk-ant-oat-SFMyNTY"));
+		assert!(OAuthCredentials::is_oauth_token("sk-ant-oat01-abc123")); // New format
 		// Should NOT match tokens that don't start with the prefix
 		assert!(!OAuthCredentials::is_oauth_token("prefix-sk-ant-oat-abc123"));
 		assert!(!OAuthCredentials::is_oauth_token("sk-ant-api01-abc123"));

@@ -45,3 +45,11 @@ serial_test = "3.2"
 base64 = "0.22.0"  # Check for the latest version
 bitflags = "2.8"
 gcp_auth = "0.12"
+# OAuth full example dependencies
+axum = "0.8"
+webbrowser = "1"
+sha2 = "0.10"
+hex = "0.4"
+urlencoding = "2"
+anyhow = "1"
+rand = "0.9"

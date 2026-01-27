@@ -22,6 +22,10 @@ pub(crate) use dispatcher::*;
 
 pub use adapter_kind::*;
 
+// -- Public OAuth types for advanced usage
+pub use adapters::anthropic::oauth_config::OAuthConfig;
+pub use adapters::anthropic::oauth_transform::{OAuthRequestTransformer, OAuthResponseTransformer};
+
 // -- Crate modules
 pub(crate) mod inter_stream;
 

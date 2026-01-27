@@ -117,17 +117,11 @@ impl Adapter for AnthropicAdapter {
 		let headers = if is_oauth {
 			// OAuth requires different headers:
 			// - Bearer token instead of x-api-key
-			// - Special beta features for Claude Code
-			// - Direct browser access header (required for OAuth tokens to bypass CORS,
-			//   as these tokens are designed for CLI/browser use cases)
+			// - Minimal beta flags to match what works with OAuth
 			Headers::from(vec![
 				("Authorization".to_string(), format!("Bearer {}", api_key)),
 				("anthropic-beta".to_string(), OAUTH_ANTHROPIC_BETA.to_string()),
 				("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
-				(
-					"Anthropic-Dangerous-Direct-Browser-Access".to_string(),
-					"true".to_string(),
-				),
 			])
 		} else {
 			Headers::from(vec![
