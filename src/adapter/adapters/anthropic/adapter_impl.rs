@@ -1,4 +1,6 @@
 use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::anthropic::oauth_transform::{OAuthRequestTransformer, OAuthResponseTransformer};
+use crate::adapter::anthropic::oauth_utils::{is_oauth_token, OAUTH_ANTHROPIC_BETA};
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
@@ -97,19 +99,38 @@ impl Adapter for AnthropicAdapter {
 	) -> Result<WebRequestData> {
 		let ServiceTarget { endpoint, auth, model } = target;
 
+		// -- Detect OAuth mode
+		let is_oauth = auth.is_oauth() || {
+			// Also check if the resolved key looks like an OAuth token
+			auth.single_key_value()
+				.map(|k| is_oauth_token(&k))
+				.unwrap_or(false)
+		};
+
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
 		// -- url
 		let url = Self::get_service_url(&model, service_type, endpoint)?;
 
-		// -- headers
-		let headers = Headers::from(vec![
-			// headers
-			("x-api-key".to_string(), api_key),
-			("anthropic-beta".to_string(), "effort-2025-11-24".to_string()),
-			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
-		]);
+		// -- headers (different for OAuth vs API key)
+		let headers = if is_oauth {
+			Headers::from(vec![
+				("Authorization".to_string(), format!("Bearer {}", api_key)),
+				("anthropic-beta".to_string(), OAUTH_ANTHROPIC_BETA.to_string()),
+				("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
+				(
+					"Anthropic-Dangerous-Direct-Browser-Access".to_string(),
+					"true".to_string(),
+				),
+			])
+		} else {
+			Headers::from(vec![
+				("x-api-key".to_string(), api_key),
+				("anthropic-beta".to_string(), "effort-2025-11-24".to_string()),
+				("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
+			])
+		};
 
 		// -- Parts
 		let AnthropicRequestParts {
@@ -238,6 +259,9 @@ impl Adapter for AnthropicAdapter {
 			payload.x_insert("top_p", top_p)?;
 		}
 
+		// -- Apply OAuth transformations if needed
+		let payload = OAuthRequestTransformer::transform(payload, is_oauth);
+
 		Ok(WebRequestData { url, headers, payload })
 	}
 
@@ -247,6 +271,10 @@ impl Adapter for AnthropicAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
+
+		// -- Detect and handle OAuth response (tool names start with proxy_)
+		let is_oauth = OAuthResponseTransformer::detect_oauth_response(&body);
+		body = OAuthResponseTransformer::transform(body, is_oauth);
 
 		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 

@@ -1,4 +1,5 @@
 use crate::Headers;
+use crate::resolver::oauth_credentials::OAuthCredentials;
 use crate::resolver::{Error, Result};
 use std::collections::HashMap;
 /// `AuthData` specifies either how or the key itself for an authentication resolver call.
@@ -17,6 +18,10 @@ pub enum AuthData {
 	/// This will be adapter-specific.
 	/// NOTE: Not used yet.
 	MultiKeys(HashMap<String, String>),
+
+	/// OAuth credentials for Claude Code CLI authentication.
+	/// Uses `Authorization: Bearer {token}` instead of `x-api-key`.
+	OAuth(OAuthCredentials),
 }
 
 /// Constructors
@@ -35,6 +40,18 @@ impl AuthData {
 	pub fn from_multi(data: HashMap<String, String>) -> Self {
 		AuthData::MultiKeys(data)
 	}
+
+	/// Create a new `AuthData` from OAuth credentials.
+	pub fn from_oauth(creds: OAuthCredentials) -> Self {
+		AuthData::OAuth(creds)
+	}
+
+	/// Create a new `AuthData` from an OAuth token string.
+	///
+	/// This is a convenience method that creates `OAuthCredentials` with just the token.
+	pub fn from_oauth_token(token: impl Into<String>) -> Self {
+		AuthData::OAuth(OAuthCredentials::new(token))
+	}
 }
 
 /// Getters
@@ -52,7 +69,21 @@ impl AuthData {
 				Ok(value)
 			}
 			AuthData::Key(value) => Ok(value.to_string()),
+			AuthData::OAuth(creds) => Ok(creds.access_token.clone()),
 			_ => Err(Error::ResolverAuthDataNotSingleValue),
+		}
+	}
+
+	/// Check if this is OAuth authentication.
+	pub fn is_oauth(&self) -> bool {
+		matches!(self, AuthData::OAuth(_))
+	}
+
+	/// Get the OAuth credentials if this is an OAuth authentication.
+	pub fn oauth_credentials(&self) -> Option<&OAuthCredentials> {
+		match self {
+			AuthData::OAuth(creds) => Some(creds),
+			_ => None,
 		}
 	}
 }
@@ -70,6 +101,7 @@ impl std::fmt::Debug for AuthData {
 			AuthData::RequestOverride { .. } => {
 				write!(f, "AuthData::RequestOverride {{ url: REDACTED, headers: REDACTED }}")
 			}
+			AuthData::OAuth(_) => write!(f, "AuthData::OAuth(REDACTED)"),
 		}
 	}
 }

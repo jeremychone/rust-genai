@@ -1,4 +1,5 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
+use crate::adapter::anthropic::oauth_utils::{strip_tool_prefix, OAUTH_TOOL_PREFIX};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
@@ -73,9 +74,16 @@ impl futures::Stream for AnthropicStreamer {
 								Ok("text") => self.in_progress_block = InProgressBlock::Text,
 								Ok("thinking") => self.in_progress_block = InProgressBlock::Thinking,
 								Ok("tool_use") => {
+									let mut name: String = data.x_take("/content_block/name")?;
+
+									// Strip OAuth proxy_ prefix if present
+									if name.starts_with(OAUTH_TOOL_PREFIX) {
+										name = strip_tool_prefix(&name);
+									}
+
 									self.in_progress_block = InProgressBlock::ToolUse {
 										id: data.x_take("/content_block/id")?,
-										name: data.x_take("/content_block/name")?,
+										name,
 										input: String::new(),
 									};
 								}
