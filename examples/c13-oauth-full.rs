@@ -380,8 +380,8 @@ async fn test_simple_chat(client: &Client) -> anyhow::Result<()> {
 async fn test_tool_use(client: &Client) -> anyhow::Result<()> {
 	use serde_json::json;
 
-	println!("\n=== Test 2: Tool Use (proxy_ prefix handling) ===");
-	println!("Testing automatic tool name prefixing/stripping...\n");
+	println!("\n=== Test 2: Tool Use ===");
+	println!("Testing tool use with OAuth (prefix_tool_names disabled by default)...\n");
 
 	// Define a simple tool
 	let calculator_tool = Tool::new("calculate")
@@ -401,7 +401,7 @@ async fn test_tool_use(client: &Client) -> anyhow::Result<()> {
 		.with_tools(vec![calculator_tool]);
 
 	println!("Sending request with tool 'calculate'...");
-	println!("(Library will send as 'proxy_calculate' to API)");
+	println!("(Note: prefix_tool_names is disabled in default config)");
 
 	let chat_res = client.exec_chat(MODEL, chat_req.clone(), None).await?;
 
@@ -414,13 +414,13 @@ async fn test_tool_use(client: &Client) -> anyhow::Result<()> {
 
 	println!("\nTool calls received:");
 	for tc in &tool_calls {
-		println!("  Function: {} (stripped from proxy_{})", tc.fn_name, tc.fn_name);
+		println!("  Function: {}", tc.fn_name);
 		println!("  Arguments: {}", tc.fn_arguments);
 
 		if tc.fn_name == "calculate" {
-			println!("[PASS] Tool name correctly stripped from proxy_calculate");
-		} else if tc.fn_name == "proxy_calculate" {
-			println!("[FAIL] Tool name NOT stripped - still has proxy_ prefix");
+			println!("[PASS] Tool call received correctly");
+		} else {
+			println!("[WARN] Unexpected tool name: {}", tc.fn_name);
 		}
 	}
 
