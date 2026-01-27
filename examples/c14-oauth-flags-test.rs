@@ -23,11 +23,13 @@ const API_URL: &str = "https://api.anthropic.com/v1/messages";
 struct SavedToken {
     access_token: String,
     refresh_token: Option<String>,
+    expires_at: Option<i64>,
 }
 
 fn load_token() -> Option<String> {
     // Try environment variable first
     if let Ok(token) = std::env::var("ANTHROPIC_OAUTH_TOKEN") {
+        println!("Using token from ANTHROPIC_OAUTH_TOKEN env var");
         return Some(token);
     }
 
@@ -36,6 +38,23 @@ fn load_token() -> Option<String> {
     if path.exists() {
         let content = std::fs::read_to_string(&path).ok()?;
         let saved: SavedToken = serde_json::from_str(&content).ok()?;
+
+        // Show expiration info
+        if let Some(expires_at) = saved.expires_at {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64;
+            let remaining = expires_at - now;
+            if remaining > 0 {
+                let hours = remaining / 3600;
+                let minutes = (remaining % 3600) / 60;
+                println!("Token expires in: {}h {}m", hours, minutes);
+            } else {
+                println!("⚠️  Token EXPIRED {} minutes ago!", (-remaining) / 60);
+            }
+        }
+
         return Some(saved.access_token);
     }
 

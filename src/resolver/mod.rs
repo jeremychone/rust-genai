@@ -11,6 +11,7 @@ mod endpoint;
 mod error;
 mod model_mapper;
 mod oauth_credentials;
+mod oauth_refresh;
 mod service_target_resolver;
 
 pub use auth_data::*;
@@ -19,6 +20,7 @@ pub use endpoint::*;
 pub use error::{Error, Result};
 pub use model_mapper::*;
 pub use oauth_credentials::*;
+pub use oauth_refresh::*;
 pub use service_target_resolver::*;
 
 // endregion: --- Modules

@@ -127,6 +127,8 @@ const TOKEN_FILE: &str = ".oauth_token.json";
 struct SavedToken {
 	access_token: String,
 	refresh_token: Option<String>,
+	/// Unix timestamp when the access token expires
+	expires_at: Option<i64>,
 }
 
 fn get_token_path() -> PathBuf {
@@ -143,14 +145,24 @@ fn load_saved_token() -> Option<SavedToken> {
 	}
 }
 
-fn save_token(access_token: &str, refresh_token: Option<&str>) {
+fn save_token(access_token: &str, refresh_token: Option<&str>, expires_in: Option<i64>) {
+	let expires_at = expires_in.map(|secs| {
+		std::time::SystemTime::now()
+			.duration_since(std::time::UNIX_EPOCH)
+			.unwrap()
+			.as_secs() as i64 + secs
+	});
 	let token = SavedToken {
 		access_token: access_token.to_string(),
 		refresh_token: refresh_token.map(|s| s.to_string()),
+		expires_at,
 	};
 	if let Ok(content) = serde_json::to_string_pretty(&token) {
 		let _ = std::fs::write(get_token_path(), content);
 		println!("Token saved to {}", TOKEN_FILE);
+		if let Some(exp) = expires_at {
+			println!("Token expires at: {} (Unix timestamp)", exp);
+		}
 	}
 }
 
@@ -167,7 +179,24 @@ async fn main() -> anyhow::Result<()> {
 
 	// Check for saved token file
 	if let Some(saved) = load_saved_token() {
-		println!("Using saved token from {}\n", TOKEN_FILE);
+		println!("Using saved token from {}", TOKEN_FILE);
+		if let Some(expires_at) = saved.expires_at {
+			let now = std::time::SystemTime::now()
+				.duration_since(std::time::UNIX_EPOCH)
+				.unwrap()
+				.as_secs() as i64;
+			let remaining = expires_at - now;
+			if remaining > 0 {
+				let hours = remaining / 3600;
+				let minutes = (remaining % 3600) / 60;
+				println!("Token expires in: {}h {}m", hours, minutes);
+			} else {
+				println!("⚠️  Token EXPIRED {} minutes ago!", (-remaining) / 60);
+			}
+		} else {
+			println!("Token expiration: unknown");
+		}
+		println!();
 		run_tests(&saved.access_token, saved.refresh_token.as_deref()).await?;
 		return Ok(());
 	}
@@ -178,7 +207,8 @@ async fn main() -> anyhow::Result<()> {
 	let token_response = perform_oauth_flow().await?;
 
 	// Save token for future use
-	save_token(&token_response.access_token, Some(&token_response.refresh_token));
+	let expires_in = if token_response.expires_in > 0 { Some(token_response.expires_in) } else { None };
+	save_token(&token_response.access_token, Some(&token_response.refresh_token), expires_in);
 
 	run_tests(&token_response.access_token, Some(&token_response.refresh_token)).await?;
 
