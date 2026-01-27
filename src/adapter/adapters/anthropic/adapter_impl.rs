@@ -571,7 +571,7 @@ impl AnthropicAdapter {
 				}
 			}
 			// Now build the system multi part
-			let system: Value = if last_cache_idx > 0 {
+			let system: Value = if last_cache_idx >= 0 {
 				let mut parts: Vec<Value> = Vec::new();
 				for (idx, (content, _)) in systems.iter().enumerate() {
 					let idx = idx as i32;
