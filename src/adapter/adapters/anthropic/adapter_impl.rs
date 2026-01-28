@@ -3,7 +3,8 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall, Usage,
+	Citation, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
+	ServerToolUse, TextWithCitations, ToolCall, Usage, WebSearchConfig, WebSearchResultItem, WebSearchToolResult,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -274,8 +275,19 @@ impl Adapter for AnthropicAdapter {
 			let typ: &str = item.x_get_as("type")?;
 			match typ {
 				"text" => {
-					let part = ContentPart::from_text(item.x_take::<String>("text")?);
-					content.push(part);
+					let text = item.x_take::<String>("text")?;
+					// Check for citations after taking text (avoids double borrow)
+					let citations = item
+						.get("citations")
+						.and_then(|c| c.as_array())
+						.map(|arr| Self::parse_citations(arr));
+
+					if let Some(citations) = citations {
+						let twc = TextWithCitations { text, citations };
+						content.push(ContentPart::TextWithCitations(twc));
+					} else {
+						content.push(ContentPart::from_text(text));
+					}
 				}
 				"thinking" => reasoning_content.push(item.x_take("thinking")?),
 				"tool_use" => {
@@ -292,6 +304,19 @@ impl Adapter for AnthropicAdapter {
 
 					let part = ContentPart::ToolCall(tool_call);
 					content.push(part);
+				}
+				"server_tool_use" => {
+					let id = item.x_take::<String>("id")?;
+					let name = item.x_take::<String>("name")?;
+					let input = item.x_take::<Value>("input").unwrap_or(Value::Null);
+					let stu = ServerToolUse { id, name, input };
+					content.push(ContentPart::ServerToolUse(stu));
+				}
+				"web_search_tool_result" => {
+					let tool_use_id = item.x_take::<String>("tool_use_id")?;
+					let results = Self::parse_web_search_results(&item);
+					let wsr = WebSearchToolResult { tool_use_id, results };
+					content.push(ContentPart::WebSearchToolResult(wsr));
 				}
 				_ => (),
 			}
@@ -353,6 +378,98 @@ impl Adapter for AnthropicAdapter {
 // region:    --- Support
 
 impl AnthropicAdapter {
+	/// Parse citations from a JSON array.
+	fn parse_citations(citations_arr: &[Value]) -> Vec<Citation> {
+		citations_arr
+			.iter()
+			.filter_map(|c| {
+				let url = c.get("url")?.as_str()?.to_string();
+				let title = c.get("title")?.as_str()?.to_string();
+				let cited_text = c.get("cited_text").and_then(|v| v.as_str()).map(|s| s.to_string());
+				let start_index = c.get("start_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+				let end_index = c.get("end_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+				Some(Citation {
+					url,
+					title,
+					cited_text,
+					start_index,
+					end_index,
+				})
+			})
+			.collect()
+	}
+
+	/// Parse web search results from a content block.
+	fn parse_web_search_results(item: &Value) -> Vec<WebSearchResultItem> {
+		let Some(content_arr) = item.get("content").and_then(|c| c.as_array()) else {
+			return Vec::new();
+		};
+
+		content_arr
+			.iter()
+			.filter_map(|r| {
+				// Each result has type "web_search_result"
+				if r.get("type").and_then(|t| t.as_str()) != Some("web_search_result") {
+					return None;
+				}
+				let url = r.get("url")?.as_str()?.to_string();
+				let title = r.get("title")?.as_str()?.to_string();
+				let page_age = r.get("page_age").and_then(|v| v.as_str()).map(|s| s.to_string());
+				let encrypted_content = r
+					.get("encrypted_content")
+					.and_then(|v| v.as_str())
+					.map(|s| s.to_string());
+				Some(WebSearchResultItem {
+					url,
+					title,
+					page_age,
+					encrypted_content,
+				})
+			})
+			.collect()
+	}
+
+	/// Serialize a web_search tool for the Anthropic API.
+	fn serialize_web_search_tool(config: Option<Value>) -> Value {
+		let mut tool_value = json!({
+			"type": "web_search_20250305",
+			"name": "web_search"
+		});
+
+		// Parse config if provided
+		if let Some(config_value) = config {
+			if let Ok(config) = serde_json::from_value::<WebSearchConfig>(config_value) {
+				if let Some(max_uses) = config.max_uses {
+					let _ = tool_value.x_insert("max_uses", max_uses);
+				}
+				if let Some(allowed_domains) = config.allowed_domains {
+					let _ = tool_value.x_insert("allowed_domains", allowed_domains);
+				}
+				if let Some(blocked_domains) = config.blocked_domains {
+					let _ = tool_value.x_insert("blocked_domains", blocked_domains);
+				}
+				if let Some(user_location) = config.user_location {
+					let mut loc = json!({"type": "approximate"});
+					if let Some(city) = user_location.city {
+						let _ = loc.x_insert("city", city);
+					}
+					if let Some(region) = user_location.region {
+						let _ = loc.x_insert("region", region);
+					}
+					if let Some(country) = user_location.country {
+						let _ = loc.x_insert("country", country);
+					}
+					if let Some(timezone) = user_location.timezone {
+						let _ = loc.x_insert("timezone", timezone);
+					}
+					let _ = tool_value.x_insert("user_location", loc);
+				}
+			}
+		}
+
+		tool_value
+	}
+
 	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
 		// IMPORTANT: For Anthropic, the `input_tokens` does not include `cache_creation_input_tokens` or `cache_read_input_tokens`.
 		// Therefore, it must be normalized in the OpenAI style, where it includes both cached and written tokens (for symmetry).
@@ -379,13 +496,28 @@ impl AnthropicAdapter {
 			None
 		};
 
+		// Parse web_search_requests from server_tool_use usage
+		let web_search_requests = usage_value
+			.get("server_tool_use")
+			.and_then(|s| s.get("web_search_requests"))
+			.and_then(|v| v.as_i64())
+			.map(|v| v as i32);
+
+		let completion_tokens_details = if web_search_requests.is_some() {
+			Some(CompletionTokensDetails {
+				web_search_requests,
+				..Default::default()
+			})
+		} else {
+			None
+		};
+
 		Usage {
 			prompt_tokens: Some(prompt_tokens),
 			prompt_tokens_details,
 
 			completion_tokens: Some(completion_tokens),
-			// for now, None for Anthropic
-			completion_tokens_details: None,
+			completion_tokens_details,
 
 			total_tokens: Some(total_tokens),
 		}
@@ -488,6 +620,10 @@ impl AnthropicAdapter {
 									}));
 								}
 								ContentPart::ThoughtSignature(_) => {}
+								// Web search types are response-only; skip gracefully.
+								ContentPart::TextWithCitations(_) => {}
+								ContentPart::ServerToolUse(_) => {}
+								ContentPart::WebSearchToolResult(_) => {}
 							}
 						}
 						let values = apply_cache_control_to_parts(is_cache_control, values);
@@ -521,6 +657,10 @@ impl AnthropicAdapter {
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) => {}
+							// Web search types are response-only; skip gracefully.
+							ContentPart::TextWithCitations(_) => {}
+							ContentPart::ServerToolUse(_) => {}
+							ContentPart::WebSearchToolResult(_) => {}
 						}
 					}
 
@@ -600,6 +740,11 @@ impl AnthropicAdapter {
 			tools
 				.into_iter()
 				.map(|tool| {
+					// Handle web_search tool specially
+					if tool.name == "web_search" {
+						return Self::serialize_web_search_tool(tool.config);
+					}
+
 					// TODO: Need to handle the error correctly
 					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
 					// NOTE: Right now, low probability, so we just return null if cannot convert to value.

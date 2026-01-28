@@ -453,6 +453,10 @@ impl OpenAIAdapter {
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
+								// Web search types are Anthropic-only response types; skip gracefully.
+								ContentPart::TextWithCitations(_) => (),
+								ContentPart::ServerToolUse(_) => (),
+								ContentPart::WebSearchToolResult(_) => (),
 							}
 						}
 						messages.push(json! ({"role": "user", "content": values}));
@@ -482,7 +486,11 @@ impl OpenAIAdapter {
 							// TODO: Probably need towarn on this one (probably need to add binary here)
 							ContentPart::Binary(_) => (),
 							ContentPart::ToolResponse(_) => (),
-							ContentPart::ThoughtSignature(_) => {}
+							ContentPart::ThoughtSignature(_) => {},
+							// Web search types are Anthropic-only response types; skip gracefully.
+							ContentPart::TextWithCitations(_) => (),
+							ContentPart::ServerToolUse(_) => (),
+							ContentPart::WebSearchToolResult(_) => (),
 						}
 					}
 					let content = texts.join("\n\n");
