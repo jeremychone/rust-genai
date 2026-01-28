@@ -6,8 +6,9 @@ use genai::resolver::AuthData;
 
 // "gemma3:4b" "phi3:latest" "gpt-oss:20b"
 // NOTE: "gpt-oss:20b" has some issues on json_mode, stop_sequence
-const MODEL: &str = "gemma3:4b"; // 
+const MODEL: &str = "gemma3:4b"; //
 const MODEL_NS: &str = "ollama::gemma3:4b";
+const MODEL_TOOL: &str = "ollama::gpt-oss:20b";
 
 // region:    --- Chat
 
@@ -64,6 +65,19 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 // }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- Tool Tests
+
+#[tokio::test]
+async fn test_tool_simple_ok() -> TestResult<()> {
+	common_tests::common_test_tool_simple_ok(MODEL_TOOL).await
+}
+
+#[tokio::test]
+async fn test_tool_full_flow_ok() -> TestResult<()> {
+	common_tests::common_test_tool_full_flow_ok(MODEL_TOOL).await
+}
+// endregion: --- Tool Tests
 
 /* Added Binary Tests region (commented-out until Ollama supports binary inputs) */
 // region:    --- Binary Tests

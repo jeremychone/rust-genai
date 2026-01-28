@@ -123,17 +123,27 @@ impl futures::Stream for AnthropicStreamer {
 									continue;
 								}
 								InProgressBlock::Thinking => {
-									let thinking: String = data.x_take("/delta/thinking")?;
-
-									// Add to the captured_thinking if chat options say so
-									if self.options.capture_reasoning_content {
-										match self.captured_data.reasoning_content {
-											Some(ref mut r) => r.push_str(&thinking),
-											None => self.captured_data.reasoning_content = Some(thinking.clone()),
+									if let Ok(thinking) = data.x_take::<String>("/delta/thinking") {
+										// Add to the captured_thinking if chat options say so
+										if self.options.capture_reasoning_content {
+											match self.captured_data.reasoning_content {
+												Some(ref mut r) => r.push_str(&thinking),
+												None => self.captured_data.reasoning_content = Some(thinking.clone()),
+											}
 										}
-									}
 
-									return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(thinking))));
+										return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(thinking))));
+									} else if let Ok(signature) = data.x_take::<String>("/delta/signature") {
+										return Poll::Ready(Some(Ok(InterStreamEvent::ThoughtSignatureChunk(
+											signature,
+										))));
+									} else {
+										// If it is thinking but no thinking or signature field, we log and skip.
+										tracing::warn!(
+											"content_block_delta for thinking block but no thinking or signature found: {data:?}"
+										);
+										continue;
+									}
 								}
 							}
 						}
