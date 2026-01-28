@@ -1,4 +1,5 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
+use crate::adapter::anthropic::parse_cache_creation_details;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, PromptTokensDetails, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
@@ -273,7 +274,15 @@ impl AnthropicStreamer {
 				let cache_creation: i32 = data.x_get("/message/usage/cache_creation_input_tokens").unwrap_or(0);
 				let cache_read: i32 = data.x_get("/message/usage/cache_read_input_tokens").unwrap_or(0);
 
-				if cache_creation > 0 || cache_read > 0 {
+				// Parse cache_creation breakdown if present (TTL-specific breakdown)
+				// Use x_get with JSON pointer to navigate to /message/usage/cache_creation
+				let cache_creation_details = data
+					.x_get::<Value>("/message/usage/cache_creation")
+					.ok()
+					.as_ref()
+					.and_then(parse_cache_creation_details);
+
+				if cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some() {
 					let usage = self.captured_data.usage.get_or_insert(Usage::default());
 
 					// Add cache tokens to prompt_tokens (same as into_usage does)
@@ -284,6 +293,7 @@ impl AnthropicStreamer {
 					// Set prompt_tokens_details (match into_usage behavior: always Some(value))
 					usage.prompt_tokens_details = Some(PromptTokensDetails {
 						cache_creation_tokens: Some(cache_creation),
+						cache_creation_details,
 						cached_tokens: Some(cache_read),
 						audio_tokens: None,
 					});

@@ -518,6 +518,96 @@ pub async fn common_test_chat_cache_explicit_system_ok(model: &str) -> TestResul
 	Ok(())
 }
 
+/// Test for 1-hour TTL cache (Ephemeral1h).
+/// Note: 1h TTL is only supported on Claude 4.5 models (Opus 4.5, Sonnet 4.5, Haiku 4.5).
+pub async fn common_test_chat_cache_explicit_1h_ttl_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let big_content = get_big_content()?;
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages
+		ChatMessage::system("Give a very short summary of what each of those files are about"),
+		ChatMessage::user(big_content).with_options(CacheControl::Ephemeral1h),
+	]);
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check Content
+	let content = chat_res.first_text().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = &chat_res.usage;
+
+	let total_tokens = get_option_value!(usage.total_tokens);
+	let prompt_tokens_details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	let cache_creation_tokens = get_option_value!(prompt_tokens_details.cache_creation_tokens);
+	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+
+	assert!(
+		cache_creation_tokens > 0 || cached_tokens > 0,
+		"one of cache_creation_tokens or cached_tokens should be greater than 0"
+	);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+
+	// Note: cache_creation_details may or may not be present depending on provider response format
+	// The API may return TTL-specific breakdown in cache_creation_details when using different TTLs
+
+	Ok(())
+}
+
+/// Streaming test for 1-hour TTL cache (Ephemeral1h).
+/// Note: 1h TTL is only supported on Claude 4.5 models (Opus 4.5, Sonnet 4.5, Haiku 4.5).
+pub async fn common_test_chat_stream_cache_explicit_1h_ttl_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::builder()
+		.with_chat_options(ChatOptions::default().with_capture_usage(true))
+		.build();
+	let big_content = get_big_content()?;
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages
+		ChatMessage::system("Give a very short summary of what each of those files are about"),
+		ChatMessage::user(big_content).with_options(CacheControl::Ephemeral1h),
+	]);
+
+	// -- Exec
+	let chat_res = client.exec_chat_stream(model, chat_req, None).await?;
+
+	// -- Extract Stream content
+	let StreamExtract {
+		stream_end,
+		content,
+		reasoning_content: _,
+	} = extract_stream_end(chat_res.stream).await?;
+	let content = content.ok_or("extract_stream_end SHOULD have extracted some content")?;
+
+	// -- Check Content
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = stream_end.captured_usage.as_ref().ok_or("Should have captured_usage")?;
+
+	let total_tokens = get_option_value!(usage.total_tokens);
+	let prompt_tokens_details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	let cache_creation_tokens = get_option_value!(prompt_tokens_details.cache_creation_tokens);
+	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+
+	assert!(
+		cache_creation_tokens > 0 || cached_tokens > 0,
+		"one of cache_creation_tokens or cached_tokens should be greater than 0"
+	);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+
+	Ok(())
+}
+
 // endregion: --- Chat Explicit Cache
 
 // region:    --- Chat Stream Tests
