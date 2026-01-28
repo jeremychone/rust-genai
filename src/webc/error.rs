@@ -11,6 +11,9 @@ pub enum Error {
 	#[display("Response content type '{content_type}' is not JSON as expected. Response body:\n{body}")]
 	ResponseFailedNotJson { content_type: String, body: String },
 
+	#[display("Response was invalid json. Cause:\n'{cause}'\nBody:\n{body}")]
+	ResponseFailedInvalidJson { body: String, cause: String },
+
 	#[display("Request failed with status code '{status}'. Response body:\n{body}")]
 	ResponseFailedStatus {
 		status: StatusCode,

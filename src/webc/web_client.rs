@@ -105,10 +105,15 @@ impl WebResponse {
 
 		// Capture the body
 		let ct = header_map.get("content-type").and_then(|v| v.to_str().ok()).unwrap_or_default();
+		let body = res.text().await?;
+
 		let body = if ct.starts_with("application/json") {
-			res.json::<Value>().await?
+			let value: Value = serde_json::from_str(&body).map_err(|err| Error::ResponseFailedInvalidJson {
+				body,
+				cause: err.to_string(),
+			})?;
+			value
 		} else {
-			let body = res.text().await?;
 			return Err(Error::ResponseFailedNotJson {
 				content_type: ct.to_string(),
 				body,
