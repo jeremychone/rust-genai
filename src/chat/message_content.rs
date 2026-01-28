@@ -262,9 +262,7 @@ impl MessageContent {
 
 		let mut combined = String::new();
 		for text in texts {
-			if !combined.is_empty() {
-				support::combine_text_with_empty_line(&mut combined, text);
-			}
+			support::combine_text_with_empty_line(&mut combined, text);
 		}
 		Some(combined)
 	}
@@ -374,3 +372,50 @@ impl From<Vec<ContentPart>> for MessageContent {
 }
 
 // endregion: --- Froms
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_message_content_joined_texts_empty() {
+		assert_eq!(MessageContent::from_parts(vec![]).joined_texts(), None);
+	}
+
+	#[test]
+	fn test_message_content_joined_texts_single_part() {
+		assert_eq!(MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).joined_texts(), Some("Hello".to_string()));
+	}
+
+	#[test]
+	fn test_message_content_joined_texts_two_parts() {
+		assert_eq!(
+			MessageContent::from_parts(vec![
+				ContentPart::Text("Hello".to_string()),
+				ContentPart::Text("World".to_string()),
+			]).joined_texts(),
+			Some("Hello\n\nWorld".to_string())
+		);
+	}
+
+	#[test]
+	fn test_message_content_into_joined_texts_empty() {
+		assert_eq!(MessageContent::from_parts(vec![]).into_joined_texts(), None);
+	}
+
+	#[test]
+	fn test_message_content_into_joined_texts_single_part() {
+		assert_eq!(MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).into_joined_texts(), Some("Hello".to_string()));
+	}
+
+	#[test]
+	fn test_message_content_into_joined_texts_two_parts() {
+		assert_eq!(
+			MessageContent::from_parts(vec![
+				ContentPart::Text("Hello".to_string()),
+				ContentPart::Text("World".to_string()),
+			]).into_joined_texts(),
+			Some("Hello\n\nWorld".to_string())
+		);
+	}
+}
