@@ -1,9 +1,13 @@
-//! Response types for Anthropic's web search tool results.
+//! Response types for Anthropic's server tool results (web search, web fetch).
 //!
 //! When using the web_search tool, the response may contain:
 //! - `ServerToolUse`: The model's invocation of the web search tool
 //! - `WebSearchToolResult`: The results returned by the web search
 //! - `TextWithCitations`: Text content that includes inline citations
+//!
+//! When using the web_fetch tool, the response may contain:
+//! - `ServerToolUse`: The model's invocation of the web fetch tool
+//! - `WebFetchToolResult`: The fetched content from a URL
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -133,3 +137,66 @@ impl WebSearchToolResult {
 		self.tool_use_id.len() + self.results.iter().map(|r| r.size()).sum::<usize>()
 	}
 }
+
+// region:    --- Web Fetch Types
+
+/// Results from a web fetch tool execution.
+///
+/// This contains the fetched content returned by Anthropic's
+/// web fetch infrastructure.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebFetchToolResult {
+	/// The tool_use_id this result corresponds to.
+	pub tool_use_id: String,
+
+	/// The URL that was fetched.
+	pub url: String,
+
+	/// The fetched content.
+	pub content: WebFetchContent,
+
+	/// ISO 8601 timestamp of when the content was retrieved.
+	pub retrieved_at: Option<String>,
+}
+
+impl WebFetchToolResult {
+	/// Returns an approximate in-memory size of this `WebFetchToolResult`, in bytes.
+	pub fn size(&self) -> usize {
+		self.tool_use_id.len()
+			+ self.url.len()
+			+ self.content.size()
+			+ self.retrieved_at.as_ref().map(|s| s.len()).unwrap_or(0)
+	}
+}
+
+/// Content fetched from a URL.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebFetchContent {
+	/// The document type (e.g., "document").
+	pub document_type: String,
+
+	/// The source type (e.g., "text" or "base64").
+	pub source_type: String,
+
+	/// The media type (e.g., "text/plain", "application/pdf").
+	pub media_type: String,
+
+	/// The actual content data (text or base64-encoded).
+	pub data: String,
+
+	/// Optional title extracted from the document.
+	pub title: Option<String>,
+}
+
+impl WebFetchContent {
+	/// Returns an approximate in-memory size of this `WebFetchContent`, in bytes.
+	pub fn size(&self) -> usize {
+		self.document_type.len()
+			+ self.source_type.len()
+			+ self.media_type.len()
+			+ self.data.len()
+			+ self.title.as_ref().map(|s| s.len()).unwrap_or(0)
+	}
+}
+
+// endregion: --- Web Fetch Types

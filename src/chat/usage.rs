@@ -78,6 +78,10 @@ pub struct CompletionTokensDetails {
 	/// Billed at $10 per 1,000 searches.
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
 	pub web_search_requests: Option<i32>,
+
+	/// Number of web fetch requests performed (Anthropic only).
+	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	pub web_fetch_requests: Option<i32>,
 }
 
 impl CompletionTokensDetails {
@@ -88,5 +92,6 @@ impl CompletionTokensDetails {
 			&& self.reasoning_tokens.is_none()
 			&& self.audio_tokens.is_none()
 			&& self.web_search_requests.is_none()
+			&& self.web_fetch_requests.is_none()
 	}
 }

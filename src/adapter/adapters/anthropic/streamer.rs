@@ -26,6 +26,7 @@ enum InProgressBlock {
 	Thinking,
 	ServerToolUse,
 	WebSearchToolResult,
+	WebFetchToolResult,
 }
 
 impl AnthropicStreamer {
@@ -89,6 +90,10 @@ impl futures::Stream for AnthropicStreamer {
 									// Web search results - content is delivered as a complete block
 									self.in_progress_block = InProgressBlock::WebSearchToolResult;
 								}
+								Ok("web_fetch_tool_result") => {
+									// Web fetch results - content is delivered as a complete block
+									self.in_progress_block = InProgressBlock::WebFetchToolResult;
+								}
 								Ok(txt) => {
 									tracing::warn!("unhandled content type: {txt}");
 								}
@@ -147,11 +152,13 @@ impl futures::Stream for AnthropicStreamer {
 										continue;
 									}
 								}
-								InProgressBlock::ServerToolUse | InProgressBlock::WebSearchToolResult => {
-									// These block types don't have deltas in the same way text does
-									// The content is delivered as a complete block
-									continue;
-								}
+								InProgressBlock::ServerToolUse
+							| InProgressBlock::WebSearchToolResult
+							| InProgressBlock::WebFetchToolResult => {
+								// These block types don't have deltas in the same way text does
+								// The content is delivered as a complete block
+								continue;
+							}
 							}
 						}
 						"content_block_stop" => {
@@ -281,19 +288,29 @@ impl AnthropicStreamer {
 				*val += output_tokens;
 			}
 
-			// -- Capture web_search_requests (present in message_delta)
+			// -- Capture web_search_requests and web_fetch_requests (present in message_delta)
 			if message_type == "message_delta" {
-				let web_search_requests = data
-					.get("usage")
-					.and_then(|u| u.get("server_tool_use"))
+				let server_tool_use = data.get("usage").and_then(|u| u.get("server_tool_use"));
+
+				let web_search_requests = server_tool_use
 					.and_then(|s| s.get("web_search_requests"))
 					.and_then(|v| v.as_i64())
 					.map(|v| v as i32);
 
-				if let Some(requests) = web_search_requests {
+				let web_fetch_requests = server_tool_use
+					.and_then(|s| s.get("web_fetch_requests"))
+					.and_then(|v| v.as_i64())
+					.map(|v| v as i32);
+
+				if web_search_requests.is_some() || web_fetch_requests.is_some() {
 					let usage = self.captured_data.usage.get_or_insert(Usage::default());
 					let details = usage.completion_tokens_details.get_or_insert(CompletionTokensDetails::default());
-					details.web_search_requests = Some(requests);
+					if let Some(requests) = web_search_requests {
+						details.web_search_requests = Some(requests);
+					}
+					if let Some(requests) = web_fetch_requests {
+						details.web_fetch_requests = Some(requests);
+					}
 				}
 			}
 		}

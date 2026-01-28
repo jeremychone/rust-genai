@@ -1,4 +1,4 @@
-use super::WebSearchConfig;
+use super::{WebFetchConfig, WebSearchConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -99,6 +99,26 @@ impl Tool {
 			config: None,
 		}
 	}
+
+	/// Create an Anthropic web_fetch tool with default configuration.
+	///
+	/// This creates a tool that enables Claude to fetch content from URLs.
+	/// The web fetch tool is only supported by Anthropic models.
+	///
+	/// # Example
+	/// ```rust
+	/// use genai::chat::Tool;
+	///
+	/// let tool = Tool::web_fetch();
+	/// ```
+	pub fn web_fetch() -> Self {
+		Self {
+			name: "web_fetch".to_string(),
+			description: None,
+			schema: None,
+			config: None,
+		}
+	}
 }
 
 // region:    --- Setters
@@ -138,6 +158,27 @@ impl Tool {
 	/// let tool = Tool::web_search().with_web_search_config(config);
 	/// ```
 	pub fn with_web_search_config(mut self, config: WebSearchConfig) -> Self {
+		// Serialize the config to Value, defaulting to null on error (unlikely)
+		self.config = serde_json::to_value(config).ok();
+		self
+	}
+
+	/// Set web fetch configuration for an Anthropic web_fetch tool.
+	///
+	/// This is a convenience method that serializes the WebFetchConfig
+	/// and stores it in the config field.
+	///
+	/// # Example
+	/// ```rust
+	/// use genai::chat::{Tool, WebFetchConfig};
+	///
+	/// let config = WebFetchConfig::default()
+	///     .with_max_uses(5)
+	///     .with_allowed_domains(vec!["rust-lang.org".into()]);
+	///
+	/// let tool = Tool::web_fetch().with_web_fetch_config(config);
+	/// ```
+	pub fn with_web_fetch_config(mut self, config: WebFetchConfig) -> Self {
 		// Serialize the config to Value, defaulting to null on error (unlikely)
 		self.config = serde_json::to_value(config).ok();
 		self

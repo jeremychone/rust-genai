@@ -392,10 +392,11 @@ impl OpenAIRespAdapter {
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
-								// Web search types are Anthropic-only response types; skip gracefully.
+								// Web search/fetch types are Anthropic-only response types; skip gracefully.
 								ContentPart::TextWithCitations(_) => (),
 								ContentPart::ServerToolUse(_) => (),
 								ContentPart::WebSearchToolResult(_) => (),
+								ContentPart::WebFetchToolResult(_) => (),
 							}
 						}
 						input_items.push(json! ({"role": "user", "content": values}));
@@ -439,10 +440,11 @@ impl OpenAIRespAdapter {
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) => {}
-							// Web search types are Anthropic-only response types; skip gracefully.
+							// Web search/fetch types are Anthropic-only response types; skip gracefully.
 							ContentPart::TextWithCitations(_) => {}
 							ContentPart::ServerToolUse(_) => {}
 							ContentPart::WebSearchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) => {}
 						}
 					}
 

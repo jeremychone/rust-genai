@@ -1,5 +1,5 @@
 use crate::Result;
-use crate::chat::{Binary, ServerToolUse, TextWithCitations, ToolCall, ToolResponse, WebSearchToolResult};
+use crate::chat::{Binary, ServerToolUse, TextWithCitations, ToolCall, ToolResponse, WebFetchToolResult, WebSearchToolResult};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -26,19 +26,23 @@ pub enum ContentPart {
 	#[from(ignore)]
 	ThoughtSignature(String),
 
-	// -- Web Search variants (Anthropic)
+	// -- Web Search / Web Fetch variants (Anthropic)
 
-	/// Text content with inline citations from web search.
+	/// Text content with inline citations from web search/fetch.
 	#[from]
 	TextWithCitations(TextWithCitations),
 
-	/// Server-initiated tool use (e.g., web search query).
+	/// Server-initiated tool use (e.g., web search query, web fetch).
 	#[from]
 	ServerToolUse(ServerToolUse),
 
 	/// Results from a web search tool execution.
 	#[from]
 	WebSearchToolResult(WebSearchToolResult),
+
+	/// Results from a web fetch tool execution.
+	#[from]
+	WebFetchToolResult(WebFetchToolResult),
 }
 
 /// Constructors
@@ -230,6 +234,24 @@ impl ContentPart {
 			None
 		}
 	}
+
+	/// Borrow the web fetch tool result if present.
+	pub fn as_web_fetch_tool_result(&self) -> Option<&WebFetchToolResult> {
+		if let ContentPart::WebFetchToolResult(wfr) = self {
+			Some(wfr)
+		} else {
+			None
+		}
+	}
+
+	/// Extract the web fetch tool result, consuming the part.
+	pub fn into_web_fetch_tool_result(self) -> Option<WebFetchToolResult> {
+		if let ContentPart::WebFetchToolResult(wfr) = self {
+			Some(wfr)
+		} else {
+			None
+		}
+	}
 }
 
 /// Computed accessors
@@ -251,6 +273,7 @@ impl ContentPart {
 			ContentPart::TextWithCitations(twc) => twc.size(),
 			ContentPart::ServerToolUse(stu) => stu.size(),
 			ContentPart::WebSearchToolResult(wsr) => wsr.size(),
+			ContentPart::WebFetchToolResult(wfr) => wfr.size(),
 		}
 	}
 }
@@ -315,5 +338,10 @@ impl ContentPart {
 	/// Returns true if this part contains web search tool results.
 	pub fn is_web_search_tool_result(&self) -> bool {
 		matches!(self, ContentPart::WebSearchToolResult(_))
+	}
+
+	/// Returns true if this part contains web fetch tool results.
+	pub fn is_web_fetch_tool_result(&self) -> bool {
+		matches!(self, ContentPart::WebFetchToolResult(_))
 	}
 }

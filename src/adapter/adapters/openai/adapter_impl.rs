@@ -453,10 +453,11 @@ impl OpenAIAdapter {
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
-								// Web search types are Anthropic-only response types; skip gracefully.
+								// Web search/fetch types are Anthropic-only response types; skip gracefully.
 								ContentPart::TextWithCitations(_) => (),
 								ContentPart::ServerToolUse(_) => (),
 								ContentPart::WebSearchToolResult(_) => (),
+								ContentPart::WebFetchToolResult(_) => (),
 							}
 						}
 						messages.push(json! ({"role": "user", "content": values}));
@@ -487,10 +488,11 @@ impl OpenAIAdapter {
 							ContentPart::Binary(_) => (),
 							ContentPart::ToolResponse(_) => (),
 							ContentPart::ThoughtSignature(_) => {},
-							// Web search types are Anthropic-only response types; skip gracefully.
+							// Web search/fetch types are Anthropic-only response types; skip gracefully.
 							ContentPart::TextWithCitations(_) => (),
 							ContentPart::ServerToolUse(_) => (),
 							ContentPart::WebSearchToolResult(_) => (),
+							ContentPart::WebFetchToolResult(_) => (),
 						}
 					}
 					let content = texts.join("\n\n");

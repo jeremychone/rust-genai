@@ -10,6 +10,7 @@
 mod tool_base;
 mod tool_call;
 mod tool_response;
+mod web_fetch;
 mod web_search;
 
 /// Base traits and specifications for declaring tools.
@@ -20,6 +21,9 @@ pub use tool_call::*;
 
 /// Types for returning results produced by a tool.
 pub use tool_response::*;
+
+/// Web fetch configuration types.
+pub use web_fetch::*;
 
 /// Web search configuration types.
 pub use web_search::*;
