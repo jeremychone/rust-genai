@@ -92,6 +92,7 @@ impl WebResponse {
 		if !status.is_success() {
 			let headers = res.headers().clone();
 			let body = res.text().await?;
+			tracing::trace!("AI Response failed. Body:\n{body}");
 			return Err(Error::ResponseFailedStatus {
 				status,
 				body,
@@ -108,6 +109,7 @@ impl WebResponse {
 		let body = res.text().await?;
 
 		let body = if ct.starts_with("application/json") {
+			tracing::trace!("AI Response body:\n{body}");
 			let value: Value = serde_json::from_str(&body).map_err(|err| Error::ResponseFailedInvalidJson {
 				body,
 				cause: err.to_string(),
