@@ -4,8 +4,8 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse,
 	Citation, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
-	ServerToolUse, TextWithCitations, ToolCall, Usage, WebFetchConfig, WebFetchContent, WebFetchToolResult,
-	WebSearchConfig, WebSearchResultItem, WebSearchToolResult,
+	ServerToolError, ServerToolUse, TextWithCitations, ToolCall, Usage, WebFetchConfig, WebFetchContent,
+	WebFetchToolResult, WebSearchConfig, WebSearchResultItem, WebSearchToolResult,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -333,6 +333,28 @@ impl Adapter for AnthropicAdapter {
 					let wfr = Self::parse_web_fetch_result(item)?;
 					content.push(ContentPart::WebFetchToolResult(wfr));
 				}
+				"web_search_tool_result_error" => {
+					let tool_use_id = item.x_take::<String>("tool_use_id")?;
+					let error_code = item
+						.x_take::<String>("error_code")
+						.unwrap_or_else(|_| "unknown".to_string());
+					content.push(ContentPart::ServerToolError(ServerToolError {
+						tool_use_id,
+						tool_name: "web_search".to_string(),
+						error_code,
+					}));
+				}
+				"web_fetch_tool_error" => {
+					let tool_use_id = item.x_take::<String>("tool_use_id")?;
+					let error_code = item
+						.x_take::<String>("error_code")
+						.unwrap_or_else(|_| "unknown".to_string());
+					content.push(ContentPart::ServerToolError(ServerToolError {
+						tool_use_id,
+						tool_name: "web_fetch".to_string(),
+						error_code,
+					}));
+				}
 				_ => (),
 			}
 		}
@@ -398,17 +420,35 @@ impl AnthropicAdapter {
 		citations_arr
 			.iter()
 			.filter_map(|c| {
+				// url and title are required — skip malformed citations
 				let url = c.get("url")?.as_str()?.to_string();
 				let title = c.get("title")?.as_str()?.to_string();
+
 				let cited_text = c.get("cited_text").and_then(|v| v.as_str()).map(|s| s.to_string());
 				let start_index = c.get("start_index").and_then(|v| v.as_u64()).map(|v| v as u32);
 				let end_index = c.get("end_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+
+				// Web search specific
+				let encrypted_index = c
+					.get("encrypted_index")
+					.and_then(|v| v.as_str())
+					.map(|s| s.to_string());
+
+				// Web fetch specific (char_location)
+				let document_index = c.get("document_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+				let start_char_index = c.get("start_char_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+				let end_char_index = c.get("end_char_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+
 				Some(Citation {
 					url,
 					title,
 					cited_text,
 					start_index,
 					end_index,
+					encrypted_index,
+					document_index,
+					start_char_index,
+					end_char_index,
 				})
 			})
 			.collect()
@@ -445,24 +485,49 @@ impl AnthropicAdapter {
 	}
 
 	/// Parse a web_fetch_tool_result content block.
+	///
+	/// Anthropic API response structure:
+	/// ```json
+	/// {
+	///   "type": "web_fetch_tool_result",
+	///   "tool_use_id": "...",
+	///   "content": {
+	///     "type": "web_fetch_result",
+	///     "url": "https://...",
+	///     "retrieved_at": "2026-...",
+	///     "content": {
+	///       "type": "document",
+	///       "source": { "type": "text", "media_type": "text/plain", "data": "..." },
+	///       "title": null
+	///     }
+	///   }
+	/// }
+	/// ```
 	fn parse_web_fetch_result(mut item: Value) -> Result<WebFetchToolResult> {
 		let tool_use_id = item.x_take::<String>("tool_use_id")?;
-		let url = item.x_take::<String>("url")?;
-		let retrieved_at = item.x_take::<String>("retrieved_at").ok();
 
-		// Parse content block
-		let content = if let Ok(mut content_value) = item.x_take::<Value>("content") {
-			let document_type = content_value
+		// The outer "content" wraps the actual fetch result
+		let mut outer = item.x_take::<Value>("content").unwrap_or(Value::Null);
+
+		let url = outer.x_take::<String>("url").ok();
+		let retrieved_at = outer.x_take::<String>("retrieved_at").ok();
+
+		// The inner "content" contains the document with source
+		let content = if let Ok(mut inner) = outer.x_take::<Value>("content") {
+			let document_type = inner
 				.x_take::<String>("type")
 				.unwrap_or_else(|_| "document".to_string());
-			let source_type = content_value
-				.x_take::<String>("source_type")
+			let title = inner.x_take::<String>("title").ok();
+
+			// Source contains the actual data
+			let mut source = inner.x_take::<Value>("source").unwrap_or(Value::Null);
+			let source_type = source
+				.x_take::<String>("type")
 				.unwrap_or_else(|_| "text".to_string());
-			let media_type = content_value
+			let media_type = source
 				.x_take::<String>("media_type")
 				.unwrap_or_else(|_| "text/plain".to_string());
-			let data = content_value.x_take::<String>("data").unwrap_or_default();
-			let title = content_value.x_take::<String>("title").ok();
+			let data = source.x_take::<String>("data").unwrap_or_default();
 
 			WebFetchContent {
 				document_type,
@@ -472,7 +537,6 @@ impl AnthropicAdapter {
 				title,
 			}
 		} else {
-			// Default empty content if not present
 			WebFetchContent {
 				document_type: "document".to_string(),
 				source_type: "text".to_string(),
@@ -723,7 +787,7 @@ impl AnthropicAdapter {
 								ContentPart::TextWithCitations(_) => {}
 								ContentPart::ServerToolUse(_) => {}
 								ContentPart::WebSearchToolResult(_) => {}
-								ContentPart::WebFetchToolResult(_) => {}
+								ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 							}
 						}
 						let values = apply_cache_control_to_parts(is_cache_control, values);
@@ -761,7 +825,7 @@ impl AnthropicAdapter {
 							ContentPart::TextWithCitations(_) => {}
 							ContentPart::ServerToolUse(_) => {}
 							ContentPart::WebSearchToolResult(_) => {}
-							ContentPart::WebFetchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 						}
 					}
 

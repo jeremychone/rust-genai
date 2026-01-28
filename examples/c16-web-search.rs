@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let location = UserLocation::default()
 		.with_city("Tokyo")
-		.with_country("Japan")
+		.with_country("JP") // ISO 2-letter country code
 		.with_timezone("Asia/Tokyo");
 
 	let config = WebSearchConfig::default()

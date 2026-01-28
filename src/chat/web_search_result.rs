@@ -12,10 +12,16 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// A citation referencing a web search result.
+/// A citation referencing a web search or web fetch result.
 ///
 /// Citations link text content back to the source documents
 /// from which the information was derived.
+///
+/// For web search citations (type `web_search_result_location`):
+/// - `url`, `title`, `cited_text`, `encrypted_index` are populated
+///
+/// For web fetch citations (type `char_location`):
+/// - `url`, `title`, `cited_text`, `document_index`, `start_char_index`, `end_char_index` are populated
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Citation {
 	/// URL of the source document.
@@ -33,6 +39,18 @@ pub struct Citation {
 
 	/// End index in the text where this citation applies.
 	pub end_index: Option<u32>,
+
+	/// Encrypted index for web search citations (multi-turn support).
+	pub encrypted_index: Option<String>,
+
+	/// Document index for web fetch citations (char_location type).
+	pub document_index: Option<u32>,
+
+	/// Start character index in the fetched document (char_location type).
+	pub start_char_index: Option<u32>,
+
+	/// End character index in the fetched document (char_location type).
+	pub end_char_index: Option<u32>,
 }
 
 impl Citation {
@@ -41,6 +59,7 @@ impl Citation {
 		self.url.len()
 			+ self.title.len()
 			+ self.cited_text.as_ref().map(|s| s.len()).unwrap_or(0)
+			+ self.encrypted_index.as_ref().map(|s| s.len()).unwrap_or(0)
 	}
 }
 
@@ -149,8 +168,9 @@ pub struct WebFetchToolResult {
 	/// The tool_use_id this result corresponds to.
 	pub tool_use_id: String,
 
-	/// The URL that was fetched.
-	pub url: String,
+	/// The URL that was fetched (if provided in the response).
+	/// Note: The URL may not be present in the response; check ServerToolUse input for the original URL.
+	pub url: Option<String>,
 
 	/// The fetched content.
 	pub content: WebFetchContent,
@@ -163,7 +183,7 @@ impl WebFetchToolResult {
 	/// Returns an approximate in-memory size of this `WebFetchToolResult`, in bytes.
 	pub fn size(&self) -> usize {
 		self.tool_use_id.len()
-			+ self.url.len()
+			+ self.url.as_ref().map(|s| s.len()).unwrap_or(0)
 			+ self.content.size()
 			+ self.retrieved_at.as_ref().map(|s| s.len()).unwrap_or(0)
 	}
@@ -200,3 +220,22 @@ impl WebFetchContent {
 }
 
 // endregion: --- Web Fetch Types
+
+// region:    --- Error Types
+
+/// Error from a server tool execution (web search or web fetch).
+///
+/// Returned when a server tool fails (e.g., rate limit, invalid URL, blocked domain).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerToolError {
+	/// The tool_use_id this error corresponds to.
+	pub tool_use_id: String,
+
+	/// Name of the tool that failed (e.g., "web_search", "web_fetch").
+	pub tool_name: String,
+
+	/// The error code (e.g., "max_searches_reached", "fetch_failed", "domain_not_allowed").
+	pub error_code: String,
+}
+
+// endregion: --- Error Types

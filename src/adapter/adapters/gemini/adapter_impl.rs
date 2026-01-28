@@ -558,7 +558,7 @@ impl GeminiAdapter {
 							ContentPart::TextWithCitations(_) => {}
 							ContentPart::ServerToolUse(_) => {}
 							ContentPart::WebSearchToolResult(_) => {}
-							ContentPart::WebFetchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 						}
 					}
 
@@ -630,7 +630,7 @@ impl GeminiAdapter {
 							ContentPart::TextWithCitations(_) => {}
 							ContentPart::ServerToolUse(_) => {}
 							ContentPart::WebSearchToolResult(_) => {}
-							ContentPart::WebFetchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 						}
 					}
 					if let Some(thought) = pending_thought {

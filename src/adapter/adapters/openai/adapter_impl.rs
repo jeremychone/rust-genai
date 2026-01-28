@@ -457,7 +457,7 @@ impl OpenAIAdapter {
 								ContentPart::TextWithCitations(_) => (),
 								ContentPart::ServerToolUse(_) => (),
 								ContentPart::WebSearchToolResult(_) => (),
-								ContentPart::WebFetchToolResult(_) => (),
+								ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => (),
 							}
 						}
 						messages.push(json! ({"role": "user", "content": values}));
@@ -492,7 +492,7 @@ impl OpenAIAdapter {
 							ContentPart::TextWithCitations(_) => (),
 							ContentPart::ServerToolUse(_) => (),
 							ContentPart::WebSearchToolResult(_) => (),
-							ContentPart::WebFetchToolResult(_) => (),
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => (),
 						}
 					}
 					let content = texts.join("\n\n");

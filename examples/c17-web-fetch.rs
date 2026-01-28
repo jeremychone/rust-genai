@@ -39,7 +39,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Check for web fetch results
 	for part in res.content.parts() {
 		if let ContentPart::WebFetchToolResult(wfr) = part {
-			println!("Fetched URL: {}", wfr.url);
+			if let Some(url) = &wfr.url {
+				println!("Fetched URL: {}", url);
+			}
 			println!("Content type: {}", wfr.content.media_type);
 			println!("Content length: {} chars", wfr.content.data.len());
 			if let Some(title) = &wfr.content.title {
@@ -159,7 +161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			}
 			ContentPart::WebFetchToolResult(wfr) => {
 				println!(
-					"Part {}: WebFetchToolResult (url: {}, {} bytes)",
+					"Part {}: WebFetchToolResult (url: {:?}, {} bytes)",
 					i,
 					wfr.url,
 					wfr.content.data.len()

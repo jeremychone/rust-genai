@@ -396,7 +396,7 @@ impl OpenAIRespAdapter {
 								ContentPart::TextWithCitations(_) => (),
 								ContentPart::ServerToolUse(_) => (),
 								ContentPart::WebSearchToolResult(_) => (),
-								ContentPart::WebFetchToolResult(_) => (),
+								ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => (),
 							}
 						}
 						input_items.push(json! ({"role": "user", "content": values}));
@@ -444,7 +444,7 @@ impl OpenAIRespAdapter {
 							ContentPart::TextWithCitations(_) => {}
 							ContentPart::ServerToolUse(_) => {}
 							ContentPart::WebSearchToolResult(_) => {}
-							ContentPart::WebFetchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 						}
 					}
 

@@ -1,6 +1,6 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, CompletionTokensDetails, PromptTokensDetails, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, CompletionTokensDetails, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -93,6 +93,10 @@ impl futures::Stream for AnthropicStreamer {
 								Ok("web_fetch_tool_result") => {
 									// Web fetch results - content is delivered as a complete block
 									self.in_progress_block = InProgressBlock::WebFetchToolResult;
+								}
+								Ok("web_search_tool_result_error") | Ok("web_fetch_tool_error") => {
+									// Error responses - delivered as complete blocks
+									self.in_progress_block = InProgressBlock::ServerToolUse;
 								}
 								Ok(txt) => {
 									tracing::warn!("unhandled content type: {txt}");

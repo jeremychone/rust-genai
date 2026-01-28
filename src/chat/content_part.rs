@@ -1,5 +1,5 @@
 use crate::Result;
-use crate::chat::{Binary, ServerToolUse, TextWithCitations, ToolCall, ToolResponse, WebFetchToolResult, WebSearchToolResult};
+use crate::chat::{Binary, ServerToolError, ServerToolUse, TextWithCitations, ToolCall, ToolResponse, WebFetchToolResult, WebSearchToolResult};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -43,6 +43,10 @@ pub enum ContentPart {
 	/// Results from a web fetch tool execution.
 	#[from]
 	WebFetchToolResult(WebFetchToolResult),
+
+	/// Error from a server tool execution (web search or web fetch).
+	#[from]
+	ServerToolError(ServerToolError),
 }
 
 /// Constructors
@@ -274,6 +278,7 @@ impl ContentPart {
 			ContentPart::ServerToolUse(stu) => stu.size(),
 			ContentPart::WebSearchToolResult(wsr) => wsr.size(),
 			ContentPart::WebFetchToolResult(wfr) => wfr.size(),
+			ContentPart::ServerToolError(e) => e.tool_use_id.len() + e.tool_name.len() + e.error_code.len(),
 		}
 	}
 }
