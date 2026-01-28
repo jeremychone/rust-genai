@@ -27,6 +27,7 @@ enum InProgressBlock {
 	ServerToolUse,
 	WebSearchToolResult,
 	WebFetchToolResult,
+	Unknown,
 }
 
 impl AnthropicStreamer {
@@ -100,9 +101,11 @@ impl futures::Stream for AnthropicStreamer {
 								}
 								Ok(txt) => {
 									tracing::warn!("unhandled content type: {txt}");
+									self.in_progress_block = InProgressBlock::Unknown;
 								}
 								Err(e) => {
 									tracing::error!("{e:?}");
+									self.in_progress_block = InProgressBlock::Unknown;
 								}
 							}
 
@@ -158,7 +161,8 @@ impl futures::Stream for AnthropicStreamer {
 								}
 								InProgressBlock::ServerToolUse
 							| InProgressBlock::WebSearchToolResult
-							| InProgressBlock::WebFetchToolResult => {
+							| InProgressBlock::WebFetchToolResult
+							| InProgressBlock::Unknown => {
 								// These block types don't have deltas in the same way text does
 								// The content is delivered as a complete block
 								continue;

@@ -906,12 +906,12 @@ impl AnthropicAdapter {
 				.into_iter()
 				.map(|tool| {
 					// Handle web_search tool specially
-					if tool.name == "web_search" {
+					if tool.name == "web_search" && tool.schema.is_none() {
 						return Self::serialize_web_search_tool(tool.config);
 					}
 
 					// Handle web_fetch tool specially
-					if tool.name == "web_fetch" {
+					if tool.name == "web_fetch" && tool.schema.is_none() {
 						return Self::serialize_web_fetch_tool(tool.config);
 					}
 
