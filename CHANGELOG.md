@@ -1,5 +1,13 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2026-01-27 - [v0.5.2](https://github.com/jeremychone/rust-genai/compare/v0.5.1...v0.5.2)
+
+- `-` Does not capture body when json parse fail  (#128)
+- `^` Anthropic - Add separate reasoning content and thought signature for anthropic messages api (#125)
+- `-` fix - Ollama tool calls are silently swallowed in OpenAI adapter (streaming) (#124)
+- `^` test - ollama - add tool tests
+- `^` gemini - Include thoughts and capture thoughts are reasoning content (#121)
+
 ## 2026-01-17 - [v0.5.1](https://github.com/jeremychone/rust-genai/compare/v0.5.0...v0.5.1)
 
 `!` `Error::WebStream` - added error field to preserve original error
