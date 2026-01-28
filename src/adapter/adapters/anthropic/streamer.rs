@@ -1,6 +1,6 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, PromptTokensDetails, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -232,14 +232,23 @@ impl AnthropicStreamer {
 			let data = self.parse_message_data(message_data)?;
 			// TODO: Might want to exit early if usage is not found
 
-			let (input_path, output_path) = if message_type == "message_start" {
-				("/message/usage/input_tokens", "/message/usage/output_tokens")
+			let (input_path, output_path, cache_creation_path, cache_read_path) = if message_type == "message_start" {
+				(
+					"/message/usage/input_tokens",
+					"/message/usage/output_tokens",
+					"/message/usage/cache_creation_input_tokens",
+					"/message/usage/cache_read_input_tokens",
+				)
 			} else if message_type == "message_delta" {
-				("/usage/input_tokens", "/usage/output_tokens")
+				(
+					"/usage/input_tokens",
+					"/usage/output_tokens",
+					"/usage/cache_creation_input_tokens",
+					"/usage/cache_read_input_tokens",
+				)
 			} else {
-				// TODO: Use tracing
 				tracing::debug!(
-					"TRACING DEBUG - Anthropic message type not supported for input/output tokens: {message_type}"
+					"Anthropic message type not supported for usage tokens: {message_type}"
 				);
 				return Ok(()); // For now permissive
 			};
@@ -264,6 +273,21 @@ impl AnthropicStreamer {
 					.completion_tokens
 					.get_or_insert(0);
 				*val += output_tokens;
+			}
+
+			// -- Capture cache tokens into prompt_tokens_details
+			if let Ok(cache_creation) = data.x_get::<i32>(cache_creation_path) {
+				let usage = self.captured_data.usage.get_or_insert(Usage::default());
+				let details = usage.prompt_tokens_details.get_or_insert(PromptTokensDetails::default());
+				let val = details.cache_creation_tokens.get_or_insert(0);
+				*val += cache_creation;
+			}
+
+			if let Ok(cache_read) = data.x_get::<i32>(cache_read_path) {
+				let usage = self.captured_data.usage.get_or_insert(Usage::default());
+				let details = usage.prompt_tokens_details.get_or_insert(PromptTokensDetails::default());
+				let val = details.cached_tokens.get_or_insert(0);
+				*val += cache_read;
 			}
 		}
 
