@@ -111,7 +111,7 @@ impl From<CacheControl> for MessageOptions {
 // endregion: --- MessageOptions
 
 /// Chat roles recognized across providers.
-#[derive(Debug, Clone, Serialize, Deserialize, derive_more::Display)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, derive_more::Display)]
 #[allow(missing_docs)]
 pub enum ChatRole {
 	System,
