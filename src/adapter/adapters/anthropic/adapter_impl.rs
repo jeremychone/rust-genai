@@ -2,9 +2,9 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole,
-	ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, StopReason,
-	Tool, ToolCall, ToolConfig, ToolName, Usage,
+	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
+	ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails,
+	ReasoningEffort, StopReason, Tool, ToolCall, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -220,7 +220,7 @@ impl Adapter for AnthropicAdapter {
 		let headers = Headers::from(vec![
 			// headers
 			("x-api-key".to_string(), api_key),
-			("anthropic-beta".to_string(), "effort-2025-11-24".to_string()),
+			("anthropic-beta".to_string(), "effort-2025-11-24,structured-outputs-2025-11-13".to_string()),
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		]);
 
@@ -291,6 +291,24 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		// -- Add supported ChatOptions
+		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
+			// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-outputs
+
+			// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
+			let mut schema = st_json.schema.clone();
+			schema.x_walk(|parent_map, name| {
+				if name == "type" && matches!(parent_map.get("type"), Some(Value::String(s)) if s == "object") {
+                    parent_map.insert("additionalProperties".into(), Value::Bool(false));
+				}
+				true
+			});
+
+			payload.x_insert("output_format", json!({
+				"type": "json_schema",
+				"schema": schema,
+			}))?;
+		}
+
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("temperature", temperature)?;
 		}
