@@ -262,9 +262,7 @@ impl MessageContent {
 
 		let mut combined = String::new();
 		for text in texts {
-			if !combined.is_empty() {
-				support::combine_text_with_empty_line(&mut combined, text);
-			}
+			support::combine_text_with_empty_line(&mut combined, text);
 		}
 		Some(combined)
 	}
