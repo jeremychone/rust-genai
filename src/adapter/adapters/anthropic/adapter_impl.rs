@@ -591,28 +591,19 @@ impl AnthropicAdapter {
 		// -- Create the Anthropic system
 		// NOTE: Anthropic does not have a "role": "system", just a single optional system property
 		let system = if !systems.is_empty() {
-			let mut last_cache_idx: Option<usize> = None;
-			let mut last_cache_control: Option<&CacheControl> = None;
-			// first determine the last cache control index and its value
-			for (idx, (_, cc)) in systems.iter().enumerate() {
-				if cc.is_some() {
-					last_cache_idx = Some(idx);
-					last_cache_control = cc.as_ref();
-				}
-			}
-			// Now build the system multi part
-			let system: Value = if let Some(cache_idx) = last_cache_idx {
-				let mut parts: Vec<Value> = Vec::new();
-				for (idx, (content, _)) in systems.iter().enumerate() {
-					if idx == cache_idx {
-						let cc_json = cache_control_to_json(last_cache_control.unwrap());
-						let part = json!({"type": "text", "text": content, "cache_control": cc_json});
-						parts.push(part);
-					} else {
-						let part = json!({"type": "text", "text": content});
-						parts.push(part);
-					}
-				}
+			let has_any_cache = systems.iter().any(|(_, cc)| cc.is_some());
+			let system: Value = if has_any_cache {
+				// Build multi-part system with per-part cache_control
+				let parts: Vec<Value> = systems
+					.iter()
+					.map(|(content, cc)| {
+						if let Some(cc) = cc {
+							json!({"type": "text", "text": content, "cache_control": cache_control_to_json(cc)})
+						} else {
+							json!({"type": "text", "text": content})
+						}
+					})
+					.collect();
 				json!(parts)
 			} else {
 				let content_buff = systems.iter().map(|(content, _)| content.as_str()).collect::<Vec<&str>>();
