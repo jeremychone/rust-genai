@@ -1,5 +1,5 @@
 use crate::Result;
-use crate::chat::{Binary, ToolCall, ToolResponse};
+use crate::chat::{Binary, ServerToolError, ServerToolUse, TextWithCitations, ToolCall, ToolResponse, WebFetchToolResult, WebSearchToolResult};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -7,7 +7,8 @@ use std::sync::Arc;
 
 /// A single content segment in a chat message.
 ///
-/// Variants cover plain text, binary payloads (e.g., images/PDF), and tool calls/responses.
+/// Variants cover plain text, binary payloads (e.g., images/PDF), tool calls/responses,
+/// and web search related content.
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 pub enum ContentPart {
 	#[from(String, &String, &str)]
@@ -24,6 +25,28 @@ pub enum ContentPart {
 
 	#[from(ignore)]
 	ThoughtSignature(String),
+
+	// -- Web Search / Web Fetch variants (Anthropic)
+
+	/// Text content with inline citations from web search/fetch.
+	#[from]
+	TextWithCitations(TextWithCitations),
+
+	/// Server-initiated tool use (e.g., web search query, web fetch).
+	#[from]
+	ServerToolUse(ServerToolUse),
+
+	/// Results from a web search tool execution.
+	#[from]
+	WebSearchToolResult(WebSearchToolResult),
+
+	/// Results from a web fetch tool execution.
+	#[from]
+	WebFetchToolResult(WebFetchToolResult),
+
+	/// Error from a server tool execution (web search or web fetch).
+	#[from]
+	ServerToolError(ServerToolError),
 }
 
 /// Constructors
@@ -161,6 +184,78 @@ impl ContentPart {
 			None
 		}
 	}
+
+	/// Borrow the text with citations if present.
+	pub fn as_text_with_citations(&self) -> Option<&TextWithCitations> {
+		if let ContentPart::TextWithCitations(twc) = self {
+			Some(twc)
+		} else {
+			None
+		}
+	}
+
+	/// Extract the text with citations, consuming the part.
+	pub fn into_text_with_citations(self) -> Option<TextWithCitations> {
+		if let ContentPart::TextWithCitations(twc) = self {
+			Some(twc)
+		} else {
+			None
+		}
+	}
+
+	/// Borrow the server tool use if present.
+	pub fn as_server_tool_use(&self) -> Option<&ServerToolUse> {
+		if let ContentPart::ServerToolUse(stu) = self {
+			Some(stu)
+		} else {
+			None
+		}
+	}
+
+	/// Extract the server tool use, consuming the part.
+	pub fn into_server_tool_use(self) -> Option<ServerToolUse> {
+		if let ContentPart::ServerToolUse(stu) = self {
+			Some(stu)
+		} else {
+			None
+		}
+	}
+
+	/// Borrow the web search tool result if present.
+	pub fn as_web_search_tool_result(&self) -> Option<&WebSearchToolResult> {
+		if let ContentPart::WebSearchToolResult(wsr) = self {
+			Some(wsr)
+		} else {
+			None
+		}
+	}
+
+	/// Extract the web search tool result, consuming the part.
+	pub fn into_web_search_tool_result(self) -> Option<WebSearchToolResult> {
+		if let ContentPart::WebSearchToolResult(wsr) = self {
+			Some(wsr)
+		} else {
+			None
+		}
+	}
+
+	/// Borrow the web fetch tool result if present.
+	pub fn as_web_fetch_tool_result(&self) -> Option<&WebFetchToolResult> {
+		if let ContentPart::WebFetchToolResult(wfr) = self {
+			Some(wfr)
+		} else {
+			None
+		}
+	}
+
+	/// Extract the web fetch tool result, consuming the part.
+	pub fn into_web_fetch_tool_result(self) -> Option<WebFetchToolResult> {
+		if let ContentPart::WebFetchToolResult(wfr) = self {
+			Some(wfr)
+		} else {
+			None
+		}
+	}
 }
 
 /// Computed accessors
@@ -171,6 +266,7 @@ impl ContentPart {
 	/// - For `Binary`: delegates to `Binary::size()`.
 	/// - For `ToolCall`: delegates to `ToolCall::size()`.
 	/// - For `ToolResponse`: delegates to `ToolResponse::size()`.
+	/// - For web search types: delegates to their respective `size()` methods.
 	pub fn size(&self) -> usize {
 		match self {
 			ContentPart::Text(text) => text.len(),
@@ -178,6 +274,11 @@ impl ContentPart {
 			ContentPart::ToolCall(tool_call) => tool_call.size(),
 			ContentPart::ToolResponse(tool_response) => tool_response.size(),
 			ContentPart::ThoughtSignature(thought) => thought.len(),
+			ContentPart::TextWithCitations(twc) => twc.size(),
+			ContentPart::ServerToolUse(stu) => stu.size(),
+			ContentPart::WebSearchToolResult(wsr) => wsr.size(),
+			ContentPart::WebFetchToolResult(wfr) => wfr.size(),
+			ContentPart::ServerToolError(e) => e.tool_use_id.len() + e.tool_name.len() + e.error_code.len(),
 		}
 	}
 }
@@ -227,5 +328,25 @@ impl ContentPart {
 	/// Returns true if this part is a thought.
 	pub fn is_thought_signature(&self) -> bool {
 		matches!(self, ContentPart::ThoughtSignature(_))
+	}
+
+	/// Returns true if this part contains text with citations.
+	pub fn is_text_with_citations(&self) -> bool {
+		matches!(self, ContentPart::TextWithCitations(_))
+	}
+
+	/// Returns true if this part contains a server tool use.
+	pub fn is_server_tool_use(&self) -> bool {
+		matches!(self, ContentPart::ServerToolUse(_))
+	}
+
+	/// Returns true if this part contains web search tool results.
+	pub fn is_web_search_tool_result(&self) -> bool {
+		matches!(self, ContentPart::WebSearchToolResult(_))
+	}
+
+	/// Returns true if this part contains web fetch tool results.
+	pub fn is_web_fetch_tool_result(&self) -> bool {
+		matches!(self, ContentPart::WebFetchToolResult(_))
 	}
 }

@@ -14,6 +14,7 @@ mod content_part;
 mod message_content;
 mod tool;
 mod usage;
+mod web_search_result;
 
 // -- Flatten
 pub use binary::*;
@@ -27,6 +28,7 @@ pub use content_part::*;
 pub use message_content::*;
 pub use tool::*;
 pub use usage::*;
+pub use web_search_result::*;
 
 #[doc = "Printing helpers for chat requests and streaming output."]
 pub mod printer;
