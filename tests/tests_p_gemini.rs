@@ -8,6 +8,7 @@ use genai::resolver::AuthData;
 // "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite"
 // "gemini-2.5-flash-zero"
 const MODEL_GPRO_3: &str = "gemini-3-pro-preview";
+const MODEL_FLASH_3: &str = "gemini-3-flash-preview"; // pure gem, fast, cheap, and good!
 const MODEL: &str = "gemini-2.5-flash";
 const MODEL_NS: &str = "gemini::gemini-2.5-flash";
 
@@ -171,6 +172,29 @@ async fn test_tool_deterministic_history_gemini_3_ok() -> TestResult<()> {
 
 	Ok(())
 }
+
+// NOTE: Issue of this test is that it is pretty slow
+#[tokio::test]
+async fn test_tool_google_web_search_ok() -> TestResult<()> {
+	use genai::chat::{ChatRequest, Tool};
+	use serde_json::json;
+
+	// -- Fixtures & Setup
+	let client = genai::Client::default();
+	let web_search_tool = Tool::new("googleSearch").with_config(json!({}));
+	let chat_req =
+		ChatRequest::from_user("What is the latest version of Rust? (be concise)").append_tool(web_search_tool);
+
+	// Exec
+	let res = client.exec_chat(MODEL_GPRO_3, chat_req, None).await?;
+
+	// Check
+	let res_txt = res.content.into_first_text().ok_or("Should have result")?;
+	assert!(res_txt.contains("Rust"), "should contains 'Rust'");
+
+	Ok(())
+}
+
 // endregion: --- Tool Tests
 
 // region:    --- Resolver Tests
