@@ -452,20 +452,16 @@ impl GeminiAdapter {
 			(Some(c_tokens), Some(t_tokens)) => (
 				Some(c_tokens + t_tokens),
 				Some(CompletionTokensDetails {
-					accepted_prediction_tokens: None,
-					rejected_prediction_tokens: None,
 					reasoning_tokens: Some(t_tokens),
-					audio_tokens: None,
+					..Default::default()
 				}),
 			),
 			(None, Some(t_tokens)) => {
 				(
 					None,
 					Some(CompletionTokensDetails {
-						accepted_prediction_tokens: None,
-						rejected_prediction_tokens: None,
 						reasoning_tokens: Some(t_tokens), // should be safe enough
-						audio_tokens: None,
+						..Default::default()
 					}),
 				)
 			}
@@ -558,6 +554,11 @@ impl GeminiAdapter {
 									"thoughtSignature": thought
 								}));
 							}
+							// Web search/fetch types are Anthropic-only response types; skip gracefully.
+							ContentPart::TextWithCitations(_) => {}
+							ContentPart::ServerToolUse(_) => {}
+							ContentPart::WebSearchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 						}
 					}
 
@@ -625,6 +626,11 @@ impl GeminiAdapter {
 									parts_values.push(json!({"thoughtSignature": thought}));
 								}
 							}
+							// Web search/fetch types are Anthropic-only response types; skip gracefully.
+							ContentPart::TextWithCitations(_) => {}
+							ContentPart::ServerToolUse(_) => {}
+							ContentPart::WebSearchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 						}
 					}
 					if let Some(thought) = pending_thought {
@@ -662,6 +668,10 @@ impl GeminiAdapter {
 									"thoughtSignature": thought
 								}));
 							}
+							// Web search types are Anthropic-only response types; skip gracefully.
+							ContentPart::TextWithCitations(_)
+							| ContentPart::ServerToolUse(_)
+							| ContentPart::WebSearchToolResult(_) => {}
 							_ => {
 								return Err(Error::MessageContentTypeNotSupported {
 									model_iden: model_iden.clone(),

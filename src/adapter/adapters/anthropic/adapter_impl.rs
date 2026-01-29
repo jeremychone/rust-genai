@@ -3,7 +3,9 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall, Usage,
+	Citation, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
+	ServerToolError, ServerToolUse, TextWithCitations, ToolCall, Usage, WebFetchConfig, WebFetchContent,
+	WebFetchToolResult, WebSearchConfig, WebSearchResultItem, WebSearchToolResult,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -103,11 +105,21 @@ impl Adapter for AnthropicAdapter {
 		// -- url
 		let url = Self::get_service_url(&model, service_type, endpoint)?;
 
+		// -- Check if web_fetch tool is present (for beta header)
+		let has_web_fetch = chat_req
+			.tools
+			.as_ref()
+			.is_some_and(|tools| tools.iter().any(|t| t.name == "web_fetch"));
+
 		// -- headers
+		let beta_header = if has_web_fetch {
+			"effort-2025-11-24,web-fetch-2025-09-10".to_string()
+		} else {
+			"effort-2025-11-24".to_string()
+		};
 		let headers = Headers::from(vec![
-			// headers
 			("x-api-key".to_string(), api_key),
-			("anthropic-beta".to_string(), "effort-2025-11-24".to_string()),
+			("anthropic-beta".to_string(), beta_header),
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		]);
 
@@ -274,8 +286,19 @@ impl Adapter for AnthropicAdapter {
 			let typ: &str = item.x_get_as("type")?;
 			match typ {
 				"text" => {
-					let part = ContentPart::from_text(item.x_take::<String>("text")?);
-					content.push(part);
+					let text = item.x_take::<String>("text")?;
+					// Check for citations after taking text (avoids double borrow)
+					let citations = item
+						.get("citations")
+						.and_then(|c| c.as_array())
+						.map(|arr| Self::parse_citations(arr));
+
+					if let Some(citations) = citations {
+						let twc = TextWithCitations { text, citations };
+						content.push(ContentPart::TextWithCitations(twc));
+					} else {
+						content.push(ContentPart::from_text(text));
+					}
 				}
 				"thinking" => reasoning_content.push(item.x_take("thinking")?),
 				"tool_use" => {
@@ -292,6 +315,45 @@ impl Adapter for AnthropicAdapter {
 
 					let part = ContentPart::ToolCall(tool_call);
 					content.push(part);
+				}
+				"server_tool_use" => {
+					let id = item.x_take::<String>("id")?;
+					let name = item.x_take::<String>("name")?;
+					let input = item.x_take::<Value>("input").unwrap_or(Value::Null);
+					let stu = ServerToolUse { id, name, input };
+					content.push(ContentPart::ServerToolUse(stu));
+				}
+				"web_search_tool_result" => {
+					let tool_use_id = item.x_take::<String>("tool_use_id")?;
+					let results = Self::parse_web_search_results(&item);
+					let wsr = WebSearchToolResult { tool_use_id, results };
+					content.push(ContentPart::WebSearchToolResult(wsr));
+				}
+				"web_fetch_tool_result" => {
+					let wfr = Self::parse_web_fetch_result(item)?;
+					content.push(ContentPart::WebFetchToolResult(wfr));
+				}
+				"web_search_tool_result_error" => {
+					let tool_use_id = item.x_take::<String>("tool_use_id")?;
+					let error_code = item
+						.x_take::<String>("error_code")
+						.unwrap_or_else(|_| "unknown".to_string());
+					content.push(ContentPart::ServerToolError(ServerToolError {
+						tool_use_id,
+						tool_name: "web_search".to_string(),
+						error_code,
+					}));
+				}
+				"web_fetch_tool_error" => {
+					let tool_use_id = item.x_take::<String>("tool_use_id")?;
+					let error_code = item
+						.x_take::<String>("error_code")
+						.unwrap_or_else(|_| "unknown".to_string());
+					content.push(ContentPart::ServerToolError(ServerToolError {
+						tool_use_id,
+						tool_name: "web_fetch".to_string(),
+						error_code,
+					}));
 				}
 				_ => (),
 			}
@@ -353,6 +415,217 @@ impl Adapter for AnthropicAdapter {
 // region:    --- Support
 
 impl AnthropicAdapter {
+	/// Parse citations from a JSON array.
+	fn parse_citations(citations_arr: &[Value]) -> Vec<Citation> {
+		citations_arr
+			.iter()
+			.filter_map(|c| {
+				// url and title are required — skip malformed citations
+				let url = c.get("url")?.as_str()?.to_string();
+				let title = c.get("title")?.as_str()?.to_string();
+
+				let cited_text = c.get("cited_text").and_then(|v| v.as_str()).map(|s| s.to_string());
+				let start_index = c.get("start_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+				let end_index = c.get("end_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+
+				// Web search specific
+				let encrypted_index = c
+					.get("encrypted_index")
+					.and_then(|v| v.as_str())
+					.map(|s| s.to_string());
+
+				// Web fetch specific (char_location)
+				let document_index = c.get("document_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+				let start_char_index = c.get("start_char_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+				let end_char_index = c.get("end_char_index").and_then(|v| v.as_u64()).map(|v| v as u32);
+
+				Some(Citation {
+					url,
+					title,
+					cited_text,
+					start_index,
+					end_index,
+					encrypted_index,
+					document_index,
+					start_char_index,
+					end_char_index,
+				})
+			})
+			.collect()
+	}
+
+	/// Parse web search results from a content block.
+	fn parse_web_search_results(item: &Value) -> Vec<WebSearchResultItem> {
+		let Some(content_arr) = item.get("content").and_then(|c| c.as_array()) else {
+			return Vec::new();
+		};
+
+		content_arr
+			.iter()
+			.filter_map(|r| {
+				// Each result has type "web_search_result"
+				if r.get("type").and_then(|t| t.as_str()) != Some("web_search_result") {
+					return None;
+				}
+				let url = r.get("url")?.as_str()?.to_string();
+				let title = r.get("title")?.as_str()?.to_string();
+				let page_age = r.get("page_age").and_then(|v| v.as_str()).map(|s| s.to_string());
+				let encrypted_content = r
+					.get("encrypted_content")
+					.and_then(|v| v.as_str())
+					.map(|s| s.to_string());
+				Some(WebSearchResultItem {
+					url,
+					title,
+					page_age,
+					encrypted_content,
+				})
+			})
+			.collect()
+	}
+
+	/// Parse a web_fetch_tool_result content block.
+	///
+	/// Anthropic API response structure:
+	/// ```json
+	/// {
+	///   "type": "web_fetch_tool_result",
+	///   "tool_use_id": "...",
+	///   "content": {
+	///     "type": "web_fetch_result",
+	///     "url": "https://...",
+	///     "retrieved_at": "2026-...",
+	///     "content": {
+	///       "type": "document",
+	///       "source": { "type": "text", "media_type": "text/plain", "data": "..." },
+	///       "title": null
+	///     }
+	///   }
+	/// }
+	/// ```
+	fn parse_web_fetch_result(mut item: Value) -> Result<WebFetchToolResult> {
+		let tool_use_id = item.x_take::<String>("tool_use_id")?;
+
+		// The outer "content" wraps the actual fetch result
+		let mut outer = item.x_take::<Value>("content").unwrap_or(Value::Null);
+
+		let url = outer.x_take::<String>("url").ok();
+		let retrieved_at = outer.x_take::<String>("retrieved_at").ok();
+
+		// The inner "content" contains the document with source
+		let content = if let Ok(mut inner) = outer.x_take::<Value>("content") {
+			let document_type = inner
+				.x_take::<String>("type")
+				.unwrap_or_else(|_| "document".to_string());
+			let title = inner.x_take::<String>("title").ok();
+
+			// Source contains the actual data
+			let mut source = inner.x_take::<Value>("source").unwrap_or(Value::Null);
+			let source_type = source
+				.x_take::<String>("type")
+				.unwrap_or_else(|_| "text".to_string());
+			let media_type = source
+				.x_take::<String>("media_type")
+				.unwrap_or_else(|_| "text/plain".to_string());
+			let data = source.x_take::<String>("data").unwrap_or_default();
+
+			WebFetchContent {
+				document_type,
+				source_type,
+				media_type,
+				data,
+				title,
+			}
+		} else {
+			WebFetchContent {
+				document_type: "document".to_string(),
+				source_type: "text".to_string(),
+				media_type: "text/plain".to_string(),
+				data: String::new(),
+				title: None,
+			}
+		};
+
+		Ok(WebFetchToolResult {
+			tool_use_id,
+			url,
+			content,
+			retrieved_at,
+		})
+	}
+
+	/// Serialize a web_search tool for the Anthropic API.
+	fn serialize_web_search_tool(config: Option<Value>) -> Value {
+		let mut tool_value = json!({
+			"type": "web_search_20250305",
+			"name": "web_search"
+		});
+
+		// Parse config if provided
+		if let Some(config_value) = config {
+			if let Ok(config) = serde_json::from_value::<WebSearchConfig>(config_value) {
+				if let Some(max_uses) = config.max_uses {
+					let _ = tool_value.x_insert("max_uses", max_uses);
+				}
+				if let Some(allowed_domains) = config.allowed_domains {
+					let _ = tool_value.x_insert("allowed_domains", allowed_domains);
+				}
+				if let Some(blocked_domains) = config.blocked_domains {
+					let _ = tool_value.x_insert("blocked_domains", blocked_domains);
+				}
+				if let Some(user_location) = config.user_location {
+					let mut loc = json!({"type": "approximate"});
+					if let Some(city) = user_location.city {
+						let _ = loc.x_insert("city", city);
+					}
+					if let Some(region) = user_location.region {
+						let _ = loc.x_insert("region", region);
+					}
+					if let Some(country) = user_location.country {
+						let _ = loc.x_insert("country", country);
+					}
+					if let Some(timezone) = user_location.timezone {
+						let _ = loc.x_insert("timezone", timezone);
+					}
+					let _ = tool_value.x_insert("user_location", loc);
+				}
+			}
+		}
+
+		tool_value
+	}
+
+	/// Serialize a web_fetch tool for the Anthropic API.
+	fn serialize_web_fetch_tool(config: Option<Value>) -> Value {
+		let mut tool_value = json!({
+			"type": "web_fetch_20250910",
+			"name": "web_fetch"
+		});
+
+		// Parse config if provided
+		if let Some(config_value) = config {
+			if let Ok(config) = serde_json::from_value::<WebFetchConfig>(config_value) {
+				if let Some(max_uses) = config.max_uses {
+					let _ = tool_value.x_insert("max_uses", max_uses);
+				}
+				if let Some(allowed_domains) = config.allowed_domains {
+					let _ = tool_value.x_insert("allowed_domains", allowed_domains);
+				}
+				if let Some(blocked_domains) = config.blocked_domains {
+					let _ = tool_value.x_insert("blocked_domains", blocked_domains);
+				}
+				if let Some(citations) = config.citations {
+					let _ = tool_value.x_insert("citations", json!({"enabled": citations.enabled}));
+				}
+				if let Some(max_content_tokens) = config.max_content_tokens {
+					let _ = tool_value.x_insert("max_content_tokens", max_content_tokens);
+				}
+			}
+		}
+
+		tool_value
+	}
+
 	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
 		// IMPORTANT: For Anthropic, the `input_tokens` does not include `cache_creation_input_tokens` or `cache_read_input_tokens`.
 		// Therefore, it must be normalized in the OpenAI style, where it includes both cached and written tokens (for symmetry).
@@ -379,13 +652,35 @@ impl AnthropicAdapter {
 			None
 		};
 
+		// Parse web_search_requests and web_fetch_requests from server_tool_use usage
+		let web_search_requests = usage_value
+			.get("server_tool_use")
+			.and_then(|s| s.get("web_search_requests"))
+			.and_then(|v| v.as_i64())
+			.map(|v| v as i32);
+
+		let web_fetch_requests = usage_value
+			.get("server_tool_use")
+			.and_then(|s| s.get("web_fetch_requests"))
+			.and_then(|v| v.as_i64())
+			.map(|v| v as i32);
+
+		let completion_tokens_details = if web_search_requests.is_some() || web_fetch_requests.is_some() {
+			Some(CompletionTokensDetails {
+				web_search_requests,
+				web_fetch_requests,
+				..Default::default()
+			})
+		} else {
+			None
+		};
+
 		Usage {
 			prompt_tokens: Some(prompt_tokens),
 			prompt_tokens_details,
 
 			completion_tokens: Some(completion_tokens),
-			// for now, None for Anthropic
-			completion_tokens_details: None,
+			completion_tokens_details,
 
 			total_tokens: Some(total_tokens),
 		}
@@ -488,6 +783,11 @@ impl AnthropicAdapter {
 									}));
 								}
 								ContentPart::ThoughtSignature(_) => {}
+								// Web search/fetch types are response-only; skip gracefully.
+								ContentPart::TextWithCitations(_) => {}
+								ContentPart::ServerToolUse(_) => {}
+								ContentPart::WebSearchToolResult(_) => {}
+								ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 							}
 						}
 						let values = apply_cache_control_to_parts(is_cache_control, values);
@@ -521,6 +821,11 @@ impl AnthropicAdapter {
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) => {}
+							// Web search/fetch types are response-only; skip gracefully.
+							ContentPart::TextWithCitations(_) => {}
+							ContentPart::ServerToolUse(_) => {}
+							ContentPart::WebSearchToolResult(_) => {}
+							ContentPart::WebFetchToolResult(_) | ContentPart::ServerToolError(_) => {}
 						}
 					}
 
@@ -600,6 +905,16 @@ impl AnthropicAdapter {
 			tools
 				.into_iter()
 				.map(|tool| {
+					// Handle web_search tool specially
+					if tool.name == "web_search" && tool.schema.is_none() {
+						return Self::serialize_web_search_tool(tool.config);
+					}
+
+					// Handle web_fetch tool specially
+					if tool.name == "web_fetch" && tool.schema.is_none() {
+						return Self::serialize_web_fetch_tool(tool.config);
+					}
+
 					// TODO: Need to handle the error correctly
 					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
 					// NOTE: Right now, low probability, so we just return null if cannot convert to value.
