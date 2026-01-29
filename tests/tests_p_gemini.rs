@@ -186,7 +186,7 @@ async fn test_tool_google_web_search_ok() -> TestResult<()> {
 		ChatRequest::from_user("What is the latest version of Rust? (be concise)").append_tool(web_search_tool);
 
 	// Exec
-	let res = client.exec_chat(MODEL_GPRO_3, chat_req, None).await?;
+	let res = client.exec_chat(MODEL_FLASH_3, chat_req, None).await?;
 
 	// Check
 	let res_txt = res.content.into_first_text().ok_or("Should have result")?;
