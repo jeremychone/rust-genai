@@ -78,6 +78,20 @@ async fn test_chat_cache_explicit_system_ok() -> TestResult<()> {
 	common_tests::common_test_chat_cache_explicit_system_ok(MODEL).await
 }
 
+/// Test for 1-hour TTL cache (only supported on Claude 4.5 models)
+#[tokio::test]
+#[serial(anthropic)]
+async fn test_chat_cache_explicit_1h_ttl_ok() -> TestResult<()> {
+	common_tests::common_test_chat_cache_explicit_1h_ttl_ok(MODEL_THINKING).await
+}
+
+/// Streaming test for 1-hour TTL cache (only supported on Claude 4.5 models)
+#[tokio::test]
+#[serial(anthropic)]
+async fn test_chat_stream_cache_explicit_1h_ttl_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_cache_explicit_1h_ttl_ok(MODEL_THINKING).await
+}
+
 // endregion: --- Chat Explicit Cache
 
 // region:    --- Chat Stream Tests

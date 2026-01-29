@@ -93,6 +93,7 @@ impl From<InputTokensDetails> for PromptTokensDetails {
 	fn from(value: InputTokensDetails) -> Self {
 		PromptTokensDetails {
 			cache_creation_tokens: value.cache_creation_tokens,
+			cache_creation_details: None,
 			cached_tokens: value.cached_tokens,
 			audio_tokens: value.audio_tokens,
 		}

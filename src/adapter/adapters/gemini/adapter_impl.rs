@@ -436,6 +436,7 @@ impl GeminiAdapter {
 		let g_cached_tokens: Option<i32> = usage_value.x_take("cachedContentTokenCount").ok();
 		let prompt_tokens_details = g_cached_tokens.map(|g_cached_tokens| PromptTokensDetails {
 			cache_creation_tokens: None,
+			cache_creation_details: None,
 			cached_tokens: Some(g_cached_tokens),
 			audio_tokens: None,
 		});
