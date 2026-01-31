@@ -2,8 +2,8 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall, Usage,
+	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole,
+	ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -359,6 +359,11 @@ impl AnthropicAdapter {
 		let cache_read_input_tokens: i32 = usage_value.x_take("cache_read_input_tokens").unwrap_or(0);
 		let completion_tokens: i32 = usage_value.x_take("output_tokens").ok().unwrap_or(0);
 
+		// Parse cache_creation breakdown if present (TTL-specific breakdown)
+		let cache_creation_details = usage_value
+			.get("cache_creation")
+			.and_then(parse_cache_creation_details);
+
 		// compute the prompt_tokens
 		let prompt_tokens = input_tokens + cache_creation_input_tokens + cache_read_input_tokens;
 
@@ -367,15 +372,17 @@ impl AnthropicAdapter {
 
 		// For now the logic is to have a Some of PromptTokensDetails if at least one of those value is not 0
 		// TODO: Needs to be normalized across adapters.
-		let prompt_tokens_details = if cache_creation_input_tokens > 0 || cache_read_input_tokens > 0 {
-			Some(PromptTokensDetails {
-				cache_creation_tokens: Some(cache_creation_input_tokens),
-				cached_tokens: Some(cache_read_input_tokens),
-				audio_tokens: None,
-			})
-		} else {
-			None
-		};
+		let prompt_tokens_details =
+			if cache_creation_input_tokens > 0 || cache_read_input_tokens > 0 || cache_creation_details.is_some() {
+				Some(PromptTokensDetails {
+					cache_creation_tokens: Some(cache_creation_input_tokens),
+					cache_creation_details,
+					cached_tokens: Some(cache_read_input_tokens),
+					audio_tokens: None,
+				})
+			} else {
+				None
+			};
 
 		Usage {
 			prompt_tokens: Some(prompt_tokens),
@@ -393,24 +400,45 @@ impl AnthropicAdapter {
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
 	fn into_anthropic_request_parts(chat_req: ChatRequest) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
-		// (content, is_cache_control)
-		let mut systems: Vec<(String, bool)> = Vec::new();
+		// (content, cache_control)
+		let mut systems: Vec<(String, Option<CacheControl>)> = Vec::new();
+
+		// Track TTL ordering for validation (1h must come before 5m)
+		let mut seen_5m_cache = false;
 
 		// NOTE: For now, this means the first System cannot have a cache control
 		//       so that we do not change too much.
 		if let Some(system) = chat_req.system {
-			systems.push((system, false));
+			systems.push((system, None));
 		}
 
 		// -- Process the messages
 		for msg in chat_req.messages {
-			let is_cache_control = msg.options.map(|o| o.cache_control.is_some()).unwrap_or(false);
+			let cache_control = msg.options.and_then(|o| o.cache_control);
+
+			// Check TTL ordering constraint
+			if let Some(ref cc) = cache_control {
+				match cc {
+					CacheControl::Ephemeral | CacheControl::Ephemeral5m => {
+						seen_5m_cache = true;
+					}
+					CacheControl::Ephemeral1h => {
+						if seen_5m_cache {
+							warn!(
+								"Anthropic cache TTL ordering violation: Ephemeral1h appears after Ephemeral/Ephemeral5m. \
+								1-hour cache entries must appear before 5-minute cache entries. \
+								See: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching#mixing-different-ttls"
+							);
+						}
+					}
+				}
+			}
 
 			match msg.role {
 				// Collect only text for system; other content parts are ignored by Anthropic here.
 				ChatRole::System => {
 					if let Some(system_text) = msg.content.joined_texts() {
-						systems.push((system_text, is_cache_control));
+						systems.push((system_text, cache_control));
 					}
 				}
 
@@ -418,7 +446,7 @@ impl AnthropicAdapter {
 				ChatRole::User => {
 					if msg.content.is_text_only() {
 						let text = msg.content.joined_texts().unwrap_or_else(String::new);
-						let content = apply_cache_control_to_text(is_cache_control, text);
+						let content = apply_cache_control_to_text(cache_control.as_ref(), text);
 						messages.push(json!({"role": "user", "content": content}));
 					} else {
 						let mut values: Vec<Value> = Vec::new();
@@ -488,7 +516,7 @@ impl AnthropicAdapter {
 								ContentPart::ThoughtSignature(_) => {}
 							}
 						}
-						let values = apply_cache_control_to_parts(is_cache_control, values);
+						let values = apply_cache_control_to_parts(cache_control.as_ref(), values);
 						messages.push(json!({"role": "user", "content": values}));
 					}
 				}
@@ -522,7 +550,7 @@ impl AnthropicAdapter {
 						}
 					}
 
-					if !has_tool_use && has_text && !is_cache_control && values.len() == 1 {
+					if !has_tool_use && has_text && cache_control.is_none() && values.len() == 1 {
 						// Optimize to simple string when it's only one text part and no cache control.
 						let text = values
 							.first()
@@ -530,10 +558,10 @@ impl AnthropicAdapter {
 							.and_then(|v| v.as_str())
 							.unwrap_or_default()
 							.to_string();
-						let content = apply_cache_control_to_text(false, text);
+						let content = apply_cache_control_to_text(None, text);
 						messages.push(json!({"role": "assistant", "content": content}));
 					} else {
-						let values = apply_cache_control_to_parts(is_cache_control, values);
+						let values = apply_cache_control_to_parts(cache_control.as_ref(), values);
 						messages.push(json!({"role": "assistant", "content": values}));
 					}
 				}
@@ -551,7 +579,7 @@ impl AnthropicAdapter {
 						}
 					}
 					if !values.is_empty() {
-						let values = apply_cache_control_to_parts(is_cache_control, values);
+						let values = apply_cache_control_to_parts(cache_control.as_ref(), values);
 						messages.push(json!({"role": "user", "content": values}));
 					}
 				}
@@ -561,26 +589,19 @@ impl AnthropicAdapter {
 		// -- Create the Anthropic system
 		// NOTE: Anthropic does not have a "role": "system", just a single optional system property
 		let system = if !systems.is_empty() {
-			let mut last_cache_idx = -1;
-			// first determine the last cache control index
-			for (idx, (_, is_cache_control)) in systems.iter().enumerate() {
-				if *is_cache_control {
-					last_cache_idx = idx as i32;
-				}
-			}
-			// Now build the system multi part
-			let system: Value = if last_cache_idx > 0 {
-				let mut parts: Vec<Value> = Vec::new();
-				for (idx, (content, _)) in systems.iter().enumerate() {
-					let idx = idx as i32;
-					if idx == last_cache_idx {
-						let part = json!({"type": "text", "text": content, "cache_control": {"type": "ephemeral"}});
-						parts.push(part);
-					} else {
-						let part = json!({"type": "text", "text": content});
-						parts.push(part);
-					}
-				}
+			let has_any_cache = systems.iter().any(|(_, cc)| cc.is_some());
+			let system: Value = if has_any_cache {
+				// Build multi-part system with per-part cache_control
+				let parts: Vec<Value> = systems
+					.iter()
+					.map(|(content, cc)| {
+						if let Some(cc) = cc {
+							json!({"type": "text", "text": content, "cache_control": cache_control_to_json(cc)})
+						} else {
+							json!({"type": "text", "text": content})
+						}
+					})
+					.collect();
 				json!(parts)
 			} else {
 				let content_buff = systems.iter().map(|(content, _)| content.as_str()).collect::<Vec<&str>>();
@@ -623,10 +644,57 @@ impl AnthropicAdapter {
 	}
 }
 
+/// Convert CacheControl to Anthropic JSON format.
+///
+/// See: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching#1-hour-cache-duration
+fn cache_control_to_json(cache_control: &CacheControl) -> Value {
+	match cache_control {
+		CacheControl::Ephemeral => {
+			json!({"type": "ephemeral"})
+		}
+		CacheControl::Ephemeral5m => {
+			json!({"type": "ephemeral", "ttl": "5m"})
+		}
+		CacheControl::Ephemeral1h => {
+			json!({"type": "ephemeral", "ttl": "1h"})
+		}
+	}
+}
+
+/// Parse cache_creation breakdown from Anthropic API response.
+///
+/// The API returns TTL-specific token counts in the `cache_creation` object:
+/// ```json
+/// "cache_creation": {
+///     "ephemeral_5m_input_tokens": 456,
+///     "ephemeral_1h_input_tokens": 100
+/// }
+/// ```
+pub(super) fn parse_cache_creation_details(cache_creation: &Value) -> Option<CacheCreationDetails> {
+	let ephemeral_5m_tokens = cache_creation
+		.get("ephemeral_5m_input_tokens")
+		.and_then(|v| v.as_i64())
+		.map(|v| v as i32);
+	let ephemeral_1h_tokens = cache_creation
+		.get("ephemeral_1h_input_tokens")
+		.and_then(|v| v.as_i64())
+		.map(|v| v as i32);
+
+	// Only return Some if at least one TTL has tokens
+	if ephemeral_5m_tokens.is_some() || ephemeral_1h_tokens.is_some() {
+		Some(CacheCreationDetails {
+			ephemeral_5m_tokens,
+			ephemeral_1h_tokens,
+		})
+	} else {
+		None
+	}
+}
+
 /// Apply the cache control logic to a text content
-fn apply_cache_control_to_text(is_cache_control: bool, content: String) -> Value {
-	if is_cache_control {
-		let value = json!({"type": "text", "text": content, "cache_control": {"type": "ephemeral"}});
+fn apply_cache_control_to_text(cache_control: Option<&CacheControl>, content: String) -> Value {
+	if let Some(cc) = cache_control {
+		let value = json!({"type": "text", "text": content, "cache_control": cache_control_to_json(cc)});
 		json!(vec![value])
 	}
 	// simple return
@@ -636,13 +704,15 @@ fn apply_cache_control_to_text(is_cache_control: bool, content: String) -> Value
 }
 
 /// Apply the cache control logic to a text content
-fn apply_cache_control_to_parts(is_cache_control: bool, parts: Vec<Value>) -> Vec<Value> {
+fn apply_cache_control_to_parts(cache_control: Option<&CacheControl>, parts: Vec<Value>) -> Vec<Value> {
 	let mut parts = parts;
-	if is_cache_control && !parts.is_empty() {
+	if let Some(cc) = cache_control
+		&& !parts.is_empty()
+	{
 		let len = parts.len();
 		if let Some(last_value) = parts.get_mut(len - 1) {
 			// NOTE: For now, if it fails, then, no cache
-			let _ = last_value.x_insert("cache_control", json!( {"type": "ephemeral"}));
+			let _ = last_value.x_insert("cache_control", cache_control_to_json(cc));
 			// TODO: Should warn
 		}
 	}
@@ -656,3 +726,74 @@ struct AnthropicRequestParts {
 }
 
 // endregion: --- Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_cache_control_to_json_ephemeral() {
+		let result = cache_control_to_json(&CacheControl::Ephemeral);
+		assert_eq!(result, json!({"type": "ephemeral"}));
+	}
+
+	#[test]
+	fn test_cache_control_to_json_ephemeral_5m() {
+		let result = cache_control_to_json(&CacheControl::Ephemeral5m);
+		assert_eq!(result, json!({"type": "ephemeral", "ttl": "5m"}));
+	}
+
+	#[test]
+	fn test_cache_control_to_json_ephemeral_1h() {
+		let result = cache_control_to_json(&CacheControl::Ephemeral1h);
+		assert_eq!(result, json!({"type": "ephemeral", "ttl": "1h"}));
+	}
+
+	#[test]
+	fn test_parse_cache_creation_details_with_both_ttls() {
+		let cache_creation = json!({
+			"ephemeral_5m_input_tokens": 456,
+			"ephemeral_1h_input_tokens": 100
+		});
+		let result = parse_cache_creation_details(&cache_creation);
+		assert!(result.is_some());
+		let details = result.unwrap();
+		assert_eq!(details.ephemeral_5m_tokens, Some(456));
+		assert_eq!(details.ephemeral_1h_tokens, Some(100));
+	}
+
+	#[test]
+	fn test_parse_cache_creation_details_with_5m_only() {
+		let cache_creation = json!({
+			"ephemeral_5m_input_tokens": 456
+		});
+		let result = parse_cache_creation_details(&cache_creation);
+		assert!(result.is_some());
+		let details = result.unwrap();
+		assert_eq!(details.ephemeral_5m_tokens, Some(456));
+		assert_eq!(details.ephemeral_1h_tokens, None);
+	}
+
+	#[test]
+	fn test_parse_cache_creation_details_with_1h_only() {
+		let cache_creation = json!({
+			"ephemeral_1h_input_tokens": 100
+		});
+		let result = parse_cache_creation_details(&cache_creation);
+		assert!(result.is_some());
+		let details = result.unwrap();
+		assert_eq!(details.ephemeral_5m_tokens, None);
+		assert_eq!(details.ephemeral_1h_tokens, Some(100));
+	}
+
+	#[test]
+	fn test_parse_cache_creation_details_empty() {
+		let cache_creation = json!({});
+		let result = parse_cache_creation_details(&cache_creation);
+		assert!(result.is_none());
+	}
+}
+
+// endregion: --- Tests

@@ -40,6 +40,26 @@ impl Usage {
 	}
 }
 
+/// Breakdown of cache creation tokens by TTL.
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct CacheCreationDetails {
+	/// Tokens written to 5-minute ephemeral cache.
+	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	pub ephemeral_5m_tokens: Option<i32>,
+	/// Tokens written to 1-hour ephemeral cache.
+	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	pub ephemeral_1h_tokens: Option<i32>,
+}
+
+impl CacheCreationDetails {
+	/// True if all fields are `None`.
+	pub fn is_empty(&self) -> bool {
+		self.ephemeral_5m_tokens.is_none() && self.ephemeral_1h_tokens.is_none()
+	}
+}
+
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +68,9 @@ pub struct PromptTokensDetails {
 	/// Tokens used to build the cache (not yet cached). These may incur a small surcharge; subsequent requests benefit via `cached_tokens`.
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
 	pub cache_creation_tokens: Option<i32>,
+	/// Breakdown of cache creation tokens by TTL (5m vs 1h).
+	/// Only populated when the provider returns TTL-specific breakdown.
+	pub cache_creation_details: Option<CacheCreationDetails>,
 	/// Anthropic: `cache_read_input_tokens`.
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
 	pub cached_tokens: Option<i32>,
@@ -58,7 +81,10 @@ pub struct PromptTokensDetails {
 impl PromptTokensDetails {
 	/// True if all fields are `None`.
 	pub fn is_empty(&self) -> bool {
-		self.cache_creation_tokens.is_none() && self.cached_tokens.is_none() && self.audio_tokens.is_none()
+		self.cache_creation_tokens.is_none()
+			&& self.cache_creation_details.as_ref().map(|d| d.is_empty()).unwrap_or(true)
+			&& self.cached_tokens.is_none()
+			&& self.audio_tokens.is_none()
 	}
 }
 

@@ -88,17 +88,34 @@ pub struct MessageOptions {
 	pub cache_control: Option<CacheControl>,
 }
 
-/// Cache control
+/// Cache control for prompt caching.
 ///
 /// Notes:
 /// - Currently used for Anthropic only.
 /// - Anthropic applies cache_control at the content-part level; genai exposes it at the
 ///   ChatMessage level and maps it appropriately.
 /// - OpenAI ignores it; Gemini uses a separate API, so it is not supported there yet.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// ## TTL Ordering Constraint (Anthropic)
+///
+/// When mixing different TTLs in the same request, cache entries with longer TTL
+/// must appear **before** shorter TTLs. That is, `Ephemeral1h` entries must appear
+/// before any `Ephemeral` or `Ephemeral5m` entries in the message sequence.
+///
+/// Violating this constraint may cause the API to reject the request or behave unexpectedly.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CacheControl {
-	/// Hint to avoid persisting this message in provider caches.
+	/// Default ephemeral cache (5 minutes TTL).
 	Ephemeral,
+	/// Explicit 5-minute TTL cache.
+	Ephemeral5m,
+	/// Extended 1-hour TTL cache.
+	///
+	/// **Important:** When mixing TTLs, 1-hour cache entries must appear before
+	/// any 5-minute cache entries in the request.
+	///
+	/// Note: Costs 2x base input token price vs 1.25x for 5m.
+	Ephemeral1h,
 }
 
 impl From<CacheControl> for MessageOptions {
