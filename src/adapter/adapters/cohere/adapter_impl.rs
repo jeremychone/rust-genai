@@ -118,10 +118,9 @@ impl Adapter for CohereAdapter {
 	fn to_chat_response(
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		options_set: ChatOptionsSet<'_, '_>,
+		_options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 
 		// -- Capture the provider_model_iden
 		// TODO: Need to be implemented (if available), for now, just clone model_iden
@@ -148,7 +147,7 @@ impl Adapter for CohereAdapter {
 			model_iden,
 			provider_model_iden,
 			usage,
-			captured_raw_body,
+			captured_raw_body: None, // Set by the client exec_chat
 		})
 	}
 

@@ -69,8 +69,6 @@ impl Adapter for OpenAIAdapter {
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
-		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
-
 		// -- Capture the provider_model_iden
 		let provider_model_name: Option<String> = body.x_remove("model").ok();
 		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
@@ -136,7 +134,7 @@ impl Adapter for OpenAIAdapter {
 			model_iden,
 			provider_model_iden,
 			usage,
-			captured_raw_body,
+			captured_raw_body: None, // Set by the client exec_chat
 		})
 	}
 

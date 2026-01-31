@@ -161,8 +161,8 @@ impl Adapter for GeminiAdapter {
 			else {
 				insert_gemini_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
 			}
-            // -- Always include thoughts when reasoning effort is set since you are already paying for them
-            payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
+			// -- Always include thoughts when reasoning effort is set since you are already paying for them
+			payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
 		}
 
 		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
@@ -224,11 +224,9 @@ impl Adapter for GeminiAdapter {
 	fn to_chat_response(
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		options_set: ChatOptionsSet<'_, '_>,
+		_options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-
-		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 
 		// -- Capture the provider_model_iden
 		// TODO: Need to be implemented (if available), for now, just clone model_iden
@@ -241,7 +239,7 @@ impl Adapter for GeminiAdapter {
 		} = gemini_response;
 
 		let mut thoughts: Vec<String> = Vec::new();
-        let mut reasonings: Vec<String> = Vec::new();
+		let mut reasonings: Vec<String> = Vec::new();
 		let mut texts: Vec<String> = Vec::new();
 		let mut tool_calls: Vec<ToolCall> = Vec::new();
 
@@ -250,7 +248,7 @@ impl Adapter for GeminiAdapter {
 				GeminiChatContent::Text(text) => texts.push(text),
 				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
 				GeminiChatContent::ThoughtSignature(thought) => thoughts.push(thought),
-                GeminiChatContent::Reasoning(reasoning_text) => reasonings.push(reasoning_text),
+				GeminiChatContent::Reasoning(reasoning_text) => reasonings.push(reasoning_text),
 			}
 		}
 
@@ -273,16 +271,15 @@ impl Adapter for GeminiAdapter {
 				parts.push(ContentPart::Text(combined_text));
 			}
 		}
-        let mut reasoning_text = String::new();
-        if !reasonings.is_empty() {
-            for reasoning in &reasonings {
-                reasoning_text.push_str(reasoning);
-            }
-        }
+		let mut reasoning_text = String::new();
+		if !reasonings.is_empty() {
+			for reasoning in &reasonings {
+				reasoning_text.push_str(reasoning);
+			}
+		}
 
 		parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
 		let content = MessageContent::from_parts(parts);
-
 
 		Ok(ChatResponse {
 			content,
@@ -290,7 +287,7 @@ impl Adapter for GeminiAdapter {
 			model_iden,
 			provider_model_iden,
 			usage,
-			captured_raw_body,
+			captured_raw_body: None, // Set by the client exec_chat
 		})
 	}
 
@@ -378,12 +375,15 @@ impl GeminiAdapter {
 					.ok()
 					.and_then(|v| if let Value::Bool(v) = v { Some(v) } else { None })
 				{
-                    if thought {
-                        if let Some(val) = part.x_take::<Value>("text")
-                            .ok().and_then(|v| if let Value::String(v) = v { Some(v) } else {None}) {
-                                content.push(GeminiChatContent::Reasoning(val));
-                            }
-                    }
+					if thought {
+						if let Some(val) = part
+							.x_take::<Value>("text")
+							.ok()
+							.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
+						{
+							content.push(GeminiChatContent::Reasoning(val));
+						}
+					}
 				}
 			}
 
@@ -734,7 +734,7 @@ pub(super) struct GeminiChatResponse {
 pub(super) enum GeminiChatContent {
 	Text(String),
 	ToolCall(ToolCall),
-    Reasoning(String),
+	Reasoning(String),
 	ThoughtSignature(String),
 }
 

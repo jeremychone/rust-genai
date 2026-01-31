@@ -92,7 +92,11 @@ impl Client {
 				webc_error,
 			})?;
 
-		let chat_res = AdapterDispatcher::to_chat_response(model, web_res, options_set)?;
+		// Note: here we capture/clone the raw body if set in the options_set
+		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| web_res.body.clone());
+
+		let mut chat_res = AdapterDispatcher::to_chat_response(model, web_res, options_set)?;
+		chat_res.captured_raw_body = captured_raw_body;
 
 		Ok(chat_res)
 	}
