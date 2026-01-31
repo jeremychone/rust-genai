@@ -106,7 +106,9 @@ impl futures::Stream for GeminiStreamer {
 
 							for g_content_item in content {
 								match g_content_item {
-                                    GeminiChatContent::Reasoning(reasoning) => stream_reasoning_content = Some(reasoning),
+									GeminiChatContent::Reasoning(reasoning) => {
+										stream_reasoning_content = Some(reasoning)
+									}
 									GeminiChatContent::Text(text) => stream_text_content.push_str(&text),
 									GeminiChatContent::ToolCall(tool_call) => stream_tool_call = Some(tool_call),
 									GeminiChatContent::ThoughtSignature(thought) => stream_thought = Some(thought),
@@ -130,19 +132,20 @@ impl futures::Stream for GeminiStreamer {
 
 								self.pending_events.push_back(InterStreamEvent::ThoughtSignatureChunk(thought));
 							}
-                            if let Some(reasoning_content) = stream_reasoning_content {
-                                // Capture reasoning content
-                                if self.options.capture_content {
-                                    match self.captured_data.reasoning_content {
-                                        Some(ref mut rc) => rc.push_str(&reasoning_content),
-                                        None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
-                                    }
-                                }
-                                if self.options.capture_usage {
-                                    self.captured_data.usage = Some(usage.clone());
-                                }
-                                self.pending_events.push_back(InterStreamEvent::ReasoningChunk(reasoning_content));
-                            }
+							if let Some(reasoning_content) = stream_reasoning_content {
+								// Capture reasoning content
+								if self.options.capture_content {
+									match self.captured_data.reasoning_content {
+										Some(ref mut rc) => rc.push_str(&reasoning_content),
+										None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
+									}
+								}
+								if self.options.capture_usage {
+									self.captured_data.usage = Some(usage.clone());
+								}
+								self.pending_events
+									.push_back(InterStreamEvent::ReasoningChunk(reasoning_content));
+							}
 
 							// 2. Text
 							if !stream_text_content.is_empty() {

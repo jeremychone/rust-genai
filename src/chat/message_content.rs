@@ -384,7 +384,10 @@ mod tests {
 
 	#[test]
 	fn test_message_content_joined_texts_single_part() {
-		assert_eq!(MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).joined_texts(), Some("Hello".to_string()));
+		assert_eq!(
+			MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).joined_texts(),
+			Some("Hello".to_string())
+		);
 	}
 
 	#[test]
@@ -393,7 +396,8 @@ mod tests {
 			MessageContent::from_parts(vec![
 				ContentPart::Text("Hello".to_string()),
 				ContentPart::Text("World".to_string()),
-			]).joined_texts(),
+			])
+			.joined_texts(),
 			Some("Hello\n\nWorld".to_string())
 		);
 	}
@@ -405,7 +409,10 @@ mod tests {
 
 	#[test]
 	fn test_message_content_into_joined_texts_single_part() {
-		assert_eq!(MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).into_joined_texts(), Some("Hello".to_string()));
+		assert_eq!(
+			MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).into_joined_texts(),
+			Some("Hello".to_string())
+		);
 	}
 
 	#[test]
@@ -414,7 +421,8 @@ mod tests {
 			MessageContent::from_parts(vec![
 				ContentPart::Text("Hello".to_string()),
 				ContentPart::Text("World".to_string()),
-			]).into_joined_texts(),
+			])
+			.into_joined_texts(),
 			Some("Hello\n\nWorld".to_string())
 		);
 	}
