@@ -2,6 +2,10 @@
 
 Dry, concise reference for the `genai` library.
 
+```toml
+genai = "0.5.3"
+```
+
 ## Core Concepts
 
 - **Client**: Main entry point (`genai::Client`). Thread-safe (`Arc` wrapper).

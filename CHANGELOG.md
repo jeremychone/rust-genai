@@ -1,5 +1,14 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2026-01-31 - [v0.5.3](https://github.com/jeremychone/rust-genai/compare/v0.5.2...v0.5.3)
+
+- `^` error - add request payload / response body when to chat response fail
+- `>` refactor captured_raw_body into client .exec_chat (prep for #137)
+- `.` tracing - add traced to web-client for ai response (#132)
+- `-` Fix incorrect empty output from MessageContent::joined_texts for ≥ 2 text parts (fixes #135) (#136) Co-authored-by: Ross MacLeod <rmm+github@z.odi.ac>
+- `.` ChatRole - Add PartialEq / Eq (#131)
+
+
 ## 2026-01-27 - [v0.5.2](https://github.com/jeremychone/rust-genai/compare/v0.5.1...v0.5.2)
 
 - `-` Does not capture body when json parse fail  (#128)
