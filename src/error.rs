@@ -80,6 +80,20 @@ pub enum Error {
 		webc_error: webc::Error,
 	},
 
+	#[display(
+		"Error while generating a ChatResponse from a ChatRequest. (for Model: '{model_iden}')
+Request Payload:\n{request_payload:#}
+Response Body:\n{response_body:#}
+Cause:\n{cause}
+"
+	)]
+	ChatResponseGeneration {
+		model_iden: ModelIden,
+		request_payload: Box<serde_json::Value>,
+		response_body: Box<serde_json::Value>,
+		cause: String,
+	},
+
 	#[display("Error event in stream for model '{model_iden}'. Body: {body}")]
 	ChatResponse {
 		model_iden: ModelIden,

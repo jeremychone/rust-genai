@@ -95,10 +95,21 @@ impl Client {
 		// Note: here we capture/clone the raw body if set in the options_set
 		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| web_res.body.clone());
 
-		let mut chat_res = AdapterDispatcher::to_chat_response(model, web_res, options_set)?;
-		chat_res.captured_raw_body = captured_raw_body;
-
-		Ok(chat_res)
+		match AdapterDispatcher::to_chat_response(model.clone(), web_res, options_set) {
+			Ok(mut chat_res) => {
+				chat_res.captured_raw_body = captured_raw_body;
+				Ok(chat_res)
+			}
+			Err(err) => {
+				let err = Error::ChatResponseGeneration {
+					model_iden: model,
+					request_payload: Box::new(payload),
+					response_body: Box::new(captured_raw_body.unwrap_or_default()),
+					cause: err.to_string(),
+				};
+				Err(err)
+			}
+		}
 	}
 
 	/// Streams a chat response.
