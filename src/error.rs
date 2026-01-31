@@ -90,6 +90,7 @@ Cause:\n{cause}
 	ChatResponseGeneration {
 		model_iden: ModelIden,
 		request_payload: Box<serde_json::Value>,
+		/// Require ChatOptions::default().with_capture_raw_body(true); otherwise "null"
 		response_body: Box<serde_json::Value>,
 		cause: String,
 	},
