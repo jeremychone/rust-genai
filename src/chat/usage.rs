@@ -74,6 +74,14 @@ pub struct CompletionTokensDetails {
 	pub reasoning_tokens: Option<i32>,
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
 	pub audio_tokens: Option<i32>,
+	/// Number of web search requests performed (Anthropic only).
+	/// Billed at $10 per 1,000 searches.
+	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	pub web_search_requests: Option<i32>,
+
+	/// Number of web fetch requests performed (Anthropic only).
+	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	pub web_fetch_requests: Option<i32>,
 }
 
 impl CompletionTokensDetails {
@@ -83,5 +91,7 @@ impl CompletionTokensDetails {
 			&& self.rejected_prediction_tokens.is_none()
 			&& self.reasoning_tokens.is_none()
 			&& self.audio_tokens.is_none()
+			&& self.web_search_requests.is_none()
+			&& self.web_fetch_requests.is_none()
 	}
 }

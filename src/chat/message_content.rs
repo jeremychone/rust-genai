@@ -1,5 +1,5 @@
 /// Note: MessageContent is used for ChatRequest and ChatResponse.
-use crate::chat::{Binary, ContentPart, ToolCall, ToolResponse};
+use crate::chat::{Binary, Citation, ContentPart, ToolCall, ToolResponse};
 use serde::{Deserialize, Serialize};
 
 /// Message content container used in ChatRequest and ChatResponse.
@@ -306,6 +306,40 @@ impl MessageContent {
 	/// True if at least one part is a ToolResponse.
 	pub fn contains_tool_response(&self) -> bool {
 		self.parts.iter().any(|p| p.is_tool_response())
+	}
+
+	/// True if at least one part contains text with citations.
+	pub fn contains_text_with_citations(&self) -> bool {
+		self.parts.iter().any(|p| p.is_text_with_citations())
+	}
+
+	/// True if at least one part contains web search results.
+	pub fn contains_web_search_result(&self) -> bool {
+		self.parts.iter().any(|p| p.is_web_search_tool_result())
+	}
+}
+
+/// Web Search accessors
+impl MessageContent {
+	/// Return all citations from TextWithCitations parts.
+	///
+	/// This is a convenience method for accessing web search citations
+	/// without manually iterating through ContentParts.
+	pub fn citations(&self) -> Vec<&Citation> {
+		self.parts
+			.iter()
+			.filter_map(|p| p.as_text_with_citations())
+			.flat_map(|twc| twc.citations.iter())
+			.collect()
+	}
+
+	/// Consume and return all citations from TextWithCitations parts.
+	pub fn into_citations(self) -> Vec<Citation> {
+		self.parts
+			.into_iter()
+			.filter_map(|p| p.into_text_with_citations())
+			.flat_map(|twc| twc.citations)
+			.collect()
 	}
 }
 

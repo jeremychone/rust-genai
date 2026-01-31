@@ -106,6 +106,8 @@ impl From<OutputTokensDetails> for CompletionTokensDetails {
 			rejected_prediction_tokens: value.rejected_prediction_tokens,
 			reasoning_tokens: value.reasoning_tokens,
 			audio_tokens: value.audio_tokens,
+			web_search_requests: None,
+			web_fetch_requests: None,
 		}
 	}
 }
