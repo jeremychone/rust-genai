@@ -45,7 +45,7 @@ impl WebClient {
 		Ok(response)
 	}
 
-	pub async fn do_post(&self, url: &str, headers: &Headers, content: Value) -> Result<WebResponse> {
+	pub async fn do_post(&self, url: &str, headers: &Headers, content: &Value) -> Result<WebResponse> {
 		let reqwest_builder = self.new_req_builder(url, headers, content)?;
 
 		let reqwest_res = reqwest_builder.send().await?;
@@ -55,14 +55,14 @@ impl WebClient {
 		Ok(response)
 	}
 
-	pub fn new_req_builder(&self, url: &str, headers: &Headers, content: Value) -> Result<RequestBuilder> {
+	pub fn new_req_builder(&self, url: &str, headers: &Headers, content: &Value) -> Result<RequestBuilder> {
 		let method = Method::POST;
 
 		let mut reqwest_builder = self.reqwest_client.request(method, url);
 		for (k, v) in headers.iter() {
 			reqwest_builder = reqwest_builder.header(k, v);
 		}
-		reqwest_builder = reqwest_builder.json(&content);
+		reqwest_builder = reqwest_builder.json(content);
 
 		Ok(reqwest_builder)
 	}

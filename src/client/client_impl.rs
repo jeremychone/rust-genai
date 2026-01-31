@@ -83,14 +83,14 @@ impl Client {
 			headers = override_headers;
 		};
 
-		let web_res =
-			self.web_client()
-				.do_post(&url, &headers, payload)
-				.await
-				.map_err(|webc_error| Error::WebModelCall {
-					model_iden: model.clone(),
-					webc_error,
-				})?;
+		let web_res = self
+			.web_client()
+			.do_post(&url, &headers, &payload)
+			.await
+			.map_err(|webc_error| Error::WebModelCall {
+				model_iden: model.clone(),
+				webc_error,
+			})?;
 
 		let chat_res = AdapterDispatcher::to_chat_response(model, web_res, options_set)?;
 
@@ -137,7 +137,7 @@ impl Client {
 
 		let reqwest_builder = self
 			.web_client()
-			.new_req_builder(&url, &headers, payload)
+			.new_req_builder(&url, &headers, &payload)
 			.map_err(|webc_error| Error::WebModelCall {
 				model_iden: model.clone(),
 				webc_error,
@@ -188,14 +188,14 @@ impl Client {
 		let WebRequestData { headers, payload, url } =
 			AdapterDispatcher::to_embed_request_data(target, embed_req, options_set.clone())?;
 
-		let web_res =
-			self.web_client()
-				.do_post(&url, &headers, payload)
-				.await
-				.map_err(|webc_error| Error::WebModelCall {
-					model_iden: model.clone(),
-					webc_error,
-				})?;
+		let web_res = self
+			.web_client()
+			.do_post(&url, &headers, &payload)
+			.await
+			.map_err(|webc_error| Error::WebModelCall {
+				model_iden: model.clone(),
+				webc_error,
+			})?;
 
 		let res = AdapterDispatcher::to_embed_response(model, web_res, options_set)?;
 
