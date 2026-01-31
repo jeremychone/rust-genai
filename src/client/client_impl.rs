@@ -101,10 +101,13 @@ impl Client {
 				Ok(chat_res)
 			}
 			Err(err) => {
+				let response_body = captured_raw_body.unwrap_or_else(|| {
+					"Raw response not captured. Use the ChatOptions.capturre_raw_body flag to see raw response in this error".into()
+				});
 				let err = Error::ChatResponseGeneration {
 					model_iden: model,
 					request_payload: Box::new(payload),
-					response_body: Box::new(captured_raw_body.unwrap_or_default()),
+					response_body: Box::new(response_body),
 					cause: err.to_string(),
 				};
 				Err(err)
