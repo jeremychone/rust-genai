@@ -100,9 +100,27 @@ impl From<&String> for ModelSpec {
 	}
 }
 
+impl From<ModelName> for ModelSpec {
+	fn from(model: ModelName) -> Self {
+		ModelSpec::Name(model)
+	}
+}
+
+impl From<&ModelName> for ModelSpec {
+	fn from(model: &ModelName) -> Self {
+		ModelSpec::Name(model.clone())
+	}
+}
+
 impl From<ModelIden> for ModelSpec {
 	fn from(model: ModelIden) -> Self {
 		ModelSpec::Iden(model)
+	}
+}
+
+impl From<&ModelIden> for ModelSpec {
+	fn from(model: &ModelIden) -> Self {
+		ModelSpec::Iden(model.clone())
 	}
 }
 
