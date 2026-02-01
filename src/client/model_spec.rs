@@ -1,5 +1,4 @@
-use crate::adapter::AdapterKind;
-use crate::{ModelIden, ServiceTarget};
+use crate::{ModelIden, ModelName, ServiceTarget};
 
 /// Specifies how to identify and resolve a model for API calls.
 ///
@@ -37,8 +36,8 @@ use crate::{ModelIden, ServiceTarget};
 /// ```
 #[derive(Debug, Clone)]
 pub enum ModelSpec {
-	/// Model name string - adapter kind is inferred, auth/endpoint resolved via config.
-	Name(String),
+	/// Model name - without or without model namespace
+	Name(ModelName),
 
 	/// Explicit [`ModelIden`] - skips adapter inference, still resolves auth/endpoint.
 	Iden(ModelIden),
@@ -51,13 +50,20 @@ pub enum ModelSpec {
 
 impl ModelSpec {
 	/// Creates a `ModelSpec::Name` from a string.
-	pub fn from_model_name(name: impl Into<String>) -> Self {
+	pub fn from_name(name: impl Into<ModelName>) -> Self {
 		ModelSpec::Name(name.into())
 	}
 
-	/// Creates a `ModelSpec::Iden` from adapter kind and model name.
-	pub fn from_model(adapter_kind: AdapterKind, model_name: impl Into<String>) -> Self {
-		ModelSpec::Iden(ModelIden::new(adapter_kind, model_name.into()))
+	/// Creates a `ModelSpec::Name` from a static str.
+	pub fn from_static_name(name: &'static str) -> Self {
+		let name = ModelName::from_static(name);
+		ModelSpec::Name(name)
+	}
+
+	/// Creates a `ModelSpec::Iden` from a ModelIden
+	pub fn from_iden(model_iden: impl Into<ModelIden>) -> Self {
+		let model_iden = model_iden.into();
+		Self::Iden(model_iden)
 	}
 
 	/// Creates a `ModelSpec::Target` from a complete service target.
@@ -72,25 +78,25 @@ impl ModelSpec {
 
 impl From<&str> for ModelSpec {
 	fn from(name: &str) -> Self {
-		ModelSpec::Name(name.to_string())
+		ModelSpec::Name(name.into())
 	}
 }
 
 impl From<&&str> for ModelSpec {
 	fn from(name: &&str) -> Self {
-		ModelSpec::Name((*name).to_string())
+		ModelSpec::Name((*name).into())
 	}
 }
 
 impl From<String> for ModelSpec {
 	fn from(name: String) -> Self {
-		ModelSpec::Name(name)
+		ModelSpec::Name(name.into())
 	}
 }
 
 impl From<&String> for ModelSpec {
 	fn from(name: &String) -> Self {
-		ModelSpec::Name(name.clone())
+		ModelSpec::Name(name.into())
 	}
 }
 

@@ -20,10 +20,18 @@ pub struct ModelIden {
 /// Contructor
 impl ModelIden {
 	/// Create a new `ModelIden` with the given adapter kind and model name.
-	pub fn new(adapter_kind: AdapterKind, model_name: impl Into<ModelName>) -> Self {
+	pub fn new(adapter_kind: impl Into<AdapterKind>, model_name: impl Into<ModelName>) -> Self {
 		Self {
-			adapter_kind,
+			adapter_kind: adapter_kind.into(),
 			model_name: model_name.into(),
+		}
+	}
+
+	/// Create a new `ModelIden` with the given adapter kind and model name.
+	pub fn from_static(adapter_kind: impl Into<AdapterKind>, model_name: &'static str) -> Self {
+		Self {
+			adapter_kind: adapter_kind.into(),
+			model_name: ModelName::from_static(model_name),
 		}
 	}
 }
