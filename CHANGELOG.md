@@ -1,6 +1,26 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
 
+## 2026-02-01 - Fork Sync with Upstream v0.6.0-alpha.2
+
+**Terraphim Fork Synchronization**
+- `^` Merged 114 upstream commits from jeremychone/rust-genai (v0.6.0-alpha.2)
+- `+` AWS Bedrock adapter - Full Converse API support with streaming
+- `+` Z.AI adapter - Namespace-based routing (zai:: and zai-codding::)
+- `+` Cerebras adapter - Custom streaming implementation
+- `+` Comprehensive test infrastructure - Live API tests, model verification
+- `^` reqwest 0.12 → 0.13 upgrade
+- `^` Replaced reqwest-eventsource with custom EventSourceStream
+- `+` ModelSpec support for additional model details
+- `+` CacheCreationDetails for prompt caching
+- `+` ThoughtSignature content part and streaming support
+- `+` ReasoningEffort::None variant
+- `^` Enhanced error handling with request/response capture
+- `^` ModelName with Static/Shared inner optimization
+- `^` Updated all adapter streamers for new WebStream architecture
+- `+` Size methods for memory estimation across types
+- `+` Maintained fork-specific features while adopting upstream improvements
+
 ## 2025-10-12 - [v0.4.2](https://github.com/jeremychone/rust-genai/compare/v0.4.1...v0.4.2)
 
 - `.` test - make the common_test_chat_stop_sequences_ok more resilient

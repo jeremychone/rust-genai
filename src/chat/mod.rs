@@ -3,6 +3,7 @@
 
 // region:    --- Modules
 
+mod binary;
 mod chat_message;
 mod chat_options;
 mod chat_req_response_format;
@@ -15,6 +16,7 @@ mod tool;
 mod usage;
 
 // -- Flatten
+pub use binary::*;
 pub use chat_message::*;
 pub use chat_options::*;
 pub use chat_req_response_format::*;

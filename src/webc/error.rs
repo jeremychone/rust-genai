@@ -8,8 +8,11 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[allow(missing_docs)]
 #[derive(Debug, From, Display)]
 pub enum Error {
-	#[display("Response content type '{content_type}' is not JSON as expected.")]
-	ResponseFailedNotJson { content_type: String },
+	#[display("Response content type '{content_type}' is not JSON as expected. Response body:\n{body}")]
+	ResponseFailedNotJson { content_type: String, body: String },
+
+	#[display("Response was invalid json. Cause:\n'{cause}'\nBody:\n{body}")]
+	ResponseFailedInvalidJson { body: String, cause: String },
 
 	#[display("Request failed with status code '{status}'. Response body:\n{body}")]
 	ResponseFailedStatus {
@@ -27,10 +30,6 @@ pub enum Error {
 	#[display("Reqwest error: {_0}")]
 	#[from]
 	Reqwest(reqwest::Error),
-
-	#[display("Failed to clone EventSource request: {_0}")]
-	#[from]
-	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
 }
 
 // region:    --- Error Boilerplate

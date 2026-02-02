@@ -34,24 +34,31 @@ impl Stream for ChatStream {
 	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		let this = self.get_mut();
 
-		match Pin::new(&mut this.inter_stream).poll_next(cx) {
-			Poll::Ready(Some(Ok(event))) => {
-				let chat_event = match event {
-					InterStreamEvent::Start => ChatStreamEvent::Start,
-					InterStreamEvent::Chunk(content) => ChatStreamEvent::Chunk(StreamChunk { content }),
-					InterStreamEvent::ReasoningChunk(content) => {
-						ChatStreamEvent::ReasoningChunk(StreamChunk { content })
-					}
-					InterStreamEvent::ToolCallChunk(tool_call) => {
-						ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
-					}
-					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
-				};
-				Poll::Ready(Some(Ok(chat_event)))
+		loop {
+			match Pin::new(&mut this.inter_stream).poll_next(cx) {
+				Poll::Ready(Some(Ok(event))) => {
+					let chat_event = match event {
+						InterStreamEvent::Start => ChatStreamEvent::Start,
+						InterStreamEvent::Chunk(content) => ChatStreamEvent::Chunk(StreamChunk { content }),
+						InterStreamEvent::ReasoningChunk(content) => {
+							ChatStreamEvent::ReasoningChunk(StreamChunk { content })
+						}
+						InterStreamEvent::ToolCallChunk(tool_call) => {
+							ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
+						}
+						InterStreamEvent::ThoughtSignatureChunk(_signature) => {
+							// Thought signatures are internal metadata, not streamed to users
+							// Skip this event and continue polling
+							continue;
+						}
+						InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
+					};
+					return Poll::Ready(Some(Ok(chat_event)));
+				}
+				Poll::Ready(Some(Err(e))) => return Poll::Ready(Some(Err(e))),
+				Poll::Ready(None) => return Poll::Ready(None),
+				Poll::Pending => return Poll::Pending,
 			}
-			Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
-			Poll::Ready(None) => Poll::Ready(None),
-			Poll::Pending => Poll::Pending,
 		}
 	}
 }

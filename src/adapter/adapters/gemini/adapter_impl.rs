@@ -106,6 +106,7 @@ impl Adapter for GeminiAdapter {
 			(model, Some(effort)) => {
 				let effort = match effort {
 					// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
+					ReasoningEffort::None => 0, // No reasoning for None
 					ReasoningEffort::Minimal => REASONING_LOW,
 					ReasoningEffort::Low => REASONING_LOW,
 					ReasoningEffort::Medium => REASONING_MEDIUM,
@@ -300,6 +301,7 @@ impl GeminiAdapter {
 					call_id: fn_call_value.x_get("name").unwrap_or("".to_string()), // TODO: Handle this, gemini does not return the call_id
 					fn_name: fn_call_value.x_get("name").unwrap_or("".to_string()),
 					fn_arguments: fn_call_value.x_get("args").unwrap_or(Value::Null),
+					thought_signatures: None,
 				};
 				content.push(GeminiChatContent::ToolCall(tool_call))
 			}
@@ -341,6 +343,7 @@ impl GeminiAdapter {
 		let g_cached_tokens: Option<i32> = usage_value.x_take("cachedContentTokenCount").ok();
 		let prompt_tokens_details = g_cached_tokens.map(|g_cached_tokens| PromptTokensDetails {
 			cache_creation_tokens: None,
+			cache_creation_details: None,
 			cached_tokens: Some(g_cached_tokens),
 			audio_tokens: None,
 		});
@@ -458,6 +461,9 @@ impl GeminiAdapter {
 									}
 								}));
 							}
+							ContentPart::ThoughtSignature(_) => {
+								// Thought signatures are not directly supported by Gemini, skip for now
+							}
 						}
 					}
 
@@ -479,6 +485,7 @@ impl GeminiAdapter {
 							// Ignore unsupported parts for Assistant role
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
+							ContentPart::ThoughtSignature(_) => {}
 						}
 					}
 					if !parts_values.is_empty() {

@@ -1,5 +1,7 @@
 # genai - Multi-AI Providers Library for Rust
 
+> **Terraphim Fork**: This is a synchronized fork of [jeremychone/rust-genai](https://github.com/jeremychone/rust-genai) merged with upstream v0.6.0-alpha.2 while preserving additional features including AWS Bedrock, Z.AI with namespace routing, Cerebras, and comprehensive testing infrastructure.
+
 Currently natively supports: **OpenAI**, **Anthropic**, **AWS Bedrock**, **Gemini**, **XAI/Grok**, **Ollama**, **Groq**, **DeepSeek** (deepseek.com & Groq), **Cohere**, **Cerebras**, **Z.AI** (GLM models), **Zhipu** (more to come)
 
 Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
@@ -15,6 +17,18 @@ Also allows a custom URL with `ServiceTargetResolver` (see [examples/c06-target-
 <br />
 
 Provides a single, ergonomic API to many generative AI providers, such as Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
+
+## 🍴 Fork Features (v0.6.0-alpha.2-fork)
+
+This fork includes all upstream improvements plus:
+
+- **AWS Bedrock Support** - Full Converse API implementation with streaming support for Claude, Llama, Titan, Mistral, and Cohere models via Bearer token authentication
+- **Z.AI Adapter** - Anthropic-compatible adapter with namespace-based routing (`zai::` for default, `zai-codding::` for subscription endpoints)
+- **Cerebras Integration** - OpenAI-compatible adapter for Cerebras AI inference
+- **Comprehensive Testing** - Live API tests, model verification tests, and mock server infrastructure
+- **Merged Upstream v0.6.0-alpha.2** - 114 commits including ModelSpec, custom EventSourceStream, enhanced error handling, and more
+
+See [CHANGELOG](CHANGELOG.md) for full details.
 
 **NOTE:** Big update with **v0.4.x** - More adapters, PDF and image support, embeddings, custom headers, and transparent support for the OpenAI Responses API (gpt-5-codex)
 

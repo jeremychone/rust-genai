@@ -3,11 +3,12 @@
 // region:    --- Modules
 
 mod error;
+mod event_source_stream;
 mod web_client;
-// For when not using `text/event-stream`
 mod web_stream;
 
 pub(crate) use error::Result;
+pub(crate) use event_source_stream::*;
 pub(crate) use web_client::*;
 pub(crate) use web_stream::*;
 

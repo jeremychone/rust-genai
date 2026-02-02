@@ -3,9 +3,10 @@ use futures::stream::TryStreamExt;
 use futures::{Future, Stream};
 use reqwest::{RequestBuilder, Response};
 use std::collections::VecDeque;
-use std::error::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+
+use crate::error::{BoxError, Error as GenaiError};
 
 /// WebStream is a simple web stream implementation that splits the stream messages by a given delimiter.
 /// - It is intended to be a pragmatic solution for services that do not adhere to the `text/event-stream` format and content type.
@@ -17,8 +18,8 @@ use std::task::{Context, Poll};
 pub struct WebStream {
 	stream_mode: StreamMode,
 	reqwest_builder: Option<RequestBuilder>,
-	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, Box<dyn Error>>> + Send>>>,
-	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, Box<dyn Error>>> + Send>>>,
+	response_future: Option<Pin<Box<dyn Future<Output = Result<Response, BoxError>> + Send>>>,
+	bytes_stream: Option<Pin<Box<dyn Stream<Item = Result<Bytes, BoxError>> + Send>>>,
 	// If a poll was a partial message, then we keep the previous part
 	partial_message: Option<String>,
 	// If a poll retrieved multiple messages, we keep them to be sent in the next poll
@@ -57,7 +58,7 @@ impl WebStream {
 }
 
 impl Stream for WebStream {
-	type Item = Result<String, Box<dyn Error>>;
+	type Item = Result<String, BoxError>;
 
 	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		let this = self.get_mut();
@@ -74,7 +75,27 @@ impl Stream for WebStream {
 			if let Some(ref mut fut) = this.response_future {
 				match Pin::new(fut).poll(cx) {
 					Poll::Ready(Ok(response)) => {
-						let bytes_stream = response.bytes_stream().map_err(|e| Box::new(e) as Box<dyn Error>);
+						// Check HTTP status before proceeding with the stream
+						let status = response.status();
+						if !status.is_success() {
+							this.response_future = None;
+							// For error responses, we need to read the body to get the error message
+							// Store a future that reads the body and returns an error
+							let error_future = async move {
+								let body = response
+									.text()
+									.await
+									.unwrap_or_else(|e| format!("Failed to read error body: {}", e));
+								Err::<Response, BoxError>(Box::new(GenaiError::HttpError {
+									status,
+									canonical_reason: status.canonical_reason().unwrap_or("Unknown").to_string(),
+									body,
+								}))
+							};
+							this.response_future = Some(Box::pin(error_future));
+							continue;
+						}
+						let bytes_stream = response.bytes_stream().map_err(|e| Box::new(e) as BoxError);
 						this.bytes_stream = Some(Box::pin(bytes_stream));
 						this.response_future = None;
 					}
@@ -91,7 +112,7 @@ impl Stream for WebStream {
 					Poll::Ready(Some(Ok(bytes))) => {
 						let buff_string = match String::from_utf8(bytes.to_vec()) {
 							Ok(s) => s,
-							Err(e) => return Poll::Ready(Some(Err(Box::new(e) as Box<dyn Error>))),
+							Err(e) => return Poll::Ready(Some(Err(Box::new(e) as BoxError))),
 						};
 
 						// -- Iterate through the parts
@@ -145,7 +166,7 @@ impl Stream for WebStream {
 			}
 
 			if let Some(reqwest_builder) = this.reqwest_builder.take() {
-				let fut = async move { reqwest_builder.send().await.map_err(|e| Box::new(e) as Box<dyn Error>) };
+				let fut = async move { reqwest_builder.send().await.map_err(|e| Box::new(e) as BoxError) };
 				this.response_future = Some(Box::pin(fut));
 				continue;
 			}
@@ -175,45 +196,91 @@ fn new_with_pretty_json_array(
 	buff_string: String,
 	partial_message: &mut Option<String>,
 ) -> Result<BuffResponse, crate::webc::Error> {
-	let buff_str = buff_string.trim();
+	let mut buff_str = buff_string.as_str();
 
 	let mut messages: Vec<String> = Vec::new();
 
-	// -- Capture the array start/end and each eventual sub-object (assuming only one sub-object)
-	let (array_start, rest_str) = match buff_str.strip_prefix('[') {
-		Some(rest) => (Some("["), rest.trim()),
-		None => (None, buff_str),
-	};
-
-	// Remove the eventual ',' prefix and suffix.
-	let rest_str = rest_str.strip_prefix(',').unwrap_or(rest_str);
-	let rest_str = rest_str.strip_suffix(',').unwrap_or(rest_str);
-
-	let (rest_str, array_end) = match rest_str.strip_suffix(']') {
-		Some(rest) => (rest.trim(), Some("]")),
-		None => (rest_str, None),
-	};
-
-	// -- Prep the BuffResponse
-	if let Some(array_start) = array_start {
-		messages.push(array_start.to_string());
+	// -- 1. Prepend partial message if any
+	let full_string_holder: String;
+	if let Some(partial) = partial_message.take() {
+		full_string_holder = format!("{}{}", partial, buff_str);
+		buff_str = full_string_holder.as_str();
 	}
-	if !rest_str.is_empty() {
-		let full_str = if let Some(partial) = partial_message.take() {
-			format!("{partial}{rest_str}")
-		} else {
-			rest_str.to_string()
-		};
 
-		if serde_json::from_str::<serde_json::Value>(&full_str).is_ok() {
-			messages.push(full_str);
+	// -- 2. Process the buffer
+	// We want to extract valid JSON objects.
+	// The stream is expected to be: `[` (optional), `{...}`, `,`, `{...}`, `]` (optional)
+	// We need to be robust against whitespace and commas.
+
+	let mut depth = 0;
+	let mut in_string = false;
+	let mut escape = false;
+	let mut start_idx = 0;
+	let mut last_idx = 0; // Track the end of the last processed object
+
+	for (idx, c) in buff_str.char_indices() {
+		if in_string {
+			if escape {
+				escape = false;
+			} else if c == '\\' {
+				escape = true;
+			} else if c == '"' {
+				in_string = false;
+			}
 		} else {
-			*partial_message = Some(full_str);
+			match c {
+				'"' => in_string = true,
+				'{' => {
+					if depth == 0 {
+						start_idx = idx;
+					}
+					depth += 1;
+				}
+				'}' => {
+					depth -= 1;
+					if depth == 0 {
+						// Found a complete JSON object
+						// idx is the byte index of '}'. We want to include it.
+						// '}' is 1 byte, so end range is idx + 1
+						let json_str = &buff_str[start_idx..idx + 1];
+
+						// Verify it's valid JSON (optional but good for safety)
+						if serde_json::from_str::<serde_json::Value>(json_str).is_ok() {
+							messages.push(json_str.to_string());
+						} else {
+							// Should not happen if logic is correct
+							tracing::warn!("WebStream: Extracted block failed JSON validation: {}", json_str);
+						}
+						// Update last_idx to point after this object
+						last_idx = idx + 1;
+					}
+				}
+				'[' => {
+					if depth == 0 {
+						messages.push("[".to_string());
+						last_idx = idx + 1;
+					}
+				}
+				']' => {
+					if depth == 0 {
+						messages.push("]".to_string());
+						last_idx = idx + 1;
+					}
+				}
+				_ => {
+					// Ignore other characters outside of objects (whitespace, commas)
+				}
+			}
 		}
 	}
-	// We ignore the comma
-	if let Some(array_end) = array_end {
-		messages.push(array_end.to_string());
+
+	// -- 3. Handle remaining partial
+	// last_idx points to the byte after the last successfully processed object/token
+	if last_idx < buff_str.len() {
+		let remaining = &buff_str[last_idx..];
+		if !remaining.trim().is_empty() {
+			*partial_message = Some(remaining.to_string());
+		}
 	}
 
 	// -- Return the buff response
@@ -242,33 +309,27 @@ fn process_buff_string_delimited(
 	partial_message: &mut Option<String>,
 	delimiter: &str,
 ) -> Result<BuffResponse, crate::webc::Error> {
-	let mut first_message: Option<String> = None;
-	let mut candidate_message: Option<String> = None;
-	let mut next_messages: Option<Vec<String>> = None;
+	let full_string = if let Some(partial) = partial_message.take() {
+		format!("{partial}{buff_string}")
+	} else {
+		buff_string
+	};
 
-	let parts = buff_string.split(delimiter);
+	let mut parts: Vec<String> = full_string.split(delimiter).map(|s| s.to_string()).collect();
 
-	for part in parts {
-		// If we already have a candidate, the candidate becomes the message
-		if let Some(candidate_message) = candidate_message.take() {
-			// If candidate is empty, we skip
-			if !candidate_message.is_empty() {
-				let message = candidate_message.to_string();
-				if first_message.is_none() {
-					first_message = Some(message);
-				} else {
-					next_messages.get_or_insert_with(Vec::new).push(message);
-				}
-			} else {
-				continue;
-			}
-		} else {
-			// And then, this part becomes the candidate
-			if let Some(partial) = partial_message.take() {
-				candidate_message = Some(format!("{partial}{part}"));
-			} else {
-				candidate_message = Some(part.to_string());
-			}
+	// The last part is the new partial (what's after the last delimiter)
+	let candidate_message = parts.pop();
+
+	// Filter out empty strings that result from multiple delimiters (e.g., \n\n\n\n)
+	let mut messages: Vec<String> = parts.into_iter().filter(|s| !s.is_empty()).collect();
+
+	let mut first_message = None;
+	let mut next_messages = None;
+
+	if !messages.is_empty() {
+		first_message = Some(messages.remove(0));
+		if !messages.is_empty() {
+			next_messages = Some(messages);
 		}
 	}
 

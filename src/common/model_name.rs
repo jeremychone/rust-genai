@@ -1,30 +1,93 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
-/// The model name, which is just an `Arc<str>` wrapper (simple and relatively efficient to clone)
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, Eq, PartialEq)]
-pub struct ModelName(Arc<str>);
+/// Store a model name with or without namespace
+/// e.g. `gemini-3-flash-preview` or `gemini::gemini-3-flash-preview`
+#[derive(Clone, Debug, Serialize, Hash, Eq, PartialEq)]
+pub struct ModelName(Inner);
 
-/// Utilities
+#[derive(Clone, Debug, Serialize, Hash, Eq, PartialEq)]
+enum Inner {
+	Static(&'static str),
+	Shared(Arc<str>),
+}
+
+impl<'de> Deserialize<'de> for ModelName {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let s: &str = <&str>::deserialize(deserializer)?;
+		Ok(ModelName(Inner::Shared(Arc::<str>::from(s))))
+	}
+}
+
+/// Constructor
 impl ModelName {
-	/// Calling the `model_name_and_namespace`
-	pub(crate) fn as_model_name_and_namespace(&self) -> (&str, Option<&str>) {
-		Self::model_name_and_namespace(&self.0)
+	pub fn new(name: impl Into<Arc<str>>) -> Self {
+		Self(Inner::Shared(name.into()))
 	}
 
-	/// e.g., `openai::gpt4.1` ("gpt4.1", Some("openai"))
-	///       `gpt4.1` ("gpt4.1", None)
-	pub(crate) fn model_name_and_namespace(model: &str) -> (&str, Option<&str>) {
+	pub fn from_static(name: &'static str) -> Self {
+		Self(Inner::Static(name))
+	}
+}
+
+impl ModelName {
+	pub fn as_str(&self) -> &str {
+		match self.0 {
+			Inner::Static(s) => s,
+			Inner::Shared(ref s) => s,
+		}
+	}
+
+	pub fn namespace_is(&self, namespace: &str) -> bool {
+		self.namespace() == Some(namespace)
+	}
+
+	pub fn namespace(&self) -> Option<&str> {
+		self.namespace_and_name().0
+	}
+
+	/// Returns `(namespace, name)`
+	pub fn namespace_and_name(&self) -> (Option<&str>, &str) {
+		Self::split_as_namespace_and_name(self.as_str())
+	}
+
+	/// Backward compatibility - returns `(name, namespace)`
+	/// e.g.:
+	/// `openai::gpt4.1` → ("gpt4.1", Some("openai"))
+	/// `gpt4.1`         → ("gpt4.1", None)
+	pub fn as_model_name_and_namespace(&self) -> (&str, Option<&str>) {
+		let (ns, name) = Self::split_as_namespace_and_name(self.as_str());
+		(name, ns)
+	}
+
+	/// e.g.:
+	/// `openai::gpt4.1` → (Some("openai"), "gpt4.1")
+	/// `gpt4.1`         → (None, "gpt4.1")
+	pub(crate) fn split_as_namespace_and_name(model: &str) -> (Option<&str>, &str) {
 		if let Some(ns_idx) = model.find("::") {
 			let ns: &str = &model[..ns_idx];
 			let name: &str = &model[(ns_idx + 2)..];
-			// TODO: assess what to do when name or ns is empty
-			(name, Some(ns))
+			(Some(ns), name)
 		} else {
-			(model, None)
+			(None, model)
 		}
+	}
+
+	/// Backward compatibility - static method that returns `(name, Option<namespace>)`
+	pub fn model_name_and_namespace(model: &str) -> (&str, Option<&str>) {
+		let (ns, name) = Self::split_as_namespace_and_name(model);
+		(name, ns)
+	}
+}
+
+impl std::fmt::Display for ModelName {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.as_str())
 	}
 }
 
@@ -32,7 +95,7 @@ impl ModelName {
 
 impl From<ModelName> for String {
 	fn from(model_name: ModelName) -> Self {
-		model_name.0.to_string()
+		model_name.as_str().to_string()
 	}
 }
 
@@ -42,19 +105,19 @@ impl From<ModelName> for String {
 
 impl From<String> for ModelName {
 	fn from(s: String) -> Self {
-		Self(Arc::from(s))
+		Self(Inner::Shared(Arc::from(s)))
 	}
 }
 
 impl From<&String> for ModelName {
 	fn from(s: &String) -> Self {
-		Self(Arc::from(s.as_str()))
+		Self(Inner::Shared(Arc::from(s.as_str())))
 	}
 }
 
 impl From<&str> for ModelName {
 	fn from(s: &str) -> Self {
-		Self(Arc::from(s))
+		Self(Inner::Shared(Arc::from(s)))
 	}
 }
 
@@ -63,15 +126,50 @@ impl Deref for ModelName {
 	type Target = str;
 
 	fn deref(&self) -> &Self::Target {
-		&self.0
+		self.as_str()
 	}
 }
 
 // endregion: --- Froms
 
-// TODO: replace with derive_more Display
-impl std::fmt::Display for ModelName {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)
+// region:    --- EQ
+
+// PartialEq implementations for various string types
+impl PartialEq<str> for ModelName {
+	fn eq(&self, other: &str) -> bool {
+		self.as_str() == other
 	}
 }
+
+impl PartialEq<&str> for ModelName {
+	fn eq(&self, other: &&str) -> bool {
+		self.as_str() == *other
+	}
+}
+
+impl PartialEq<String> for ModelName {
+	fn eq(&self, other: &String) -> bool {
+		self.as_str() == other
+	}
+}
+
+// Symmetric implementations (allow "string" == model_name)
+impl PartialEq<ModelName> for str {
+	fn eq(&self, other: &ModelName) -> bool {
+		self == other.as_str()
+	}
+}
+
+impl PartialEq<ModelName> for &str {
+	fn eq(&self, other: &ModelName) -> bool {
+		*self == other.as_str()
+	}
+}
+
+impl PartialEq<ModelName> for String {
+	fn eq(&self, other: &ModelName) -> bool {
+		self == other.as_str()
+	}
+}
+
+// endregion: --- EQ

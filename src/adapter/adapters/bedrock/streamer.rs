@@ -6,14 +6,14 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, ToolCall, Usage};
+use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
-use reqwest_eventsource::{Event, EventSource};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
 pub struct BedrockStreamer {
-	inner: EventSource,
+	inner: EventSourceStream,
 	options: StreamerOptions,
 
 	// State flags
@@ -33,7 +33,7 @@ enum InProgressBlock {
 }
 
 impl BedrockStreamer {
-	pub fn new(inner: EventSource, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSourceStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
@@ -176,6 +176,7 @@ impl futures::Stream for BedrockStreamer {
 									call_id: id,
 									fn_name: name,
 									fn_arguments,
+									thought_signatures: None,
 								};
 
 								// Capture tool calls if requested
@@ -217,6 +218,7 @@ impl futures::Stream for BedrockStreamer {
 							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls: self.captured_data.tool_calls.take(),
+							captured_thought_signatures: None,
 						};
 
 						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
@@ -227,7 +229,11 @@ impl futures::Stream for BedrockStreamer {
 				}
 				Some(Err(err)) => {
 					tracing::error!("Bedrock stream error: {}", err);
-					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err.into()))));
+					return Poll::Ready(Some(Err(Error::WebStream {
+						model_iden: self.options.model_iden.clone(),
+						cause: err.to_string(),
+						error: err,
+					})));
 				}
 				None => {
 					// Stream ended without proper completion
@@ -240,6 +246,7 @@ impl futures::Stream for BedrockStreamer {
 							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls: self.captured_data.tool_calls.take(),
+							captured_thought_signatures: None,
 						};
 
 						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));

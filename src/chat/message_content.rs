@@ -269,6 +269,12 @@ impl MessageContent {
 	pub fn contains_tool_response(&self) -> bool {
 		self.parts.iter().any(|p| p.is_tool_response())
 	}
+
+	/// Returns an approximate in-memory size of this `MessageContent`, in bytes,
+	/// computed as the sum of the sizes of all content parts.
+	pub fn size(&self) -> usize {
+		self.parts.iter().map(|p| p.size()).sum()
+	}
 }
 
 // region:    --- Froms

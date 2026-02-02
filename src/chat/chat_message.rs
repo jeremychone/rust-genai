@@ -1,4 +1,4 @@
-use crate::chat::{MessageContent, ToolCall, ToolResponse};
+use crate::chat::{ContentPart, MessageContent, ToolCall, ToolResponse};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
@@ -51,11 +51,31 @@ impl ChatMessage {
 	}
 }
 
+/// Computed accessors
+impl ChatMessage {
+	/// Returns an approximate in-memory size of this `ChatMessage`, in bytes,
+	/// computed as the size of the content plus.
+	pub fn size(&self) -> usize {
+		// Note: Do not include the role len
+		self.content.size()
+	}
+}
+
 impl ChatMessage {
 	/// Attaches options to this message.
 	pub fn with_options(mut self, options: impl Into<MessageOptions>) -> Self {
 		self.options = Some(options.into());
 		self
+	}
+
+	/// Convenience: build an assistant message that contains an optional list
+	/// of thought signatures followed by tool calls. Useful for providers
+	/// (e.g., Gemini 3) that require the thought signature to appear before
+	/// tool calls in the assistant turn when continuing a tool-use exchange.
+	pub fn assistant_tool_calls_with_thoughts(tool_calls: Vec<ToolCall>, thought_signatures: Vec<String>) -> Self {
+		let mut parts: Vec<ContentPart> = thought_signatures.into_iter().map(ContentPart::ThoughtSignature).collect();
+		parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
+		ChatMessage::assistant(MessageContent::from_parts(parts))
 	}
 }
 // region:    --- MessageOptions
@@ -68,17 +88,34 @@ pub struct MessageOptions {
 	pub cache_control: Option<CacheControl>,
 }
 
-/// Cache control
+/// Cache control for prompt caching.
 ///
 /// Notes:
 /// - Currently used for Anthropic only.
 /// - Anthropic applies cache_control at the content-part level; genai exposes it at the
 ///   ChatMessage level and maps it appropriately.
 /// - OpenAI ignores it; Gemini uses a separate API, so it is not supported there yet.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// ## TTL Ordering Constraint (Anthropic)
+///
+/// When mixing different TTLs in the same request, cache entries with longer TTL
+/// must appear **before** shorter TTLs. That is, `Ephemeral1h` entries must appear
+/// before any `Ephemeral` or `Ephemeral5m` entries in the message sequence.
+///
+/// Violating this constraint may cause the API to reject the request or behave unexpectedly.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CacheControl {
-	/// Hint to avoid persisting this message in provider caches.
+	/// Default ephemeral cache (5 minutes TTL).
 	Ephemeral,
+	/// Explicit 5-minute TTL cache.
+	Ephemeral5m,
+	/// Extended 1-hour TTL cache.
+	///
+	/// **Important:** When mixing TTLs, 1-hour cache entries must appear before
+	/// any 5-minute cache entries in the request.
+	///
+	/// Note: Costs 2x base input token price vs 1.25x for 5m.
+	Ephemeral1h,
 }
 
 impl From<CacheControl> for MessageOptions {
@@ -91,7 +128,7 @@ impl From<CacheControl> for MessageOptions {
 // endregion: --- MessageOptions
 
 /// Chat roles recognized across providers.
-#[derive(Debug, Clone, Serialize, Deserialize, derive_more::Display)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, derive_more::Display)]
 #[allow(missing_docs)]
 pub enum ChatRole {
 	System,
@@ -105,6 +142,13 @@ pub enum ChatRole {
 /// Will create a Assisttant ChatMessage with this vect of tool
 impl From<Vec<ToolCall>> for ChatMessage {
 	fn from(tool_calls: Vec<ToolCall>) -> Self {
+		if let Some(first) = tool_calls.first()
+			&& let Some(thoughts) = &first.thought_signatures
+		{
+			let mut parts: Vec<ContentPart> = thoughts.iter().cloned().map(ContentPart::ThoughtSignature).collect();
+			parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
+			return ChatMessage::assistant(MessageContent::from_parts(parts));
+		}
 		Self {
 			role: ChatRole::Assistant,
 			content: MessageContent::from(tool_calls),

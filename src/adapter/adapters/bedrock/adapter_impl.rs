@@ -11,10 +11,9 @@ use crate::chat::{
 	ContentPart, MessageContent, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{EventSourceStream, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 use serde_json::{Value, json};
 use tracing::warn;
 use value_ext::JsonValueExt;
@@ -413,6 +412,7 @@ impl Adapter for BedrockAdapter {
 						call_id,
 						fn_name,
 						fn_arguments,
+						thought_signatures: None,
 					}));
 				}
 				// Reasoning/thinking content (if supported by model)
@@ -437,7 +437,7 @@ impl Adapter for BedrockAdapter {
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		let event_source = EventSource::new(reqwest_builder)?;
+		let event_source = EventSourceStream::new(reqwest_builder);
 		let bedrock_stream = BedrockStreamer::new(event_source, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(bedrock_stream);
 

@@ -2,7 +2,11 @@ use crate::adapter::AdapterKind;
 use crate::chat::ChatRole;
 use crate::{ModelIden, resolver, webc};
 use derive_more::{Display, From};
+use reqwest::StatusCode;
 use value_ext::JsonValueExtError;
+
+/// Type alias for boxed errors that are Send + Sync
+pub type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
 /// GenAI main Result type alias (with genai::Error)
 pub type Result<T> = core::result::Result<T, Error>;
@@ -35,6 +39,9 @@ pub enum Error {
 
 	#[display("Failed to parse reasoning. Actual: '{actual}'")]
 	ReasoningParsingError { actual: String },
+
+	#[display("Failed to parse service tier. Actual: '{actual}'")]
+	ServiceTierParsing { actual: String },
 
 	// -- Chat Output
 	#[display("No chat response from model '{model_iden}'")]
@@ -73,6 +80,21 @@ pub enum Error {
 		webc_error: webc::Error,
 	},
 
+	#[display(
+		"Error while generating a ChatResponse from a ChatRequest. (for Model: '{model_iden}')
+Request Payload:\n{request_payload:#}
+Response Body:\n{response_body:#}
+Cause:\n{cause}
+"
+	)]
+	ChatResponseGeneration {
+		model_iden: ModelIden,
+		request_payload: Box<serde_json::Value>,
+		/// Require ChatOptions::default().with_capture_raw_body(true); otherwise "null"
+		response_body: Box<serde_json::Value>,
+		cause: String,
+	},
+
 	#[display("Error event in stream for model '{model_iden}'. Body: {body}")]
 	ChatResponse {
 		model_iden: ModelIden,
@@ -87,7 +109,18 @@ pub enum Error {
 	},
 
 	#[display("Web stream error for model '{model_iden}'.\nCause: {cause}")]
-	WebStream { model_iden: ModelIden, cause: String },
+	WebStream {
+		model_iden: ModelIden,
+		cause: String,
+		error: BoxError,
+	},
+
+	#[display("HTTP error.\nStatus: {status} {canonical_reason}\nBody: {body}")]
+	HttpError {
+		status: StatusCode,
+		canonical_reason: String,
+		body: String,
+	},
 
 	// -- Modules
 	#[display("Resolver error for model '{model_iden}'.\nCause: {resolver_error}")]
@@ -104,16 +137,9 @@ pub enum Error {
 	Internal(String),
 
 	// -- Externals
-	#[display("Failed to clone EventSource request: {_0}")]
-	#[from]
-	EventSourceClone(reqwest_eventsource::CannotCloneRequestError),
-
 	#[display("JSON value extension error: {_0}")]
 	#[from]
 	JsonValueExt(JsonValueExtError),
-
-	#[display("Reqwest EventSource error: {_0}")]
-	ReqwestEventSource(Box<reqwest_eventsource::Error>),
 
 	#[display("Serde JSON error: {_0}")]
 	#[from]

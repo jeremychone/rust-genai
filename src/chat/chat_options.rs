@@ -63,6 +63,9 @@ pub struct ChatOptions {
 	/// Seed for repeatability, if supported.
 	pub seed: Option<u64>,
 
+	/// Service tier preference (OpenAI-specific, for flex processing).
+	pub service_tier: Option<ServiceTier>,
+
 	/// Additional HTTP headers to include with the request.
 	pub extra_headers: Option<Headers>,
 }
@@ -153,6 +156,12 @@ impl ChatOptions {
 		self
 	}
 
+	/// Sets the service tier preference (OpenAI-specific).
+	pub fn with_service_tier(mut self, value: ServiceTier) -> Self {
+		self.service_tier = Some(value);
+		self
+	}
+
 	/// Adds extra HTTP headers.
 	pub fn with_extra_headers(mut self, headers: impl Into<Headers>) -> Self {
 		self.extra_headers = Some(headers.into());
@@ -179,50 +188,59 @@ impl ChatOptions {
 /// Provider-specific hint for reasoning intensity/budget.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReasoningEffort {
-	Minimal,
+	None,
 	Low,
 	Medium,
 	High,
 	Budget(u32),
+
+	// Legacy reasoning for <= gpt-5
+	Minimal,
 }
 
 impl ReasoningEffort {
 	/// Returns the lowercase variant name.
 	pub fn variant_name(&self) -> &'static str {
 		match self {
-			ReasoningEffort::Minimal => "minimal",
+			ReasoningEffort::None => "none",
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
 			ReasoningEffort::Budget(_) => "budget",
+			// Legacy
+			ReasoningEffort::Minimal => "minimal",
 		}
 	}
 
 	/// Returns a keyword for non-`Budget` variants; `None` for `Budget(_)`.
 	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
-			ReasoningEffort::Minimal => Some("minimal"),
+			ReasoningEffort::None => Some("none"),
 			ReasoningEffort::Low => Some("low"),
 			ReasoningEffort::Medium => Some("medium"),
 			ReasoningEffort::High => Some("high"),
 			ReasoningEffort::Budget(_) => None,
+			// Legacy
+			ReasoningEffort::Minimal => Some("minimal"),
 		}
 	}
 
 	/// Parses a verbosity keyword.
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
-			"minimal" => Some(ReasoningEffort::Minimal),
+			"none" => Some(ReasoningEffort::None),
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
+			// legacy
+			"minimal" => Some(ReasoningEffort::Minimal),
 			_ => None,
 		}
 	}
 
-	/// If `model_name` ends with `-<verbosity>`, returns the parsed verbosity and the trimmed name.
+	/// If `model_name` ends with `-reasoning_effort`, returns the parsed verbosity and the trimmed name.
 	///
-	/// Returns `(verbosity, trimmed_model_name)`.
+	/// Returns `(reasosing_effort?, trimmed_model_name)`.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		if let Some((prefix, last)) = model_name.rsplit_once('-')
 			&& let Some(effort) = ReasoningEffort::from_keyword(last)
@@ -236,11 +254,13 @@ impl ReasoningEffort {
 impl std::fmt::Display for ReasoningEffort {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			ReasoningEffort::Minimal => write!(f, "minimal"),
+			ReasoningEffort::None => write!(f, "none"),
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),
 			ReasoningEffort::Budget(n) => write!(f, "{n}"),
+			// Legacy
+			ReasoningEffort::Minimal => write!(f, "minimal"),
 		}
 	}
 }
@@ -331,6 +351,70 @@ impl std::str::FromStr for Verbosity {
 }
 
 // endregion: --- Verbosity
+
+// region:    --- ServiceTier
+
+/// OpenAI service tier preference for flex processing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ServiceTier {
+	/// Flex processing - lower costs, slower response times
+	Flex,
+	/// Auto - standard processing (default)
+	Auto,
+	/// Default - standard processing
+	Default,
+}
+
+impl ServiceTier {
+	/// Returns the lowercase variant name.
+	pub fn variant_name(&self) -> &'static str {
+		match self {
+			ServiceTier::Flex => "flex",
+			ServiceTier::Auto => "auto",
+			ServiceTier::Default => "default",
+		}
+	}
+
+	/// Returns the keyword for API usage.
+	pub fn as_keyword(&self) -> Option<&'static str> {
+		match self {
+			ServiceTier::Flex => Some("flex"),
+			ServiceTier::Auto => Some("auto"),
+			ServiceTier::Default => Some("default"),
+		}
+	}
+
+	/// Parses a service tier keyword.
+	pub fn from_keyword(name: &str) -> Option<Self> {
+		match name {
+			"flex" => Some(ServiceTier::Flex),
+			"auto" => Some(ServiceTier::Auto),
+			"default" => Some(ServiceTier::Default),
+			_ => None,
+		}
+	}
+}
+
+impl std::fmt::Display for ServiceTier {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			ServiceTier::Flex => write!(f, "flex"),
+			ServiceTier::Auto => write!(f, "auto"),
+			ServiceTier::Default => write!(f, "default"),
+		}
+	}
+}
+
+impl std::str::FromStr for ServiceTier {
+	type Err = Error;
+
+	/// Parses a service tier keyword.
+	fn from_str(s: &str) -> Result<Self> {
+		Self::from_keyword(s).ok_or(Error::ServiceTierParsing { actual: s.to_string() })
+	}
+}
+
+// endregion: --- ServiceTier
 
 // region:    --- ChatOptionsSet
 
@@ -440,6 +524,13 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.seed))
 	}
 
+	pub fn service_tier(&self) -> Option<&ServiceTier> {
+		self.chat
+			.and_then(|chat| chat.service_tier.as_ref())
+			.or_else(|| self.client.and_then(|client| client.service_tier.as_ref()))
+	}
+
+	#[allow(unused)]
 	pub fn extra_headers(&self) -> Option<&Headers> {
 		self.chat
 			.and_then(|chat| chat.extra_headers.as_ref())

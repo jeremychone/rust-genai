@@ -2,17 +2,15 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::openai::OpenAIStreamer;
 use crate::adapter::openai::ToWebRequestCustom;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::Binary;
 use crate::chat::{
 	BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
 	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, ToolCall, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{EventSourceStream, WebResponse};
 use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::error;
@@ -24,9 +22,12 @@ pub struct OpenAIAdapter;
 // Latest models
 const MODELS: &[&str] = &[
 	//
-	"gpt-5",
+	"gpt-5.2",
+	"gpt-5.2-pro",
 	"gpt-5-mini",
 	"gpt-5-nano",
+	"gpt-audio-mini",
+	"gpt-audio",
 ];
 
 impl OpenAIAdapter {
@@ -67,8 +68,6 @@ impl Adapter for OpenAIAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-
-		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 
 		// -- Capture the provider_model_iden
 		let provider_model_name: Option<String> = body.x_remove("model").ok();
@@ -135,7 +134,7 @@ impl Adapter for OpenAIAdapter {
 			model_iden,
 			provider_model_iden,
 			usage,
-			captured_raw_body,
+			captured_raw_body: None, // Set by the client exec_chat
 		})
 	}
 
@@ -144,7 +143,7 @@ impl Adapter for OpenAIAdapter {
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		let event_source = EventSource::new(reqwest_builder)?;
+		let event_source = EventSourceStream::new(reqwest_builder);
 		let openai_stream = OpenAIStreamer::new(event_source, model_iden.clone(), options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
@@ -207,7 +206,7 @@ impl OpenAIAdapter {
 		custom: Option<ToWebRequestCustom>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 		let adapter_kind = model.adapter_kind;
 
 		// -- api_key
@@ -217,12 +216,7 @@ impl OpenAIAdapter {
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
 
 		// -- headers
-		let mut headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
-
-		// -- extra headers
-		if let Some(extra_headers) = options_set.extra_headers() {
-			headers.merge_with(extra_headers);
-		}
+		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
@@ -332,6 +326,11 @@ impl OpenAIAdapter {
 		if let Some(seed) = options_set.seed() {
 			payload.x_insert("seed", seed)?;
 		}
+		if let Some(service_tier) = options_set.service_tier()
+			&& let Some(keyword) = service_tier.as_keyword()
+		{
+			payload.x_insert("service_tier", keyword)?;
+		}
 
 		Ok(WebRequestData { url, headers, payload })
 	}
@@ -399,44 +398,48 @@ impl OpenAIAdapter {
 							match part {
 								ContentPart::Text(content) => values.push(json!({"type": "text", "text": content})),
 								ContentPart::Binary(binary) => {
+									let is_audio = binary.is_audio();
 									let is_image = binary.is_image();
-									let Binary {
-										content_type, source, ..
-									} = binary;
 
-									if is_image {
-										match &source {
-											BinarySource::Url(url) => {
-												values.push(json!({"type": "image_url", "image_url": {"url": url}}))
-											}
-											BinarySource::Base64(content) => {
-												let image_url = format!("data:{};base64,{}", content_type, content);
-												values
-													.push(json!({"type": "image_url", "image_url": {"url": image_url}}))
-											}
-										}
-									} else {
-										match &source {
+									// let Binary {
+									// 	content_type, source, ..
+									// } = binary;
+
+									if is_audio {
+										match &binary.source {
 											BinarySource::Url(_url) => {
-												// TODO: Need to return error
 												warn!(
-													"OpenAI doesn't support file from URL, need to handle it gracefully"
+													"OpenAI doesn't support audio from URL, need to handle it gracefully"
 												);
 											}
 											BinarySource::Base64(content) => {
-												let file_data = format!("data:{};base64,{}", content_type, content);
-												values.push(json!({"type": "file", "file": {
-													"filename": binary.name,
-													"file_data": file_data
-												}}))
+												let mut format =
+													binary.content_type.split('/').next_back().unwrap_or("");
+												if format == "mpeg" {
+													format = "mp3";
+												}
+												values.push(json!({
+													"type": "input_audio",
+													"input_audio": {
+														"data": content,
+														"format": format
+													}
+												}));
 											}
 										}
-
-										// "type": "file",
-										// "file": {
-										//     "filename": "draconomicon.pdf",
-										//     "file_data": f"data:application/pdf;base64,{base64_string}",
-										// }
+									} else if is_image {
+										let image_url = binary.into_url();
+										values.push(json!({"type": "image_url", "image_url": {"url": image_url}}));
+									} else if matches!(&binary.source, BinarySource::Url(_)) {
+										// TODO: Need to return error
+										warn!("OpenAI doesn't support file from URL, need to handle it gracefully");
+									} else {
+										let filename = binary.name.clone();
+										let file_base64_url = binary.into_url();
+										values.push(json!({"type": "file", "file": {
+											"filename": filename,
+											"file_data": file_base64_url
+										}}))
 									}
 								}
 
@@ -447,6 +450,7 @@ impl OpenAIAdapter {
 								// TODO: Probably need to warn if it is a ToolCalls type of content
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
+								ContentPart::ThoughtSignature(_) => (),
 							}
 						}
 						messages.push(json! ({"role": "user", "content": values}));
@@ -476,6 +480,7 @@ impl OpenAIAdapter {
 							// TODO: Probably need towarn on this one (probably need to add binary here)
 							ContentPart::Binary(_) => (),
 							ContentPart::ToolResponse(_) => (),
+							ContentPart::ThoughtSignature(_) => {}
 						}
 					}
 					let content = texts.join("\n\n");
@@ -621,6 +626,7 @@ fn parse_tool_call(raw_tool_call: Value) -> Result<ToolCall> {
 		call_id: iterim.id,
 		fn_name,
 		fn_arguments,
+		thought_signatures: None,
 	})
 }
 

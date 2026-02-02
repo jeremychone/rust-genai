@@ -7,11 +7,10 @@ use crate::chat::{
 	ContentPart, MessageContent, ReasoningEffort, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{EventSourceStream, WebResponse};
 use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
-use reqwest_eventsource::EventSource;
 use serde_json::{Map, Value, json};
 use value_ext::JsonValueExt;
 
@@ -20,7 +19,10 @@ pub struct OpenAIRespAdapter;
 // Latest models
 const MODELS: &[&str] = &[
 	//
+	"gpt-5-pro",
 	"gpt-5-codex",
+	"gpt-5.1-codex",
+	"gpt-5.1-codex-mini",
 ];
 
 impl OpenAIRespAdapter {
@@ -61,7 +63,7 @@ impl Adapter for OpenAIRespAdapter {
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 		let adapter_kind = model.adapter_kind;
 
 		// -- api_key
@@ -71,12 +73,7 @@ impl Adapter for OpenAIRespAdapter {
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
 
 		// -- headers
-		let mut headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
-
-		// -- extra headers
-		if let Some(extra_headers) = chat_options.extra_headers() {
-			headers.merge_with(extra_headers);
-		}
+		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
 		// -- for new v1/responses/ for now do not support stream
 		let stream = matches!(service_type, ServiceType::ChatStream);
@@ -244,7 +241,7 @@ impl Adapter for OpenAIRespAdapter {
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		let event_source = EventSource::new(reqwest_builder)?;
+		let event_source = EventSourceStream::new(reqwest_builder);
 		let openai_stream = OpenAIStreamer::new(event_source, model_iden.clone(), options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
@@ -394,6 +391,7 @@ impl OpenAIRespAdapter {
 								// TODO: Probably need to warn if it is a ToolCalls type of content
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
+								ContentPart::ThoughtSignature(_) => (),
 							}
 						}
 						input_items.push(json! ({"role": "user", "content": values}));
@@ -410,7 +408,7 @@ impl OpenAIRespAdapter {
 						match part {
 							ContentPart::Text(text) => {
 								item_message_content.push(json!({
-										"type": "input_text",
+										"type": "output_text",
 										"text": text
 								}));
 							}
@@ -434,8 +432,9 @@ impl OpenAIRespAdapter {
 							}
 
 							// TODO: Probably need towarn on this one (probably need to add binary here)
-							ContentPart::Binary(_) => (),
-							ContentPart::ToolResponse(_) => (),
+							ContentPart::Binary(_) => {}
+							ContentPart::ToolResponse(_) => {}
+							ContentPart::ThoughtSignature(_) => {}
 						}
 					}
 
@@ -499,3 +498,63 @@ struct OpenAIRespRequestParts {
 }
 
 // endregion: --- Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::AdapterKind;
+	use crate::chat::ChatMessage;
+
+	/// Test that assistant message text content uses "output_text" type (not "input_text").
+	///
+	/// This is required by OpenAI's Responses API - assistant content is model output,
+	/// so it must use "output_text". Using "input_text" causes:
+	/// "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'."
+	#[test]
+	fn test_assistant_message_uses_output_text_content_type() {
+		let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-codex");
+
+		// Create a chat request with an assistant message
+		let chat_req = ChatRequest::default()
+			.with_system("You are a helpful assistant.")
+			.append_message(ChatMessage::user("What's the weather?"))
+			.append_message(ChatMessage::assistant("The weather is sunny."));
+
+		// Serialize to OpenAI Responses API format
+		let parts =
+			OpenAIRespAdapter::into_openai_request_parts(&model_iden, chat_req).expect("Should serialize successfully");
+
+		// Find the assistant message in input_items
+		let assistant_msg = parts
+			.input_items
+			.iter()
+			.find(|item| {
+				item.get("type").and_then(|t| t.as_str()) == Some("message")
+					&& item.get("role").and_then(|r| r.as_str()) == Some("assistant")
+			})
+			.expect("Should have an assistant message");
+
+		// Check the content uses "output_text" type
+		let content = assistant_msg
+			.get("content")
+			.and_then(|c| c.as_array())
+			.expect("Assistant message should have content array");
+
+		assert!(!content.is_empty(), "Content should not be empty");
+
+		let first_content = &content[0];
+		let content_type = first_content
+			.get("type")
+			.and_then(|t| t.as_str())
+			.expect("Content should have a type");
+
+		assert_eq!(
+			content_type, "output_text",
+			"Assistant message content should use 'output_text' type, not 'input_text'"
+		);
+	}
+}
+
+// endregion: --- Tests

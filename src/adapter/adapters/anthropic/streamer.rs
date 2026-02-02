@@ -1,15 +1,16 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
+use crate::adapter::anthropic::parse_cache_creation_details;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, PromptTokensDetails, ToolCall, Usage};
+use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
-use reqwest_eventsource::{Event, EventSource};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
 
 pub struct AnthropicStreamer {
-	inner: EventSource,
+	inner: EventSourceStream,
 	options: StreamerOptions,
 
 	// -- Set by the poll_next
@@ -27,7 +28,7 @@ enum InProgressBlock {
 }
 
 impl AnthropicStreamer {
-	pub fn new(inner: EventSource, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
+	pub fn new(inner: EventSourceStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
 			inner,
 			done: false,
@@ -115,27 +116,44 @@ impl futures::Stream for AnthropicStreamer {
 									continue;
 								}
 								InProgressBlock::Thinking => {
-									let thinking: String = data.x_take("/delta/thinking")?;
-
-									// Add to the captured_thinking if chat options say so
-									if self.options.capture_reasoning_content {
-										match self.captured_data.reasoning_content {
-											Some(ref mut r) => r.push_str(&thinking),
-											None => self.captured_data.reasoning_content = Some(thinking.clone()),
+									if let Ok(thinking) = data.x_take::<String>("/delta/thinking") {
+										// Add to the captured_thinking if chat options say so
+										if self.options.capture_reasoning_content {
+											match self.captured_data.reasoning_content {
+												Some(ref mut r) => r.push_str(&thinking),
+												None => self.captured_data.reasoning_content = Some(thinking.clone()),
+											}
 										}
-									}
 
-									return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(thinking))));
+										return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(thinking))));
+									} else if let Ok(signature) = data.x_take::<String>("/delta/signature") {
+										return Poll::Ready(Some(Ok(InterStreamEvent::ThoughtSignatureChunk(
+											signature,
+										))));
+									} else {
+										// If it is thinking but no thinking or signature field, we log and skip.
+										tracing::warn!(
+											"content_block_delta for thinking block but no thinking or signature found: {data:?}"
+										);
+										continue;
+									}
 								}
 							}
 						}
 						"content_block_stop" => {
 							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text) {
 								InProgressBlock::ToolUse { id, name, input } => {
+									let fn_arguments = if input.is_empty() {
+										Value::Object(Map::new())
+									} else {
+										serde_json::from_str(&input)?
+									};
+
 									let tc = ToolCall {
 										call_id: id,
 										fn_name: name,
-										fn_arguments: serde_json::from_str(&input)?,
+										fn_arguments,
+										thought_signatures: None,
 									};
 
 									// Add to the captured_tool_calls if chat options say so
@@ -182,6 +200,7 @@ impl futures::Stream for AnthropicStreamer {
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
+								captured_thought_signatures: None,
 							};
 
 							// TODO: Need to capture the data as needed
@@ -194,7 +213,11 @@ impl futures::Stream for AnthropicStreamer {
 				}
 				Some(Err(err)) => {
 					tracing::error!("Error: {}", err);
-					return Poll::Ready(Some(Err(Error::ReqwestEventSource(err.into()))));
+					return Poll::Ready(Some(Err(Error::WebStream {
+						model_iden: self.options.model_iden.clone(),
+						cause: err.to_string(),
+						error: err,
+					})));
 				}
 				None => return Poll::Ready(None),
 			}
@@ -242,6 +265,39 @@ impl AnthropicStreamer {
 					.completion_tokens
 					.get_or_insert(0);
 				*val += output_tokens;
+			}
+
+			// -- Capture cache tokens (only present in message_start)
+			// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
+			// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
+			if message_type == "message_start" {
+				let cache_creation: i32 = data.x_get("/message/usage/cache_creation_input_tokens").unwrap_or(0);
+				let cache_read: i32 = data.x_get("/message/usage/cache_read_input_tokens").unwrap_or(0);
+
+				// Parse cache_creation breakdown if present (TTL-specific breakdown)
+				// Use x_get with JSON pointer to navigate to /message/usage/cache_creation
+				let cache_creation_details = data
+					.x_get::<Value>("/message/usage/cache_creation")
+					.ok()
+					.as_ref()
+					.and_then(parse_cache_creation_details);
+
+				if cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some() {
+					let usage = self.captured_data.usage.get_or_insert(Usage::default());
+
+					// Add cache tokens to prompt_tokens (same as into_usage does)
+					if let Some(ref mut pt) = usage.prompt_tokens {
+						*pt += cache_creation + cache_read;
+					}
+
+					// Set prompt_tokens_details (match into_usage behavior: always Some(value))
+					usage.prompt_tokens_details = Some(PromptTokensDetails {
+						cache_creation_tokens: Some(cache_creation),
+						cache_creation_details,
+						cached_tokens: Some(cache_read),
+						audio_tokens: None,
+					});
+				}
 			}
 		}
 
