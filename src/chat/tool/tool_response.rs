@@ -43,4 +43,3 @@ impl ToolResponse {
 		&self.content
 	}
 }
-

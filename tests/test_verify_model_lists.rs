@@ -137,7 +137,10 @@ async fn test_model_resolution_edge_cases() -> Result<(), Box<dyn std::error::Er
 				if actual_adapter == expected_adapter {
 					println!("  [OK] {} -> {}", model, actual_adapter);
 				} else {
-					println!("  [FAIL] {} -> {} (expected {})", model, actual_adapter, expected_adapter);
+					println!(
+						"  [FAIL] {} -> {} (expected {})",
+						model, actual_adapter, expected_adapter
+					);
 					all_passed = false;
 				}
 			}

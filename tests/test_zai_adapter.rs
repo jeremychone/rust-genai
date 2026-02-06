@@ -1,8 +1,8 @@
 //! Test for Z.AI adapter support (upstream v0.6.0-alpha.2)
 //! Note: Adapter is now named "Zai" (not "ZAi")
 
-use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
+use genai::chat::{ChatMessage, ChatRequest};
 
 #[tokio::test]
 async fn test_zai_model_resolution() -> Result<(), Box<dyn std::error::Error>> {
