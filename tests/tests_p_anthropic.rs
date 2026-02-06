@@ -2,6 +2,7 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
+use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 use serial_test::serial;
 
@@ -10,7 +11,8 @@ use serial_test::serial;
 // "claude-sonnet-4-20250514" (fail on test_chat_json_mode_ok)
 //
 const MODEL: &str = "claude-3-5-haiku-latest";
-const MODEL_THINKING: &str = "claude-sonnet-4-5-20250929";
+// const MODEL_THINKING: &str = "claude-sonnet-4-5-20250929";
+const MODEL_THINKING: &str = "claude-opus-4-5";
 const MODEL_NS: &str = "anthropic::claude-3-5-haiku-latest";
 
 // region:    --- Chat
@@ -25,7 +27,8 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[serial(anthropic)]
 async fn test_chat_reasoning_ok() -> TestResult<()> {
 	// NOTE: Does not test REASONING_USAGE as Anthropic does not report it
-	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, Some(Check::REASONING)).await
+	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, ReasoningEffort::High, Some(Check::REASONING_CONTENT))
+		.await
 }
 
 #[tokio::test]
@@ -75,6 +78,20 @@ async fn test_chat_cache_explicit_system_ok() -> TestResult<()> {
 	common_tests::common_test_chat_cache_explicit_system_ok(MODEL).await
 }
 
+/// Test for 1-hour TTL cache (only supported on Claude 4.5 models)
+#[tokio::test]
+#[serial(anthropic)]
+async fn test_chat_cache_explicit_1h_ttl_ok() -> TestResult<()> {
+	common_tests::common_test_chat_cache_explicit_1h_ttl_ok(MODEL_THINKING).await
+}
+
+/// Streaming test for 1-hour TTL cache (only supported on Claude 4.5 models)
+#[tokio::test]
+#[serial(anthropic)]
+async fn test_chat_stream_cache_explicit_1h_ttl_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_cache_explicit_1h_ttl_ok(MODEL_THINKING).await
+}
+
 // endregion: --- Chat Explicit Cache
 
 // region:    --- Chat Stream Tests
@@ -120,6 +137,11 @@ async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_binary_image_file_ok() -> TestResult<()> {
+	common_tests::common_test_chat_image_file_ok(MODEL).await
+}
+
+#[tokio::test]
 async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
 }
@@ -156,7 +178,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-sonnet-4-5-20250929").await
+	common_tests::common_test_list_models(AdapterKind::Anthropic, "claude-sonnet-4-5").await
 }
 
 // endregion: --- List

@@ -1,6 +1,6 @@
 //! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
 
-use crate::chat::{ChatMessage, ChatRole, Tool};
+use crate::chat::{ChatMessage, ChatRole, StreamEnd, Tool, ToolCall, ToolResponse};
 use crate::support;
 use serde::{Deserialize, Serialize};
 
@@ -96,6 +96,29 @@ impl ChatRequest {
 	/// Append one tool.
 	pub fn append_tool(mut self, tool: impl Into<Tool>) -> Self {
 		self.tools.get_or_insert_with(Vec::new).push(tool.into());
+		self
+	}
+
+	/// Append an assistant tool-use turn and the corresponding tool response based on a
+	/// streaming `StreamEnd` capture. Thought signatures are included automatically and
+	/// ordered before tool calls when present.
+	///
+	/// If neither content nor tool calls were captured, this is a no-op before appending
+	/// the provided tool response.
+	pub fn append_tool_use_from_stream_end(mut self, end: &StreamEnd, tool_response: ToolResponse) -> Self {
+		if let Some(content) = &end.captured_content {
+			// Use captured content directly (contains thoughts/text/tool calls in correct order)
+			self.messages.push(ChatMessage::assistant(content.clone()));
+		} else if let Some(calls_ref) = end.captured_tool_calls() {
+			// Fallback: build assistant message from tool calls only
+			let calls: Vec<ToolCall> = calls_ref.into_iter().cloned().collect();
+			if !calls.is_empty() {
+				self.messages.push(ChatMessage::from(calls));
+			}
+		}
+
+		// Append the tool response turn
+		self.messages.push(ChatMessage::from(tool_response));
 		self
 	}
 }

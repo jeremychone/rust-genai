@@ -30,7 +30,8 @@ pub struct ChatResponse {
 	/// Token usage reported by the provider.
 	pub usage: Usage,
 
-	/// Raw response body for provider-specific features.
+	/// IMPORTANT: (since 0.5.3) This is populated at the client.exec_chat when the options capture_raw_body is set to true
+	/// Raw response body (only if asked via options.capture_raw_body)
 	pub captured_raw_body: Option<serde_json::Value>,
 }
 

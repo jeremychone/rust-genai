@@ -1,5 +1,8 @@
 use crate::get_option_value;
-use crate::support::data::{IMAGE_URL_JPG_DUCK, get_b64_duck, get_b64_pdf};
+use crate::support::data::{
+	AUDIO_TEST_FILE_PATH, IMAGE_URL_JPG_DUCK, TEST_IMAGE_FILE_PATH, get_b64_audio, get_b64_duck, get_b64_pdf,
+	has_audio_file,
+};
 use crate::support::{
 	Check, StreamExtract, TestResult, assert_contains, assert_reasoning_content, assert_reasoning_usage,
 	contains_checks, extract_stream_end, get_big_content, seed_chat_req_simple, seed_chat_req_tool_simple,
@@ -20,7 +23,7 @@ use value_ext::JsonValueExt;
 // region:    --- Chat
 
 pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
-	validate_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE)?;
+	validate_checks(checks.clone(), Check::REASONING_CONTENT | Check::REASONING_USAGE)?;
 
 	// -- Setup & Fixtures
 	let client = Client::default();
@@ -50,7 +53,7 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> T
 	}
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		assert_reasoning_content(&chat_res)?;
 	}
 
@@ -58,11 +61,19 @@ pub async fn common_test_chat_simple_ok(model: &str, checks: Option<Check>) -> T
 }
 
 // NOTE: here we still have the options about checking REASONING_USAGE, because Anthropic does not have reasoning token.
-pub async fn common_test_chat_reasoning_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
+pub async fn common_test_chat_reasoning_ok(
+	model: &str,
+	reasoning_effort: ReasoningEffort,
+	checks: Option<Check>,
+) -> TestResult<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
-	let chat_req = seed_chat_req_simple();
-	let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages (deactivate to see the differences)
+		ChatMessage::system("Answer in one sentence. But make think hard to make sure it is not a trick question."),
+		ChatMessage::user("Why is the sky red?"),
+	]);
+	let options = ChatOptions::default().with_reasoning_effort(reasoning_effort);
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, Some(&options)).await?;
@@ -93,7 +104,7 @@ pub async fn common_test_chat_reasoning_ok(model: &str, checks: Option<Check>) -
 	}
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		let reasoning_content = chat_res
 			.reasoning_content
 			.as_deref()
@@ -507,12 +518,102 @@ pub async fn common_test_chat_cache_explicit_system_ok(model: &str) -> TestResul
 	Ok(())
 }
 
+/// Test for 1-hour TTL cache (Ephemeral1h).
+/// Note: 1h TTL is only supported on Claude 4.5 models (Opus 4.5, Sonnet 4.5, Haiku 4.5).
+pub async fn common_test_chat_cache_explicit_1h_ttl_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let big_content = get_big_content()?;
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages
+		ChatMessage::system("Give a very short summary of what each of those files are about"),
+		ChatMessage::user(big_content).with_options(CacheControl::Ephemeral1h),
+	]);
+
+	// -- Exec
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check Content
+	let content = chat_res.first_text().ok_or("Should have content")?;
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = &chat_res.usage;
+
+	let total_tokens = get_option_value!(usage.total_tokens);
+	let prompt_tokens_details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	let cache_creation_tokens = get_option_value!(prompt_tokens_details.cache_creation_tokens);
+	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+
+	assert!(
+		cache_creation_tokens > 0 || cached_tokens > 0,
+		"one of cache_creation_tokens or cached_tokens should be greater than 0"
+	);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+
+	// Note: cache_creation_details may or may not be present depending on provider response format
+	// The API may return TTL-specific breakdown in cache_creation_details when using different TTLs
+
+	Ok(())
+}
+
+/// Streaming test for 1-hour TTL cache (Ephemeral1h).
+/// Note: 1h TTL is only supported on Claude 4.5 models (Opus 4.5, Sonnet 4.5, Haiku 4.5).
+pub async fn common_test_chat_stream_cache_explicit_1h_ttl_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::builder()
+		.with_chat_options(ChatOptions::default().with_capture_usage(true))
+		.build();
+	let big_content = get_big_content()?;
+	let chat_req = ChatRequest::new(vec![
+		// -- Messages
+		ChatMessage::system("Give a very short summary of what each of those files are about"),
+		ChatMessage::user(big_content).with_options(CacheControl::Ephemeral1h),
+	]);
+
+	// -- Exec
+	let chat_res = client.exec_chat_stream(model, chat_req, None).await?;
+
+	// -- Extract Stream content
+	let StreamExtract {
+		stream_end,
+		content,
+		reasoning_content: _,
+	} = extract_stream_end(chat_res.stream).await?;
+	let content = content.ok_or("extract_stream_end SHOULD have extracted some content")?;
+
+	// -- Check Content
+	assert!(!content.trim().is_empty(), "Content should not be empty");
+
+	// -- Check Usage
+	let usage = stream_end.captured_usage.as_ref().ok_or("Should have captured_usage")?;
+
+	let total_tokens = get_option_value!(usage.total_tokens);
+	let prompt_tokens_details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	let cache_creation_tokens = get_option_value!(prompt_tokens_details.cache_creation_tokens);
+	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+
+	assert!(
+		cache_creation_tokens > 0 || cached_tokens > 0,
+		"one of cache_creation_tokens or cached_tokens should be greater than 0"
+	);
+	assert!(total_tokens > 0, "total_tokens should be > 0");
+
+	Ok(())
+}
+
 // endregion: --- Chat Explicit Cache
 
 // region:    --- Chat Stream Tests
 
 pub async fn common_test_chat_stream_simple_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
-	validate_checks(checks.clone(), Check::REASONING)?;
+	validate_checks(checks.clone(), Check::REASONING_CONTENT)?;
 
 	// -- Setup & Fixtures
 	let client = Client::default();
@@ -541,7 +642,7 @@ pub async fn common_test_chat_stream_simple_ok(model: &str, checks: Option<Check
 	);
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		let reasoning_content =
 			reasoning_content.ok_or("extract_stream_end SHOULD have extracted some reasoning_content")?;
 		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
@@ -596,7 +697,7 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> TestResu
 }
 
 pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<Check>) -> TestResult<()> {
-	validate_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE)?;
+	validate_checks(checks.clone(), Check::REASONING_CONTENT | Check::REASONING_USAGE)?;
 
 	// -- Setup & Fixtures
 	let mut chat_options = ChatOptions::default()
@@ -604,7 +705,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 		.with_capture_content(true)
 		.with_capture_reasoning_content(true);
 
-	if contains_checks(checks.clone(), Check::REASONING | Check::REASONING_USAGE) {
+	if contains_checks(checks.clone(), Check::REASONING_CONTENT | Check::REASONING_USAGE) {
 		chat_options = chat_options.with_reasoning_effort(ReasoningEffort::Medium);
 	}
 
@@ -648,9 +749,40 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	}
 
 	// -- Check Reasoning Content
-	if contains_checks(checks, Check::REASONING) {
+	if contains_checks(checks, Check::REASONING_CONTENT) {
 		let _reasoning_content = reasoning_content.ok_or("Should have reasoning content")?;
 	}
+
+	Ok(())
+}
+
+/// Just making the tool request, and checking the tool call response
+/// `complete_check` if for LLMs that are better at giving back the unit and weather.
+pub async fn common_test_chat_stream_tool_capture_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::default();
+	let chat_req = seed_chat_req_tool_simple();
+	let mut chat_options = ChatOptions::default().with_capture_tool_calls(true);
+
+	// -- Exec
+	let chat_res = client.exec_chat_stream(model, chat_req, Some(&chat_options)).await?;
+
+	// Extract Stream content
+	let StreamExtract {
+		stream_end,
+		content,
+		reasoning_content,
+	} = extract_stream_end(chat_res.stream).await?;
+
+	// -- Check
+	let mut tool_calls = stream_end.captured_tool_calls().ok_or("Should have captured tools")?;
+	if tool_calls.is_empty() {
+		return Err("Should have tool calls in chat_res".into());
+	}
+	let tool_call = tool_calls.pop().ok_or("Should have at least one tool call")?;
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("city")?, "Paris");
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("country")?, "France");
+	assert_eq!(tool_call.fn_arguments.x_get_as::<&str>("unit")?, "C");
 
 	Ok(())
 }
@@ -696,6 +828,55 @@ pub async fn common_test_chat_image_b64_ok(model: &str) -> TestResult<()> {
 	// -- Check
 	let res = chat_res.first_text().ok_or("Should have text result")?;
 	assert_contains(res, "duck");
+
+	Ok(())
+}
+
+pub async fn common_test_chat_image_file_ok(model: &str) -> TestResult<()> {
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
+	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)
+	chat_req = chat_req.append_message(ChatMessage::user(vec![
+		ContentPart::from_text("What is in this picture?"),
+		ContentPart::from_binary_file(TEST_IMAGE_FILE_PATH)?,
+	]));
+
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.first_text().ok_or("Should have text result")?;
+	assert_contains(res, "duck");
+
+	Ok(())
+}
+
+pub async fn common_test_chat_audio_b64_ok(model: &str) -> TestResult<()> {
+	if !has_audio_file() {
+		println!("No test audio file. Skipping this test.");
+		return Ok(());
+	}
+
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	let mut chat_req = ChatRequest::default().with_system("Transcribe the audio");
+	let cp_audio = ContentPart::from_binary_file(AUDIO_TEST_FILE_PATH)?;
+	// similar as the from_binary_file but manual
+	// let cp_audio = ContentPart::from_binary_base64("audio/wav", get_b64_audio()?, None);
+
+	chat_req = chat_req.append_message(ChatMessage::user(vec![cp_audio]));
+
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.first_text().ok_or("Should have text result")?;
+	// NOTE: here we make the test a little loose as the point of this test is not to test the model accuracy
+	assert_contains(res, "one small step");
+	assert_contains(res, "one giant leap");
 
 	Ok(())
 }

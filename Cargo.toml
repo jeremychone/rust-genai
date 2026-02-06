@@ -33,16 +33,17 @@ base64 = "0.22.0"
 mime_guess = "2"
 # -- Others
 derive_more = { version = "2", features = ["from", "display"] }
-value-ext = "0.1.2" 
+value-ext = "0.1.2"
 
 [dev-dependencies]
 simple-fs = "0.9.2"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 serial_test = "3.2"
+base64 = "0.22.0"
 bitflags = "2.8"
 gcp_auth = "0.12"
-# Mock server dependencies
+# Mock server dependencies (fork-specific)
 wiremock = "0.6.5"
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
-# Test utilities
+# Test utilities (fork-specific)
 scopeguard = "1.2.0"

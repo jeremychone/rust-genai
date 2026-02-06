@@ -17,7 +17,7 @@ pub struct Headers {
 impl Headers {
 	/// Merge headers from overlay into self, consuming overlay.
 	/// Later values override existing ones.
-	/// Use [`merge_with`] for a borrowed overlay.
+	/// Use [`Headers::merge_with`] for a borrowed overlay.
 	pub fn merge(&mut self, overlay: impl Into<Headers>) {
 		let overlay = overlay.into();
 

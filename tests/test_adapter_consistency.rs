@@ -90,18 +90,34 @@ fn get_expected_models() -> std::collections::HashMap<String, Vec<String>> {
 		],
 	);
 
-	// Z.AI models
+	// Z.AI models (from upstream v0.6.0-alpha.2)
 	expected.insert(
 		"ZAi".to_string(),
 		vec![
+			"glm-4-plus".to_string(),
 			"glm-4.6".to_string(),
 			"glm-4.5".to_string(),
-			"glm-4".to_string(),
-			"glm-4.1v".to_string(),
 			"glm-4.5v".to_string(),
-			"vidu".to_string(),
-			"vidu-q1".to_string(),
-			"vidu-2.0".to_string(),
+			"glm-4.5-x".to_string(),
+			"glm-4.5-air".to_string(),
+			"glm-4.5-airx".to_string(),
+			"glm-4-32b-0414-128k".to_string(),
+			"glm-4.5-flash".to_string(),
+			"glm-4-air-250414".to_string(),
+			"glm-4-flashx-250414".to_string(),
+			"glm-4-flash-250414".to_string(),
+			"glm-4-air".to_string(),
+			"glm-4-airx".to_string(),
+			"glm-4-long".to_string(),
+			"glm-4-flash".to_string(),
+			"glm-4v-plus-0111".to_string(),
+			"glm-4v-flash".to_string(),
+			"glm-z1-air".to_string(),
+			"glm-z1-airx".to_string(),
+			"glm-z1-flash".to_string(),
+			"glm-z1-flashx".to_string(),
+			"glm-4.1v-thinking-flash".to_string(),
+			"glm-4.1v-thinking-flashx".to_string(),
 		],
 	);
 

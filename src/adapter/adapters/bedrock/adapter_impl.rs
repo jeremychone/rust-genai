@@ -280,7 +280,7 @@ impl Adapter for BedrockAdapter {
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		let base_url = endpoint.base_url();
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 
 		// URL encode the model ID (Bedrock model IDs contain colons)
 		let encoded_model = urlencoding_encode(model_name);

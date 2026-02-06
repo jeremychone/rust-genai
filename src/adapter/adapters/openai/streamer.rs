@@ -197,7 +197,7 @@ impl futures::Stream for OpenAIStreamer {
 										self.captured_data.usage = Some(usage)
 									}
 									AdapterKind::DeepSeek
-									| AdapterKind::ZAi
+									| AdapterKind::Zai
 									| AdapterKind::Fireworks
 									| AdapterKind::Together => {
 										let usage = message_data

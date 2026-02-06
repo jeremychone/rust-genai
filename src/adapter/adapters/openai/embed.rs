@@ -83,7 +83,7 @@ pub fn to_embed_request_data(
 	};
 
 	// Extract the actual model name (without namespace)
-	let (model_name, _) = model.model_name.as_model_name_and_namespace();
+	let (_, model_name) = model.model_name.namespace_and_name();
 
 	let openai_req = OpenAIEmbedRequest {
 		input,

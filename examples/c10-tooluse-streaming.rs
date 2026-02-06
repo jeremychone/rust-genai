@@ -7,7 +7,8 @@ use serde_json::json;
 use tracing_subscriber::EnvFilter;
 
 // const MODEL: &str = "gemini-2.0-flash";
-const MODEL: &str = "deepseek-chat";
+// const MODEL: &str = "deepseek-chat";
+const MODEL: &str = "gemini-3-pro-preview";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,6 +18,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.init();
 
 	let client = Client::default();
+
+	println!("--- Model: {MODEL}");
 
 	// 1. Define a tool for getting weather information
 	let weather_tool = Tool::new("get_weather")
@@ -53,6 +56,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut chat_stream = client.exec_chat_stream(MODEL, chat_req.clone(), Some(&chat_options)).await?;
 
 	let mut tool_calls: Vec<ToolCall> = [].to_vec();
+	let mut captured_thoughts: Option<Vec<String>> = None;
+
 	// print_chat_stream(chat_res, Some(&print_options)).await?;
 	println!("--- Streaming response with tool calls");
 	while let Some(result) = chat_stream.stream.next().await {
@@ -63,25 +68,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			ChatStreamEvent::Chunk(chunk) => {
 				print!("{}", chunk.content);
 			}
-			ChatStreamEvent::ToolCallChunk(tool_chunk) => {
-				println!(
-					"\nTool Call: {} with args: {}",
-					tool_chunk.tool_call.fn_name, tool_chunk.tool_call.fn_arguments
-				);
+			ChatStreamEvent::ToolCallChunk(chunk) => {
+				println!("  ToolCallChunk: {:?}", chunk.tool_call);
 			}
 			ChatStreamEvent::ReasoningChunk(chunk) => {
-				println!("\nReasoning: {}", chunk.content);
+				println!("  ReasoningChunk: {:?}", chunk.content);
+			}
+			ChatStreamEvent::ThoughtSignatureChunk(chunk) => {
+				println!("  ThoughtSignatureChunk: {:?}", chunk.content);
 			}
 			ChatStreamEvent::End(end) => {
 				println!("\nStream ended");
 
 				// Check if we captured any tool calls
-				if let Some(captured_tool_calls) = end.captured_into_tool_calls() {
-					println!("\nCaptured Tool Calls:");
-					tool_calls = captured_tool_calls.clone();
-					for tool_call in captured_tool_calls {
-						println!("- Function: {}", tool_call.fn_name);
-						println!("  Arguments: {}", tool_call.fn_arguments);
+				// Note: captured_into_tool_calls consumes self, so we can't use end afterwards.
+				// We should access captured_content directly or use references if possible,
+				// but StreamEnd getters often consume or clone.
+				// Let's access captured_content directly since we need both tool calls and thoughts.
+
+				if let Some(content) = end.captured_content {
+					// Let's refactor to avoid ownership issues.
+					// We have `content` (MessageContent).
+					// We want `tool_calls` (Vec<ToolCall>) and `thoughts` (Vec<String>).
+
+					// We can iterate and split.
+					let parts = content.into_parts();
+					let mut extracted_tool_calls = Vec::new();
+					let mut extracted_thoughts = Vec::new();
+
+					for part in parts {
+						match part {
+							genai::chat::ContentPart::ToolCall(tc) => extracted_tool_calls.push(tc),
+							genai::chat::ContentPart::ThoughtSignature(t) => extracted_thoughts.push(t),
+							_ => {}
+						}
+					}
+
+					if !extracted_tool_calls.is_empty() {
+						println!("\nCaptured Tool Calls:");
+						for tool_call in &extracted_tool_calls {
+							println!("- Function: {}", tool_call.fn_name);
+							println!("  Arguments: {}", tool_call.fn_arguments);
+						}
+						tool_calls = extracted_tool_calls;
+					}
+
+					if !extracted_thoughts.is_empty() {
+						captured_thoughts = Some(extracted_thoughts);
 					}
 				}
 			}
@@ -107,7 +140,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	);
 
 	// Add both the tool calls and response to chat history
-	let chat_req = chat_req.append_message(tool_calls).append_message(tool_response);
+	// Note: For Gemini 3, we MUST include the thoughtSignature in the history if it was generated.
+	let mut assistant_msg = ChatMessage::from(tool_calls);
+	if let Some(thoughts) = captured_thoughts {
+		// We need to insert the thought at the beginning.
+		// MessageContent wraps Vec<ContentPart>, but doesn't expose insert.
+		// We can convert to Vec, insert, and convert back.
+		let mut parts = assistant_msg.content.into_parts();
+		for thought in thoughts.into_iter().rev() {
+			parts.insert(0, genai::chat::ContentPart::ThoughtSignature(thought));
+		}
+		assistant_msg.content = genai::chat::MessageContent::from_parts(parts);
+	}
+	let chat_req = chat_req.append_message(assistant_msg).append_message(tool_response);
 
 	// Get final streaming response
 	let chat_options = ChatOptions::default();

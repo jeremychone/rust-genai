@@ -66,7 +66,7 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_resolver_auth_ok() -> TestResult<()> {
-	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("ZHIPU_API_KEY")).await
+	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("ZAI_API_KEY")).await
 }
 
 // endregion: --- Resolver Tests
@@ -75,7 +75,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Zhipu, "glm-z1-flash").await
+	common_tests::common_test_list_models(AdapterKind::Zai, "glm-z1-flash").await
 }
 
 // endregion: --- List

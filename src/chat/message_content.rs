@@ -1,5 +1,5 @@
 /// Note: MessageContent is used for ChatRequest and ChatResponse.
-use crate::chat::{ContentPart, ToolCall, ToolResponse};
+use crate::chat::{Binary, ContentPart, ToolCall, ToolResponse};
 use serde::{Deserialize, Serialize};
 
 /// Message content container used in ChatRequest and ChatResponse.
@@ -47,6 +47,29 @@ impl MessageContent {
 		self.parts.push(part.into());
 	}
 
+	/// Insert one part at the given index (mutating).
+	pub fn insert(&mut self, index: usize, part: impl Into<ContentPart>) {
+		self.parts.insert(index, part.into());
+	}
+
+	/// Prepend one part to the beginning (mutating).
+	pub fn prepend(&mut self, part: impl Into<ContentPart>) {
+		self.parts.insert(0, part.into());
+	}
+
+	/// Prepend multiple parts while preserving their original order.
+	pub fn extend_front<I>(&mut self, iter: I)
+	where
+		I: IntoIterator<Item = ContentPart>,
+	{
+		// Collect then insert in reverse so that the first element in `iter`
+		// ends up closest to the front after all insertions.
+		let collected: Vec<ContentPart> = iter.into_iter().collect();
+		for part in collected.into_iter().rev() {
+			self.parts.insert(0, part);
+		}
+	}
+
 	/// Extend with an iterator of parts, returning self.
 	pub fn extended<I>(mut self, iter: I) -> Self
 	where
@@ -60,6 +83,15 @@ impl MessageContent {
 impl Extend<ContentPart> for MessageContent {
 	fn extend<T: IntoIterator<Item = ContentPart>>(&mut self, iter: T) {
 		self.parts.extend(iter);
+	}
+}
+
+/// Computed accessors
+impl MessageContent {
+	/// Returns an approximate in-memory size of this `MessageContent`, in bytes,
+	/// computed as the sum of the sizes of all parts.
+	pub fn size(&self) -> usize {
+		self.parts.iter().map(|p| p.size()).sum()
 	}
 }
 
@@ -124,6 +156,14 @@ impl MessageContent {
 	/// Consume and return all text parts as owned Strings.
 	pub fn into_texts(self) -> Vec<String> {
 		self.parts.into_iter().filter_map(|p| p.into_text()).collect()
+	}
+
+	pub fn binaries(&self) -> Vec<&Binary> {
+		self.parts.iter().filter_map(|p| p.as_binary()).collect()
+	}
+
+	pub fn into_binaries(self) -> Vec<Binary> {
+		self.parts.into_iter().filter_map(|p| p.into_binary()).collect()
 	}
 
 	/// Return references to all ToolCall parts.
@@ -222,9 +262,7 @@ impl MessageContent {
 
 		let mut combined = String::new();
 		for text in texts {
-			if !combined.is_empty() {
-				support::combine_text_with_empty_line(&mut combined, text);
-			}
+			support::combine_text_with_empty_line(&mut combined, text);
 		}
 		Some(combined)
 	}
@@ -268,12 +306,6 @@ impl MessageContent {
 	/// True if at least one part is a ToolResponse.
 	pub fn contains_tool_response(&self) -> bool {
 		self.parts.iter().any(|p| p.is_tool_response())
-	}
-
-	/// Returns an approximate in-memory size of this `MessageContent`, in bytes,
-	/// computed as the sum of the sizes of all content parts.
-	pub fn size(&self) -> usize {
-		self.parts.iter().map(|p| p.size()).sum()
 	}
 }
 
@@ -319,6 +351,20 @@ impl From<ToolResponse> for MessageContent {
 	}
 }
 
+impl From<ContentPart> for MessageContent {
+	fn from(part: ContentPart) -> Self {
+		Self { parts: vec![part] }
+	}
+}
+
+impl From<Binary> for MessageContent {
+	fn from(bin: Binary) -> Self {
+		Self {
+			parts: vec![bin.into()],
+		}
+	}
+}
+
 impl From<Vec<ContentPart>> for MessageContent {
 	fn from(parts: Vec<ContentPart>) -> Self {
 		Self { parts }
@@ -326,3 +372,58 @@ impl From<Vec<ContentPart>> for MessageContent {
 }
 
 // endregion: --- Froms
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_message_content_joined_texts_empty() {
+		assert_eq!(MessageContent::from_parts(vec![]).joined_texts(), None);
+	}
+
+	#[test]
+	fn test_message_content_joined_texts_single_part() {
+		assert_eq!(
+			MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).joined_texts(),
+			Some("Hello".to_string())
+		);
+	}
+
+	#[test]
+	fn test_message_content_joined_texts_two_parts() {
+		assert_eq!(
+			MessageContent::from_parts(vec![
+				ContentPart::Text("Hello".to_string()),
+				ContentPart::Text("World".to_string()),
+			])
+			.joined_texts(),
+			Some("Hello\n\nWorld".to_string())
+		);
+	}
+
+	#[test]
+	fn test_message_content_into_joined_texts_empty() {
+		assert_eq!(MessageContent::from_parts(vec![]).into_joined_texts(), None);
+	}
+
+	#[test]
+	fn test_message_content_into_joined_texts_single_part() {
+		assert_eq!(
+			MessageContent::from_parts(vec![ContentPart::Text("Hello".to_string())]).into_joined_texts(),
+			Some("Hello".to_string())
+		);
+	}
+
+	#[test]
+	fn test_message_content_into_joined_texts_two_parts() {
+		assert_eq!(
+			MessageContent::from_parts(vec![
+				ContentPart::Text("Hello".to_string()),
+				ContentPart::Text("World".to_string()),
+			])
+			.into_joined_texts(),
+			Some("Hello\n\nWorld".to_string())
+		);
+	}
+}

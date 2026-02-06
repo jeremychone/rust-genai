@@ -56,15 +56,6 @@ impl ModelName {
 		Self::split_as_namespace_and_name(self.as_str())
 	}
 
-	/// Backward compatibility - returns `(name, namespace)`
-	/// e.g.:
-	/// `openai::gpt4.1` → ("gpt4.1", Some("openai"))
-	/// `gpt4.1`         → ("gpt4.1", None)
-	pub fn as_model_name_and_namespace(&self) -> (&str, Option<&str>) {
-		let (ns, name) = Self::split_as_namespace_and_name(self.as_str());
-		(name, ns)
-	}
-
 	/// e.g.:
 	/// `openai::gpt4.1` → (Some("openai"), "gpt4.1")
 	/// `gpt4.1`         → (None, "gpt4.1")
@@ -76,12 +67,6 @@ impl ModelName {
 		} else {
 			(None, model)
 		}
-	}
-
-	/// Backward compatibility - static method that returns `(name, Option<namespace>)`
-	pub fn model_name_and_namespace(model: &str) -> (&str, Option<&str>) {
-		let (ns, name) = Self::split_as_namespace_and_name(model);
-		(name, ns)
 	}
 }
 

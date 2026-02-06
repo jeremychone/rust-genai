@@ -18,6 +18,7 @@ pub struct GeminiAdapter;
 // Note: Those model names are just informative, as the Gemini AdapterKind is selected on `startsWith("gemini")`
 const MODELS: &[&str] = &[
 	//
+	"gemini-3-pro-preview",
 	"gemini-2.5-pro",
 	"gemini-2.5-flash",
 	"gemini-2.5-flash-lite",
@@ -28,6 +29,25 @@ const REASONING_ZERO: u32 = 0;
 const REASONING_LOW: u32 = 1000;
 const REASONING_MEDIUM: u32 = 8000;
 const REASONING_HIGH: u32 = 24000;
+
+/// Important
+/// - For now Low and Minimal aare the same for geminia
+/// -
+fn insert_gemini_thinking_budget_value(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
+	// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
+	let budget = match effort {
+		ReasoningEffort::None => None,
+		ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
+		ReasoningEffort::Medium => Some(REASONING_MEDIUM),
+		ReasoningEffort::High => Some(REASONING_HIGH),
+		ReasoningEffort::Budget(budget) => Some(*budget),
+	};
+
+	if let Some(budget) = budget {
+		payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
+	}
+	Ok(())
+}
 
 // curl \
 //   -H 'Content-Type: application/json' \
@@ -57,7 +77,7 @@ impl Adapter for GeminiAdapter {
 	///       this will return the URL without the API_KEY in it. The API_KEY will need to be added by the caller.
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
 		let base_url = endpoint.base_url();
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 		let url = match service_type {
 			ServiceType::Chat => format!("{base_url}models/{model_name}:generateContent"),
 			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent"),
@@ -73,7 +93,7 @@ impl Adapter for GeminiAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { endpoint, auth, model } = target;
-		let (model_name, _) = model.model_name.as_model_name_and_namespace();
+		let (_, model_name) = model.model_name.namespace_and_name();
 
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
@@ -82,16 +102,18 @@ impl Adapter for GeminiAdapter {
 		let headers = Headers::from(("x-goog-api-key".to_string(), api_key.to_string()));
 
 		// -- Reasoning Budget
-		let (provider_model_name, reasoning_budget) = match (model_name, options_set.reasoning_effort()) {
-			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
+		let (provider_model_name, computed_reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
+			// No explicity reasoning_effort, try to infer from model name suffix (supports -zero)
 			(model, None) => {
 				// let model_name: &str = &model.model_name;
 				if let Some((prefix, last)) = model_name.rsplit_once('-') {
 					let reasoning = match last {
-						"zero" => Some(REASONING_ZERO),
-						"low" => Some(REASONING_LOW),
-						"medium" => Some(REASONING_MEDIUM),
-						"high" => Some(REASONING_HIGH),
+						// 'zero' is a gemini special
+						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
+						"none" => Some(ReasoningEffort::None),
+						"low" | "minimal" => Some(ReasoningEffort::Low),
+						"medium" => Some(ReasoningEffort::Medium),
+						"high" => Some(ReasoningEffort::High),
 						_ => None,
 					};
 					// create the model name if there was a `-..` reasoning suffix
@@ -102,19 +124,8 @@ impl Adapter for GeminiAdapter {
 					(model, None)
 				}
 			}
-			// If reasoning effort, turn the low, medium, budget ones into Budget
-			(model, Some(effort)) => {
-				let effort = match effort {
-					// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
-					ReasoningEffort::None => 0, // No reasoning for None
-					ReasoningEffort::Minimal => REASONING_LOW,
-					ReasoningEffort::Low => REASONING_LOW,
-					ReasoningEffort::Medium => REASONING_MEDIUM,
-					ReasoningEffort::High => REASONING_HIGH,
-					ReasoningEffort::Budget(budget) => *budget,
-				};
-				(model, Some(effort))
-			}
+			// TOOD: make it more elegant
+			(model, Some(effort)) => (model, Some(effort.clone())),
 		};
 
 		// -- parts
@@ -130,8 +141,28 @@ impl Adapter for GeminiAdapter {
 		});
 
 		// -- Set the reasoning effort
-		if let Some(budget) = reasoning_budget {
-			payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
+		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
+			// -- For gemini-3 use the thinkingLevel if Low or High (does not support medium for now)
+			if provider_model_name.contains("gemini-3") {
+				match computed_reasoning_effort {
+					ReasoningEffort::Low | ReasoningEffort::Minimal => {
+						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "LOW")?;
+					}
+					ReasoningEffort::High => {
+						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "HIGH")?;
+					}
+					// Fallback on thinkingBudget
+					other => {
+						insert_gemini_thinking_budget_value(&mut payload, &other)?;
+					}
+				}
+			}
+			// -- Otherwise, Do thinking budget
+			else {
+				insert_gemini_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
+			}
+			// -- Always include thoughts when reasoning effort is set since you are already paying for them
+			payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
 		}
 
 		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
@@ -164,7 +195,7 @@ impl Adapter for GeminiAdapter {
 				}
 				true
 			});
-			payload.x_insert("/generationConfig/responseSchema", schema)?;
+			payload.x_insert("/generationConfig/responseJsonSchema", schema)?;
 		}
 
 		// -- Add supported ChatOptions
@@ -193,11 +224,9 @@ impl Adapter for GeminiAdapter {
 	fn to_chat_response(
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		options_set: ChatOptionsSet<'_, '_>,
+		_options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
-
-		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 
 		// -- Capture the provider_model_iden
 		// TODO: Need to be implemented (if available), for now, just clone model_iden
@@ -209,22 +238,56 @@ impl Adapter for GeminiAdapter {
 			usage,
 		} = gemini_response;
 
-		// FIXME: Needs to take the content list
-		let mut content: MessageContent = MessageContent::default();
+		let mut thoughts: Vec<String> = Vec::new();
+		let mut reasonings: Vec<String> = Vec::new();
+		let mut texts: Vec<String> = Vec::new();
+		let mut tool_calls: Vec<ToolCall> = Vec::new();
+
 		for g_item in gemini_content {
 			match g_item {
-				GeminiChatContent::Text(text) => content.push(text),
-				GeminiChatContent::ToolCall(tool_call) => content.push(tool_call),
+				GeminiChatContent::Text(text) => texts.push(text),
+				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
+				GeminiChatContent::ThoughtSignature(thought) => thoughts.push(thought),
+				GeminiChatContent::Reasoning(reasoning_text) => reasonings.push(reasoning_text),
 			}
 		}
 
+		let thought_signatures_for_call = (!thoughts.is_empty() && !tool_calls.is_empty()).then(|| thoughts.clone());
+		let mut parts: Vec<ContentPart> = thoughts.into_iter().map(ContentPart::ThoughtSignature).collect();
+
+		if let Some(signatures) = thought_signatures_for_call
+			&& let Some(first_call) = tool_calls.first_mut()
+		{
+			first_call.thought_signatures = Some(signatures);
+		}
+
+		if !texts.is_empty() {
+			let total_len: usize = texts.iter().map(|t| t.len()).sum();
+			let mut combined_text = String::with_capacity(total_len);
+			for text in texts {
+				combined_text.push_str(&text);
+			}
+			if !combined_text.is_empty() {
+				parts.push(ContentPart::Text(combined_text));
+			}
+		}
+		let mut reasoning_text = String::new();
+		if !reasonings.is_empty() {
+			for reasoning in &reasonings {
+				reasoning_text.push_str(reasoning);
+			}
+		}
+
+		parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
+		let content = MessageContent::from_parts(parts);
+
 		Ok(ChatResponse {
 			content,
-			reasoning_content: None,
+			reasoning_content: Some(reasoning_text),
 			model_iden,
 			provider_model_iden,
 			usage,
-			captured_raw_body,
+			captured_raw_body: None, // Set by the client exec_chat
 		})
 	}
 
@@ -294,6 +357,36 @@ impl GeminiAdapter {
 		};
 
 		for mut part in parts {
+			// -- Capture eventual thought signature
+			{
+				if let Some(thought_signature) = part
+					.x_take::<Value>("thoughtSignature")
+					.ok()
+					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
+				{
+					content.push(GeminiChatContent::ThoughtSignature(thought_signature));
+				}
+				// Note: sometime the thought is in "thought" (undocumented, but observed in some cases or older models?)
+				//       But for Gemini 3 it is thoughtSignature. Keeping this just in case or for backward compat if it was used.
+				//       Actually, let's stick to thoughtSignature as per docs, but if we see "thought" we might want to capture it too.
+				//       Let's check for "thought" if "thoughtSignature" was not found.
+				else if let Some(thought) = part
+					.x_take::<Value>("thought")
+					.ok()
+					.and_then(|v| if let Value::Bool(v) = v { Some(v) } else { None })
+				{
+					if thought {
+						if let Some(val) = part
+							.x_take::<Value>("text")
+							.ok()
+							.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
+						{
+							content.push(GeminiChatContent::Reasoning(val));
+						}
+					}
+				}
+			}
+
 			// -- Capture eventual function call
 			if let Ok(fn_call_value) = part.x_take::<Value>("functionCall") {
 				let tool_call = ToolCall {
@@ -461,8 +554,10 @@ impl GeminiAdapter {
 									}
 								}));
 							}
-							ContentPart::ThoughtSignature(_) => {
-								// Thought signatures are not directly supported by Gemini, skip for now
+							ContentPart::ThoughtSignature(thought) => {
+								parts_values.push(json!({
+									"thoughtSignature": thought
+								}));
 							}
 						}
 					}
@@ -471,22 +566,70 @@ impl GeminiAdapter {
 				}
 				ChatRole::Assistant => {
 					let mut parts_values: Vec<Value> = Vec::new();
+					let mut pending_thought: Option<String> = None;
+					let mut is_first_tool_call = true;
+
 					for part in msg.content {
 						match part {
-							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
+							ContentPart::Text(text) => {
+								if let Some(thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": thought}));
+								}
+								parts_values.push(json!({"text": text}));
+							}
 							ContentPart::ToolCall(tool_call) => {
-								parts_values.push(json!({
-									"functionCall": {
+								let mut part_obj = serde_json::Map::new();
+								part_obj.insert(
+									"functionCall".to_string(),
+									json!({
 										"name": tool_call.fn_name,
 										"args": tool_call.fn_arguments,
+									}),
+								);
+
+								match pending_thought.take() {
+									Some(thought) => {
+										// Inject thoughtSignature alongside functionCall in the same Part object
+										part_obj.insert("thoughtSignature".to_string(), json!(thought));
 									}
-								}));
+									None => {
+										// For Gemini 3 models, if there haven't been any thoughts, and this is
+										// still the first tool call, we are required to inject a special flag.
+										// See: https://ai.google.dev/gemini-api/docs/thought-signatures#faqs
+										let is_gemini_3 = model_iden.model_name.contains("gemini-3");
+										if is_gemini_3 && is_first_tool_call {
+											part_obj.insert(
+												"thoughtSignature".to_string(),
+												json!("skip_thought_signature_validator"),
+											);
+										}
+									}
+								}
+
+								parts_values.push(Value::Object(part_obj));
+								is_first_tool_call = false;
+							}
+							ContentPart::ThoughtSignature(thought) => {
+								if let Some(prev_thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": prev_thought}));
+								}
+								pending_thought = Some(thought);
 							}
 							// Ignore unsupported parts for Assistant role
-							ContentPart::Binary(_) => {}
-							ContentPart::ToolResponse(_) => {}
-							ContentPart::ThoughtSignature(_) => {}
+							ContentPart::Binary(_) => {
+								if let Some(thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": thought}));
+								}
+							}
+							ContentPart::ToolResponse(_) => {
+								if let Some(thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": thought}));
+								}
+							}
 						}
+					}
+					if let Some(thought) = pending_thought {
+						parts_values.push(json!({"thoughtSignature": thought}));
 					}
 					if !parts_values.is_empty() {
 						contents.push(json!({"role": "model", "parts": parts_values}));
@@ -515,10 +658,15 @@ impl GeminiAdapter {
 									}
 								}));
 							}
+							ContentPart::ThoughtSignature(thought) => {
+								parts_values.push(json!({
+									"thoughtSignature": thought
+								}));
+							}
 							_ => {
 								return Err(Error::MessageContentTypeNotSupported {
 									model_iden: model_iden.clone(),
-									cause: "ChatRole::Tool can only contain ToolCall or ToolResponse content parts",
+									cause: "ChatRole::Tool can only contain ToolCall, ToolResponse, or Thought content parts",
 								});
 							}
 						}
@@ -587,6 +735,8 @@ pub(super) struct GeminiChatResponse {
 pub(super) enum GeminiChatContent {
 	Text(String),
 	ToolCall(ToolCall),
+	Reasoning(String),
+	ThoughtSignature(String),
 }
 
 struct GeminiChatRequestParts {

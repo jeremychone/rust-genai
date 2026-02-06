@@ -18,18 +18,16 @@ fn get_expected_models() -> HashMap<String, Vec<String>> {
 		],
 	);
 
-	// Z.AI models (from src/adapter/adapters/zai/adapter_impl.rs)
+	// Z.AI models (from upstream v0.6.0-alpha.2 src/adapter/adapters/zai/adapter_impl.rs)
+	// Note: Adapter is now named "Zai" (not "ZAi")
 	expected.insert(
-		"ZAi".to_string(),
+		"Zai".to_string(),
 		vec![
 			"glm-4.6".to_string(),
 			"glm-4.5".to_string(),
-			"glm-4".to_string(),
-			"glm-4.1v".to_string(),
 			"glm-4.5v".to_string(),
-			"vidu".to_string(),
-			"vidu-q1".to_string(),
-			"vidu-2.0".to_string(),
+			"glm-4-plus".to_string(),
+			"glm-4-flash".to_string(),
 		],
 	);
 
@@ -57,7 +55,7 @@ async fn test_provider_model_lists() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::default();
 	let expected_models = get_expected_models();
 
-	println!("🔍 Verifying model lists match actual provider APIs...\n");
+	println!("Verifying model lists match actual provider APIs...\n");
 
 	let mut all_passed = true;
 
@@ -73,15 +71,15 @@ async fn test_provider_model_lists() -> Result<(), Box<dyn std::error::Error>> {
 
 					// Check if the model resolves to the expected adapter
 					if actual_adapter == provider {
-						println!("  ✅ {} -> {}", model, actual_adapter);
+						println!("  [OK] {} -> {}", model, actual_adapter);
 					} else {
-						println!("  ❌ {} -> {} (expected {})", model, actual_adapter, provider);
+						println!("  [FAIL] {} -> {} (expected {})", model, actual_adapter, provider);
 						provider_passed = false;
 						all_passed = false;
 					}
 				}
 				Err(e) => {
-					println!("  ❌ {} -> ERROR: {}", model, e);
+					println!("  [FAIL] {} -> ERROR: {}", model, e);
 					provider_passed = false;
 					all_passed = false;
 				}
@@ -89,17 +87,17 @@ async fn test_provider_model_lists() -> Result<(), Box<dyn std::error::Error>> {
 		}
 
 		if provider_passed {
-			println!("  ✓ All {} models resolved correctly\n", provider);
+			println!("  All {} models resolved correctly\n", provider);
 		} else {
-			println!("  ✗ Some {} models failed to resolve\n", provider);
+			println!("  Some {} models failed to resolve\n", provider);
 		}
 	}
 
-	println!("📊 Summary:");
+	println!("Summary:");
 	if all_passed {
-		println!("✅ All model lists verified successfully!");
+		println!("All model lists verified successfully!");
 	} else {
-		println!("❌ Some model lists need updating");
+		println!("Some model lists need updating");
 		panic!("Model lists do not match actual provider APIs");
 	}
 
@@ -111,22 +109,21 @@ async fn test_provider_model_lists() -> Result<(), Box<dyn std::error::Error>> {
 async fn test_model_resolution_edge_cases() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::default();
 
-	println!("🧪 Testing edge cases and conflicts...\n");
+	println!("Testing edge cases and conflicts...\n");
 
 	// Test that Z.AI models work correctly
+	// Note: Adapter is now "Zai" (not "ZAi") from upstream
 	let test_cases = vec![
-		// Z.AI models should resolve to ZAi
-		("glm-4.6", "ZAi"),
-		("glm-4.5", "ZAi"),
-		("glm-4", "ZAi"),
-		("vidu", "ZAi"),
-		("vidu-q1", "ZAi"),
+		// Z.AI models should resolve to Zai
+		("glm-4.6", "Zai"),
+		("glm-4.5", "Zai"),
+		("glm-4-plus", "Zai"),
 		// DeepSeek models
 		("deepseek-coder", "DeepSeek"),
 		("deepseek-reasoner", "DeepSeek"),
 		("deepseek-chat", "DeepSeek"),
 		// Model namespace
-		("zai::glm-4.6", "ZAi"),
+		("zai::glm-4.6", "Zai"),
 		("openai::gpt-4o", "OpenAI"),
 		("cerebras::llama3.1-8b", "Cerebras"),
 	];
@@ -138,20 +135,20 @@ async fn test_model_resolution_edge_cases() -> Result<(), Box<dyn std::error::Er
 			Ok(target) => {
 				let actual_adapter = format!("{:?}", target.model.adapter_kind);
 				if actual_adapter == expected_adapter {
-					println!("  ✅ {} -> {}", model, actual_adapter);
+					println!("  [OK] {} -> {}", model, actual_adapter);
 				} else {
-					println!("  ❌ {} -> {} (expected {})", model, actual_adapter, expected_adapter);
+					println!("  [FAIL] {} -> {} (expected {})", model, actual_adapter, expected_adapter);
 					all_passed = false;
 				}
 			}
 			Err(e) => {
-				println!("  ❌ {} -> ERROR: {}", model, e);
+				println!("  [FAIL] {} -> ERROR: {}", model, e);
 				all_passed = false;
 			}
 		}
 	}
 
-	println!("\n✨ Edge case tests completed!");
+	println!("\nEdge case tests completed!");
 
 	assert!(all_passed, "Some edge cases failed");
 
@@ -163,7 +160,7 @@ async fn test_model_resolution_edge_cases() -> Result<(), Box<dyn std::error::Er
 async fn test_openrouter_model_patterns() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::default();
 
-	println!("🌐 Testing OpenRouter model patterns...\n");
+	println!("Testing OpenRouter model patterns...\n");
 
 	// These should resolve to OpenRouter (non-namespaced with /)
 	let openrouter_patterns = vec![
@@ -178,20 +175,20 @@ async fn test_openrouter_model_patterns() -> Result<(), Box<dyn std::error::Erro
 			Ok(target) => {
 				let adapter = format!("{:?}", target.model.adapter_kind);
 				if adapter == "OpenRouter" {
-					println!("  ✅ {} -> {}", model, adapter);
+					println!("  [OK] {} -> {}", model, adapter);
 				} else {
-					println!("  ❌ {} -> {} (expected OpenRouter)", model, adapter);
+					println!("  [FAIL] {} -> {} (expected OpenRouter)", model, adapter);
 					return Err(format!("OpenRouter pattern failed for {}", model).into());
 				}
 			}
 			Err(e) => {
-				println!("  ❌ {} -> ERROR: {}", model, e);
+				println!("  [FAIL] {} -> ERROR: {}", model, e);
 				return Err(format!("Failed to resolve {}: {}", model, e).into());
 			}
 		}
 	}
 
-	println!("\n✅ OpenRouter patterns verified!");
+	println!("\nOpenRouter patterns verified!");
 
 	Ok(())
 }

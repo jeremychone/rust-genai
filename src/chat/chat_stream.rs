@@ -1,5 +1,5 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{MessageContent, ToolCall, Usage};
+use crate::chat::{ChatMessage, ContentPart, MessageContent, ToolCall, Usage};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
@@ -34,31 +34,27 @@ impl Stream for ChatStream {
 	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		let this = self.get_mut();
 
-		loop {
-			match Pin::new(&mut this.inter_stream).poll_next(cx) {
-				Poll::Ready(Some(Ok(event))) => {
-					let chat_event = match event {
-						InterStreamEvent::Start => ChatStreamEvent::Start,
-						InterStreamEvent::Chunk(content) => ChatStreamEvent::Chunk(StreamChunk { content }),
-						InterStreamEvent::ReasoningChunk(content) => {
-							ChatStreamEvent::ReasoningChunk(StreamChunk { content })
-						}
-						InterStreamEvent::ToolCallChunk(tool_call) => {
-							ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
-						}
-						InterStreamEvent::ThoughtSignatureChunk(_signature) => {
-							// Thought signatures are internal metadata, not streamed to users
-							// Skip this event and continue polling
-							continue;
-						}
-						InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
-					};
-					return Poll::Ready(Some(Ok(chat_event)));
-				}
-				Poll::Ready(Some(Err(e))) => return Poll::Ready(Some(Err(e))),
-				Poll::Ready(None) => return Poll::Ready(None),
-				Poll::Pending => return Poll::Pending,
+		match Pin::new(&mut this.inter_stream).poll_next(cx) {
+			Poll::Ready(Some(Ok(event))) => {
+				let chat_event = match event {
+					InterStreamEvent::Start => ChatStreamEvent::Start,
+					InterStreamEvent::Chunk(content) => ChatStreamEvent::Chunk(StreamChunk { content }),
+					InterStreamEvent::ReasoningChunk(content) => {
+						ChatStreamEvent::ReasoningChunk(StreamChunk { content })
+					}
+					InterStreamEvent::ThoughtSignatureChunk(content) => {
+						ChatStreamEvent::ThoughtSignatureChunk(StreamChunk { content })
+					}
+					InterStreamEvent::ToolCallChunk(tool_call) => {
+						ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
+					}
+					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
+				};
+				Poll::Ready(Some(Ok(chat_event)))
 			}
+			Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
+			Poll::Ready(None) => Poll::Ready(None),
+			Poll::Pending => Poll::Pending,
 		}
 	}
 }
@@ -78,6 +74,9 @@ pub enum ChatStreamEvent {
 
 	/// Reasoning content chunk.
 	ReasoningChunk(StreamChunk),
+
+	/// Thought signature content chunk.
+	ThoughtSignatureChunk(StreamChunk),
 
 	/// Tool-call chunk.
 	ToolCallChunk(ToolChunk),
@@ -121,13 +120,42 @@ pub struct StreamEnd {
 impl From<InterStreamEnd> for StreamEnd {
 	fn from(inter_end: InterStreamEnd) -> Self {
 		let captured_text_content = inter_end.captured_text_content;
-		let captured_tool_calls = inter_end.captured_tool_calls;
+		let mut captured_tool_calls = inter_end.captured_tool_calls;
 
 		// -- create public captured_content
+		// Ordering policy: ThoughtSignature -> Text -> ToolCall
+		// This matches provider expectations (e.g., Gemini 3 requires thought first).
 		let mut captured_content: Option<MessageContent> = None;
+		if let Some(captured_thoughts) = inter_end.captured_thought_signatures {
+			let thoughts_content = captured_thoughts
+				.into_iter()
+				.map(ContentPart::ThoughtSignature)
+				.collect::<Vec<_>>();
+			// Also attach thoughts to the first tool call so that
+			// ChatMessage::from(Vec<ToolCall>) can auto-prepend them.
+			if let Some(tool_calls) = captured_tool_calls.as_mut()
+				&& let Some(first_call) = tool_calls.first_mut()
+			{
+				first_call.thought_signatures = Some(
+					thoughts_content
+						.iter()
+						.filter_map(|p| p.as_thought_signature().map(|s| s.to_string()))
+						.collect(),
+				);
+			}
+			if let Some(existing_content) = &mut captured_content {
+				existing_content.extend_front(thoughts_content);
+			} else {
+				captured_content = Some(MessageContent::from_parts(thoughts_content));
+			}
+		}
 		if let Some(captured_text_content) = captured_text_content {
 			// This `captured_text_content` is the concatenation of all text chunks received.
-			captured_content = Some(MessageContent::from_text(captured_text_content));
+			if let Some(existing_content) = &mut captured_content {
+				existing_content.extend(MessageContent::from_text(captured_text_content));
+			} else {
+				captured_content = Some(MessageContent::from_text(captured_text_content));
+			}
 		}
 		if let Some(captured_tool_calls) = captured_tool_calls {
 			if let Some(existing_content) = &mut captured_content {
@@ -185,6 +213,53 @@ impl StreamEnd {
 	pub fn captured_into_tool_calls(self) -> Option<Vec<ToolCall>> {
 		let captured_content = self.captured_content?;
 		Some(captured_content.into_tool_calls())
+	}
+
+	/// Returns all captured thought signatures, if any.
+	pub fn captured_thought_signatures(&self) -> Option<Vec<&str>> {
+		let captured_content = self.captured_content.as_ref()?;
+		Some(
+			captured_content
+				.parts()
+				.iter()
+				.filter_map(|p| p.as_thought_signature())
+				.collect(),
+		)
+	}
+
+	/// Consumes `self` and returns all captured thought signatures, if any.
+	pub fn captured_into_thought_signatures(self) -> Option<Vec<String>> {
+		let captured_content = self.captured_content?;
+		Some(
+			captured_content
+				.into_parts()
+				.into_iter()
+				.filter_map(|p| p.into_thought_signature())
+				.collect(),
+		)
+	}
+
+	/// Convenience: build an assistant message for a tool-use handoff that places
+	/// thought signatures (if any) before tool calls. Returns None if no tool calls
+	/// were captured.
+	pub fn into_assistant_message_for_tool_use(self) -> Option<ChatMessage> {
+		let content = self.captured_content?;
+		let mut thought_signatures: Vec<String> = Vec::new();
+		let mut tool_calls: Vec<ToolCall> = Vec::new();
+		for part in content.into_parts() {
+			match part {
+				ContentPart::ThoughtSignature(t) => thought_signatures.push(t),
+				ContentPart::ToolCall(tc) => tool_calls.push(tc),
+				_ => {}
+			}
+		}
+		if tool_calls.is_empty() {
+			return None;
+		}
+		Some(ChatMessage::assistant_tool_calls_with_thoughts(
+			tool_calls,
+			thought_signatures,
+		))
 	}
 }
 

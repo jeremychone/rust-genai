@@ -12,7 +12,7 @@ mod error;
 // -- Flatten
 pub use client::*;
 pub use common::*;
-pub use error::{Error, Result};
+pub use error::{BoxError, Error, Result};
 
 // -- Public Modules
 pub mod adapter;

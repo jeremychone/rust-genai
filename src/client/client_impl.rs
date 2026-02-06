@@ -1,5 +1,6 @@
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::client::ModelSpec;
 use crate::embed::{EmbedOptions, EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::AuthData;
 use crate::{Client, Error, ModelIden, Result, ServiceTarget};
@@ -41,26 +42,33 @@ impl Client {
 		Ok(target.model)
 	}
 
-	/// Resolves the service target (endpoint, auth, and model) for the given model name.
-	pub async fn resolve_service_target(&self, model_name: &str) -> Result<ServiceTarget> {
-		let model = self.default_model(model_name)?;
-		self.config().resolve_service_target(model).await
+	/// Resolves the service target (endpoint, auth, and model) for the given model.
+	///
+	/// Accepts any type that implements `Into<ModelSpec>`:
+	/// - `&str` or `String`: Model name with full inference
+	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
+	pub async fn resolve_service_target(&self, model: impl Into<ModelSpec>) -> Result<ServiceTarget> {
+		self.config().resolve_model_spec(model.into()).await
 	}
 
 	/// Sends a chat request and returns the full response.
+	///
+	/// Accepts any type that implements `Into<ModelSpec>`:
+	/// - `&str` or `String`: Model name with full inference
+	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
 	pub async fn exec_chat(
 		&self,
-		model: &str,
+		model: impl Into<ModelSpec>,
 		chat_req: ChatRequest,
-		// options not implemented yet
 		options: Option<&ChatOptions>,
 	) -> Result<ChatResponse> {
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_options());
 
-		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model).await?;
+		let target = self.config().resolve_model_spec(model.into()).await?;
 		let model = target.model.clone();
 		let auth_data = target.auth.clone();
 
@@ -69,6 +77,10 @@ impl Client {
 			mut headers,
 			payload,
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
+
+		if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
+			headers.merge_with(&extra_headers);
+		}
 
 		if let AuthData::RequestOverride {
 			url: override_url,
@@ -88,24 +100,46 @@ impl Client {
 				webc_error,
 			})?;
 
-		let chat_res = AdapterDispatcher::to_chat_response(model, web_res, options_set)?;
+		// Note: here we capture/clone the raw body if set in the options_set
+		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| web_res.body.clone());
 
-		Ok(chat_res)
+		match AdapterDispatcher::to_chat_response(model.clone(), web_res, options_set) {
+			Ok(mut chat_res) => {
+				chat_res.captured_raw_body = captured_raw_body;
+				Ok(chat_res)
+			}
+			Err(err) => {
+				let response_body = captured_raw_body.unwrap_or_else(|| {
+					"Raw response not captured. Use the ChatOptions.capturre_raw_body flag to see raw response in this error".into()
+				});
+				let err = Error::ChatResponseGeneration {
+					model_iden: model,
+					request_payload: Box::new(payload),
+					response_body: Box::new(response_body),
+					cause: err.to_string(),
+				};
+				Err(err)
+			}
+		}
 	}
 
 	/// Streams a chat response.
+	///
+	/// Accepts any type that implements `Into<ModelSpec>`:
+	/// - `&str` or `String`: Model name with full inference
+	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
 	pub async fn exec_chat_stream(
 		&self,
-		model: &str,
-		chat_req: ChatRequest, // options not implemented yet
+		model: impl Into<ModelSpec>,
+		chat_req: ChatRequest,
 		options: Option<&ChatOptions>,
 	) -> Result<ChatStreamResponse> {
 		let options_set = ChatOptionsSet::default()
 			.with_chat_options(options)
 			.with_client_options(self.config().chat_options());
 
-		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model).await?;
+		let target = self.config().resolve_model_spec(model.into()).await?;
 		let model = target.model.clone();
 		let auth_data = target.auth.clone();
 
@@ -114,6 +148,10 @@ impl Client {
 			mut headers,
 			payload,
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
+
+		if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
+			headers.merge_with(&extra_headers);
+		}
 
 		// TODO: Need to check this.
 		//       This was part of the 429c5cee2241dbef9f33699b9c91202233c22816 commit
@@ -141,9 +179,11 @@ impl Client {
 	}
 
 	/// Creates embeddings for a single input string.
+	///
+	/// Accepts any type that implements `Into<ModelSpec>` for the model parameter.
 	pub async fn embed(
 		&self,
-		model: &str,
+		model: impl Into<ModelSpec>,
 		input: impl Into<String>,
 		options: Option<&EmbedOptions>,
 	) -> Result<EmbedResponse> {
@@ -152,9 +192,11 @@ impl Client {
 	}
 
 	/// Creates embeddings for multiple input strings.
+	///
+	/// Accepts any type that implements `Into<ModelSpec>` for the model parameter.
 	pub async fn embed_batch(
 		&self,
-		model: &str,
+		model: impl Into<ModelSpec>,
 		inputs: Vec<String>,
 		options: Option<&EmbedOptions>,
 	) -> Result<EmbedResponse> {
@@ -163,9 +205,14 @@ impl Client {
 	}
 
 	/// Sends an embedding request and returns the response.
+	///
+	/// Accepts any type that implements `Into<ModelSpec>`:
+	/// - `&str` or `String`: Model name with full inference
+	/// - `ModelIden`: Explicit adapter, resolves auth/endpoint
+	/// - `ServiceTarget`: Uses directly, bypasses model mapping and auth resolution
 	pub async fn exec_embed(
 		&self,
-		model: &str,
+		model: impl Into<ModelSpec>,
 		embed_req: EmbedRequest,
 		options: Option<&EmbedOptions>,
 	) -> Result<EmbedResponse> {
@@ -173,8 +220,7 @@ impl Client {
 			.with_request_options(options)
 			.with_client_options(self.config().embed_options());
 
-		let model = self.default_model(model)?;
-		let target = self.config().resolve_service_target(model).await?;
+		let target = self.config().resolve_model_spec(model.into()).await?;
 		let model = target.model.clone();
 
 		let WebRequestData { headers, payload, url } =

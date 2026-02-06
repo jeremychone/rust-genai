@@ -360,9 +360,7 @@ impl AnthropicAdapter {
 		let completion_tokens: i32 = usage_value.x_take("output_tokens").ok().unwrap_or(0);
 
 		// Parse cache_creation breakdown if present (TTL-specific breakdown)
-		let cache_creation_details = usage_value
-			.get("cache_creation")
-			.and_then(parse_cache_creation_details);
+		let cache_creation_details = usage_value.get("cache_creation").and_then(parse_cache_creation_details);
 
 		// compute the prompt_tokens
 		let prompt_tokens = input_tokens + cache_creation_input_tokens + cache_read_input_tokens;

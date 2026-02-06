@@ -10,6 +10,8 @@ use std::task::{Context, Poll};
 
 use super::GeminiChatContent;
 
+use std::collections::VecDeque;
+
 pub struct GeminiStreamer {
 	inner: WebStream,
 	options: StreamerOptions,
@@ -18,6 +20,7 @@ pub struct GeminiStreamer {
 	/// Flag to not poll the EventSource after a MessageStop event.
 	done: bool,
 	captured_data: StreamerCapturedData,
+	pending_events: VecDeque<InterStreamEvent>,
 }
 
 impl GeminiStreamer {
@@ -27,6 +30,7 @@ impl GeminiStreamer {
 			done: false,
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
+			pending_events: VecDeque::new(),
 		}
 	}
 }
@@ -40,6 +44,11 @@ impl futures::Stream for GeminiStreamer {
 			return Poll::Ready(None);
 		}
 
+		// 1. Check if we have pending events
+		if let Some(event) = self.pending_events.pop_front() {
+			return Poll::Ready(Some(Ok(event)));
+		}
+
 		while let Poll::Ready(item) = Pin::new(&mut self.inner).poll_next(cx) {
 			match item {
 				Some(Ok(raw_message)) => {
@@ -47,18 +56,18 @@ impl futures::Stream for GeminiStreamer {
 					// - `[` document start
 					// - `{...}` block
 					// - `]` document end
-					let inter_event = match raw_message.as_str() {
-						"[" => InterStreamEvent::Start,
+					match raw_message.as_str() {
+						"[" => return Poll::Ready(Some(Ok(InterStreamEvent::Start))),
 						"]" => {
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: self.captured_data.usage.take(),
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
-								captured_thought_signatures: None,
+								captured_thought_signatures: self.captured_data.thought_signatures.take(),
 							};
 
-							InterStreamEvent::End(inter_stream_end)
+							return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
 						}
 						block_string => {
 							// -- Parse the block to JSON
@@ -91,16 +100,54 @@ impl futures::Stream for GeminiStreamer {
 							// -- Extract text and toolcall
 							// WARNING: Assume that only ONE tool call per message (or take the last one)
 							let mut stream_text_content: String = String::new();
+							let mut stream_reasoning_content: Option<String> = None;
 							let mut stream_tool_call: Option<ToolCall> = None;
+							let mut stream_thought: Option<String> = None;
+
 							for g_content_item in content {
 								match g_content_item {
+									GeminiChatContent::Reasoning(reasoning) => {
+										stream_reasoning_content = Some(reasoning)
+									}
 									GeminiChatContent::Text(text) => stream_text_content.push_str(&text),
 									GeminiChatContent::ToolCall(tool_call) => stream_tool_call = Some(tool_call),
+									GeminiChatContent::ThoughtSignature(thought) => stream_thought = Some(thought),
 								}
 							}
 
-							// -- Send Event
-							// WARNING: Assume only text or toolcall (not both on the same event)
+							// -- Queue Events
+							// Priority: Thought -> Text -> ToolCall
+
+							// 1. Thought
+							if let Some(thought) = stream_thought {
+								// Capture thought
+								match self.captured_data.thought_signatures {
+									Some(ref mut thoughts) => thoughts.push(thought.clone()),
+									None => self.captured_data.thought_signatures = Some(vec![thought.clone()]),
+								}
+
+								if self.options.capture_usage {
+									self.captured_data.usage = Some(usage.clone());
+								}
+
+								self.pending_events.push_back(InterStreamEvent::ThoughtSignatureChunk(thought));
+							}
+							if let Some(reasoning_content) = stream_reasoning_content {
+								// Capture reasoning content
+								if self.options.capture_content {
+									match self.captured_data.reasoning_content {
+										Some(ref mut rc) => rc.push_str(&reasoning_content),
+										None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
+									}
+								}
+								if self.options.capture_usage {
+									self.captured_data.usage = Some(usage.clone());
+								}
+								self.pending_events
+									.push_back(InterStreamEvent::ReasoningChunk(reasoning_content));
+							}
+
+							// 2. Text
 							if !stream_text_content.is_empty() {
 								// Capture content
 								if self.options.capture_content {
@@ -110,18 +157,15 @@ impl futures::Stream for GeminiStreamer {
 									}
 								}
 
-								// NOTE: Apparently in the Gemini API, all events have cumulative usage,
-								//       meaning each message seems to include the tokens for all previous streams.
-								//       Thus, we do not need to add it; we only need to replace captured_data.usage with the latest one.
-								//       See https://twitter.com/jeremychone/status/1813734565967802859 for potential additional information.
 								if self.options.capture_usage {
-									self.captured_data.usage = Some(usage);
+									self.captured_data.usage = Some(usage.clone());
 								}
 
-								InterStreamEvent::Chunk(stream_text_content)
+								self.pending_events.push_back(InterStreamEvent::Chunk(stream_text_content));
 							}
-							// tool call
-							else if let Some(tool_call) = stream_tool_call {
+
+							// 3. Tool Call
+							if let Some(tool_call) = stream_tool_call {
 								if self.options.capture_tool_calls {
 									match self.captured_data.tool_calls {
 										Some(ref mut tool_calls) => tool_calls.push(tool_call.clone()),
@@ -131,14 +175,15 @@ impl futures::Stream for GeminiStreamer {
 								if self.options.capture_usage {
 									self.captured_data.usage = Some(usage);
 								}
-								InterStreamEvent::ToolCallChunk(tool_call)
-							} else {
-								continue;
+								self.pending_events.push_back(InterStreamEvent::ToolCallChunk(tool_call));
+							}
+
+							// Return the first event if any
+							if let Some(event) = self.pending_events.pop_front() {
+								return Poll::Ready(Some(Ok(event)));
 							}
 						}
 					};
-
-					return Poll::Ready(Some(Ok(inter_event)));
 				}
 				Some(Err(err)) => {
 					tracing::error!("Gemini Adapter Stream Error: {}", err);

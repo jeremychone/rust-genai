@@ -2,10 +2,13 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
+use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 
 // "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite"
 // "gemini-2.5-flash-zero"
+const MODEL_GPRO_3: &str = "gemini-3-pro-preview";
+const MODEL_FLASH_3: &str = "gemini-3-flash-preview"; // pure gem, fast, cheap, and good!
 const MODEL: &str = "gemini-2.5-flash";
 const MODEL_NS: &str = "gemini::gemini-2.5-flash";
 
@@ -14,6 +17,16 @@ const MODEL_NS: &str = "gemini::gemini-2.5-flash";
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL, None).await
+}
+
+#[tokio::test]
+async fn test_chat_reasoning_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(
+		MODEL_GPRO_3,
+		ReasoningEffort::Low,
+		Some(Check::REASONING_USAGE | Check::REASONING_USAGE),
+	)
+	.await
 }
 
 #[tokio::test]
@@ -92,6 +105,11 @@ async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_binary_image_file_ok() -> TestResult<()> {
+	common_tests::common_test_chat_image_file_ok(MODEL).await
+}
+
+#[tokio::test]
 async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
 }
@@ -109,6 +127,74 @@ async fn test_tool_simple_ok() -> TestResult<()> {
 async fn test_tool_full_flow_ok() -> TestResult<()> {
 	common_tests::common_test_tool_full_flow_ok(MODEL).await
 }
+
+#[tokio::test]
+async fn test_tool_deterministic_history_gemini_3_ok() -> TestResult<()> {
+	use genai::chat::{ChatMessage, ChatRequest, Tool, ToolCall, ToolResponse};
+	use serde_json::json;
+
+	let client = genai::Client::default();
+
+	let weather_tool = Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city": { "type": "string" },
+			"unit": { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "unit"]
+	}));
+
+	// Pre-seed history with a "synthetic" tool call (missing thought signatures)
+	let messages = vec![
+		ChatMessage::user("What's the weather like in Paris?"),
+		ChatMessage::assistant(vec![ToolCall {
+			call_id: "call_123".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: json!({"city": "Paris", "unit": "C"}),
+			thought_signatures: None,
+		}]),
+		ChatMessage::from(ToolResponse::new(
+			"call_123".to_string(),
+			json!({"temperature": 15, "condition": "Cloudy"}).to_string(),
+		)),
+	];
+
+	let chat_req = ChatRequest::new(messages).with_tools(vec![weather_tool]);
+
+	// This verifies that the adapter correctly injects 'skip_thought_signature_validator'.
+	// (Otherwise Gemini 3 would return a 400 error.)
+	let chat_res = client.exec_chat(MODEL_GPRO_3, chat_req, None).await?;
+
+	assert!(
+		chat_res.first_text().is_some(),
+		"Expected a text response from the model"
+	);
+
+	Ok(())
+}
+
+// NOTE: Issue of this test is that it is pretty slow
+#[tokio::test]
+async fn test_tool_google_web_search_ok() -> TestResult<()> {
+	use genai::chat::{ChatRequest, Tool};
+	use serde_json::json;
+
+	// -- Fixtures & Setup
+	let client = genai::Client::default();
+	let web_search_tool = Tool::new("googleSearch").with_config(json!({}));
+	let chat_req =
+		ChatRequest::from_user("What is the latest version of Rust? (be concise)").append_tool(web_search_tool);
+
+	// Exec
+	let res = client.exec_chat(MODEL_FLASH_3, chat_req, None).await?;
+
+	// Check
+	let res_txt = res.content.into_first_text().ok_or("Should have result")?;
+	assert!(res_txt.contains("Rust"), "should contains 'Rust'");
+
+	Ok(())
+}
+
 // endregion: --- Tool Tests
 
 // region:    --- Resolver Tests

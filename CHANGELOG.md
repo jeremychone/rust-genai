@@ -1,5 +1,70 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
 
+## 2026-01-31 - [v0.5.3](https://github.com/jeremychone/rust-genai/compare/v0.5.2...v0.5.3)
+
+- `^` error - add request payload / response body when to chat response fail
+- `>` refactor captured_raw_body into client .exec_chat (prep for #137)
+- `.` tracing - add traced to web-client for ai response (#132)
+- `-` Fix incorrect empty output from MessageContent::joined_texts for ≥ 2 text parts (fixes #135) (#136) Co-authored-by: Ross MacLeod <rmm+github@z.odi.ac>
+- `.` ChatRole - Add PartialEq / Eq (#131)
+
+
+## 2026-01-27 - [v0.5.2](https://github.com/jeremychone/rust-genai/compare/v0.5.1...v0.5.2)
+
+- `-` Does not capture body when json parse fail  (#128)
+- `^` Anthropic - Add separate reasoning content and thought signature for anthropic messages api (#125)
+- `-` fix - Ollama tool calls are silently swallowed in OpenAI adapter (streaming) (#124)
+- `^` test - ollama - add tool tests
+- `^` gemini - Include thoughts and capture thoughts are reasoning content (#121)
+
+## 2026-01-17 - [v0.5.1](https://github.com/jeremychone/rust-genai/compare/v0.5.0...v0.5.1)
+
+`!` `Error::WebStream` - added error field to preserve original error
+`^` gemini - allow empty tool `thoughtSignature` for Gemini 3 (#115)
+`-` webc - check HTTP status in `WebStream` before processing byte stream (#117)
+`-` client - ensure extra headers are applied in `exec_chat` and `exec_chat_stream` (#116)
+`-` openai_resp - fix assistant message content to use `output_text` (#119)
+
+## 2026-01-09 - [v0.5.0](https://github.com/jeremychone/rust-genai/compare/v0.4.4...v0.5.0)
+
+- `!` zai - change namespace strategy with (zai:: for default, and zai-codding:: for subscription, same Adapter)
+- `+` New Adapter: bigmodel - add back bigmodel.cn and BigModel adapter (only via namespace)
+- `+` MessageContent - Add from ContentPart and Binary
+- `+` New Adatper: : Add MIMO model adapter (#105)
+- `+` gemini adapter - impl thought signature - ThoughtSignature api update
+- `^` anthropic - implemented new output_config.effort for opus-4-5 (matching ReasonningEffort)
+- `^` gemini - for gemini-3, convert ReasoningEffort Low/High to the appropriate gemini thinkingLevel LOW/HIGH, fall back on budget if not gemini 3 or other effort
+- `^` reasoning - add RasoningEffort::None
+- `^` dependency - update to reqwest 0.13
+- `^` MessageContent - add .binaries() and .into_binaries()
+- `^` .size - implement .size in ContentPart and MessageContent
+- `^` ContentPart - Binary from file (as base64)
+- `^` binary - add constructors (from_base64, from_url, from_file)
+- `-` pr-anthropic-tool-fix - #pr 114 - Anthropic ToolCalls with no parameters are not parsed correctly while streaming
+- `-` Fix Gemini adapter to use responseJsonSchema (PR #111)
+- `-` Fix Ollama reasoning streaming (Skip empty reasoning chunks in streaming)
+- `-` Fix Fireworks default depending on streaming (#109)
+- `-` Capture response body in ResponseFailedNotJson error (#103)
+- `>` anthropic - Refactor streamer to use webc::EventSourceStream
+- `>` adapter_openai - switched to custom webc::EventSourceStream based on WebStream
+- `>` webc - remove 'reqwest-eventsource' dependency, all based in same WebStream (EventsourceStream wrapper)
+- `>` ModelName - add namespace_is(..), namespace(), namespace_and_name()
+- `>` binary - refactor openai to use into_url for the base64 url
+- `>` content_part - refactor binary into own file
+
+## 2025-11-14 - [v0.4.4](https://github.com/jeremychone/rust-genai/compare/v0.4.3...v0.4.4)
+
+- `+` openai - adding support for gpt-5-pro (must be mapped to OpenaiResp adapter)
+- `+` Add support for openai audio_type content part for voice agent support. ([PR #96](https://github.com/jeremychone/rust-genai/pull/96) thanks to [Vagmi Mudumbai](https://github.com/vagmi))
+- `+` Add support for OpenAI `service_tier` parameter. ([PR #98](https://github.com/jeremychone/rust-genai/pull/98) thanks to [Himmelschmidt](https://github.com/Himmelschmidt))
+
+
+## 2025-10-25 - [v0.4.3](https://github.com/jeremychone/rust-genai/compare/v0.4.2...v0.4.3)
+
+- `!` Refactor ZHIPU adapter to ZAI with namespace-based endpoint routing (#95)
+- `-` openai - stream tool - Fix streaming too issue (#91)
+- `.` added ModelName partial eq implementations for string types (#94)
+- `.` anthropic - update model name for haiku 4.5
 
 ## 2026-02-01 - Fork Sync with Upstream v0.6.0-alpha.2
 
