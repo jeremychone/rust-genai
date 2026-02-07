@@ -35,6 +35,7 @@ List the key public types and public functions that are exposed to consumers of 
 For each type or function:
 
 - State its name and a one-line purpose.
+- For public types, list their key public properties.
 - Note the design intent (e.g., "newtype over `String` for type safety", "builder for `ChatRequest`").
 - If a type has important public methods, list them briefly with their role.
 - Group related items under sub-headings if the module exposes many types.
@@ -49,4 +50,8 @@ Describe the internal code design that is not part of the public API.
 - How data flows through the internal components.
 - Any important invariants, constraints, or conventions that contributors must follow.
 - File organization if there are multiple internal files (e.g., `support.rs`, `streamer.rs`).
+
+### 5. Usage Example
+
+Provide a concise code snippet showing the primary way to use the module.
 
