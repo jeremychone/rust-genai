@@ -8,6 +8,7 @@ This document defines the rules for creating and maintaining module/layer specif
 - For numbering bullet point style, have empty lines between numbering line. 
 - Keep specifications concise; avoid restating code that is obvious from type signatures.
 - Use inline code backticks for type names, function names, and file paths.
+- Ensure there is an empty line before and after every code block.
 
 ## Specification Structure
 
@@ -32,13 +33,19 @@ Describe the high-level design pattern(s) used by this module.
 
 List the key public types and public functions that are exposed to consumers of this module.
 
-For each type or function:
+ For each key public type:
 
-- State its name and a one-line purpose.
-- For public types, list their key public properties.
-- Note the design intent (e.g., "newtype over `String` for type safety", "builder for `ChatRequest`").
-- If a type has important public methods, list them briefly with their role.
-- Group related items under sub-headings if the module exposes many types.
+ - Use a `#### `TypeName` - One-line description.` heading.
+
+ - Provide a concise Rust code block showing its public properties immediately after the heading. The code block should be on the first column (not indented).
+
+ - Below the code block, use bullet points for design intent (e.g., "newtype over `String` for type safety") or to list important public methods with their roles.
+
+ For functions or simpler types:
+
+ - State its name and a one-line purpose in a bullet point or heading as appropriate.
+
+ - Group related items under sub-headings if the module exposes many types.
 
 Do not duplicate full signatures; focus on intent and usage patterns.
 

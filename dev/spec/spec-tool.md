@@ -17,16 +17,42 @@ The tool system is exposed primarily through the `genai::chat` module.
 
 ### Core Types
 
-- `Tool`: Represents a tool definition (metadata and parameters).
-    - Properties: `name`, `description`, `schema`, `config`.
-    - `Tool::new(name)`: Primary constructor.
-    - `with_schema(value)`: Builder-style method to set the JSON parameters schema.
-    - `with_description(text)`: Builder-style method to set the tool description.
-- `ToolCall`: Represents an invocation request emitted by the model.
-    - Properties: `call_id`, `fn_name`, `fn_arguments`, `thought_signatures`.
-- `ToolResponse`: Represents the result of a tool execution.
-    - Properties: `call_id`, `content`.
-    - `ToolResponse::new(call_id, content)`: Links the execution output back to the original call.
+#### `Tool` - Represents a tool definition (metadata and parameters).
+
+```rust
+pub struct Tool {
+    pub name: String,
+    pub description: Option<String>,
+    pub schema: Option<Value>,
+    pub config: Option<Value>,
+}
+```
+
+- `Tool::new(name)`: Primary constructor.
+- `with_schema(value)`: Builder-style method to set the JSON parameters schema.
+- `with_description(text)`: Builder-style method to set the tool description.
+
+#### `ToolCall` - Represents an invocation request emitted by the model.
+
+```rust
+pub struct ToolCall {
+    pub call_id: String,
+    pub fn_name: String,
+    pub fn_arguments: Value,
+    pub thought_signatures: Option<Vec<String>>,
+}
+```
+
+#### `ToolResponse` - Represents the result of a tool execution.
+
+```rust
+pub struct ToolResponse {
+    pub call_id: String,
+    pub content: String,
+}
+```
+
+- `ToolResponse::new(call_id, content)`: Links the execution output back to the original call.
 
 ### Integration Points
 
@@ -71,3 +97,4 @@ if let Some(tool_call) = response.tool_calls().first() {
     let result = ToolResponse::new(&tool_call.call_id, "Rainy, 15°C");
 }
 ```
+
