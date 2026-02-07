@@ -1,12 +1,13 @@
+use super::{ToolConfig, ToolName};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Tool metadata used for function calling by LLMs.
 pub struct Tool {
-	/// Tool name, typically the function name.
-	/// Example: `get_weather`.
-	pub name: String,
+	/// Normalized tool identifier.
+	/// Example: `ToolName::Custom("get_weather".to_string())`.
+	pub name: ToolName,
 
 	/// Human-readable description used by the LLM to understand when and how to call this tool.
 	pub description: Option<String>,
@@ -39,7 +40,7 @@ pub struct Tool {
 	/// Optional configuration for the tool.
 	///
 	/// Useful with embedded provider tools (e.g., Google Search for Gemini).
-	pub config: Option<Value>,
+	pub config: Option<ToolConfig>,
 }
 
 /// Computed accessors
@@ -51,7 +52,10 @@ impl Tool {
 	/// - JSON-serialized `schema` (if any)
 	/// - JSON-serialized `config` (if any)
 	pub fn size(&self) -> usize {
-		let mut size = self.name.len();
+		let mut size = match &self.name {
+			ToolName::WebSearch => 9, // "WebSearch".len()
+			ToolName::Custom(name) => name.len(),
+		};
 		size += self.description.as_ref().map(|d| d.len()).unwrap_or_default();
 		size += self
 			.schema
@@ -61,7 +65,10 @@ impl Tool {
 		size += self
 			.config
 			.as_ref()
-			.map(|c| serde_json::to_string(c).map(|j| j.len()).unwrap_or_default())
+			.map(|c| match c {
+				ToolConfig::WebSearch(_) => 0,
+				ToolConfig::Custom(v) => serde_json::to_string(v).map(|j| j.len()).unwrap_or_default(),
+			})
 			.unwrap_or_default();
 		size
 	}
@@ -70,13 +77,18 @@ impl Tool {
 /// Constructor
 impl Tool {
 	/// Create a new tool with the given name.
-	pub fn new(name: impl Into<String>) -> Self {
+	pub fn new(name: impl Into<ToolName>) -> Self {
 		Self {
 			name: name.into(),
 			description: None,
 			schema: None,
 			config: None,
 		}
+	}
+
+	/// Create a new web search tool.
+	pub fn new_web_search() -> Self {
+		Self::new(ToolName::WebSearch)
 	}
 }
 
@@ -96,8 +108,8 @@ impl Tool {
 	}
 
 	/// Set provider-specific configuration (if any). Returns self for chaining.
-	pub fn with_config(mut self, config: Value) -> Self {
-		self.config = Some(config);
+	pub fn with_config(mut self, config: impl Into<ToolConfig>) -> Self {
+		self.config = Some(config.into());
 		self
 	}
 }

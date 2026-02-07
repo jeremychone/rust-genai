@@ -1,7 +1,8 @@
-use crate::Result;
-use crate::chat::{Binary, ToolCall, ToolResponse};
+use crate::chat::{Binary, CustomPart, ToolCall, ToolResponse};
+use crate::{ModelIden, Result};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -24,6 +25,9 @@ pub enum ContentPart {
 
 	#[from(ignore)]
 	ThoughtSignature(String),
+
+	#[from]
+	Custom(CustomPart),
 }
 
 /// Constructors
@@ -67,6 +71,10 @@ impl ContentPart {
 	/// Returns an error if the file cannot be read.
 	pub fn from_binary_file(file_path: impl AsRef<Path>) -> Result<ContentPart> {
 		Ok(ContentPart::Binary(Binary::from_file(file_path)?))
+	}
+
+	pub fn from_custom(model_iden: ModelIden, data: Value) -> Self {
+		ContentPart::Custom(CustomPart { model_iden, data })
 	}
 }
 
@@ -178,6 +186,7 @@ impl ContentPart {
 			ContentPart::ToolCall(tool_call) => tool_call.size(),
 			ContentPart::ToolResponse(tool_response) => tool_response.size(),
 			ContentPart::ThoughtSignature(thought) => thought.len(),
+			ContentPart::Custom(_value) => 0, // TODO: will need to compute this size
 		}
 	}
 }

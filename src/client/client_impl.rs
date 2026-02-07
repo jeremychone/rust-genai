@@ -79,7 +79,7 @@ impl Client {
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
 
 		if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
-			headers.merge_with(&extra_headers);
+			headers.merge_with(extra_headers);
 		}
 
 		if let AuthData::RequestOverride {
@@ -150,7 +150,7 @@ impl Client {
 		} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
 
 		if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
-			headers.merge_with(&extra_headers);
+			headers.merge_with(extra_headers);
 		}
 
 		// TODO: Need to check this.

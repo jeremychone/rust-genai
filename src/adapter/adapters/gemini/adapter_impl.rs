@@ -4,7 +4,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
 	ChatStreamResponse, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
-	ToolCall, Usage,
+	Tool, ToolCall, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -374,16 +374,12 @@ impl GeminiAdapter {
 					.x_take::<Value>("thought")
 					.ok()
 					.and_then(|v| if let Value::Bool(v) = v { Some(v) } else { None })
+					&& thought && let Some(val) = part
+					.x_take::<Value>("text")
+					.ok()
+					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
 				{
-					if thought {
-						if let Some(val) = part
-							.x_take::<Value>("text")
-							.ok()
-							.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
-						{
-							content.push(GeminiChatContent::Reasoning(val));
-						}
-					}
+					content.push(GeminiChatContent::Reasoning(val));
 				}
 			}
 
@@ -559,6 +555,9 @@ impl GeminiAdapter {
 									"thoughtSignature": thought
 								}));
 							}
+
+							// Custom are ignored for this logic
+							ContentPart::Custom(_) => {}
 						}
 					}
 
@@ -626,6 +625,8 @@ impl GeminiAdapter {
 									parts_values.push(json!({"thoughtSignature": thought}));
 								}
 							}
+							// Custom are ignored for this logic
+							ContentPart::Custom(_) => {}
 						}
 					}
 					if let Some(thought) = pending_thought {
@@ -690,22 +691,9 @@ impl GeminiAdapter {
 			//       The rest are builtins
 			let mut function_declarations: Vec<Value> = Vec::new();
 			for req_tool in req_tools {
-				// -- if it is a builtin tool
-				if matches!(
-					req_tool.name.as_str(),
-					"googleSearch" | "googleSearchRetrieval" | "codeExecution" | "urlContext"
-				) {
-					tools.push(json!({req_tool.name: req_tool.config}));
-				}
-				// -- otherwise, user tool
-				else {
-					function_declarations.push(json! {
-						{
-							"name": req_tool.name,
-							"description": req_tool.description,
-							"parameters": req_tool.schema,
-						}
-					})
+				match Self::tool_to_gemini_tool(req_tool)? {
+					GeminiTool::Builtin(value) => tools.push(value),
+					GeminiTool::User(value) => function_declarations.push(value),
 				}
 			}
 			if !function_declarations.is_empty() {
@@ -722,9 +710,53 @@ impl GeminiAdapter {
 			tools,
 		})
 	}
+
+	fn tool_to_gemini_tool(tool: Tool) -> Result<GeminiTool> {
+		let Tool {
+			name,
+			description,
+			schema,
+			config,
+		} = tool;
+
+		// Built-in WebSearch for Gemini
+		let name_str = match &name {
+			ToolName::WebSearch => "googleSearch",
+			ToolName::Custom(name) => name.as_str(),
+		};
+
+		// -- if it is a builtin tool
+		if matches!(
+			name_str,
+			"googleSearch" | "googleSearchRetrieval" | "codeExecution" | "urlContext"
+		) {
+			let config = match config {
+				// GoogleSearch does not take any config for now
+				Some(ToolConfig::WebSearch(_config)) => Some(json!({})),
+				// If custom, user knows better
+				Some(ToolConfig::Custom(config)) => Some(config),
+				// For now, none is empty
+				None => None,
+			};
+			Ok(GeminiTool::Builtin(json!({ name_str: config })))
+		}
+		// -- otherwise, user tool
+		else {
+			Ok(GeminiTool::User(json!({
+				"name": name_str,
+				"description": description,
+				"parameters": schema,
+			})))
+		}
+	}
 }
 
 // struct Gemini
+
+pub enum GeminiTool {
+	Builtin(Value),
+	User(Value),
+}
 
 /// FIXME: need to be Vec<GeminiChatContent>
 pub(super) struct GeminiChatResponse {

@@ -451,6 +451,8 @@ impl OpenAIAdapter {
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
+								// Custom are ignored for this logic
+								ContentPart::Custom(_) => {}
 							}
 						}
 						messages.push(json! ({"role": "user", "content": values}));
@@ -481,6 +483,8 @@ impl OpenAIAdapter {
 							ContentPart::Binary(_) => (),
 							ContentPart::ToolResponse(_) => (),
 							ContentPart::ThoughtSignature(_) => {}
+							// Custom are ignored for this logic
+							ContentPart::Custom(_) => {}
 						}
 					}
 					let content = texts.join("\n\n");

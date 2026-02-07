@@ -10,14 +10,13 @@
 mod tool_base;
 mod tool_call;
 mod tool_response;
+mod tool_types;
+mod web_search_config;
 
-/// Base traits and specifications for declaring tools.
 pub use tool_base::*;
-
-/// Types representing a tool invocation emitted by a model.
 pub use tool_call::*;
-
-/// Types for returning results produced by a tool.
 pub use tool_response::*;
+pub use tool_types::*;
+pub use web_search_config::*;
 
 // endregion: --- Modules

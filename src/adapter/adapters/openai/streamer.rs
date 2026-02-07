@@ -166,22 +166,21 @@ impl futures::Stream for OpenAIStreamer {
 							// We need to capture tool_calls here before continuing to the next message.
 							if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls")
 								&& delta_tool_calls != Value::Null
+								&& let Some(delta_tool_calls) = delta_tool_calls.as_array()
 							{
-								if let Some(delta_tool_calls) = delta_tool_calls.as_array() {
-									for tool_call_obj_val in delta_tool_calls {
-										let mut tool_call_obj = tool_call_obj_val.clone();
-										if let (Ok(index), Ok(mut function)) = (
-											tool_call_obj.x_take::<u32>("index"),
-											tool_call_obj.x_take::<Value>("function"),
-										) {
-											let call_id = tool_call_obj
-												.x_take::<String>("id")
-												.unwrap_or_else(|_| format!("call_{index}"));
-											let fn_name = function.x_take::<String>("name").unwrap_or_default();
-											let arguments = function.x_take::<String>("arguments").unwrap_or_default();
+								for tool_call_obj_val in delta_tool_calls {
+									let mut tool_call_obj = tool_call_obj_val.clone();
+									if let (Ok(index), Ok(mut function)) = (
+										tool_call_obj.x_take::<u32>("index"),
+										tool_call_obj.x_take::<Value>("function"),
+									) {
+										let call_id = tool_call_obj
+											.x_take::<String>("id")
+											.unwrap_or_else(|_| format!("call_{index}"));
+										let fn_name = function.x_take::<String>("name").unwrap_or_default();
+										let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 
-											self.capture_tool_call(index as usize, call_id, fn_name, arguments);
-										}
+										self.capture_tool_call(index as usize, call_id, fn_name, arguments);
 									}
 								}
 							}
@@ -218,7 +217,7 @@ impl futures::Stream for OpenAIStreamer {
 						{
 							// Check if there's a tool call in the delta
 							if let Some(delta_tool_calls) = delta_tool_calls.as_array()
-								&& let Some(tool_call_obj_val) = delta_tool_calls.get(0)
+								&& let Some(tool_call_obj_val) = delta_tool_calls.first()
 							{
 								// Extract the first tool call object as a mutable value
 								let mut tool_call_obj = tool_call_obj_val.clone();

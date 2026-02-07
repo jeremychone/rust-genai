@@ -392,6 +392,8 @@ impl OpenAIRespAdapter {
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
+								// Custom are ignored for this logic
+								ContentPart::Custom(_) => {}
 							}
 						}
 						input_items.push(json! ({"role": "user", "content": values}));
@@ -435,6 +437,8 @@ impl OpenAIRespAdapter {
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) => {}
+							// Custom are ignored for this logic
+							ContentPart::Custom(_) => {}
 						}
 					}
 

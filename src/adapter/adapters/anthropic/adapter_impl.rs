@@ -3,7 +3,8 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole,
-	ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, ToolCall, Usage,
+	ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, Tool, ToolCall,
+	ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -269,8 +270,8 @@ impl Adapter for AnthropicAdapter {
 		let mut reasoning_content: Vec<String> = Vec::new();
 
 		for mut item in json_content_items {
-			let typ: &str = item.x_get_as("type")?;
-			match typ {
+			let typ: String = item.x_take("type")?;
+			match typ.as_ref() {
 				"text" => {
 					let part = ContentPart::from_text(item.x_take::<String>("text")?);
 					content.push(part);
@@ -291,7 +292,11 @@ impl Adapter for AnthropicAdapter {
 					let part = ContentPart::ToolCall(tool_call);
 					content.push(part);
 				}
-				_ => (),
+				other_typ => {
+					// insert it back
+					item.x_insert("type", other_typ)?;
+					content.push(ContentPart::from_custom(model_iden.clone(), item))
+				}
 			}
 		}
 
@@ -360,9 +365,7 @@ impl AnthropicAdapter {
 		let completion_tokens: i32 = usage_value.x_take("output_tokens").ok().unwrap_or(0);
 
 		// Parse cache_creation breakdown if present (TTL-specific breakdown)
-		let cache_creation_details = usage_value
-			.get("cache_creation")
-			.and_then(parse_cache_creation_details);
+		let cache_creation_details = usage_value.get("cache_creation").and_then(parse_cache_creation_details);
 
 		// compute the prompt_tokens
 		let prompt_tokens = input_tokens + cache_creation_input_tokens + cache_read_input_tokens;
@@ -514,6 +517,8 @@ impl AnthropicAdapter {
 									}));
 								}
 								ContentPart::ThoughtSignature(_) => {}
+								// Custom are ignored for this logic
+								ContentPart::Custom(_) => {}
 							}
 						}
 						let values = apply_cache_control_to_parts(cache_control.as_ref(), values);
@@ -547,6 +552,8 @@ impl AnthropicAdapter {
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) => {}
+							// Custom are ignored for this logic
+							ContentPart::Custom(_) => {}
 						}
 					}
 
@@ -615,32 +622,83 @@ impl AnthropicAdapter {
 		};
 
 		// -- Process the tools
-		let tools = chat_req.tools.map(|tools| {
-			tools
-				.into_iter()
-				.map(|tool| {
-					// TODO: Need to handle the error correctly
-					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
-					// NOTE: Right now, low probability, so we just return null if cannot convert to value.
-					let mut tool_value = json!({
-						"name": tool.name,
-						"input_schema": tool.schema,
-					});
 
-					if let Some(description) = tool.description {
-						// TODO: need to handle error
-						let _ = tool_value.x_insert("description", description);
-					}
-					tool_value
-				})
-				.collect::<Vec<Value>>()
-		});
+		let tools: Option<Vec<Value>> = chat_req
+			.tools
+			.map(|tools| {
+				tools
+					.into_iter()
+					.map(Self::tool_to_anthropic_tool)
+					.collect::<Result<Vec<Value>>>()
+			})
+			.transpose()?;
 
 		Ok(AnthropicRequestParts {
 			system,
 			messages,
 			tools,
 		})
+	}
+
+	fn tool_to_anthropic_tool(tool: Tool) -> Result<Value> {
+		let Tool {
+			name,
+			description,
+			schema,
+			config,
+		} = tool;
+
+		let name = match name {
+			ToolName::WebSearch => "web_search".to_string(),
+			ToolName::Custom(name) => name,
+		};
+
+		let mut tool_value = json!({"name": name});
+
+		// -- Add type for builtin tool
+		#[allow(clippy::single_match)] // will have more
+		match name.as_str() {
+			"web_search" => {
+				tool_value.x_insert("type", "web_search_20250305")?;
+			}
+			_ => (),
+		}
+
+		// NOTE: Fo now, if tool_value.type then, assume bultin and set config as propertie
+		if tool_value.get("type").is_some() {
+			if let Some(config) = config {
+				match config {
+					ToolConfig::WebSearch(config) => {
+						if let Some(max_uses) = config.max_uses {
+							let _ = tool_value.x_insert("max_uses", max_uses);
+						}
+						if let Some(allowed_domains) = config.allowed_domains {
+							let _ = tool_value.x_insert("allowed_domains", allowed_domains);
+						}
+						if let Some(blocked_domains) = config.blocked_domains {
+							let _ = tool_value.x_insert("blocked_domains", blocked_domains);
+						}
+					}
+					// if custom, we assume we flatten the config properties since we are in a builtin
+					ToolConfig::Custom(config) => {
+						// NOTE: For now, ignore if not object
+						if let Value::Object(obj) = config {
+							for (k, v) in obj.into_iter() {
+								tool_value.x_insert(&k, v)?;
+							}
+						}
+					}
+				}
+			}
+		} else {
+			tool_value.x_insert("input_schema", schema)?;
+			if let Some(description) = description {
+				// TODO: need to handle error
+				let _ = tool_value.x_insert("description", description);
+			}
+		}
+
+		Ok(tool_value)
 	}
 }
 
