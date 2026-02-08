@@ -682,11 +682,7 @@ impl AnthropicAdapter {
 					// if custom, we assume we flatten the config properties since we are in a builtin
 					ToolConfig::Custom(config) => {
 						// NOTE: For now, ignore if not object
-						if let Value::Object(obj) = config {
-							for (k, v) in obj.into_iter() {
-								tool_value.x_insert(&k, v)?;
-							}
-						}
+						tool_value.x_merge(config)?;
 					}
 				}
 			}

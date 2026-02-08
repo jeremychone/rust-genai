@@ -7,8 +7,8 @@ use genai::{
 use value_ext::JsonValueExt;
 
 // const MODEL: &str = "gemini-3-flash-preview";
-// const MODEL: &str = "claude-haiku-4-5";
-const MODEL: &str = "gpt-5.2";
+const MODEL: &str = "claude-haiku-4-5";
+// const MODEL: &str = "gpt-5.2";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -40,7 +40,15 @@ and source link.";
 	// -- Prep and Exec query
 	let chat_req = ChatRequest::from_user(question).append_tool(web_search_tool);
 	println!("\n=== AI Question:\n{question}");
-	let res = client.exec_chat(MODEL, chat_req, None).await?;
+	let res = client.exec_chat(MODEL, chat_req, None).await;
+
+	let res = match res {
+		Err(err) => {
+			println!("{err}");
+			return Ok(());
+		}
+		Ok(res) => res,
+	};
 
 	if let Some(raw) = res.captured_raw_body {
 		println!("\n=== Raw Response:\n{}", raw.x_pretty()?);
