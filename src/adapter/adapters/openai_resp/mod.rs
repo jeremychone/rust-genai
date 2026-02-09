@@ -6,7 +6,9 @@
 
 mod adapter_impl;
 mod resp_types;
+mod streamer;
 
 pub use adapter_impl::*;
+pub use streamer::*;
 
 // endregion: --- Modules

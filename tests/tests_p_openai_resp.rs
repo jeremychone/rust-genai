@@ -82,23 +82,20 @@ async fn test_chat_cache_implicit_simple_ok() -> TestResult<()> {
 
 // region:    --- Chat Stream Tests
 
-// NOTE - For now, genai does not support the stream for the new OpenAI Responses API
-//        Will add this support
+#[tokio::test]
+async fn test_chat_stream_simple_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
+}
 
-// #[tokio::test]
-// async fn test_chat_stream_simple_ok() -> TestResult<()> {
-// 	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
-// }
+#[tokio::test]
+async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
+}
 
-// #[tokio::test]
-// async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
-// 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
-// }
-
-// #[tokio::test]
-// async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
-// 	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
-// }
+#[tokio::test]
+async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
+}
 
 // endregion: --- Chat Stream Tests
 

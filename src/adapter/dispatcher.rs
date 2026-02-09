@@ -173,10 +173,7 @@ impl AdapterDispatcher {
 	) -> Result<ChatStreamResponse> {
 		match model_iden.adapter_kind {
 			AdapterKind::OpenAI => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
-			AdapterKind::OpenAIResp => Err(Error::AdapterNotSupported {
-				adapter_kind: model_iden.adapter_kind,
-				feature: "stream".to_string(),
-			}),
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Gemini => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Anthropic => AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Fireworks => FireworksAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
