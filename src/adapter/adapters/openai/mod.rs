@@ -7,12 +7,10 @@
 mod adapter_impl;
 mod adapter_shared;
 mod embed;
-mod openai_custom;
 mod streamer;
 
 pub use adapter_impl::*;
-// pub use adapter_shared::*;
-pub use openai_custom::*;
+pub use adapter_shared::*;
 pub use streamer::*;
 
 // endregion: --- Modules

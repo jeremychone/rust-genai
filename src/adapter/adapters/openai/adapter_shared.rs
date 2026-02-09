@@ -2,7 +2,6 @@
 
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::openai::ToWebRequestCustom;
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	BinarySource, ChatOptionsSet, ChatRequest, ChatResponseFormat, ChatRole, ContentPart, ReasoningEffort, Usage,
@@ -382,6 +381,12 @@ impl OpenAIAdapter {
 
 		Ok(OpenAIRequestParts { messages, tools })
 	}
+}
+
+/// Custom OpenAI structure for Adapters to use to customize
+/// the default [`OpenAIAdapter::util_to_web_request_data`]
+pub struct ToWebRequestCustom {
+	pub default_max_tokens: Option<u32>,
 }
 
 // region:    --- Support
