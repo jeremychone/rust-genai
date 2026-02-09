@@ -4,7 +4,7 @@ use crate::adapter::openai_resp::resp_types::RespResponse;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, MessageContent, ReasoningEffort, Usage,
+	ContentPart, MessageContent, ReasoningEffort, Tool, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -471,30 +471,62 @@ impl OpenAIRespAdapter {
 		}
 
 		// -- Process the tools
-		let tools = chat_req.tools.map(|tools| {
-			tools
-				.into_iter()
-				.map(|tool| {
-					// TODO: Need to handle the error correctly
-					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
-					// NOTE: Right now, low probability, so, we just return null if cannot convert to value.
-					json!({
-						"type": "function",
-						"name": tool.name,
-						"description": tool.description,
-						"parameters": tool.schema,
-						// TODO: If we need to support `strict: true` we need to add additionalProperties: false into the schema
-						//       above (like structured output)
-						"strict": false,
-					})
-				})
-				.collect::<Vec<Value>>()
-		});
+		let tools = chat_req
+			.tools
+			.map(|tools| tools.into_iter().map(Self::tool_to_openai_tool).collect::<Result<Vec<Value>>>())
+			.transpose()?;
 
 		Ok(OpenAIRespRequestParts { input_items, tools })
 	}
-}
 
+	fn tool_to_openai_tool(tool: Tool) -> Result<Value> {
+		let Tool {
+			name,
+			description,
+			schema,
+			config,
+		} = tool;
+
+		let name = match name {
+			ToolName::WebSearch => "web_search".to_string(),
+			ToolName::Custom(name) => name,
+		};
+
+		let tool_value = match name.as_ref() {
+			"web_search" => {
+				let mut tool_value = json!({"type": "web_search"});
+				match config {
+					Some(ToolConfig::WebSearch(_ws_config)) => {
+						// FIXME: Implement what is posible in filters
+					}
+					Some(ToolConfig::Custom(config_value)) => {
+						// IMPORTANT: Here like anthropic, we merge it on top of the toll value
+						//            (and not as value of "name" as this would not fit that api)
+						//            Gemini does a `{name: config}` which fit that API
+						tool_value.x_merge(config_value)?;
+					}
+					None => (),
+				};
+				tool_value
+			}
+			name => {
+				json!({
+					"type": "function",
+					"function": {
+						"name": name,
+						"description": description,
+						"parameters": schema,
+						// TODO: If we need to support `strict: true` we need to add additionalProperties: false into the schema
+						//       above (like structured output)
+						"strict": false,
+					}
+				})
+			}
+		};
+
+		Ok(tool_value)
+	}
+}
 // region:    --- Support
 
 struct OpenAIRespRequestParts {

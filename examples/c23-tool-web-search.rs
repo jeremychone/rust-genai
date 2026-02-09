@@ -7,8 +7,8 @@ use genai::{
 use value_ext::JsonValueExt;
 
 // const MODEL: &str = "gemini-3-flash-preview";
-const MODEL: &str = "claude-haiku-4-5";
-// const MODEL: &str = "gpt-5.2";
+// const MODEL: &str = "claude-haiku-4-5";
+const MODEL: &str = "gpt-5.1-codex-mini";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,7 +31,7 @@ and source link.";
 	// let web_search_tool = Tool::new("web_search").with_config(serde_json::json!({
 	// 	"max_uses": 5,
 	// 	"allowed_domains": ["rust-lang.org", "docs.rs", "this-week-in-rust.org"]
-	// })); // manual
+	// }));
 
 	// Normalized
 	// let web_search_tool = Tool::new(ToolName::WebSearch); // no config
