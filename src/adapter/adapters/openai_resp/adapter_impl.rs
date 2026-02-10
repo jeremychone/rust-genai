@@ -1,5 +1,5 @@
 use crate::adapter::adapters::support::get_api_key;
-use crate::adapter::openai::OpenAIStreamer;
+use crate::adapter::openai_resp::OpenAIRespStreamer;
 use crate::adapter::openai_resp::resp_types::RespResponse;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
@@ -76,14 +76,7 @@ impl Adapter for OpenAIRespAdapter {
 		// -- headers
 		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
-		// -- for new v1/responses/ for now do not support stream
 		let stream = matches!(service_type, ServiceType::ChatStream);
-		if stream {
-			return Err(Error::AdapterNotSupported {
-				adapter_kind,
-				feature: "stream".into(),
-			});
-		}
 
 		// -- compute reasoning_effort and eventual trimmed model_name
 		// For now, just for openai AdapterKind
@@ -110,7 +103,8 @@ impl Adapter for OpenAIRespAdapter {
 		let mut payload = json!({
 			"store": false,
 			"model": model_name,
-			"input": messages
+			"input": messages,
+			"stream": stream,
 		});
 
 		// -- Set reasoning effort
@@ -175,10 +169,6 @@ impl Adapter for OpenAIRespAdapter {
 		}
 
 		// -- Add supported ChatOptions
-		if stream & chat_options.capture_usage().unwrap_or(false) {
-			payload.x_insert("stream_options", json!({"include_usage": true}))?;
-		}
-
 		if let Some(temperature) = chat_options.temperature() {
 			payload.x_insert("temperature", temperature)?;
 		}
@@ -243,7 +233,7 @@ impl Adapter for OpenAIRespAdapter {
 		options_sets: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSourceStream::new(reqwest_builder);
-		let openai_stream = OpenAIStreamer::new(event_source, model_iden.clone(), options_sets);
+		let openai_stream = OpenAIRespStreamer::new(event_source, model_iden.clone(), options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 
 		Ok(ChatStreamResponse {
@@ -512,14 +502,12 @@ impl OpenAIRespAdapter {
 			name => {
 				json!({
 					"type": "function",
-					"function": {
-						"name": name,
-						"description": description,
-						"parameters": schema,
-						// TODO: If we need to support `strict: true` we need to add additionalProperties: false into the schema
-						//       above (like structured output)
-						"strict": false,
-					}
+					"name": name,
+					"description": description,
+					"parameters": schema,
+					// TODO: If we need to support `strict: true` we need to add additionalProperties: false into the schema
+					//       above (like structured output)
+					"strict": false,
 				})
 			}
 		};
