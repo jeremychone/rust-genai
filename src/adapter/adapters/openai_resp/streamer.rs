@@ -188,10 +188,10 @@ impl futures::Stream for OpenAIRespStreamer {
 							let mut tool_calls = Vec::new();
 							for (_, mut tc) in self.in_progress_tool_calls.drain() {
 								// Parse arguments if they are strings
-								if let Some(args_str) = tc.fn_arguments.as_str() {
-									if let Ok(args_val) = serde_json::from_str(args_str) {
-										tc.fn_arguments = args_val;
-									}
+								if let Some(args_str) = tc.fn_arguments.as_str()
+									&& let Ok(args_val) = serde_json::from_str(args_str)
+								{
+									tc.fn_arguments = args_val;
 								}
 								tool_calls.push(tc);
 							}
