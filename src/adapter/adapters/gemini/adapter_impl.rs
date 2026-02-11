@@ -697,7 +697,7 @@ impl GeminiAdapter {
 				}
 			}
 			if !function_declarations.is_empty() {
-				tools.push(json!({"function_declarations": function_declarations}));
+				tools.push(json!({"functionDeclarations": function_declarations}));
 			}
 			Some(tools)
 		} else {
