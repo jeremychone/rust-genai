@@ -21,7 +21,7 @@ impl ToolName {
 		match self {
 			Self::WebSearch => "WebSearch",
 			// Future: other built-in tools (e.g., "Calculator", "CodeExecutor", etc.)
-			other => other.as_ref(),
+			Self::Custom(name) => name.as_str(),
 		}
 	}
 }
