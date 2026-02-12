@@ -1,5 +1,6 @@
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
+use crate::adapter::aliyun::AliyunAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::bigmodel::BigModelAdapter;
 use crate::adapter::cohere::CohereAdapter;
@@ -47,6 +48,8 @@ pub enum AdapterKind {
 	Zai,
 	/// For big model (only accessible via namespace bigmodel::)
 	BigModel,
+	/// For aliyun (Mostly use OpenAI)
+	Aliyun,
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
@@ -71,6 +74,7 @@ impl AdapterKind {
 			AdapterKind::DeepSeek => "DeepSeek",
 			AdapterKind::Zai => "Zai",
 			AdapterKind::BigModel => "BigModel",
+			AdapterKind::Aliyun => "Aliyun",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 		}
@@ -91,7 +95,8 @@ impl AdapterKind {
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
 			AdapterKind::Zai => "zai",
-			AdapterKind::BigModel => "BigModel",
+			AdapterKind::BigModel => "bigmodel",
+			AdapterKind::Aliyun => "aliyun",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 		}
@@ -137,6 +142,7 @@ impl AdapterKind {
 			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Zai => Some(ZaiAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::BigModel => Some(BigModelAdapter::API_KEY_DEFAULT_ENV_NAME),
+			AdapterKind::Aliyun => Some(AliyunAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
 			AdapterKind::Ollama => None,
 		}
@@ -208,6 +214,8 @@ impl AdapterKind {
 			Ok(Self::Xai)
 		} else if model.starts_with("glm") {
 			Ok(Self::Zai)
+		} else if model.starts_with("qwen") {
+			Ok(Self::Aliyun)
 		}
 		// For now, fallback to Ollama
 		else {
