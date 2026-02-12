@@ -117,6 +117,7 @@ impl AdapterKind {
 			"deepseek" => Some(AdapterKind::DeepSeek),
 			"zai" => Some(AdapterKind::Zai),
 			"bigmodel" => Some(AdapterKind::BigModel),
+			"aliyun" => Some(AdapterKind::Aliyun),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			_ => None,
@@ -214,8 +215,6 @@ impl AdapterKind {
 			Ok(Self::Xai)
 		} else if model.starts_with("glm") {
 			Ok(Self::Zai)
-		} else if model.starts_with("qwen") {
-			Ok(Self::Aliyun)
 		}
 		// For now, fallback to Ollama
 		else {

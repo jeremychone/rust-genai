@@ -16,7 +16,7 @@ const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
 const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
-const MODEL_ALIYUN: &str = "qwen-plus";
+const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
 const MODEL_COHERE: &str = "command-r7b-12-2024";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
