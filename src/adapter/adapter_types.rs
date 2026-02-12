@@ -9,8 +9,7 @@ use reqwest::RequestBuilder;
 use serde_json::Value;
 
 pub trait Adapter {
-	// #[deprecated(note = "use default_auth")]
-	// fn default_key_env_name(kind: AdapterKind) -> Option<&'static str>;
+	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str>;
 
 	fn default_auth() -> AuthData;
 

@@ -53,6 +53,8 @@ impl AliyunAdapter {
 }
 
 impl Adapter for AliyunAdapter {
+	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
+
 	/// Returns the default endpoint for Aliyun Dashscope API
 	fn default_endpoint() -> Endpoint {
 		const BASE_URL: &str = "https://dashscope.aliyuncs.com/compatible-mode/v1/";
@@ -61,7 +63,10 @@ impl Adapter for AliyunAdapter {
 
 	/// Returns authentication data with API key prefix AILIYUN and environment variable ALIYUN_API_KEY
 	fn default_auth() -> AuthData {
-		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
+		match Self::DEFAULT_API_KEY_ENV_NAME {
+			Some(env_name) => AuthData::from_env(env_name),
+			None => AuthData::None,
+		}
 	}
 
 	/// Returns all supported model names for Aliyun
