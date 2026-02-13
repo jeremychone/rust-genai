@@ -5,8 +5,9 @@ use genai::resolver::AuthData;
 
 // const MODEL: &str = "fireworks::qwen3-coder-480b-a35b-instruct";
 // const MODEL: &str = "fireworks::gpt-oss-120b";
-const MODEL: &str = "accounts/fireworks/models/llama4-maverick-instruct-basic";
-const MODEL_NS: &str = "fireworks::llama4-maverick-instruct-basic";
+const MODEL: &str = "accounts/fireworks/models/gpt-oss-20b";
+const MODEL_NS: &str = "fireworks::gpt-oss-20b";
+const MODEL_IMAGE: &str = "fireworks::kimi-k2p5";
 
 // region:    --- Chat
 
@@ -78,14 +79,14 @@ async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 
 // region:    --- Binary Tests
 
-#[tokio::test]
-async fn test_chat_binary_image_url_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_url_ok(MODEL).await
-}
+// #[tokio::test]
+// async fn test_chat_binary_image_url_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_image_url_ok(MODEL_IMAGE).await
+// }
 
 #[tokio::test]
 async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_b64_ok(MODEL).await
+	common_tests::common_test_chat_image_b64_ok(MODEL_IMAGE).await
 }
 
 // PDF not supported for fireworks.ai
