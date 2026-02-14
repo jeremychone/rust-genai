@@ -1,3 +1,5 @@
+//! API DOC: <https://github.com/ollama/ollama/blob/main/docs/api.md>
+
 use crate::Headers;
 use crate::adapter::ollama::OllamaStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -51,6 +53,9 @@ impl Adapter for OllamaAdapter {
 				let model_name: String = model.x_take("name")?;
 				models.push(model_name);
 			}
+		} else {
+			// TODO: Need to add tracing
+			// error!("OllamaAdapter::list_models did not have any models {res:?}");
 		}
 
 		Ok(models)
@@ -115,25 +120,33 @@ impl Adapter for OllamaAdapter {
 		}
 
 		if let Some(format) = options_set.response_format() {
-			// 添加注释
+			// Note: Ollama's API uses "format": "json" for its JSON mode, so we set that if the chat options specify json mode.
 			if matches!(format, crate::chat::ChatResponseFormat::JsonMode) {
 				payload.x_insert("format", "json")?;
 			}
 		}
 
-		Ok(WebRequestData {
-			url,
-			headers: Headers::default(),
-			payload,
-		})
+		// -- Headers
+		let mut headers = Headers::default();
+		if let Some(extra_headers) = options_set.extra_headers() {
+			headers.merge_with(extra_headers);
+		}
+
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn to_chat_response(
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		_options_set: ChatOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
+
+		let captured_raw_body = if options_set.capture_raw_body().unwrap_or(false) {
+			Some(body.clone())
+		} else {
+			None
+		};
 
 		// -- Content and Tool Calls
 		let mut message: Value = body.x_take("message")?;
@@ -176,7 +189,7 @@ impl Adapter for OllamaAdapter {
 			model_iden: model_iden.clone(),
 			provider_model_iden: model_iden,
 			usage,
-			captured_raw_body: None,
+			captured_raw_body,
 		})
 	}
 
@@ -199,31 +212,46 @@ impl Adapter for OllamaAdapter {
 	fn to_embed_request_data(
 		service_target: crate::ServiceTarget,
 		embed_req: crate::embed::EmbedRequest,
-		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::adapter::WebRequestData> {
 		let ServiceTarget { model, endpoint, .. } = service_target;
 		let url = Self::get_service_url(&model, ServiceType::Embed, endpoint)?;
 
 		let (_, model_name) = model.model_name.namespace_and_name();
 
-		let payload = json!({
+		let mut payload = json!({
 			"model": model_name,
 			"input": embed_req.inputs(),
 		});
 
-		Ok(WebRequestData {
-			url,
-			headers: Headers::default(),
-			payload,
-		})
+		if let Some(dimensions) = options_set.dimensions() {
+			payload.x_insert("dimensions", dimensions)?;
+		}
+		if let Some(truncate) = options_set.truncate() {
+			payload.x_insert("truncate", truncate)?;
+		}
+
+		// -- Headers
+		let mut headers = Headers::default();
+		if let Some(extra_headers) = options_set.headers() {
+			headers.merge_with(extra_headers);
+		}
+
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn to_embed_response(
 		model_iden: crate::ModelIden,
 		web_response: crate::webc::WebResponse,
-		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::embed::EmbedResponse> {
 		let WebResponse { mut body, .. } = web_response;
+
+		let captured_raw_body = if options_set.capture_raw_body() {
+			Some(body.clone())
+		} else {
+			None
+		};
 
 		let embeddings_raw: Vec<Vec<f32>> = body.x_take("embeddings")?;
 		let embeddings = embeddings_raw
@@ -239,7 +267,7 @@ impl Adapter for OllamaAdapter {
 			model_iden: model_iden.clone(),
 			provider_model_iden: model_iden,
 			usage,
-			captured_raw_body: None,
+			captured_raw_body,
 		})
 	}
 }
