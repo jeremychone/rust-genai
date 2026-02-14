@@ -2,6 +2,7 @@ use super::groq::GroqAdapter;
 use crate::adapter::adapters::mimo::MimoAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
+use crate::adapter::aliyun::AliyunAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::bigmodel::BigModelAdapter;
 use crate::adapter::cohere::CohereAdapter;
@@ -45,6 +46,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_endpoint(),
 			AdapterKind::Zai => ZaiAdapter::default_endpoint(),
 			AdapterKind::BigModel => BigModelAdapter::default_endpoint(),
+			AdapterKind::Aliyun => AliyunAdapter::default_endpoint(),
 			AdapterKind::Cohere => CohereAdapter::default_endpoint(),
 			AdapterKind::Ollama => OllamaAdapter::default_endpoint(),
 		}
@@ -65,6 +67,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_auth(),
 			AdapterKind::Zai => ZaiAdapter::default_auth(),
 			AdapterKind::BigModel => BigModelAdapter::default_auth(),
+			AdapterKind::Aliyun => AliyunAdapter::default_auth(),
 			AdapterKind::Cohere => CohereAdapter::default_auth(),
 			AdapterKind::Ollama => OllamaAdapter::default_auth(),
 		}
@@ -85,6 +88,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind).await,
 			AdapterKind::Zai => ZaiAdapter::all_model_names(kind).await,
 			AdapterKind::BigModel => BigModelAdapter::all_model_names(kind).await,
+			AdapterKind::Aliyun => AliyunAdapter::all_model_names(kind).await,
 			AdapterKind::Cohere => CohereAdapter::all_model_names(kind).await,
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
 		}
@@ -105,6 +109,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Zai => ZaiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::BigModel => BigModelAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Aliyun => AliyunAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Cohere => CohereAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(model, service_type, endpoint),
 		}
@@ -137,6 +142,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::BigModel => BigModelAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Aliyun => AliyunAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 		}
@@ -161,6 +167,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::BigModel => BigModelAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Aliyun => AliyunAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
@@ -185,6 +192,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::BigModel => BigModelAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Aliyun => AliyunAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 		}
@@ -213,6 +221,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::BigModel => BigModelAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Aliyun => AliyunAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_request_data(target, embed_req, options_set),
 		}
@@ -240,6 +249,7 @@ impl AdapterDispatcher {
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::BigModel => BigModelAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Aliyun => AliyunAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Cohere => CohereAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_response(model_iden, web_response, options_set),
 		}
