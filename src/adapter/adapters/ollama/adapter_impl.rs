@@ -138,11 +138,11 @@ impl Adapter for OllamaAdapter {
 	fn to_chat_response(
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		options_set: ChatOptionsSet<'_, '_>,
+		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
-		let captured_raw_body = if options_set.capture_raw_body().unwrap_or(false) {
+		let captured_raw_body = if chat_options.capture_raw_body().unwrap_or(false) {
 			Some(body.clone())
 		} else {
 			None
