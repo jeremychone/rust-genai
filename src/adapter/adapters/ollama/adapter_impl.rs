@@ -73,7 +73,7 @@ impl Adapter for OllamaAdapter {
 		target: ServiceTarget,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
-		options_set: ChatOptionsSet<'_, '_>,
+		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, endpoint, .. } = target;
 
@@ -85,20 +85,20 @@ impl Adapter for OllamaAdapter {
 
 		// -- Ollama Options
 		let mut options = json!({});
-		if let Some(temperature) = options_set.temperature() {
+		if let Some(temperature) = chat_options.temperature() {
 			options.x_insert("temperature", temperature)?;
 		}
-		if let Some(top_p) = options_set.top_p() {
+		if let Some(top_p) = chat_options.top_p() {
 			options.x_insert("top_p", top_p)?;
 		}
-		if let Some(max_tokens) = options_set.max_tokens() {
+		if let Some(max_tokens) = chat_options.max_tokens() {
 			options.x_insert("num_predict", max_tokens)?;
 		}
-		if let Some(seed) = options_set.seed() {
+		if let Some(seed) = chat_options.seed() {
 			options.x_insert("seed", seed)?;
 		}
-		if !options_set.stop_sequences().is_empty() {
-			options.x_insert("stop", options_set.stop_sequences())?;
+		if !chat_options.stop_sequences().is_empty() {
+			options.x_insert("stop", chat_options.stop_sequences())?;
 		}
 
 		// -- Build Payload
@@ -119,7 +119,7 @@ impl Adapter for OllamaAdapter {
 			payload.x_insert("tools", tools)?;
 		}
 
-		if let Some(format) = options_set.response_format() {
+		if let Some(format) = chat_options.response_format() {
 			// Note: Ollama's API uses "format": "json" for its JSON mode, so we set that if the chat options specify json mode.
 			if matches!(format, crate::chat::ChatResponseFormat::JsonMode) {
 				payload.x_insert("format", "json")?;
@@ -128,7 +128,7 @@ impl Adapter for OllamaAdapter {
 
 		// -- Headers
 		let mut headers = Headers::default();
-		if let Some(extra_headers) = options_set.extra_headers() {
+		if let Some(extra_headers) = chat_options.extra_headers() {
 			headers.merge_with(extra_headers);
 		}
 
@@ -138,11 +138,11 @@ impl Adapter for OllamaAdapter {
 	fn to_chat_response(
 		model_iden: ModelIden,
 		web_response: WebResponse,
-		chat_options: ChatOptionsSet<'_, '_>,
+		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
 		let WebResponse { mut body, .. } = web_response;
 
-		let captured_raw_body = if chat_options.capture_raw_body().unwrap_or(false) {
+		let captured_raw_body = if options_set.capture_raw_body().unwrap_or(false) {
 			Some(body.clone())
 		} else {
 			None
