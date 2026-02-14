@@ -1,5 +1,8 @@
+use crate::adapter::adapters::ollama::OllamaAdapter;
+use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
+use crate::adapter::aliyun::AliyunAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::bigmodel::BigModelAdapter;
 use crate::adapter::cohere::CohereAdapter;
@@ -11,7 +14,7 @@ use crate::adapter::mimo::{self, MimoAdapter};
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::xai::XaiAdapter;
-use crate::adapter::zai;
+use crate::adapter::{Adapter as _, zai};
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -47,6 +50,8 @@ pub enum AdapterKind {
 	Zai,
 	/// For big model (only accessible via namespace bigmodel::)
 	BigModel,
+	/// For aliyun (Mostly use OpenAI)
+	Aliyun,
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
@@ -71,6 +76,7 @@ impl AdapterKind {
 			AdapterKind::DeepSeek => "DeepSeek",
 			AdapterKind::Zai => "Zai",
 			AdapterKind::BigModel => "BigModel",
+			AdapterKind::Aliyun => "Aliyun",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 		}
@@ -91,7 +97,8 @@ impl AdapterKind {
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
 			AdapterKind::Zai => "zai",
-			AdapterKind::BigModel => "BigModel",
+			AdapterKind::BigModel => "bigmodel",
+			AdapterKind::Aliyun => "aliyun",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 		}
@@ -112,6 +119,7 @@ impl AdapterKind {
 			"deepseek" => Some(AdapterKind::DeepSeek),
 			"zai" => Some(AdapterKind::Zai),
 			"bigmodel" => Some(AdapterKind::BigModel),
+			"aliyun" => Some(AdapterKind::Aliyun),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			_ => None,
@@ -124,21 +132,22 @@ impl AdapterKind {
 	/// Get the default key environment variable name for the adapter kind.
 	pub fn default_key_env_name(&self) -> Option<&'static str> {
 		match self {
-			AdapterKind::OpenAI => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::OpenAIResp => Some(OpenAIAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Gemini => Some(GeminiAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Anthropic => Some(AnthropicAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Fireworks => Some(FireworksAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Together => Some(TogetherAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Groq => Some(GroqAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Mimo => Some(MimoAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Nebius => Some(NebiusAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Xai => Some(XaiAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::DeepSeek => Some(DeepSeekAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Zai => Some(ZaiAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::BigModel => Some(BigModelAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Cohere => Some(CohereAdapter::API_KEY_DEFAULT_ENV_NAME),
-			AdapterKind::Ollama => None,
+			AdapterKind::OpenAI => OpenAIAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Gemini => GeminiAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Anthropic => AnthropicAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Fireworks => FireworksAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Together => TogetherAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Groq => GroqAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Mimo => MimoAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Nebius => NebiusAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Xai => XaiAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::DeepSeek => DeepSeekAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Zai => ZaiAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::BigModel => BigModelAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Aliyun => AliyunAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Cohere => CohereAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Ollama => OllamaAdapter::DEFAULT_API_KEY_ENV_NAME,
 		}
 	}
 }
