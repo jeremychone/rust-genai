@@ -8,7 +8,7 @@ use genai::resolver::AuthData;
 // NOTE: "gpt-oss:20b" has some issues on json_mode, stop_sequence
 const MODEL: &str = "gemma3:4b"; //
 const MODEL_NS: &str = "ollama::gemma3:4b";
-const MODEL_TOOL: &str = "ollama::gpt-oss:20b";
+const MODEL_TOOL: &str = "ollama::qwen3-vl:4b";
 
 // region:    --- Chat
 
