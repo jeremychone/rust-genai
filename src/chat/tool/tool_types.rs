@@ -164,13 +164,12 @@ impl<'de> Deserialize<'de> for ToolConfig {
 		let value = serde_json::Value::deserialize(deserializer)?;
 
 		// If it's an object with exactly one key "WebSearch", treat as built-in.
-		if let serde_json::Value::Object(ref map) = value {
-			if map.len() == 1 {
-				if let Some(inner) = map.get("WebSearch") {
-					let config: WebSearchConfig = serde_json::from_value(inner.clone()).map_err(de::Error::custom)?;
-					return Ok(ToolConfig::WebSearch(config));
-				}
-			}
+		if let serde_json::Value::Object(ref map) = value
+			&& map.len() == 1
+			&& let Some(inner) = map.get("WebSearch")
+		{
+			let config: WebSearchConfig = serde_json::from_value(inner.clone()).map_err(de::Error::custom)?;
+			return Ok(ToolConfig::WebSearch(config));
 		}
 
 		// Everything else is a custom config.
