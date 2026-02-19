@@ -437,3 +437,73 @@ struct OpenAIRequestParts {
 }
 
 // endregion: --- Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::AdapterKind;
+	use crate::chat::{ChatMessage, ContentPart, MessageContent, ToolCall};
+
+	fn test_model() -> ModelIden {
+		ModelIden::new(AdapterKind::OpenAI, "test-model")
+	}
+
+	/// When an assistant message carries reasoning_content, it must appear
+	/// in the serialized JSON so providers that require it (Kimi, DeepSeek)
+	/// don't reject the request.
+	#[test]
+	fn test_reasoning_content_serialized_on_assistant_message() {
+		let tool_call = ToolCall {
+			call_id: "call_1".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: serde_json::json!({"city": "Paris"}),
+			thought_signatures: None,
+		};
+
+		let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![
+			ContentPart::Text("Let me check.".to_string()),
+			ContentPart::ToolCall(tool_call),
+		]))
+		.with_reasoning_content(Some("I should look up the weather.".to_string()));
+
+		let chat_req = ChatRequest::new(vec![
+			ChatMessage::user("What's the weather in Paris?"),
+			assistant_msg,
+		]);
+
+		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req)
+			.expect("should serialize");
+
+		// The assistant message is the second message (after user)
+		let assistant_json = &parts.messages[1];
+		assert_eq!(assistant_json["role"], "assistant");
+		assert_eq!(
+			assistant_json["reasoning_content"],
+			"I should look up the weather.",
+			"reasoning_content should be present in serialized assistant message"
+		);
+	}
+
+	/// When reasoning_content is None, the field should not appear in the JSON.
+	#[test]
+	fn test_no_reasoning_content_when_absent() {
+		let chat_req = ChatRequest::new(vec![
+			ChatMessage::user("Hello"),
+			ChatMessage::assistant("Hi there!"),
+		]);
+
+		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req)
+			.expect("should serialize");
+
+		let assistant_json = &parts.messages[1];
+		assert_eq!(assistant_json["role"], "assistant");
+		assert!(
+			assistant_json.get("reasoning_content").is_none(),
+			"reasoning_content should be absent when not set"
+		);
+	}
+}
+
+// endregion: --- Tests
