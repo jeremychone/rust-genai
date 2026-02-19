@@ -303,7 +303,7 @@ impl OpenAIAdapter {
 
 				// Assistant - For now support Text and ToolCalls
 				ChatRole::Assistant => {
-					// -- If we have only text, then, we jjust returned the joined_texts
+					let reasoning = msg.reasoning_content; // move out before iterating content
 					let mut texts: Vec<String> = Vec::new();
 					let mut tool_calls: Vec<Value> = Vec::new();
 					for part in msg.content {
@@ -333,6 +333,10 @@ impl OpenAIAdapter {
 					let mut message = json!({"role": "assistant", "content": content});
 					if !tool_calls.is_empty() {
 						message.x_insert("tool_calls", tool_calls)?;
+					}
+					// Echo reasoning_content back for providers that require it (Kimi, DeepSeek)
+					if let Some(reasoning) = reasoning {
+						message.x_insert("reasoning_content", reasoning)?;
 					}
 					messages.push(message);
 				}
