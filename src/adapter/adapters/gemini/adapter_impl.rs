@@ -583,6 +583,7 @@ impl GeminiAdapter {
 								}));
 							}
 
+							ContentPart::ReasoningContent(_) => {}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}
@@ -652,6 +653,11 @@ impl GeminiAdapter {
 									parts_values.push(json!({"thoughtSignature": thought}));
 								}
 							}
+							ContentPart::ReasoningContent(_) => {
+								if let Some(thought) = pending_thought.take() {
+									parts_values.push(json!({"thoughtSignature": thought}));
+								}
+							}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}
@@ -691,6 +697,7 @@ impl GeminiAdapter {
 									"thoughtSignature": thought
 								}));
 							}
+							ContentPart::ReasoningContent(_) => {}
 							_ => {
 								return Err(Error::MessageContentTypeNotSupported {
 									model_iden: model_iden.clone(),

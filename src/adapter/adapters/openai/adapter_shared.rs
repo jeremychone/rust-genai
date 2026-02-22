@@ -293,6 +293,7 @@ impl OpenAIAdapter {
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
+								ContentPart::ReasoningContent(_) => (),
 								// Custom are ignored for this logic
 								ContentPart::Custom(_) => {}
 							}
@@ -303,9 +304,9 @@ impl OpenAIAdapter {
 
 				// Assistant - For now support Text and ToolCalls
 				ChatRole::Assistant => {
-					let reasoning = msg.reasoning_content; // move out before iterating content
 					let mut texts: Vec<String> = Vec::new();
 					let mut tool_calls: Vec<Value> = Vec::new();
+					let mut reasoning_parts: Vec<String> = Vec::new();
 					for part in msg.content {
 						match part {
 							ContentPart::Text(text) => texts.push(text),
@@ -320,6 +321,8 @@ impl OpenAIAdapter {
 									}
 								}))
 							}
+							// Extract reasoning content parts to hoist into sibling field
+							ContentPart::ReasoningContent(reasoning) => reasoning_parts.push(reasoning),
 
 							// TODO: Probably need towarn on this one (probably need to add binary here)
 							ContentPart::Binary(_) => (),
@@ -335,8 +338,10 @@ impl OpenAIAdapter {
 						message.x_insert("tool_calls", tool_calls)?;
 					}
 					// Echo reasoning_content back for providers that require it (Kimi, DeepSeek)
-					if let Some(reasoning) = reasoning {
-						message.x_insert("reasoning_content", reasoning)?;
+					// Note: In practice there is at most one ReasoningContent part per message,
+					//       but we join defensively in case multiple parts are present.
+					if !reasoning_parts.is_empty() {
+						message.x_insert("reasoning_content", reasoning_parts.join("\n"))?;
 					}
 					messages.push(message);
 				}

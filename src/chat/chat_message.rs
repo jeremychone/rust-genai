@@ -19,12 +19,6 @@ pub struct ChatMessage {
 
 	/// Optional per-message options (e.g., cache control).
 	pub options: Option<MessageOptions>,
-
-	/// Reasoning/thinking content from models that support it (e.g., DeepSeek, Kimi).
-	/// When present on an assistant message, adapters should serialize it back
-	/// so providers that require it for tool-call continuations get it.
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub reasoning_content: Option<String>,
 }
 
 /// Constructors
@@ -35,7 +29,6 @@ impl ChatMessage {
 			role: ChatRole::System,
 			content: content.into(),
 			options: None,
-			reasoning_content: None,
 		}
 	}
 
@@ -45,7 +38,6 @@ impl ChatMessage {
 			role: ChatRole::Assistant,
 			content: content.into(),
 			options: None,
-			reasoning_content: None,
 		}
 	}
 
@@ -55,7 +47,6 @@ impl ChatMessage {
 			role: ChatRole::User,
 			content: content.into(),
 			options: None,
-			reasoning_content: None,
 		}
 	}
 }
@@ -77,9 +68,12 @@ impl ChatMessage {
 		self
 	}
 
-	/// Attaches reasoning content to this message.
+	/// Attach reasoning content to this message as a `ContentPart::ReasoningContent` part.
+	/// This is used for round-tripping assistant reasoning (e.g., DeepSeek, Kimi).
 	pub fn with_reasoning_content(mut self, reasoning: Option<String>) -> Self {
-		self.reasoning_content = reasoning;
+		if let Some(reasoning) = reasoning {
+			self.content.push(ContentPart::ReasoningContent(reasoning));
+		}
 		self
 	}
 
@@ -168,7 +162,6 @@ impl From<Vec<ToolCall>> for ChatMessage {
 			role: ChatRole::Assistant,
 			content: MessageContent::from(tool_calls),
 			options: None,
-			reasoning_content: None,
 		}
 	}
 }
@@ -179,7 +172,6 @@ impl From<ToolResponse> for ChatMessage {
 			role: ChatRole::Tool,
 			content: MessageContent::from(value),
 			options: None,
-			reasoning_content: None,
 		}
 	}
 }
