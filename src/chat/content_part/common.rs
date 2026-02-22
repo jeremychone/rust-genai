@@ -73,8 +73,8 @@ impl ContentPart {
 		Ok(ContentPart::Binary(Binary::from_file(file_path)?))
 	}
 
-	pub fn from_custom(model_iden: ModelIden, data: Value) -> Self {
-		ContentPart::Custom(CustomPart { model_iden, data })
+	pub fn from_custom(data: Value, model_iden: Option<ModelIden>) -> Self {
+		ContentPart::Custom(CustomPart { data, model_iden })
 	}
 }
 

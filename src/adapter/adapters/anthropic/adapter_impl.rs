@@ -343,7 +343,7 @@ impl Adapter for AnthropicAdapter {
 				other_typ => {
 					// insert it back
 					item.x_insert("type", other_typ)?;
-					content.push(ContentPart::from_custom(model_iden.clone(), item))
+					content.push(ContentPart::from_custom(item, Some(model_iden.clone())))
 				}
 			}
 		}
