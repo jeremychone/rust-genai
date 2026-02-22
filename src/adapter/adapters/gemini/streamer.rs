@@ -110,6 +110,11 @@ impl futures::Stream for GeminiStreamer {
 										stream_reasoning_content = Some(reasoning)
 									}
 									GeminiChatContent::Text(text) => stream_text_content.push_str(&text),
+									GeminiChatContent::Binary(_) => {
+										// For now, we do not stream binary content, as Gemini may send binary content in multiple chunks and we don't want to emit incomplete binary data.
+										// Instead, we will capture the binary content in the captured_data and emit it at the end of the stream.
+										// We can consider adding a streaming event for binary content in the future if there is a use case for it.
+									}
 									GeminiChatContent::ToolCall(tool_call) => stream_tool_call = Some(tool_call),
 									GeminiChatContent::ThoughtSignature(thought) => stream_thought = Some(thought),
 								}

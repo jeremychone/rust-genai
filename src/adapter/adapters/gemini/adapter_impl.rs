@@ -269,10 +269,12 @@ impl Adapter for GeminiAdapter {
 		let mut reasonings: Vec<String> = Vec::new();
 		let mut texts: Vec<String> = Vec::new();
 		let mut tool_calls: Vec<ToolCall> = Vec::new();
+		let mut binary_parts: Vec<Binary> = Vec::new();
 
 		for g_item in gemini_content {
 			match g_item {
 				GeminiChatContent::Text(text) => texts.push(text),
+				GeminiChatContent::Binary(binary) => binary_parts.push(binary),
 				GeminiChatContent::ToolCall(tool_call) => tool_calls.push(tool_call),
 				GeminiChatContent::ThoughtSignature(thought) => thoughts.push(thought),
 				GeminiChatContent::Reasoning(reasoning_text) => reasonings.push(reasoning_text),
@@ -302,6 +304,12 @@ impl Adapter for GeminiAdapter {
 		if !reasonings.is_empty() {
 			for reasoning in &reasonings {
 				reasoning_text.push_str(reasoning);
+			}
+		}
+
+		if !binary_parts.is_empty() {
+			for binary in binary_parts {
+				parts.push(ContentPart::Binary(binary));
 			}
 		}
 
@@ -430,6 +438,17 @@ impl GeminiAdapter {
 				.map(GeminiChatContent::Text)
 			{
 				content.push(txt_content)
+			}
+
+			// -- Capture eventual inlineData (Image)
+			if let Ok(inline_data) = part.x_take::<Value>("inlineData") {
+				// Note: Gemini may send inline data in multiple parts, but for now, we will treat each part as a separate binary content. We can consider concatenating them if needed in the future.
+				if let Ok(mime_type) = inline_data.x_get::<String>("mimeType")
+					&& let Ok(data) = inline_data.x_get::<String>("data")
+				{
+					let binary = Binary::from_base64(mime_type, data, None);
+					content.push(GeminiChatContent::Binary(binary));
+				}
 			}
 		}
 		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
@@ -793,6 +812,7 @@ pub(super) struct GeminiChatResponse {
 
 pub(super) enum GeminiChatContent {
 	Text(String),
+	Binary(Binary),
 	ToolCall(ToolCall),
 	Reasoning(String),
 	ThoughtSignature(String),
