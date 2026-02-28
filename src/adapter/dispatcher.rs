@@ -73,24 +73,24 @@ impl AdapterDispatcher {
 		}
 	}
 
-	pub async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
+	pub async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
 		match kind {
-			AdapterKind::OpenAI => OpenAIAdapter::all_model_names(kind).await,
-			AdapterKind::OpenAIResp => OpenAIRespAdapter::all_model_names(kind).await,
-			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind).await,
-			AdapterKind::Anthropic => AnthropicAdapter::all_model_names(kind).await,
-			AdapterKind::Fireworks => FireworksAdapter::all_model_names(kind).await,
-			AdapterKind::Together => TogetherAdapter::all_model_names(kind).await,
-			AdapterKind::Groq => GroqAdapter::all_model_names(kind).await,
-			AdapterKind::Mimo => MimoAdapter::all_model_names(kind).await,
-			AdapterKind::Nebius => NebiusAdapter::all_model_names(kind).await,
-			AdapterKind::Xai => XaiAdapter::all_model_names(kind).await,
-			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind).await,
-			AdapterKind::Zai => ZaiAdapter::all_model_names(kind).await,
-			AdapterKind::BigModel => BigModelAdapter::all_model_names(kind).await,
-			AdapterKind::Aliyun => AliyunAdapter::all_model_names(kind).await,
-			AdapterKind::Cohere => CohereAdapter::all_model_names(kind).await,
-			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind).await,
+			AdapterKind::OpenAI => OpenAIAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::OpenAIResp => OpenAIRespAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Gemini => GeminiAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Anthropic => AnthropicAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Fireworks => FireworksAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Together => TogetherAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Groq => GroqAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Mimo => MimoAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Nebius => NebiusAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Xai => XaiAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Zai => ZaiAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::BigModel => BigModelAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Aliyun => AliyunAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Cohere => CohereAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind, endpoint, auth).await,
 		}
 	}
 

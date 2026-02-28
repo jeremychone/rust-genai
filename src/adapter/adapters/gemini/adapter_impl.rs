@@ -64,10 +64,7 @@ impl Adapter for GeminiAdapter {
 		}
 	}
 
-	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
-		let endpoint = Self::default_endpoint();
-		let auth = Self::default_auth();
-
+	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
 		// -- url
 		let base_url = endpoint.base_url();
 		let url = format!("{base_url}models");

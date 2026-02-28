@@ -43,7 +43,7 @@ impl Adapter for CohereAdapter {
 	}
 
 	/// Note: For now, it returns the common ones (see above)
-	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 

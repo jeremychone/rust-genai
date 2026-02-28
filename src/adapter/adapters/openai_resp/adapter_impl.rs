@@ -37,14 +37,9 @@ impl Adapter for OpenAIRespAdapter {
 	}
 
 	/// Note: Currently returns the common models (see above)
-	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>> {
+	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
 		//
-		OpenAIAdapter::list_model_names_for_end_target(
-			kind,
-			OpenAIAdapter::default_endpoint(),
-			OpenAIAdapter::default_auth(),
-		)
-		.await
+		OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth).await
 	}
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {

@@ -16,7 +16,7 @@ pub trait Adapter {
 	fn default_endpoint() -> Endpoint;
 
 	// NOTE: Adapter is a crate trait, so it is acceptable to use async fn here.
-	async fn all_model_names(kind: AdapterKind) -> Result<Vec<String>>;
+	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>>;
 
 	/// The base service URL for this AdapterKind for the given service type.
 	/// NOTE: For some services, the URL will be further updated in the to_web_request_data method.

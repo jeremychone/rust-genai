@@ -70,7 +70,7 @@ impl Adapter for AliyunAdapter {
 	}
 
 	/// Returns all supported model names for Aliyun
-	async fn all_model_names(_kind: AdapterKind) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 
