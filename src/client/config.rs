@@ -2,7 +2,7 @@ use crate::adapter::{AdapterDispatcher, AdapterKind};
 use crate::chat::ChatOptions;
 use crate::client::{ModelSpec, ServiceTarget};
 use crate::embed::EmbedOptions;
-use crate::resolver::{AuthData, AuthResolver, ModelMapper, ServiceTargetResolver};
+use crate::resolver::{AuthData, AuthResolver, Endpoint, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result, WebConfig};
 
 /// Configuration for building and customizing a `Client`.
@@ -96,6 +96,16 @@ impl ClientConfig {
 
 /// Resolvers
 impl ClientConfig {
+	/// Resolves auth and endpoint for the given adapter kind.
+	///
+	/// Used by `Client::all_model_names()` where no specific model name is available.
+	pub(crate) async fn resolve_adapter_config(&self, adapter_kind: AdapterKind) -> Result<(AuthData, Endpoint)> {
+		let model = ModelIden::new(adapter_kind, "");
+		let auth = self.run_auth_resolver(model).await?;
+		let endpoint = AdapterDispatcher::default_endpoint(adapter_kind);
+		Ok((auth, endpoint))
+	}
+
 	/// Resolves a ServiceTarget for the given model.
 	///
 	/// Applies the ModelMapper (if any), resolves auth (via AuthResolver or adapter default),

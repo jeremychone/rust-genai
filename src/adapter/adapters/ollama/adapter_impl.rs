@@ -35,8 +35,7 @@ impl Adapter for OllamaAdapter {
 		}
 	}
 
-	async fn all_model_names(adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		let endpoint = Self::default_endpoint();
+	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
 		let base_url = endpoint.base_url();
 		let url = format!("{base_url}api/tags");
 
