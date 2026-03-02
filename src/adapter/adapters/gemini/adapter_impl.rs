@@ -653,11 +653,7 @@ impl GeminiAdapter {
 									parts_values.push(json!({"thoughtSignature": thought}));
 								}
 							}
-							ContentPart::ReasoningContent(_) => {
-								if let Some(thought) = pending_thought.take() {
-									parts_values.push(json!({"thoughtSignature": thought}));
-								}
-							}
+							ContentPart::ReasoningContent(_) => {}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}
