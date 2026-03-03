@@ -48,27 +48,17 @@ impl futures::Stream for GeminiStreamer {
 		if let Some(event) = self.pending_events.pop_front() {
 			return Poll::Ready(Some(Ok(event)));
 		}
+        let mut first_poll = true;
 
 		while let Poll::Ready(item) = Pin::new(&mut self.inner).poll_next(cx) {
 			match item {
 				Some(Ok(raw_message)) => {
-					// This is the message sent by the WebStream in PrettyJsonArray mode.
-					// - `[` document start
-					// - `{...}` block
-					// - `]` document end
-					match raw_message.as_str() {
-						"[" => return Poll::Ready(Some(Ok(InterStreamEvent::Start))),
-						"]" => {
-							let inter_stream_end = InterStreamEnd {
-								captured_usage: self.captured_data.usage.take(),
-								captured_text_content: self.captured_data.content.take(),
-								captured_reasoning_content: self.captured_data.reasoning_content.take(),
-								captured_tool_calls: self.captured_data.tool_calls.take(),
-								captured_thought_signatures: self.captured_data.thought_signatures.take(),
-							};
 
-							return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
-						}
+                    if first_poll {
+                        first_poll = false;
+                        self.pending_events.push_back(InterStreamEvent::Start);
+                    }
+					match raw_message.as_str() {
 						block_string => {
 							// -- Parse the block to JSON
 							let json_block = match serde_json::from_str::<Value>(block_string).map_err(|serde_error| {
@@ -198,10 +188,20 @@ impl futures::Stream for GeminiStreamer {
 						error: err,
 					})));
 				}
-				None => {
-					self.done = true;
-					return Poll::Ready(None);
-				}
+                None => {
+                    self.done = true;
+
+                    let inter_stream_end = InterStreamEnd {
+                        captured_usage: self.captured_data.usage.take(),
+                        captured_text_content: self.captured_data.content.take(),
+                        captured_reasoning_content: self.captured_data.reasoning_content.take(),
+                        captured_tool_calls: self.captured_data.tool_calls.take(),
+                        captured_thought_signatures: self.captured_data.thought_signatures.take(),
+                    };
+                    let end_event = InterStreamEvent::End(inter_stream_end);
+
+                    return Poll::Ready(Some(Ok(end_event)));
+                }
 			}
 		}
 		Poll::Pending
