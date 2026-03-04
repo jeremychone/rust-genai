@@ -293,6 +293,7 @@ impl OpenAIAdapter {
 								ContentPart::ToolCall(_) => (),
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
+								ContentPart::ReasoningContent(_) => (),
 								// Custom are ignored for this logic
 								ContentPart::Custom(_) => {}
 							}
@@ -303,9 +304,9 @@ impl OpenAIAdapter {
 
 				// Assistant - For now support Text and ToolCalls
 				ChatRole::Assistant => {
-					// -- If we have only text, then, we jjust returned the joined_texts
 					let mut texts: Vec<String> = Vec::new();
 					let mut tool_calls: Vec<Value> = Vec::new();
+					let mut reasoning_parts: Vec<String> = Vec::new();
 					for part in msg.content {
 						match part {
 							ContentPart::Text(text) => texts.push(text),
@@ -320,6 +321,8 @@ impl OpenAIAdapter {
 									}
 								}))
 							}
+							// Extract reasoning content parts to hoist into sibling field
+							ContentPart::ReasoningContent(reasoning) => reasoning_parts.push(reasoning),
 
 							// TODO: Probably need towarn on this one (probably need to add binary here)
 							ContentPart::Binary(_) => (),
@@ -333,6 +336,12 @@ impl OpenAIAdapter {
 					let mut message = json!({"role": "assistant", "content": content});
 					if !tool_calls.is_empty() {
 						message.x_insert("tool_calls", tool_calls)?;
+					}
+					// Echo reasoning_content back for providers that require it (Kimi, DeepSeek)
+					// Note: In practice there is at most one ReasoningContent part per message,
+					//       but we join defensively in case multiple parts are present.
+					if !reasoning_parts.is_empty() {
+						message.x_insert("reasoning_content", reasoning_parts.join("\n"))?;
 					}
 					messages.push(message);
 				}
@@ -433,3 +442,73 @@ struct OpenAIRequestParts {
 }
 
 // endregion: --- Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::AdapterKind;
+	use crate::chat::{ChatMessage, ContentPart, MessageContent, ToolCall};
+
+	fn test_model() -> ModelIden {
+		ModelIden::new(AdapterKind::OpenAI, "test-model")
+	}
+
+	/// When an assistant message carries reasoning_content, it must appear
+	/// in the serialized JSON so providers that require it (Kimi, DeepSeek)
+	/// don't reject the request.
+	#[test]
+	fn test_reasoning_content_serialized_on_assistant_message() {
+		let tool_call = ToolCall {
+			call_id: "call_1".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: serde_json::json!({"city": "Paris"}),
+			thought_signatures: None,
+		};
+
+		let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![
+			ContentPart::Text("Let me check.".to_string()),
+			ContentPart::ToolCall(tool_call),
+		]))
+		.with_reasoning_content(Some("I should look up the weather.".to_string()));
+
+		let chat_req = ChatRequest::new(vec![
+			ChatMessage::user("What's the weather in Paris?"),
+			assistant_msg,
+		]);
+
+		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req)
+			.expect("should serialize");
+
+		// The assistant message is the second message (after user)
+		let assistant_json = &parts.messages[1];
+		assert_eq!(assistant_json["role"], "assistant");
+		assert_eq!(
+			assistant_json["reasoning_content"],
+			"I should look up the weather.",
+			"reasoning_content should be present in serialized assistant message"
+		);
+	}
+
+	/// When reasoning_content is None, the field should not appear in the JSON.
+	#[test]
+	fn test_no_reasoning_content_when_absent() {
+		let chat_req = ChatRequest::new(vec![
+			ChatMessage::user("Hello"),
+			ChatMessage::assistant("Hi there!"),
+		]);
+
+		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req)
+			.expect("should serialize");
+
+		let assistant_json = &parts.messages[1];
+		assert_eq!(assistant_json["role"], "assistant");
+		assert!(
+			assistant_json.get("reasoning_content").is_none(),
+			"reasoning_content should be absent when not set"
+		);
+	}
+}
+
+// endregion: --- Tests

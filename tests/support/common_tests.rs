@@ -682,16 +682,16 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> TestResu
 		"StreamEnd should not have any meta_usage"
 	);
 
-	// -- Check captured_content
-	let captured_content = get_option_value!(stream_end.captured_content);
-	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
-
 	// -- Check Reasoning Content
 	// Should always be none, as it was not instructed to be captured.
 	assert!(
 		stream_end.captured_reasoning_content.is_none(),
 		"The captured_reasoning_content should be None"
 	);
+
+	// -- Check captured_content
+	let captured_content = get_option_value!(stream_end.captured_content);
+	assert!(!captured_content.is_empty(), "captured_content.length should be > 0");
 
 	Ok(())
 }

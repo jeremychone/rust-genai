@@ -220,6 +220,29 @@ impl MessageContent {
 		self.parts.len()
 	}
 
+	/// Return references to all ReasoningContent parts as &str.
+	pub fn reasoning_contents(&self) -> Vec<&str> {
+		self.parts.iter().filter_map(|p| p.as_reasoning_content()).collect()
+	}
+
+	/// Consume and return all ReasoningContent parts as owned Strings.
+	pub fn into_reasoning_contents(self) -> Vec<String> {
+		self.parts
+			.into_iter()
+			.filter_map(|p| p.into_reasoning_content())
+			.collect()
+	}
+
+	/// Join all reasoning content parts with a newline separator.
+	/// Returns None if there are no reasoning content parts.
+	pub fn joined_reasoning_content(&self) -> Option<String> {
+		let parts = self.reasoning_contents();
+		if parts.is_empty() {
+			return None;
+		}
+		Some(parts.join("\n"))
+	}
+
 	/// True if empty, or if all parts are text whose content is empty or whitespace.
 	pub fn is_text_empty(&self) -> bool {
 		if self.parts.is_empty() {
@@ -306,6 +329,11 @@ impl MessageContent {
 	/// True if at least one part is a ToolResponse.
 	pub fn contains_tool_response(&self) -> bool {
 		self.parts.iter().any(|p| p.is_tool_response())
+	}
+
+	/// True if at least one part is ReasoningContent.
+	pub fn contains_reasoning_content(&self) -> bool {
+		self.parts.iter().any(|p| p.is_reasoning_content())
 	}
 }
 

@@ -256,10 +256,10 @@ impl StreamEnd {
 		if tool_calls.is_empty() {
 			return None;
 		}
-		Some(ChatMessage::assistant_tool_calls_with_thoughts(
-			tool_calls,
-			thought_signatures,
-		))
+		Some(
+			ChatMessage::assistant_tool_calls_with_thoughts(tool_calls, thought_signatures)
+				.with_reasoning_content(self.captured_reasoning_content),
+		)
 	}
 }
 

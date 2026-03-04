@@ -68,6 +68,15 @@ impl ChatMessage {
 		self
 	}
 
+	/// Attach reasoning content to this message as a `ContentPart::ReasoningContent` part.
+	/// This is used for round-tripping assistant reasoning (e.g., DeepSeek, Kimi).
+	pub fn with_reasoning_content(mut self, reasoning: Option<String>) -> Self {
+		if let Some(reasoning) = reasoning {
+			self.content.push(ContentPart::ReasoningContent(reasoning));
+		}
+		self
+	}
+
 	/// Convenience: build an assistant message that contains an optional list
 	/// of thought signatures followed by tool calls. Useful for providers
 	/// (e.g., Gemini 3) that require the thought signature to appear before
