@@ -10,6 +10,14 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
 
+fn take_stream_error(message_data: &mut Value, model_iden: &ModelIden) -> Option<Error> {
+	let error_body = message_data.x_take::<Value>("error").ok()?;
+	Some(Error::ChatResponse {
+		model_iden: model_iden.clone(),
+		body: error_body,
+	})
+}
+
 pub struct OpenAIStreamer {
 	inner: EventSourceStream,
 	options: StreamerOptions,
@@ -149,6 +157,10 @@ impl futures::Stream for OpenAIStreamer {
 							model_iden: self.options.model_iden.clone(),
 							serde_error,
 						})?;
+
+					if let Some(error) = take_stream_error(&mut message_data, &self.options.model_iden) {
+						return Poll::Ready(Some(Err(error)));
+					}
 
 					let first_choice: Option<Value> = message_data.x_take("/choices/0").ok();
 
@@ -316,5 +328,42 @@ impl futures::Stream for OpenAIStreamer {
 			}
 		}
 		Poll::Pending
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::AdapterKind;
+
+	fn test_model() -> ModelIden {
+		ModelIden::new(AdapterKind::OpenAI, "test-model")
+	}
+
+	#[test]
+	fn test_take_stream_error_reads_openai_error_payload() {
+		let mut message_data = serde_json::json!({
+			"error": {
+				"message": "Error in input stream",
+				"type": "server_error",
+			}
+		});
+
+		let err = take_stream_error(&mut message_data, &test_model()).expect("expected stream error");
+		match err {
+			Error::ChatResponse { body, .. } => {
+				assert_eq!(body["message"], "Error in input stream");
+				assert_eq!(body["type"], "server_error");
+			}
+			other => panic!("unexpected error variant: {other:?}"),
+		}
+	}
+
+	#[test]
+	fn test_take_stream_error_none_when_error_key_missing() {
+		let mut message_data = serde_json::json!({
+			"choices": [{"delta": {"content": "hi"}}]
+		});
+		assert!(take_stream_error(&mut message_data, &test_model()).is_none());
 	}
 }
