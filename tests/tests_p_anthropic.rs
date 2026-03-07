@@ -10,10 +10,10 @@ use serial_test::serial;
 // "claude-3-7-sonnet-latest" (fail on test_chat_json_mode_ok)
 // "claude-sonnet-4-20250514" (fail on test_chat_json_mode_ok)
 //
-const MODEL: &str = "claude-3-5-haiku-latest";
+const MODEL: &str = "claude-haiku-4-5";
 // const MODEL_THINKING: &str = "claude-sonnet-4-5-20250929";
 const MODEL_THINKING: &str = "claude-opus-4-5";
-const MODEL_NS: &str = "anthropic::claude-3-5-haiku-latest";
+const MODEL_NS: &str = "anthropic::claude-haiku-4-5";
 
 // region:    --- Chat
 
