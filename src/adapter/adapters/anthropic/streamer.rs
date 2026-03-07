@@ -1,7 +1,7 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::anthropic::parse_cache_creation_details;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, PromptTokensDetails, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, PromptTokensDetails, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -61,6 +61,12 @@ impl futures::Stream for AnthropicStreamer {
 						}
 						"message_delta" => {
 							self.capture_usage(message_type, &message.data)?;
+							// Capture stop_reason from delta (e.g., "end_turn", "max_tokens", "tool_use")
+							if let Ok(data) = self.parse_message_data(&message.data) {
+								if let Ok(reason) = data.x_get::<String>("/delta/stop_reason") {
+									self.captured_data.stop_reason = Some(reason);
+								}
+							}
 							continue;
 						}
 						"content_block_start" => {
@@ -197,6 +203,7 @@ impl futures::Stream for AnthropicStreamer {
 
 							let inter_stream_end = InterStreamEnd {
 								captured_usage,
+								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),

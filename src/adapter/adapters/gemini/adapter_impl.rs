@@ -4,7 +4,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
 	ChatStreamResponse, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
-	Tool, ToolCall, ToolConfig, ToolName, Usage,
+	StopReason, Tool, ToolCall, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -260,7 +260,9 @@ impl Adapter for GeminiAdapter {
 		let GeminiChatResponse {
 			content: gemini_content,
 			usage,
+			stop_reason,
 		} = gemini_response;
+		let stop_reason = stop_reason.map(StopReason::from);
 
 		let mut thoughts: Vec<String> = Vec::new();
 		let mut reasonings: Vec<String> = Vec::new();
@@ -318,6 +320,7 @@ impl Adapter for GeminiAdapter {
 			reasoning_content: Some(reasoning_text),
 			model_iden,
 			provider_model_iden,
+			stop_reason,
 			usage,
 			captured_raw_body: None, // Set by the client exec_chat
 		})
@@ -448,9 +451,10 @@ impl GeminiAdapter {
 				}
 			}
 		}
+		let stop_reason: Option<String> = body.x_take("/candidates/0/finishReason").ok();
 		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
 
-		Ok(GeminiChatResponse { content, usage })
+		Ok(GeminiChatResponse { content, usage, stop_reason })
 	}
 
 	/// See gemini doc: https://ai.google.dev/api/generate-content#UsageMetadata
@@ -808,6 +812,7 @@ pub enum GeminiTool {
 pub(super) struct GeminiChatResponse {
 	pub content: Vec<GeminiChatContent>,
 	pub usage: Usage,
+	pub stop_reason: Option<String>,
 }
 
 pub(super) enum GeminiChatContent {

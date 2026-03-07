@@ -1,7 +1,7 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::gemini::{GeminiAdapter, GeminiChatResponse};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, ToolCall};
+use crate::chat::{ChatOptionsSet, StopReason, ToolCall};
 use crate::webc::WebStream;
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
@@ -61,6 +61,7 @@ impl futures::Stream for GeminiStreamer {
 						"]" => {
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: self.captured_data.usage.take(),
+								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
@@ -95,7 +96,12 @@ impl futures::Stream for GeminiStreamer {
 									}
 								};
 
-							let GeminiChatResponse { content, usage } = gemini_response;
+							let GeminiChatResponse { content, usage, stop_reason } = gemini_response;
+
+							// -- Capture stop_reason if present (typically in the last chunk)
+							if stop_reason.is_some() {
+								self.captured_data.stop_reason = stop_reason;
+							}
 
 							// -- Extract text and toolcall
 							// WARNING: Assume that only ONE tool call per message (or take the last one)

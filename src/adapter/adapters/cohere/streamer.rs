@@ -1,7 +1,7 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::ChatOptionsSet;
+use crate::chat::{ChatOptionsSet, StopReason};
 use crate::webc::WebStream;
 use crate::{Error, ModelIden, Result};
 use serde::Deserialize;
@@ -38,6 +38,7 @@ struct CohereStreamMessage {
 	is_finished: bool,
 	event_type: String,
 	text: Option<String>,
+	finish_reason: Option<String>,
 	response: Option<CohereStreamMessageResponse>,
 }
 #[derive(Deserialize, Debug)]
@@ -84,6 +85,9 @@ impl futures::Stream for CohereStreamer {
 									}
 								}
 								"stream-end" => {
+									// -- Capture stop_reason
+									self.captured_data.stop_reason = cohere_message.finish_reason;
+
 									// -- Capture usage
 									let meta = cohere_message.response.and_then(|r| r.meta);
 									let captured_usage = if self.options.capture_usage {
@@ -105,6 +109,7 @@ impl futures::Stream for CohereStreamer {
 
 									let inter_stream_end = InterStreamEnd {
 										captured_usage,
+										captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 										captured_text_content: self.captured_data.content.take(),
 										captured_reasoning_content: self.captured_data.reasoning_content.take(),
 										captured_tool_calls: self.captured_data.tool_calls.take(),

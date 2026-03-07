@@ -2,7 +2,7 @@ use crate::adapter::AdapterKind;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai::OpenAIAdapter;
-use crate::chat::{ChatOptionsSet, ToolCall};
+use crate::chat::{ChatOptionsSet, StopReason, ToolCall};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
@@ -141,6 +141,7 @@ impl futures::Stream for OpenAIStreamer {
 						// Return the internal stream end
 						let inter_stream_end = InterStreamEnd {
 							captured_usage,
+							captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls,
@@ -173,7 +174,8 @@ impl futures::Stream for OpenAIStreamer {
 						// Since we support only a single choice, we can proceed,
 						// as there might be other messages, and the last one contains data: `[DONE]`
 						// NOTE: xAI has no `finish_reason` when not finished, so, need to just account for both null/absent
-						if let Ok(_finish_reason) = first_choice.x_take::<String>("finish_reason") {
+						if let Ok(Some(finish_reason)) = first_choice.x_take::<Option<String>>("finish_reason") {
+							self.captured_data.stop_reason = Some(finish_reason);
 							// NOTE: Some providers (e.g., Ollama) send tool_calls AND finish_reason in the same message.
 							// We need to capture tool_calls here before continuing to the next message.
 							if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls")

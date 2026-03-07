@@ -5,7 +5,7 @@ use crate::adapter::ollama::OllamaStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse, ContentPart,
-	MessageContent, Tool, ToolCall, ToolName, Usage,
+	MessageContent, StopReason, Tool, ToolCall, ToolName, Usage,
 };
 use crate::embed::{EmbedResponse, Embedding};
 use crate::resolver::{AuthData, Endpoint};
@@ -190,6 +190,7 @@ impl Adapter for OllamaAdapter {
 			reasoning_content,
 			model_iden: model_iden.clone(),
 			provider_model_iden: model_iden,
+			stop_reason: body.x_take::<Option<String>>("done_reason").ok().flatten().map(StopReason::from),
 			usage,
 			captured_raw_body,
 		})

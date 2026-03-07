@@ -5,6 +5,93 @@ use serde::{Deserialize, Serialize};
 use crate::ModelIden;
 use crate::chat::{ChatStream, MessageContent, ToolCall, Usage};
 
+// region:    --- StopReason
+
+/// Provider-agnostic stop reason.
+///
+/// All known provider strings are mapped automatically via `From<String>`:
+///
+/// | StopReason      | Provider strings                                                         |
+/// |-----------------|--------------------------------------------------------------------------|
+/// | `Completed`     | `stop`, `end_turn`, `STOP`, `COMPLETE`, `completed`                      |
+/// | `MaxTokens`     | `length`, `max_tokens`, `MAX_TOKENS`, `incomplete`                       |
+/// | `ToolCall`      | `tool_calls`, `tool_use`, `function_call`                                |
+/// | `ContentFilter` | `content_filter`, `SAFETY`, `RECITATION`, `BLOCKLIST`, …                 |
+/// | `StopSequence`  | `stop_sequence`, `STOP_SEQUENCE`                                         |
+/// | `Other(s)`      | anything else (`failed`, `cancelled`, `ERROR`, `load`, …)                |
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StopReason {
+	/// Model finished generating naturally.
+	Completed(String),
+	/// Output was truncated due to max_tokens limit.
+	MaxTokens(String),
+	/// Model invoked one or more tools.
+	ToolCall(String),
+	/// Content was filtered by safety / content-filter systems.
+	ContentFilter(String),
+	/// A caller-supplied stop sequence was matched.
+	StopSequence(String),
+	/// Provider-specific reason not covered above.
+	Other(String),
+}
+
+impl From<String> for StopReason {
+	fn from(reason: String) -> Self {
+		match reason.as_str() {
+			// -- Normal completion
+			"stop" | "end_turn" | "STOP" | "COMPLETE" | "completed" => Self::Completed(reason),
+
+			// -- Truncated by token limit
+			"length" | "max_tokens" | "MAX_TOKENS" | "incomplete" => Self::MaxTokens(reason),
+
+			// -- Tool invocation
+			"tool_calls" | "tool_use" | "function_call" => Self::ToolCall(reason),
+
+			// -- Content / safety filter
+			"content_filter" | "SAFETY" | "RECITATION" | "BLOCKLIST" | "PROHIBITED_CONTENT" | "SPII"
+			| "IMAGE_SAFETY" | "ERROR_TOXIC" => Self::ContentFilter(reason),
+
+			// -- Stop sequence
+			"stop_sequence" | "STOP_SEQUENCE" => Self::StopSequence(reason),
+
+			// -- Fallback
+			_ => Self::Other(reason),
+		}
+	}
+}
+
+impl StopReason {
+	/// Returns the original provider-specific string.
+	pub fn raw(&self) -> &str {
+		match self {
+			Self::Completed(s) | Self::MaxTokens(s) | Self::ToolCall(s) | Self::ContentFilter(s)
+			| Self::StopSequence(s) | Self::Other(s) => s,
+		}
+	}
+
+	/// Returns `true` when the response was truncated by a token limit.
+	pub fn is_max_tokens(&self) -> bool {
+		matches!(self, Self::MaxTokens(_))
+	}
+}
+
+impl PartialEq for StopReason {
+	/// Compares by variant only, ignoring the raw provider string.
+	fn eq(&self, other: &Self) -> bool {
+		core::mem::discriminant(self) == core::mem::discriminant(other)
+	}
+}
+
+impl Eq for StopReason {}
+
+impl std::fmt::Display for StopReason {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.raw())
+	}
+}
+
+// endregion: --- StopReason
+
 // region:    --- ChatResponse
 
 /// Response returned by a non-streaming chat request.
@@ -26,7 +113,9 @@ pub struct ChatResponse {
 	/// Set explicitly by construction code; no implicit defaulting at the type level.
 	pub provider_model_iden: ModelIden,
 
-	// pub model
+	/// Normalised stop reason (see [`StopReason`]).
+	pub stop_reason: Option<StopReason>,
+
 	/// Token usage reported by the provider.
 	pub usage: Usage,
 

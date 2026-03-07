@@ -1,5 +1,5 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatMessage, ContentPart, MessageContent, ToolCall, Usage};
+use crate::chat::{ChatMessage, ContentPart, MessageContent, StopReason, ToolCall, Usage};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
@@ -107,6 +107,9 @@ pub struct StreamEnd {
 	/// Captured usage if `ChatOptions.capture_usage` is enabled.
 	pub captured_usage: Option<Usage>,
 
+	/// Normalised stop reason captured at stream end (see [`StopReason`]).
+	pub captured_stop_reason: Option<StopReason>,
+
 	/// Captured final content (text and tool calls) if `ChatOptions.capture_content`
 	/// or `capture_tool_calls` is enabled.
 	/// Note: Since 0.4.0 this includes tool calls as well (for API symmetry with `ChatResponse`);
@@ -169,6 +172,7 @@ impl From<InterStreamEnd> for StreamEnd {
 		// -- Return result
 		StreamEnd {
 			captured_usage: inter_end.captured_usage,
+			captured_stop_reason: inter_end.captured_stop_reason,
 			captured_content,
 			captured_reasoning_content: inter_end.captured_reasoning_content,
 		}
@@ -264,3 +268,18 @@ impl StreamEnd {
 }
 
 // endregion: --- ChatStreamEvent
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_stream_end_preserves_captured_stop_reason() {
+		let inter_end = InterStreamEnd {
+			captured_stop_reason: Some(StopReason::Completed("stop".to_string())),
+			..Default::default()
+		};
+		let stream_end = StreamEnd::from(inter_end);
+		assert_eq!(stream_end.captured_stop_reason, Some(StopReason::Completed("stop".to_string())));
+	}
+}

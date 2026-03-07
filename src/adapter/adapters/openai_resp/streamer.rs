@@ -1,7 +1,7 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai_resp::resp_types::RespResponse;
-use crate::chat::{ChatOptionsSet, ToolCall};
+use crate::chat::{ChatOptionsSet, StopReason, ToolCall};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde::Deserialize;
@@ -180,6 +180,7 @@ impl futures::Stream for OpenAIRespStreamer {
 
 						RespStreamEvent::ResponseCompleted { response } => {
 							self.done = true;
+							self.captured_data.stop_reason = Some(response.status.clone());
 
 							if self.options.capture_usage {
 								self.captured_data.usage = response.usage.map(Into::into);
@@ -202,6 +203,7 @@ impl futures::Stream for OpenAIRespStreamer {
 
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: self.captured_data.usage.take(),
+								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
@@ -227,10 +229,12 @@ impl futures::Stream for OpenAIRespStreamer {
 
 						RespStreamEvent::ResponseIncomplete { response } => {
 							self.done = true;
+							self.captured_data.stop_reason = Some(response.status.clone());
 							// For incomplete, we might still want to return what we have?
 							// But for now, let's treat it as a successful end but with whatever we captured.
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: response.usage.map(Into::into),
+								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
@@ -258,6 +262,7 @@ impl futures::Stream for OpenAIRespStreamer {
 						self.done = true;
 						let inter_stream_end = InterStreamEnd {
 							captured_usage: self.captured_data.usage.take(),
+							captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls: self.captured_data.tool_calls.take(),
