@@ -43,6 +43,7 @@ impl StreamerOptions {
 #[derive(Debug, Default)]
 pub struct StreamerCapturedData {
 	pub usage: Option<Usage>,
+	pub stop_reason: Option<String>,
 	pub content: Option<String>,
 	pub reasoning_content: Option<String>,
 	pub tool_calls: Option<Vec<crate::chat::ToolCall>>,

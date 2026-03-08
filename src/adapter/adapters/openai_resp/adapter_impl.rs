@@ -5,7 +5,7 @@ use crate::adapter::openai_resp::resp_types::RespResponse;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, MessageContent, ReasoningEffort, Tool, ToolConfig, ToolName, Usage,
+	ContentPart, MessageContent, ReasoningEffort, StopReason, Tool, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -219,6 +219,7 @@ impl Adapter for OpenAIRespAdapter {
 			reasoning_content,
 			model_iden,
 			provider_model_iden,
+			stop_reason: Some(StopReason::from(resp.status)),
 			usage,
 			captured_raw_body,
 		})

@@ -2,7 +2,8 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::cohere::CohereStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, Usage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, StopReason,
+	Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebResponse, WebStream};
@@ -133,6 +134,9 @@ impl Adapter for CohereAdapter {
 		let provider_model_name = None;
 		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
 
+		// -- Get stop_reason
+		let stop_reason = body.x_take::<Option<String>>("finish_reason").ok().flatten().map(StopReason::from);
+
 		// -- Get usage
 		let usage = body.x_take("/meta/tokens").map(Self::into_usage).unwrap_or_default();
 
@@ -151,6 +155,7 @@ impl Adapter for CohereAdapter {
 			reasoning_content: None,
 			model_iden,
 			provider_model_iden,
+			stop_reason,
 			usage,
 			captured_raw_body: None, // Set by the client exec_chat
 		})

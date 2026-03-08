@@ -1,6 +1,6 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
 use crate::webc::WebStream;
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
@@ -137,6 +137,9 @@ impl futures::Stream for OllamaStreamer {
 						if done {
 							self.done = true;
 
+							// Capture done_reason (e.g., "stop", "length")
+							self.captured_data.stop_reason = data.x_take::<String>("done_reason").ok();
+
 							if self.options.capture_usage {
 								let prompt_tokens = data.x_get::<i32>("/prompt_eval_count").ok();
 								let completion_tokens = data.x_get::<i32>("/eval_count").ok();
@@ -155,6 +158,7 @@ impl futures::Stream for OllamaStreamer {
 
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: self.captured_data.usage.take(),
+								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
@@ -177,6 +181,7 @@ impl futures::Stream for OllamaStreamer {
 						self.done = true;
 						let inter_stream_end = InterStreamEnd {
 							captured_usage: self.captured_data.usage.take(),
+							captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls: self.captured_data.tool_calls.take(),
