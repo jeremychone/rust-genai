@@ -147,6 +147,7 @@ Fully resolved call target.
 - `options`: `Option<MessageOptions>`.
 - **Constructors**: `ChatMessage::system(text)`, `user(text)`, `assistant(text)`.
 - `with_options(options)`: Attaches `MessageOptions` (chainable).
+- `with_reasoning_content(reasoning: Option<String>)`: Appends `ContentPart::ReasoningContent` when provided. Since v0.6.0.
 - `assistant_tool_calls_with_thoughts(calls, thoughts)`: For continuing tool exchanges where thoughts must precede tool calls.
 - `size()`: Approximate in-memory size in bytes.
 - `From<Vec<ToolCall>>`: Creates assistant message with tool calls (auto-prepends thoughts if present on first call).
@@ -180,6 +181,7 @@ Cache control for prompt caching (currently Anthropic only).
 - **Getters**: `parts()`, `into_parts()`, `texts()`, `into_texts()`, `binaries()`, `into_binaries()`, `tool_calls()`, `into_tool_calls()`, `tool_responses()`, `into_tool_responses()`.
 - **Convenient**: `first_text()`, `into_first_text()`, `joined_texts()` (joins with blank line), `into_joined_texts()`.
 - **Queries**: `is_empty()`, `len()`, `is_text_empty()`, `is_text_only()`, `contains_text()`, `contains_tool_call()`, `contains_tool_response()`.
+- **Reasoning helpers**: `reasoning_contents()`, `into_reasoning_contents()`, `joined_reasoning_content()`, `contains_reasoning_content()`. Since v0.6.0.
 - `size()`: Approximate in-memory size.
 - Implements `IntoIterator`, `FromIterator<ContentPart>`, `Extend<ContentPart>`.
 - `From<&str>`, `From<String>`, `From<Vec<ToolCall>>`, `From<ToolResponse>`, `From<ContentPart>`, `From<Binary>`, `From<Vec<ContentPart>>`.
@@ -192,10 +194,11 @@ A single content segment in a chat message.
 - `Binary(Binary)`: Images/PDFs/Audio. `From<Binary>`.
 - `ToolCall(ToolCall)`: Model-requested function call. `From<ToolCall>`.
 - `ToolResponse(ToolResponse)`: Result of function call. `From<ToolResponse>`.
-- `ThoughtSignature(String)`: Reasoning/thoughts (e.g., Gemini/Anthropic). Not auto-from; use constructor.
+- `ThoughtSignature(String)`: Thought-signature metadata (for providers that emit signed thoughts). Not auto-from; use constructor.
+- `ReasoningContent(String)`: Reasoning text content, distinct from thought signatures. Since v0.6.0.
 - **Constructors**: `from_text(text)`, `from_binary_base64(content_type, content, name)`, `from_binary_url(content_type, url, name)`, `from_binary_file(path)`.
-- **Accessors**: `as_text()`, `into_text()`, `as_tool_call()`, `into_tool_call()`, `as_tool_response()`, `into_tool_response()`, `as_binary()`, `into_binary()`, `as_thought_signature()`, `into_thought_signature()`.
-- **Queries**: `is_text()`, `is_image()`, `is_audio()`, `is_pdf()`, `is_tool_call()`, `is_tool_response()`, `is_thought_signature()`.
+- **Accessors**: `as_text()`, `into_text()`, `as_tool_call()`, `into_tool_call()`, `as_tool_response()`, `into_tool_response()`, `as_binary()`, `into_binary()`, `as_thought_signature()`, `into_thought_signature()`, `as_reasoning_content()`, `into_reasoning_content()` (reasoning accessors since v0.6.0).
+- **Queries**: `is_text()`, `is_image()`, `is_audio()`, `is_pdf()`, `is_tool_call()`, `is_tool_response()`, `is_thought_signature()`, `is_reasoning_content()` (`is_reasoning_content()` since v0.6.0).
 - `size()`: Approximate in-memory size.
 
 ### `Binary`
@@ -227,6 +230,7 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `service_tier`: `Flex`, `Auto`, `Default` (OpenAI).
 - `extra_headers`: `Headers` added to the request.
 - **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_extra_headers(headers)`.
+- Deprecated: `with_json_mode(bool)` in favor of `with_response_format(ChatResponseFormat::JsonMode)`.
 
 ### `ChatResponseFormat`
 
@@ -363,10 +367,11 @@ Implements `Stream<Item = Result<ChatStreamEvent>>`.
 ### `StreamEnd`
 
 - `captured_usage`: `Option<Usage>`.
+- `captured_stop_reason`: `Option<StopReason>`. Since v0.6.0.
 - `captured_content`: `Option<MessageContent>` (text, tools, thoughts; ordering: ThoughtSignature -> Text -> ToolCall).
-- `captured_reasoning_content`: Concatenated reasoning content.
+- `captured_reasoning_content`: Concatenated reasoning content when `ChatOptions.capture_reasoning_content` is enabled.
 - **Getters**: `captured_first_text()`, `captured_into_first_text()`, `captured_texts()`, `into_texts()`, `captured_tool_calls()`, `captured_into_tool_calls()`, `captured_thought_signatures()`, `captured_into_thought_signatures()`.
-- `into_assistant_message_for_tool_use()`: Returns a `ChatMessage` ready for the next request in a tool-use flow.
+- `into_assistant_message_for_tool_use()`: Returns a `ChatMessage` ready for the next request in a tool-use flow, preserving thought-signature ordering and attaching reasoning via `with_reasoning_content(...)` when present. Since v0.6.0.
 
 ## Printer Utility
 
@@ -460,14 +465,14 @@ Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`
 ## Model Resolution Nuances
 
 - **Auto-detection** (`AdapterKind::from_model`):
-  - `gpt-*` (except `gpt-oss`), `o1*`, `o3*`, `o4*`, `chatgpt*`, `codex*`, `text-embedding*` -> `OpenAI` (or `OpenAIResp` for codex/pro variants).
+  - `gpt-*` (except `gpt-oss`), `o1*`, `o3*`, `o4*`, `chatgpt*`, `codex*`, `text-embedding*` -> `OpenAI` (or `OpenAIResp` for gpt models with `codex`/`pro` in name).
   - `gemini*` -> `Gemini`.
   - `claude*` -> `Anthropic`.
   - Contains `"fireworks"` -> `Fireworks`.
   - In Groq model list -> `Groq`.
   - In Mimo model list -> `Mimo`.
   - `command*`, `embed-*` -> `Cohere`.
-  - In DeepSeek model list -> `DeepSeek`.
+  - `deepseek-chat*` and `deepseek-reasoner*` -> `DeepSeek`.
   - `grok*` -> `Xai`.
   - `glm*` -> `Zai`.
   - Fallback -> `Ollama`.
