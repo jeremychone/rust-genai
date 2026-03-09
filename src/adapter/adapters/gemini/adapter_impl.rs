@@ -208,17 +208,9 @@ impl Adapter for GeminiAdapter {
 
 		// -- Response Format
 		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
-			// x_insert
-			//     responseMimeType: "application/json",
-			// responseSchema: {
 			payload.x_insert("/generationConfig/responseMimeType", "application/json")?;
 			let mut schema = st_json.schema.clone();
-			schema.x_walk(|parent_map, name| {
-				if name == "additionalProperties" {
-					parent_map.remove("additionalProperties");
-				}
-				true
-			});
+			super::openapi_schema::to_openapi_schema(&mut schema);
 			payload.x_insert("/generationConfig/responseJsonSchema", schema)?;
 		}
 
@@ -792,10 +784,13 @@ impl GeminiAdapter {
 		}
 		// -- otherwise, user tool
 		else {
+			let mut parameters = schema.unwrap_or(Value::Null);
+			super::openapi_schema::to_openapi_schema(&mut parameters);
+			let parameters = if parameters.is_null() { None } else { Some(parameters) };
 			Ok(GeminiTool::User(json!({
 				"name": name_str,
 				"description": description,
-				"parameters": schema,
+				"parameters": parameters,
 			})))
 		}
 	}
