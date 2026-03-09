@@ -374,15 +374,29 @@ impl GeminiAdapter {
 
 		let mut content: Vec<GeminiChatContent> = Vec::new();
 
+		// Extract usage before content/parts so it is available even in
+		// usage-only tail frames (finishReason + usageMetadata but no content).
+		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
+
 		// -- Read multipart
 		let parts = match body.x_take::<Vec<Value>>("/candidates/0/content/parts") {
 			Ok(parts) => parts,
 			Err(_) => {
-				let finish_reason = body.x_remove::<String>("/candidates/finishReason").ok();
-				let usage_metadata = body.x_remove::<Value>("/usageMetadata").ok();
+				let finish_reason = body
+					.x_remove::<String>("/candidates/0/finishReason")
+					.ok()
+					.or_else(|| body.x_remove::<String>("/candidates/finishReason").ok());
+				let saw_usage_only_tail = body.get("candidates").is_some() || finish_reason.is_some();
+
+				// Gemini streaming sends a final frame with finishReason + usageMetadata
+				// but no content.parts. This is normal — return Ok with empty content.
+				if saw_usage_only_tail {
+					return Ok(GeminiChatResponse { content, usage, stop_reason: finish_reason });
+				}
+
 				let body = json!({
 					"finishReason": finish_reason,
-					"usageMetadata": usage_metadata,
+					"usageMetadata": Value::Null,
 				});
 				return Err(Error::ChatResponse {
 					model_iden: model_iden.clone(),
@@ -452,7 +466,6 @@ impl GeminiAdapter {
 			}
 		}
 		let stop_reason: Option<String> = body.x_take("/candidates/0/finishReason").ok();
-		let usage = body.x_take::<Value>("usageMetadata").map(Self::into_usage).unwrap_or_default();
 
 		Ok(GeminiChatResponse { content, usage, stop_reason })
 	}
@@ -833,3 +846,84 @@ struct GeminiChatRequestParts {
 }
 
 // endregion: --- Support
+
+#[cfg(test)]
+mod tests {
+	use super::GeminiAdapter;
+	use crate::adapter::AdapterKind;
+	use crate::Error;
+	use crate::ModelIden;
+	use serde_json::json;
+
+	#[test]
+	fn body_to_gemini_chat_response_accepts_usage_only_stream_tail() {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let response = GeminiAdapter::body_to_gemini_chat_response(
+			&model_iden,
+			json!({
+				"candidates": [
+					{
+						"finishReason": "STOP"
+					}
+				],
+				"usageMetadata": {
+					"promptTokenCount": 10,
+					"candidatesTokenCount": 4,
+					"totalTokenCount": 14
+				}
+			}),
+		)
+		.expect("usage-only stream tail should not be treated as an error");
+
+		assert!(response.content.is_empty());
+		assert_eq!(response.usage.total_tokens, Some(14));
+		assert_eq!(response.usage.prompt_tokens, Some(10));
+		assert_eq!(response.usage.completion_tokens, Some(4));
+		assert_eq!(response.stop_reason.as_deref(), Some("STOP"));
+	}
+
+	#[test]
+	fn body_to_gemini_chat_response_accepts_tail_with_null_finish_reason() {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let response = GeminiAdapter::body_to_gemini_chat_response(
+			&model_iden,
+			json!({
+				"candidates": [
+					{
+						"finishReason": null
+					}
+				],
+				"usageMetadata": {
+					"promptTokenCount": 10,
+					"candidatesTokenCount": 4,
+					"totalTokenCount": 14
+				}
+			}),
+		)
+		.expect("usage-only stream tail with null finishReason should not be an error");
+
+		assert!(response.content.is_empty());
+		assert_eq!(response.usage.total_tokens, Some(14));
+	}
+
+	#[test]
+	fn body_to_gemini_chat_response_still_rejects_missing_candidates() {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let result = GeminiAdapter::body_to_gemini_chat_response(
+			&model_iden,
+			json!({
+				"usageMetadata": {
+					"promptTokenCount": 10,
+					"candidatesTokenCount": 4,
+					"totalTokenCount": 14
+				}
+			}),
+		);
+
+		let err = match result {
+			Err(e) => e,
+			Ok(_) => panic!("missing candidates should still be rejected"),
+		};
+		assert!(matches!(err, Error::ChatResponse { .. }));
+	}
+}
