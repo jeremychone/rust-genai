@@ -6,6 +6,7 @@
 
 mod adapter_impl;
 mod embed;
+mod openapi_schema;
 mod streamer;
 
 pub use adapter_impl::*;
