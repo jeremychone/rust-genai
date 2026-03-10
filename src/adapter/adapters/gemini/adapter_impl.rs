@@ -402,53 +402,40 @@ impl GeminiAdapter {
 			}
 		};
 
+		let mut tool_call_counter: usize = 0;
 		for mut part in parts {
-			// -- Capture eventual thought signature
-			{
-				if let Some(thought_signature) = part
-					.x_take::<Value>("thoughtSignature")
-					.ok()
-					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
-				{
-					content.push(GeminiChatContent::ThoughtSignature(thought_signature));
-				}
-				// Note: sometime the thought is in "thought" (undocumented, but observed in some cases or older models?)
-				//       But for Gemini 3 it is thoughtSignature. Keeping this just in case or for backward compat if it was used.
-				//       Actually, let's stick to thoughtSignature as per docs, but if we see "thought" we might want to capture it too.
-				//       Let's check for "thought" if "thoughtSignature" was not found.
-				else if let Some(thought) = part
-					.x_take::<Value>("thought")
-					.ok()
-					.and_then(|v| if let Value::Bool(v) = v { Some(v) } else { None })
-					&& thought && let Some(val) = part
-					.x_take::<Value>("text")
-					.ok()
-					.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
-				{
-					content.push(GeminiChatContent::Reasoning(val));
+			// Each Gemini response part may contain one or more of:
+			// thoughtSignature, thought+text (reasoning), functionCall, text.
+			// We extract them in priority order.
+
+			// -- Thought signature (Gemini 3+) or legacy thought boolean
+			if let Some(sig) = take_string(&mut part, "thoughtSignature") {
+				content.push(GeminiChatContent::ThoughtSignature(sig));
+			} else if take_bool(&mut part, "thought") {
+				// Legacy: `thought: true` + `text` = reasoning content
+				if let Some(reasoning) = take_string(&mut part, "text") {
+					content.push(GeminiChatContent::Reasoning(reasoning));
 				}
 			}
 
-			// -- Capture eventual function call
-			if let Ok(fn_call_value) = part.x_take::<Value>("functionCall") {
-				let tool_call = ToolCall {
-					// NOTE: Gemini does not have call_id so, use name
-					call_id: fn_call_value.x_get("name").unwrap_or("".to_string()), // TODO: Handle this, gemini does not return the call_id
-					fn_name: fn_call_value.x_get("name").unwrap_or("".to_string()),
-					fn_arguments: fn_call_value.x_get("args").unwrap_or(Value::Null),
+			// -- Function call
+			if let Ok(fc) = part.x_take::<Value>("functionCall") {
+				let fn_name: String = fc.x_get("name").unwrap_or_default();
+				// Gemini omits call_id; synthesize a unique one to avoid
+				// collisions when the same tool is called multiple times.
+				let call_id = format!("call#{}#{}", fn_name, tool_call_counter);
+				tool_call_counter += 1;
+				content.push(GeminiChatContent::ToolCall(ToolCall {
+					call_id,
+					fn_name,
+					fn_arguments: fc.x_get("args").unwrap_or(Value::Null),
 					thought_signatures: None,
-				};
-				content.push(GeminiChatContent::ToolCall(tool_call))
+				}));
 			}
 
-			// -- Capture eventual text
-			if let Some(txt_content) = part
-				.x_take::<Value>("text")
-				.ok()
-				.and_then(|v| if let Value::String(v) = v { Some(v) } else { None })
-				.map(GeminiChatContent::Text)
-			{
-				content.push(txt_content)
+			// -- Plain text
+			if let Some(text) = take_string(&mut part, "text") {
+				content.push(GeminiChatContent::Text(text));
 			}
 
 			// -- Capture eventual inlineData (Image)
@@ -748,6 +735,11 @@ impl GeminiAdapter {
 			None
 		};
 
+		// -- Post-process: merge consecutive tool-response "user" entries into a single entry.
+		// Gemini FC protocol requires all functionResponse parts to be in one "user" turn
+		// following the "model" turn with functionCall parts.
+		let contents = Self::merge_consecutive_tool_response_entries(contents);
+
 		// -- Build tools
 		let tools = if let Some(req_tools) = chat_req.tools {
 			let mut tools: Vec<Value> = Vec::new();
@@ -818,7 +810,42 @@ impl GeminiAdapter {
 	}
 }
 
-// struct Gemini
+impl GeminiAdapter {
+	/// Merge consecutive "user" entries that contain only functionResponse parts
+	/// into a single entry. Gemini requires all function responses in one turn.
+	fn merge_consecutive_tool_response_entries(contents: Vec<Value>) -> Vec<Value> {
+		fn is_tool_response_entry(entry: &Value) -> bool {
+			if entry.get("role").and_then(|r| r.as_str()) != Some("user") {
+				return false;
+			}
+			if let Some(parts) = entry.get("parts").and_then(|p| p.as_array()) {
+				!parts.is_empty() && parts.iter().all(|p| p.get("functionResponse").is_some())
+			} else {
+				false
+			}
+		}
+
+		let mut result: Vec<Value> = Vec::with_capacity(contents.len());
+		for entry in contents {
+			if is_tool_response_entry(&entry) {
+				// Check if previous entry is also a tool response — merge
+				if let Some(prev) = result.last_mut() {
+					if is_tool_response_entry(prev) {
+						if let (Some(prev_parts), Some(new_parts)) = (
+							prev.get_mut("parts").and_then(|p| p.as_array_mut()),
+							entry.get("parts").and_then(|p| p.as_array()),
+						) {
+							prev_parts.extend(new_parts.iter().cloned());
+							continue;
+						}
+					}
+				}
+			}
+			result.push(entry);
+		}
+		result
+	}
+}
 
 pub enum GeminiTool {
 	Builtin(Value),
@@ -849,15 +876,99 @@ struct GeminiChatRequestParts {
 	tools: Option<Vec<Value>>,
 }
 
-// endregion: --- Support
+// region:    --- Helpers
+
+/// Extract and remove a string field from a JSON Value.
+fn take_string(v: &mut Value, key: &str) -> Option<String> {
+	v.as_object_mut()
+		.and_then(|m| m.remove(key))
+		.and_then(|v| if let Value::String(s) = v { Some(s) } else { None })
+}
+
+/// Extract and remove a boolean field from a JSON Value, defaulting to false.
+fn take_bool(v: &mut Value, key: &str) -> bool {
+	v.as_object_mut()
+		.and_then(|m| m.remove(key))
+		.and_then(|v| v.as_bool())
+		.unwrap_or(false)
+}
+
+// endregion: --- Helpers
 
 #[cfg(test)]
 mod tests {
-	use super::GeminiAdapter;
-	use crate::Error;
-	use crate::ModelIden;
-	use crate::adapter::AdapterKind;
-	use serde_json::json;
+	use super::*;
+
+	#[test]
+	fn merge_consecutive_tool_responses() {
+		let contents = vec![
+			json!({"role": "model", "parts": [{"functionCall": {"name": "read", "args": {}}}]}),
+			json!({"role": "user", "parts": [{"functionResponse": {"name": "call1", "response": {"content": "a"}}}]}),
+			json!({"role": "user", "parts": [{"functionResponse": {"name": "call2", "response": {"content": "b"}}}]}),
+		];
+		let merged = GeminiAdapter::merge_consecutive_tool_response_entries(contents);
+		assert_eq!(merged.len(), 2); // model + single merged user
+		let parts = merged[1].get("parts").unwrap().as_array().unwrap();
+		assert_eq!(parts.len(), 2); // both functionResponse in one entry
+	}
+
+	#[test]
+	fn merge_does_not_merge_non_tool_user_entries() {
+		let contents = vec![
+			json!({"role": "user", "parts": [{"text": "hello"}]}),
+			json!({"role": "user", "parts": [{"functionResponse": {"name": "c1", "response": {"content": "x"}}}]}),
+		];
+		let merged = GeminiAdapter::merge_consecutive_tool_response_entries(contents);
+		assert_eq!(merged.len(), 2); // not merged — first is text, not tool response
+	}
+
+	#[test]
+	fn merge_three_consecutive_tool_responses() {
+		let contents = vec![
+			json!({"role": "user", "parts": [{"functionResponse": {"name": "c1", "response": {"content": "a"}}}]}),
+			json!({"role": "user", "parts": [{"functionResponse": {"name": "c2", "response": {"content": "b"}}}]}),
+			json!({"role": "user", "parts": [{"functionResponse": {"name": "c3", "response": {"content": "c"}}}]}),
+		];
+		let merged = GeminiAdapter::merge_consecutive_tool_response_entries(contents);
+		assert_eq!(merged.len(), 1);
+		let parts = merged[0].get("parts").unwrap().as_array().unwrap();
+		assert_eq!(parts.len(), 3);
+	}
+
+	#[test]
+	fn tool_call_id_uses_counter() {
+		// Simulate Gemini response with two functionCalls for the same tool
+		let body = json!({
+			"candidates": [{
+				"content": {
+					"role": "model",
+					"parts": [
+						{"functionCall": {"name": "read_file", "args": {"path": "a.rs"}}},
+						{"functionCall": {"name": "read_file", "args": {"path": "b.rs"}}}
+					]
+				}
+			}],
+			"usageMetadata": {"totalTokenCount": 100}
+		});
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-test");
+		let response = GeminiAdapter::body_to_gemini_chat_response(&model_iden, body).unwrap();
+		let tool_calls: Vec<_> = response
+			.content
+			.into_iter()
+			.filter_map(|c| {
+				if let GeminiChatContent::ToolCall(tc) = c {
+					Some(tc)
+				} else {
+					None
+				}
+			})
+			.collect();
+		assert_eq!(tool_calls.len(), 2);
+		assert_ne!(tool_calls[0].call_id, tool_calls[1].call_id);
+		assert!(tool_calls[0].call_id.contains("read_file"));
+		assert!(tool_calls[1].call_id.contains("read_file"));
+	}
+
 
 	#[test]
 	fn body_to_gemini_chat_response_accepts_usage_only_stream_tail() {
