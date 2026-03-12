@@ -21,24 +21,84 @@ const REASONING_LOW: u32 = 1024;
 const REASONING_MEDIUM: u32 = 8000;
 const REASONING_HIGH: u32 = 24000;
 
-fn insert_anthropic_thinking_budget_value(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
-	let thinking_budget = match effort {
-		ReasoningEffort::None => None,
-		ReasoningEffort::Budget(budget) => Some(*budget),
-		ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
-		ReasoningEffort::Medium => Some(REASONING_MEDIUM),
-		ReasoningEffort::High => Some(REASONING_HIGH),
-	};
+// NOTE: For now, those are opt-ins, but should become opt-out when well supported.
+// see: effort doc: https://platform.claude.com/docs/en/build-with-claude/effort
+const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5"];
+// see:adaptive thinking: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
+const SUPPORT_ADAPTTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6"];
 
-	if let Some(thinking_budget) = thinking_budget {
-		payload.x_insert(
-			"thinking",
-			json!({
-				"type": "enabled",
-				"budget_tokens": thinking_budget
-			}),
-		)?;
+fn has_model(model_prefixes: &[&str], model_name: &str) -> bool {
+	model_prefixes.iter().any(|prefix| model_name.contains(prefix))
+}
+
+fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &ReasoningEffort) -> Result<()> {
+	let mut budget: Option<u32> = None;
+	let support_effort = has_model(SUPPORT_EFFORT_MODELS, model_name);
+	let support_adaptive = has_model(SUPPORT_ADAPTTIVE_THINK_MODELS, model_name);
+
+	// if support effort, we default with effor
+	if support_effort {
+		let effort = match effort {
+			ReasoningEffort::Minimal => "low",
+			ReasoningEffort::Low => "low",
+			ReasoningEffort::Medium => "medium",
+			ReasoningEffort::High => "high",
+			// we apture for later
+			ReasoningEffort::Budget(val) => {
+				budget = Some(*val); // not very elegant
+				""
+			}
+			ReasoningEffort::None => "",
+		};
+
+		// if we have an effort, we set it
+		if !effort.is_empty() {
+			payload.x_insert(
+				"output_config",
+				json!({
+					"effort": effort
+				}),
+			)?;
+		}
 	}
+
+	// -- if support adaptive, we add it (with the eventual budget tokens)
+	// if not (but support effort), it should be fined without the thinking object.
+	if support_adaptive {
+		let thinking = match budget {
+			Some(budget) => json!({
+						"type": "adaptive",
+						"budget_tokens": budget // if None, should be ok.
+			}),
+			None => json!({
+				"type": "adaptive"}),
+		};
+
+		// if support adaptive, we set the thinking type to "adaptive" and let the model decide how to use the budget (if any)
+		payload.x_insert("thinking", thinking)?;
+	}
+
+	// -- If it does not support effort, fall back on the legacy with with budget
+	if !support_effort {
+		let thinking_budget = match effort {
+			ReasoningEffort::None => None,
+			ReasoningEffort::Budget(budget) => Some(*budget),
+			ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
+			ReasoningEffort::Medium => Some(REASONING_MEDIUM),
+			ReasoningEffort::High => Some(REASONING_HIGH),
+		};
+
+		if let Some(thinking_budget) = thinking_budget {
+			payload.x_insert(
+				"thinking",
+				json!({
+					"type": "enabled",
+					"budget_tokens": thinking_budget
+				}),
+			)?;
+		}
+	}
+
 	Ok(())
 }
 
@@ -95,8 +155,6 @@ impl AnthropicAdapter {
 
 		// -- Format result
 		let mut models: Vec<String> = Vec::new();
-
-		println!("->> {}", res.body.x_pretty()?);
 
 		if let Value::Array(models_value) = res.body.x_take("data")? {
 			for mut model in models_value {
@@ -215,37 +273,7 @@ impl Adapter for AnthropicAdapter {
 
 		// -- Set the reasoning effort
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			// DOC: https://platform.claude.com/docs/en/build-with-claude/effort
-			// - Effort parameter: Controls how Claude spends all tokens—including thinking tokens, text responses, and tool calls
-			// - Thinking token budget: Sets a maximum limit on thinking tokens specifically
-			// For best performance on complex reasoning tasks, use high effort (the default) with a high thinking token budget.
-			// This allows Claude to think thoroughly and provide comprehensive responses.
-
-			// In short, should use both thinking budget and effort
-
-			// -- if opus-4-5 then, we set the anthropic effort
-			if model_name.contains("opus-4-5") {
-				let effort = match computed_reasoning_effort {
-					ReasoningEffort::Minimal => "low",
-					ReasoningEffort::Low => "low",
-					ReasoningEffort::Medium => "medium",
-					ReasoningEffort::High => "high",
-					// -- for now, will not set
-					ReasoningEffort::Budget(_) => "",
-					ReasoningEffort::None => "",
-				};
-				if !effort.is_empty() {
-					payload.x_insert(
-						"output_config",
-						json!({
-							"effort": effort
-						}),
-					)?;
-				}
-			}
-
-			// -- All models, including opus-4-5, we see the thinking budget
-			insert_anthropic_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
+			insert_anthropic_reasoning(&mut payload, model_name, &computed_reasoning_effort)?;
 		}
 
 		// -- Add supported ChatOptions

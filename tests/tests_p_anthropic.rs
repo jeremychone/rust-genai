@@ -13,7 +13,7 @@ use serial_test::serial;
 const MODEL: &str = "claude-haiku-4-5";
 // const MODEL_THINKING: &str = "claude-sonnet-4-5-20250929";
 // const MODEL_SONNET: &str = "claude-sonnet-4-6";
-const MODEL_THINKING: &str = "claude-opus-4-6";
+const MODEL_THINKING: &str = "claude-sonnet-4-6";
 const MODEL_NS: &str = "anthropic::claude-haiku-4-5";
 
 // region:    --- Chat
@@ -28,7 +28,7 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[serial(anthropic)]
 async fn test_chat_reasoning_ok() -> TestResult<()> {
 	// NOTE: Does not test REASONING_USAGE as Anthropic does not report it
-	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, ReasoningEffort::High, Some(Check::REASONING_CONTENT))
+	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, ReasoningEffort::Medium, Some(Check::REASONING_CONTENT))
 		.await
 }
 

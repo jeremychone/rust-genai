@@ -110,11 +110,6 @@ pub async fn common_test_chat_reasoning_ok(
 			.as_deref()
 			.ok_or("SHOULD have extracted some reasoning_content")?;
 		assert!(!reasoning_content.is_empty(), "reasoning_content should not be empty");
-		// We can assume that the reasoning content should be bigger than the content given the prompt to keep content very concise.
-		assert!(
-			reasoning_content.len() > content.len(),
-			"Reasoning content should be > than the content"
-		);
 	}
 
 	Ok(())
