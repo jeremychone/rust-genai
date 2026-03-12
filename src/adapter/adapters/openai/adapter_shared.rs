@@ -14,6 +14,21 @@ use tracing::error;
 use tracing::warn;
 use value_ext::JsonValueExt;
 
+fn insert_openai_reasoning_effort(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
+	let keyword = match effort {
+		ReasoningEffort::None => "none",
+		ReasoningEffort::Low => "low",
+		ReasoningEffort::Medium => "medium",
+		ReasoningEffort::High | ReasoningEffort::Max => "high",
+		ReasoningEffort::Minimal => "minimal",
+		ReasoningEffort::Budget(_) => return Ok(()),
+	};
+
+	payload.x_insert("reasoning_effort", keyword)?;
+
+	Ok(())
+}
+
 /// Support functions for other adapters that share OpenAI APIs
 impl OpenAIAdapter {
 	pub(in crate::adapter::adapters) fn util_get_service_url(
@@ -87,10 +102,8 @@ impl OpenAIAdapter {
 		});
 
 		// -- Set reasoning effort
-		if let Some(reasoning_effort) = reasoning_effort
-			&& let Some(keyword) = reasoning_effort.as_keyword()
-		{
-			payload.x_insert("reasoning_effort", keyword)?;
+		if let Some(reasoning_effort) = reasoning_effort {
+			insert_openai_reasoning_effort(&mut payload, &reasoning_effort)?;
 		}
 
 		// -- Set verbosity

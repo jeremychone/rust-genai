@@ -24,6 +24,7 @@ const REASONING_HIGH: u32 = 24000;
 // NOTE: For now, those are opt-ins, but should become opt-out when well supported.
 // see: effort doc: https://platform.claude.com/docs/en/build-with-claude/effort
 const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5"];
+const SUPPORT_REASONING_MAX_MODELS: &[&str] = &["claude-opus-4-6"];
 // see:adaptive thinking: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
 const SUPPORT_ADAPTTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6"];
 
@@ -34,6 +35,7 @@ fn has_model(model_prefixes: &[&str], model_name: &str) -> bool {
 fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &ReasoningEffort) -> Result<()> {
 	let mut budget: Option<u32> = None;
 	let support_effort = has_model(SUPPORT_EFFORT_MODELS, model_name);
+	let support_reasoning_max = has_model(SUPPORT_REASONING_MAX_MODELS, model_name);
 	let support_adaptive = has_model(SUPPORT_ADAPTTIVE_THINK_MODELS, model_name);
 
 	// if support effort, we default with effor
@@ -43,6 +45,8 @@ fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &Re
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
+			ReasoningEffort::Max if support_reasoning_max => "max",
+			ReasoningEffort::Max => "high",
 			// we apture for later
 			ReasoningEffort::Budget(val) => {
 				budget = Some(*val); // not very elegant
@@ -85,7 +89,7 @@ fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &Re
 			ReasoningEffort::Budget(budget) => Some(*budget),
 			ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
 			ReasoningEffort::Medium => Some(REASONING_MEDIUM),
-			ReasoningEffort::High => Some(REASONING_HIGH),
+			ReasoningEffort::High | ReasoningEffort::Max => Some(REASONING_HIGH),
 		};
 
 		if let Some(thinking_budget) = thinking_budget {
@@ -241,6 +245,7 @@ impl Adapter for AnthropicAdapter {
 						"low" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
 						"high" => Some(ReasoningEffort::High),
+						"max" => Some(ReasoningEffort::Max),
 						_ => None,
 					};
 					// create the model name if there was a `-..` reasoning suffix

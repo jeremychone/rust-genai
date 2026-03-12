@@ -192,6 +192,7 @@ pub enum ReasoningEffort {
 	Low,
 	Medium,
 	High,
+	Max,
 	Budget(u32),
 
 	// Legacy reasoning for <= gpt-5
@@ -206,6 +207,7 @@ impl ReasoningEffort {
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
+			ReasoningEffort::Max => "max",
 			ReasoningEffort::Budget(_) => "budget",
 			// Legacy
 			ReasoningEffort::Minimal => "minimal",
@@ -219,6 +221,7 @@ impl ReasoningEffort {
 			ReasoningEffort::Low => Some("low"),
 			ReasoningEffort::Medium => Some("medium"),
 			ReasoningEffort::High => Some("high"),
+			ReasoningEffort::Max => Some("max"),
 			ReasoningEffort::Budget(_) => None,
 			// Legacy
 			ReasoningEffort::Minimal => Some("minimal"),
@@ -232,6 +235,7 @@ impl ReasoningEffort {
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
+			"max" => Some(ReasoningEffort::Max),
 			// legacy
 			"minimal" => Some(ReasoningEffort::Minimal),
 			_ => None,
@@ -258,6 +262,7 @@ impl std::fmt::Display for ReasoningEffort {
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),
+			ReasoningEffort::Max => write!(f, "max"),
 			ReasoningEffort::Budget(n) => write!(f, "{n}"),
 			// Legacy
 			ReasoningEffort::Minimal => write!(f, "minimal"),
