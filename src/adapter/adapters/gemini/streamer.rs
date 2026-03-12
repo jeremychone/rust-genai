@@ -96,7 +96,11 @@ impl futures::Stream for GeminiStreamer {
 									}
 								};
 
-							let GeminiChatResponse { content, usage, stop_reason } = gemini_response;
+							let GeminiChatResponse {
+								content,
+								usage,
+								stop_reason,
+							} = gemini_response;
 
 							// -- Capture stop_reason if present (typically in the last chunk)
 							if stop_reason.is_some() {

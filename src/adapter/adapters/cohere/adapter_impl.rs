@@ -135,7 +135,11 @@ impl Adapter for CohereAdapter {
 		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
 
 		// -- Get stop_reason
-		let stop_reason = body.x_take::<Option<String>>("finish_reason").ok().flatten().map(StopReason::from);
+		let stop_reason = body
+			.x_take::<Option<String>>("finish_reason")
+			.ok()
+			.flatten()
+			.map(StopReason::from);
 
 		// -- Get usage
 		let usage = body.x_take("/meta/tokens").map(Self::into_usage).unwrap_or_default();

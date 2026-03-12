@@ -62,10 +62,10 @@ impl futures::Stream for AnthropicStreamer {
 						"message_delta" => {
 							self.capture_usage(message_type, &message.data)?;
 							// Capture stop_reason from delta (e.g., "end_turn", "max_tokens", "tool_use")
-							if let Ok(data) = self.parse_message_data(&message.data) {
-								if let Ok(reason) = data.x_get::<String>("/delta/stop_reason") {
-									self.captured_data.stop_reason = Some(reason);
-								}
+							if let Ok(data) = self.parse_message_data(&message.data)
+								&& let Ok(reason) = data.x_get::<String>("/delta/stop_reason")
+							{
+								self.captured_data.stop_reason = Some(reason);
 							}
 							continue;
 						}

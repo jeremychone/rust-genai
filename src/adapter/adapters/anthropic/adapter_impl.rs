@@ -3,8 +3,8 @@ use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole,
-	ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, StopReason, Tool,
-	ToolCall, ToolConfig, ToolName, Usage,
+	ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, StopReason,
+	Tool, ToolCall, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -306,7 +306,11 @@ impl Adapter for AnthropicAdapter {
 		let usage = body.x_take::<Value>("usage");
 
 		let usage = usage.map(Self::into_usage).unwrap_or_default();
-		let stop_reason = body.x_take::<Option<String>>("stop_reason").ok().flatten().map(StopReason::from);
+		let stop_reason = body
+			.x_take::<Option<String>>("stop_reason")
+			.ok()
+			.flatten()
+			.map(StopReason::from);
 
 		// -- Capture the content
 		let mut content: MessageContent = MessageContent::default();

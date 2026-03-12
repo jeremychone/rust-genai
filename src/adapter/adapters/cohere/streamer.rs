@@ -109,7 +109,11 @@ impl futures::Stream for CohereStreamer {
 
 									let inter_stream_end = InterStreamEnd {
 										captured_usage,
-										captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
+										captured_stop_reason: self
+											.captured_data
+											.stop_reason
+											.take()
+											.map(StopReason::from),
 										captured_text_content: self.captured_data.content.take(),
 										captured_reasoning_content: self.captured_data.reasoning_content.take(),
 										captured_tool_calls: self.captured_data.tool_calls.take(),

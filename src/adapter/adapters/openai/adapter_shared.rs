@@ -473,20 +473,15 @@ mod tests {
 		]))
 		.with_reasoning_content(Some("I should look up the weather.".to_string()));
 
-		let chat_req = ChatRequest::new(vec![
-			ChatMessage::user("What's the weather in Paris?"),
-			assistant_msg,
-		]);
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("What's the weather in Paris?"), assistant_msg]);
 
-		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req)
-			.expect("should serialize");
+		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req).expect("should serialize");
 
 		// The assistant message is the second message (after user)
 		let assistant_json = &parts.messages[1];
 		assert_eq!(assistant_json["role"], "assistant");
 		assert_eq!(
-			assistant_json["reasoning_content"],
-			"I should look up the weather.",
+			assistant_json["reasoning_content"], "I should look up the weather.",
 			"reasoning_content should be present in serialized assistant message"
 		);
 	}
@@ -494,13 +489,9 @@ mod tests {
 	/// When reasoning_content is None, the field should not appear in the JSON.
 	#[test]
 	fn test_no_reasoning_content_when_absent() {
-		let chat_req = ChatRequest::new(vec![
-			ChatMessage::user("Hello"),
-			ChatMessage::assistant("Hi there!"),
-		]);
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("Hello"), ChatMessage::assistant("Hi there!")]);
 
-		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req)
-			.expect("should serialize");
+		let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req).expect("should serialize");
 
 		let assistant_json = &parts.messages[1];
 		assert_eq!(assistant_json["role"], "assistant");

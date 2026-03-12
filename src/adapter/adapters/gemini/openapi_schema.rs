@@ -56,25 +56,26 @@ fn resolve_refs(map: &mut Map<String, Value>, defs: &Map<String, Value>, visited
 	if let Some(Value::String(ref_path)) = map.get("$ref") {
 		// Expected form: "#/$defs/TypeName" or "#/definitions/TypeName"
 		let name = ref_path.rsplit('/').next().unwrap_or("").to_string();
-		if !name.is_empty() && !visited.contains(&name) {
-			if let Some(def) = defs.get(&name) {
-				visited.insert(name.clone());
-				let mut resolved = def.clone();
-				// Recursively resolve refs within the inlined definition.
-				if let Value::Object(ref mut inner) = resolved {
-					resolve_refs(inner, defs, visited);
-				}
-				visited.remove(&name);
-
-				// Replace this map's contents with the resolved definition.
-				map.remove("$ref");
-				if let Value::Object(inner) = resolved {
-					for (k, v) in inner {
-						map.entry(&k).or_insert(v);
-					}
-				}
-				return;
+		if !name.is_empty()
+			&& !visited.contains(&name)
+			&& let Some(def) = defs.get(&name)
+		{
+			visited.insert(name.clone());
+			let mut resolved = def.clone();
+			// Recursively resolve refs within the inlined definition.
+			if let Value::Object(ref mut inner) = resolved {
+				resolve_refs(inner, defs, visited);
 			}
+			visited.remove(&name);
+
+			// Replace this map's contents with the resolved definition.
+			map.remove("$ref");
+			if let Value::Object(inner) = resolved {
+				for (k, v) in inner {
+					map.entry(&k).or_insert(v);
+				}
+			}
+			return;
 		}
 	}
 
@@ -117,10 +118,7 @@ fn flatten_composites(map: &mut Map<String, Value>) {
 		};
 
 		// Collect non-null variants.
-		let non_null: Vec<Value> = variants
-			.into_iter()
-			.filter(|v| !is_null_schema(v))
-			.collect();
+		let non_null: Vec<Value> = variants.into_iter().filter(|v| !is_null_schema(v)).collect();
 
 		if non_null.len() == 1 {
 			// Single effective variant → merge into parent.
@@ -369,7 +367,10 @@ mod tests {
 		// $ref should be resolved
 		assert!(schema["properties"]["address"].get("$ref").is_none());
 		assert_eq!(schema["properties"]["address"]["type"], "object");
-		assert_eq!(schema["properties"]["address"]["properties"]["street"]["type"], "string");
+		assert_eq!(
+			schema["properties"]["address"]["properties"]["street"]["type"],
+			"string"
+		);
 		// additionalProperties removed from resolved def
 		assert!(schema["properties"]["address"].get("additionalProperties").is_none());
 	}
@@ -562,9 +563,11 @@ mod tests {
 			schema["properties"]["a"]["properties"]["b"]["properties"]["value"]["type"],
 			"string"
 		);
-		assert!(schema["properties"]["a"]["properties"]["b"]
-			.get("additionalProperties")
-			.is_none());
+		assert!(
+			schema["properties"]["a"]["properties"]["b"]
+				.get("additionalProperties")
+				.is_none()
+		);
 	}
 }
 

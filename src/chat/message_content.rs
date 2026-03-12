@@ -227,10 +227,7 @@ impl MessageContent {
 
 	/// Consume and return all ReasoningContent parts as owned Strings.
 	pub fn into_reasoning_contents(self) -> Vec<String> {
-		self.parts
-			.into_iter()
-			.filter_map(|p| p.into_reasoning_content())
-			.collect()
+		self.parts.into_iter().filter_map(|p| p.into_reasoning_content()).collect()
 	}
 
 	/// Join all reasoning content parts with a newline separator.

@@ -280,6 +280,9 @@ mod tests {
 			..Default::default()
 		};
 		let stream_end = StreamEnd::from(inter_end);
-		assert_eq!(stream_end.captured_stop_reason, Some(StopReason::Completed("stop".to_string())));
+		assert_eq!(
+			stream_end.captured_stop_reason,
+			Some(StopReason::Completed("stop".to_string()))
+		);
 	}
 }

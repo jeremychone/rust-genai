@@ -64,8 +64,12 @@ impl StopReason {
 	/// Returns the original provider-specific string.
 	pub fn raw(&self) -> &str {
 		match self {
-			Self::Completed(s) | Self::MaxTokens(s) | Self::ToolCall(s) | Self::ContentFilter(s)
-			| Self::StopSequence(s) | Self::Other(s) => s,
+			Self::Completed(s)
+			| Self::MaxTokens(s)
+			| Self::ToolCall(s)
+			| Self::ContentFilter(s)
+			| Self::StopSequence(s)
+			| Self::Other(s) => s,
 		}
 	}
 

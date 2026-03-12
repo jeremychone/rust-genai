@@ -383,7 +383,11 @@ impl GeminiAdapter {
 				// Gemini streaming sends a final frame with finishReason + usageMetadata
 				// but no content.parts. This is normal — return Ok with empty content.
 				if saw_usage_only_tail {
-					return Ok(GeminiChatResponse { content, usage, stop_reason: finish_reason });
+					return Ok(GeminiChatResponse {
+						content,
+						usage,
+						stop_reason: finish_reason,
+					});
 				}
 
 				let body = json!({
@@ -459,7 +463,11 @@ impl GeminiAdapter {
 		}
 		let stop_reason: Option<String> = body.x_take("/candidates/0/finishReason").ok();
 
-		Ok(GeminiChatResponse { content, usage, stop_reason })
+		Ok(GeminiChatResponse {
+			content,
+			usage,
+			stop_reason,
+		})
 	}
 
 	/// See gemini doc: https://ai.google.dev/api/generate-content#UsageMetadata
@@ -845,9 +853,9 @@ struct GeminiChatRequestParts {
 #[cfg(test)]
 mod tests {
 	use super::GeminiAdapter;
-	use crate::adapter::AdapterKind;
 	use crate::Error;
 	use crate::ModelIden;
+	use crate::adapter::AdapterKind;
 	use serde_json::json;
 
 	#[test]
