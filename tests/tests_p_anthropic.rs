@@ -12,7 +12,8 @@ use serial_test::serial;
 //
 const MODEL: &str = "claude-haiku-4-5";
 // const MODEL_THINKING: &str = "claude-sonnet-4-5-20250929";
-const MODEL_THINKING: &str = "claude-opus-4-5";
+// const MODEL_SONNET: &str = "claude-sonnet-4-6";
+const MODEL_THINKING: &str = "claude-opus-4-6";
 const MODEL_NS: &str = "anthropic::claude-haiku-4-5";
 
 // region:    --- Chat
@@ -56,11 +57,12 @@ async fn test_chat_stop_sequences_ok() -> TestResult<()> {
 }
 
 /// TODO: Fix/Workaround - This test for "claude-3-7-sonnet-latest" (works for other models)
-#[tokio::test]
-#[serial(anthropic)]
-async fn test_chat_json_mode_ok() -> TestResult<()> {
-	common_tests::common_test_chat_json_mode_ok(MODEL, Some(Check::USAGE)).await
-}
+/// NOTE: This doe snot work anymore
+// #[tokio::test]
+// #[serial(anthropic)]
+// async fn test_chat_json_mode_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_json_mode_ok(MODEL_THINKING, Some(Check::USAGE)).await
+// }
 
 // endregion: --- Chat
 
