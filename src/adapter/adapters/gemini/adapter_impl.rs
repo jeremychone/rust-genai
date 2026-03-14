@@ -829,16 +829,14 @@ impl GeminiAdapter {
 		for entry in contents {
 			if is_tool_response_entry(&entry) {
 				// Check if previous entry is also a tool response — merge
-				if let Some(prev) = result.last_mut() {
-					if is_tool_response_entry(prev) {
-						if let (Some(prev_parts), Some(new_parts)) = (
-							prev.get_mut("parts").and_then(|p| p.as_array_mut()),
-							entry.get("parts").and_then(|p| p.as_array()),
-						) {
-							prev_parts.extend(new_parts.iter().cloned());
-							continue;
-						}
-					}
+				if let Some(prev) = result.last_mut()
+					&& is_tool_response_entry(prev)
+					&& let (Some(prev_parts), Some(new_parts)) = (
+						prev.get_mut("parts").and_then(|p| p.as_array_mut()),
+						entry.get("parts").and_then(|p| p.as_array()),
+					) {
+					prev_parts.extend(new_parts.iter().cloned());
+					continue;
 				}
 			}
 			result.push(entry);
@@ -968,7 +966,6 @@ mod tests {
 		assert!(tool_calls[0].call_id.contains("read_file"));
 		assert!(tool_calls[1].call_id.contains("read_file"));
 	}
-
 
 	#[test]
 	fn body_to_gemini_chat_response_accepts_usage_only_stream_tail() {
