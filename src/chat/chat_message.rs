@@ -49,27 +49,6 @@ impl ChatMessage {
 			options: None,
 		}
 	}
-
-	/// Constructs a tool response message from a single ToolResponse.
-	pub fn tool_response(response: ToolResponse) -> Self {
-		Self {
-			role: ChatRole::Tool,
-			content: MessageContent::from(response),
-			options: None,
-		}
-	}
-
-	/// Constructs a tool response message from multiple ToolResponses.
-	/// Groups them into a single message — required by providers like Gemini
-	/// that expect all function responses in one turn.
-	pub fn tool_responses(responses: Vec<ToolResponse>) -> Self {
-		let parts: Vec<ContentPart> = responses.into_iter().map(ContentPart::ToolResponse).collect();
-		Self {
-			role: ChatRole::Tool,
-			content: MessageContent::from_parts(parts),
-			options: None,
-		}
-	}
 }
 
 /// Computed accessors
@@ -192,6 +171,17 @@ impl From<ToolResponse> for ChatMessage {
 		Self {
 			role: ChatRole::Tool,
 			content: MessageContent::from(value),
+			options: None,
+		}
+	}
+}
+
+impl From<Vec<ToolResponse>> for ChatMessage {
+	fn from(responses: Vec<ToolResponse>) -> Self {
+		let parts: Vec<ContentPart> = responses.into_iter().map(ContentPart::ToolResponse).collect();
+		Self {
+			role: ChatRole::Tool,
+			content: MessageContent::from_parts(parts),
 			options: None,
 		}
 	}
