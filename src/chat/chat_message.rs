@@ -51,7 +51,7 @@ impl ChatMessage {
 	}
 
 	/// Constructs a tool response message from a single ToolResponse.
-	pub fn tool(response: ToolResponse) -> Self {
+	pub fn tool_response(response: ToolResponse) -> Self {
 		Self {
 			role: ChatRole::Tool,
 			content: MessageContent::from(response),
