@@ -8,7 +8,7 @@ use tracing_subscriber::EnvFilter;
 const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 // or namespaced with simple anme "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
-const MODEL_FIREWORKS: &str = "accounts/fireworks/models/qwen3-30b-a3b";
+const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-20b";
 const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
 const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "llama-3.1-8b-instant";
