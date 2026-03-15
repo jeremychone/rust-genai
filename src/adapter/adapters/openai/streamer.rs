@@ -223,6 +223,38 @@ impl futures::Stream for OpenAIStreamer {
 								}
 							}
 
+							// NOTE: Some providers (e.g., mistral) send delta/content AND finish_reason
+							// in the same SSE message. We must capture and emit that final content chunk
+							// before continuing to the next message, otherwise it is silently lost.
+							let content = first_choice.x_take::<Option<String>>("/delta/content").ok().flatten();
+							let reasoning_content = first_choice
+								.x_take::<Option<String>>("/delta/reasoning_content")
+								.ok()
+								.flatten()
+								.or_else(|| first_choice.x_take::<Option<String>>("/delta/reasoning").ok().flatten());
+
+							if let Some(content) = content
+								&& !content.is_empty()
+							{
+								if self.options.capture_content {
+									match self.captured_data.content {
+										Some(ref mut c) => c.push_str(&content),
+										None => self.captured_data.content = Some(content.clone()),
+									}
+								}
+								return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
+							} else if let Some(reasoning_content) = reasoning_content
+								&& !reasoning_content.is_empty()
+							{
+								if self.options.capture_reasoning_content {
+									match self.captured_data.reasoning_content {
+										Some(ref mut c) => c.push_str(&reasoning_content),
+										None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
+									}
+								}
+								return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(reasoning_content))));
+							}
+
 							continue;
 						}
 						// -- Tool Call
