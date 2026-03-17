@@ -30,7 +30,7 @@ fn insert_gemini_thinking_budget_value(payload: &mut Value, effort: &ReasoningEf
 		ReasoningEffort::None => None,
 		ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
 		ReasoningEffort::Medium => Some(REASONING_MEDIUM),
-		ReasoningEffort::High | ReasoningEffort::Max => Some(REASONING_HIGH),
+		ReasoningEffort::High | ReasoningEffort::Max | ReasoningEffort::XHigh => Some(REASONING_HIGH),
 		ReasoningEffort::Budget(budget) => Some(*budget),
 	};
 

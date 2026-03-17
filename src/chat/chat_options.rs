@@ -192,6 +192,7 @@ pub enum ReasoningEffort {
 	Low,
 	Medium,
 	High,
+	XHigh,
 	Max,
 	Budget(u32),
 
@@ -207,6 +208,7 @@ impl ReasoningEffort {
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
+			ReasoningEffort::XHigh => "xhigh",
 			ReasoningEffort::Max => "max",
 			ReasoningEffort::Budget(_) => "budget",
 			// Legacy
@@ -221,6 +223,7 @@ impl ReasoningEffort {
 			ReasoningEffort::Low => Some("low"),
 			ReasoningEffort::Medium => Some("medium"),
 			ReasoningEffort::High => Some("high"),
+			ReasoningEffort::XHigh => Some("xhigh"),
 			ReasoningEffort::Max => Some("max"),
 			ReasoningEffort::Budget(_) => None,
 			// Legacy
@@ -235,6 +238,7 @@ impl ReasoningEffort {
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
+			"xhigh" => Some(ReasoningEffort::XHigh),
 			"max" => Some(ReasoningEffort::Max),
 			// legacy
 			"minimal" => Some(ReasoningEffort::Minimal),
@@ -262,6 +266,7 @@ impl std::fmt::Display for ReasoningEffort {
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),
+			ReasoningEffort::XHigh => write!(f, "xhigh"),
 			ReasoningEffort::Max => write!(f, "max"),
 			ReasoningEffort::Budget(n) => write!(f, "{n}"),
 			// Legacy
