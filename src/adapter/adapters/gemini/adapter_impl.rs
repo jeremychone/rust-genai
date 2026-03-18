@@ -138,6 +138,7 @@ impl Adapter for GeminiAdapter {
 						"low" | "minimal" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
 						"high" => Some(ReasoningEffort::High),
+						"xhigh" => Some(ReasoningEffort::XHigh),
 						"max" => Some(ReasoningEffort::Max),
 						_ => None,
 					};
