@@ -1,4 +1,32 @@
-`.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `*` Refactor
+`.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
+
+
+## v0.6.0-beta WIP - [v0.6.0-alpha](https://github.com/jeremychone/rust-genai/compare/v0.5.3...HEAD)
+
+- `!` API CHANGE - `ContentPart::CustomPart.model_iden` is now `Option`
+- `!` API CHANGE - `all_model_names()` - now live (with AuthResolver support)
+- `!` API NEW - New `ModelSpec` to define custom endpoint, model, .. 
+- `+` API NEW - Add `ContentPart::ReasoningContent` support
+- `+` API NEW - expose provider `stop_reason` in chat responses
+- `+` API NEW - add typed and normalized built-in tools, `ToolName`, `ToolConfig`, `WebSearch`, and related tool support
+- `+` API NEW - WebSearch builtin tool spport for Anthropic, OpenAI, Gemini
+- `^` API NEW - Add support for `ReasoningEffort::Max` (Anthropic) and `ReasoningEffort::XHigh` (OpenAI) 
+- `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
+- `+` ollama - implement native API support (BIG)
+- `+` provider - add Aliyun adapter, namespace only
+- `^` anthropic - add support for adaptive thinking
+- `^` anthropic - implement missing prompt caching fixes, cache token capture and normalization, TTL support, and per-part cache control support
+- `^` doc - sync llm api reference, spec rules, and tool spec
+- `-` openai - fix streamer to emit delta content from `finish_reason` message
+- `-` gemini - fix JSON schema compatibility and usage-only stream tail handling
+- `-` openai - surface SSE error payloads in streaming
+- `-` openai - fix recursive issue on tool handling
+- `-` gemini - fix tool serialization to use `functionDeclarations` camelCase
+- `>` ModelName - add `Static` and `Shared` inner support
+- `>` adapter - update `Adapter` trait with `DEFAULT_API_KEY_ENV_NAME` and update implementations
+- `>` AuthData - add `None` variant
+- `>` openai - relayout adapter implementation and shared code
+- `>` examples - rename examples
 
 ## 2026-01-31 - [v0.5.3](https://github.com/jeremychone/rust-genai/compare/v0.5.2...v0.5.3)
 
@@ -7,7 +35,6 @@
 - `.` tracing - add traced to web-client for ai response (#132)
 - `-` Fix incorrect empty output from MessageContent::joined_texts for ≥ 2 text parts (fixes #135) (#136) Co-authored-by: Ross MacLeod <rmm+github@z.odi.ac>
 - `.` ChatRole - Add PartialEq / Eq (#131)
-
 
 ## 2026-01-27 - [v0.5.2](https://github.com/jeremychone/rust-genai/compare/v0.5.1...v0.5.2)
 
