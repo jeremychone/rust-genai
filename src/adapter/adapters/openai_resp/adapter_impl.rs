@@ -90,19 +90,33 @@ impl Adapter for OpenAIRespAdapter {
 				(None, model_name)
 			};
 
+		// -- Extract system prompt before consuming chat_req.
+		// Use the Responses API `instructions` field instead of an input system message.
+		// `instructions` is the canonical way to set system prompt in the Responses API:
+		// - It overrides on each call (important for stateful sessions with previous_response_id)
+		// - It separates instructions from conversation items
+		// - Inline system messages (ChatRole::System in messages) still go to input as-is
+		let instructions = chat_req.system.clone();
+		let mut chat_req = chat_req;
+		chat_req.system = None;
+
 		// -- Build the basic payload
 		let OpenAIRespRequestParts {
 			input_items: messages,
 			tools,
 		} = Self::into_openai_request_parts(&model, chat_req)?;
 
-		// IMPORTANT: `store = false` - To maintain consistent behavior with other chat completions, store is set to false
 		let mut payload = json!({
 			"store": false,
 			"model": model_name,
 			"input": messages,
 			"stream": stream,
 		});
+
+		// -- System prompt as instructions
+		if let Some(instructions) = &instructions {
+			payload.x_insert("instructions", instructions.as_str())?;
+		}
 
 		// -- Set reasoning effort
 		if let Some(reasoning_effort) = reasoning_effort
