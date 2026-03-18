@@ -12,6 +12,7 @@ use crate::{Headers, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Value, json};
+use tracing::info;
 use tracing::warn;
 use value_ext::JsonValueExt;
 
@@ -283,6 +284,12 @@ impl Adapter for AnthropicAdapter {
 			insert_anthropic_reasoning(&mut payload, model_name, &computed_reasoning_effort)?;
 		}
 
+		if let Some(cache_control) = options_set.cache_control() {
+			info!(
+				"Anthropic request-level cache_control '{cache_control:?}' is currently ignored. Use message-level cache_control instead."
+			);
+		}
+
 		// -- Add supported ChatOptions
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("temperature", temperature)?;
@@ -511,10 +518,10 @@ impl AnthropicAdapter {
 			// Check TTL ordering constraint
 			if let Some(ref cc) = cache_control {
 				match cc {
-					CacheControl::Ephemeral | CacheControl::Ephemeral5m => {
+					CacheControl::Memory | CacheControl::Ephemeral | CacheControl::Ephemeral5m => {
 						seen_5m_cache = true;
 					}
-					CacheControl::Ephemeral1h => {
+					CacheControl::Ephemeral1h | CacheControl::Ephemeral24h => {
 						if seen_5m_cache {
 							warn!(
 								"Anthropic cache TTL ordering violation: Ephemeral1h appears after Ephemeral/Ephemeral5m. \
@@ -797,10 +804,16 @@ fn cache_control_to_json(cache_control: &CacheControl) -> Value {
 		CacheControl::Ephemeral => {
 			json!({"type": "ephemeral"})
 		}
+		CacheControl::Memory => {
+			json!({"type": "ephemeral"})
+		}
 		CacheControl::Ephemeral5m => {
 			json!({"type": "ephemeral", "ttl": "5m"})
 		}
 		CacheControl::Ephemeral1h => {
+			json!({"type": "ephemeral", "ttl": "1h"})
+		}
+		CacheControl::Ephemeral24h => {
 			json!({"type": "ephemeral", "ttl": "1h"})
 		}
 	}
@@ -891,8 +904,20 @@ mod tests {
 	}
 
 	#[test]
+	fn test_cache_control_to_json_memory() {
+		let result = cache_control_to_json(&CacheControl::Memory);
+		assert_eq!(result, json!({"type": "ephemeral"}));
+	}
+
+	#[test]
 	fn test_cache_control_to_json_ephemeral_1h() {
 		let result = cache_control_to_json(&CacheControl::Ephemeral1h);
+		assert_eq!(result, json!({"type": "ephemeral", "ttl": "1h"}));
+	}
+
+	#[test]
+	fn test_cache_control_to_json_ephemeral_24h() {
+		let result = cache_control_to_json(&CacheControl::Ephemeral24h);
 		assert_eq!(result, json!({"type": "ephemeral", "ttl": "1h"}));
 	}
 

@@ -4,8 +4,8 @@ use crate::adapter::openai_resp::OpenAIRespStreamer;
 use crate::adapter::openai_resp::resp_types::RespResponse;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
-	ContentPart, MessageContent, ReasoningEffort, StopReason, Tool, ToolConfig, ToolName, Usage,
+	CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
+	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, StopReason, Tool, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -202,10 +202,15 @@ impl Adapter for OpenAIRespAdapter {
 		if let Some(prompt_cache_key) = chat_options.prompt_cache_key() {
 			payload.x_insert("prompt_cache_key", prompt_cache_key)?;
 		}
-		if let Some(prompt_cache_retention) = chat_options.prompt_cache_retention()
-			&& let Some(keyword) = prompt_cache_retention.as_keyword()
-		{
-			payload.x_insert("prompt_cache_retention", keyword)?;
+		if let Some(cache_control) = chat_options.cache_control() {
+			let prompt_cache_retention = match cache_control {
+				CacheControl::Memory | CacheControl::Ephemeral => Some("in_memory"),
+				CacheControl::Ephemeral24h => Some("24h"),
+				CacheControl::Ephemeral5m | CacheControl::Ephemeral1h => None,
+			};
+			if let Some(prompt_cache_retention) = prompt_cache_retention {
+				payload.x_insert("prompt_cache_retention", prompt_cache_retention)?;
+			}
 		}
 
 		Ok(WebRequestData { url, headers, payload })

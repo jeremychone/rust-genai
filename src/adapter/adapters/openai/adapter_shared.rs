@@ -4,7 +4,8 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, ChatOptionsSet, ChatRequest, ChatResponseFormat, ChatRole, ContentPart, ReasoningEffort, Usage,
+	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatResponseFormat, ChatRole, ContentPart,
+	ReasoningEffort, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::{Error, Headers, Result};
@@ -202,10 +203,15 @@ impl OpenAIAdapter {
 		if let Some(prompt_cache_key) = options_set.prompt_cache_key() {
 			payload.x_insert("prompt_cache_key", prompt_cache_key)?;
 		}
-		if let Some(prompt_cache_retention) = options_set.prompt_cache_retention()
-			&& let Some(keyword) = prompt_cache_retention.as_keyword()
-		{
-			payload.x_insert("prompt_cache_retention", keyword)?;
+		if let Some(cache_control) = options_set.cache_control() {
+			let prompt_cache_retention = match cache_control {
+				CacheControl::Memory | CacheControl::Ephemeral => Some("in_memory"),
+				CacheControl::Ephemeral24h => Some("24h"),
+				CacheControl::Ephemeral5m | CacheControl::Ephemeral1h => None,
+			};
+			if let Some(prompt_cache_retention) = prompt_cache_retention {
+				payload.x_insert("prompt_cache_retention", prompt_cache_retention)?;
+			}
 		}
 
 		Ok(WebRequestData { url, headers, payload })

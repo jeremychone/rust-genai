@@ -167,11 +167,19 @@ Per-message options.
 
 ### `CacheControl`
 
-Cache control for prompt caching (currently Anthropic only).
+Unified cache policy abstraction.
 
 - `Ephemeral`: Default 5-minute TTL.
+- `Memory`: Memory-oriented cache mode. On some providers this may be used as the request-level memory cache setting.
 - `Ephemeral5m`: Explicit 5-minute TTL.
 - `Ephemeral1h`: Extended 1-hour TTL (must appear before shorter TTLs in request order).
+- `Ephemeral24h`: Extended 24-hour TTL.
+
+On `ChatOptions`, this is a request-level cache preference.
+
+On `MessageOptions`, this is a per-message or per-content cache hint.
+
+Different providers support different variants and scopes.
 
 ### `MessageContent` (Multipart)
 
@@ -229,9 +237,9 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `seed`: Deterministic generation.
 - `service_tier`: `Flex`, `Auto`, `Default` (OpenAI).
 - `prompt_cache_key`: OpenAI prompt cache key.
-- `prompt_cache_retention`: `PromptCacheRetention` enum (OpenAI).
+- `cache_control`: `CacheControl` request-level cache preference.
 - `extra_headers`: `Headers` added to the request.
-- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)`, `with_prompt_cache_retention(retention)`, `with_extra_headers(headers)`.
+- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)`, `with_cache_control(cache_control)`, `with_extra_headers(headers)`.
 - Deprecated: `with_json_mode(bool)` in favor of `with_response_format(ChatResponseFormat::JsonMode)`.
 
 ### `ChatResponseFormat`
@@ -272,15 +280,6 @@ OpenAI service tier preference for flex processing.
 
 - Variants: `Flex`, `Auto`, `Default`.
 - `variant_name()`, `as_keyword()`, `from_keyword(name)`.
-- Implements `Display`, `FromStr`.
-
-### `PromptCacheRetention`
-
-OpenAI prompt cache retention policy.
-
-- Variants: `InMemory`, `Hours24`.
-- `variant_name()`, `as_keyword()`, `from_keyword(name)`.
-- Serializes as `"in_memory"` / `"24h"`.
 - Implements `Display`, `FromStr`.
 
 ## Embedding

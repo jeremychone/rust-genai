@@ -6,6 +6,7 @@
 //! Note 2: Kept separate from `ChatRequest` for easier reuse and composition.
 
 use crate::Headers;
+use crate::chat::CacheControl;
 use crate::chat::chat_req_response_format::ChatResponseFormat;
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -69,12 +70,12 @@ pub struct ChatOptions {
 	/// Additional HTTP headers to include with the request.
 	pub extra_headers: Option<Headers>,
 
-	// -- OpenAI prompt cache options
+	// -- Prompt cache options
+	/// Request-level cache control preference.
+	pub cache_control: Option<CacheControl>,
+
 	/// OpenAI prompt cache key.
 	pub prompt_cache_key: Option<String>,
-
-	/// OpenAI prompt cache retention policy.
-	pub prompt_cache_retention: Option<PromptCacheRetention>,
 }
 
 /// Chainable Setters
@@ -175,15 +176,15 @@ impl ChatOptions {
 		self
 	}
 
-	/// Sets the OpenAI prompt cache key.
-	pub fn with_prompt_cache_key(mut self, key: impl Into<String>) -> Self {
-		self.prompt_cache_key = Some(key.into());
+	/// Sets the request-level cache control preference.
+	pub fn with_cache_control(mut self, value: CacheControl) -> Self {
+		self.cache_control = Some(value);
 		self
 	}
 
-	/// Sets the OpenAI prompt cache retention policy.
-	pub fn with_prompt_cache_retention(mut self, retention: PromptCacheRetention) -> Self {
-		self.prompt_cache_retention = Some(retention);
+	/// Sets the OpenAI prompt cache key.
+	pub fn with_prompt_cache_key(mut self, key: impl Into<String>) -> Self {
+		self.prompt_cache_key = Some(key.into());
 		self
 	}
 
@@ -445,58 +446,6 @@ impl std::str::FromStr for ServiceTier {
 
 // endregion: --- ServiceTier
 
-// region:    --- PromptCacheRetention
-
-/// OpenAI prompt cache retention policy.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PromptCacheRetention {
-	#[serde(rename = "in_memory")]
-	InMemory,
-	#[serde(rename = "24h")]
-	Hours24,
-}
-
-impl PromptCacheRetention {
-	/// Returns the API keyword.
-	pub fn variant_name(&self) -> &'static str {
-		match self {
-			PromptCacheRetention::InMemory => "in_memory",
-			PromptCacheRetention::Hours24 => "24h",
-		}
-	}
-
-	/// Returns the keyword for API usage.
-	pub fn as_keyword(&self) -> Option<&'static str> {
-		Some(self.variant_name())
-	}
-
-	/// Parses a prompt cache retention keyword.
-	pub fn from_keyword(name: &str) -> Option<Self> {
-		match name {
-			"in_memory" => Some(PromptCacheRetention::InMemory),
-			"24h" => Some(PromptCacheRetention::Hours24),
-			_ => None,
-		}
-	}
-}
-
-impl std::fmt::Display for PromptCacheRetention {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.variant_name())
-	}
-}
-
-impl std::str::FromStr for PromptCacheRetention {
-	type Err = Error;
-
-	/// Parses a prompt cache retention keyword.
-	fn from_str(s: &str) -> Result<Self> {
-		Self::from_keyword(s).ok_or(Error::PromptCacheRetentionParsing { actual: s.to_string() })
-	}
-}
-
-// endregion: --- PromptCacheRetention
-
 // region:    --- ChatOptionsSet
 
 /// This is an internal crate struct to resolve the ChatOptions value in a cascading manner.
@@ -624,10 +573,10 @@ impl ChatOptionsSet<'_, '_> {
 			.or_else(|| self.client.and_then(|client| client.prompt_cache_key.as_deref()))
 	}
 
-	pub fn prompt_cache_retention(&self) -> Option<&PromptCacheRetention> {
+	pub fn cache_control(&self) -> Option<&CacheControl> {
 		self.chat
-			.and_then(|chat| chat.prompt_cache_retention.as_ref())
-			.or_else(|| self.client.and_then(|client| client.prompt_cache_retention.as_ref()))
+			.and_then(|chat| chat.cache_control.as_ref())
+			.or_else(|| self.client.and_then(|client| client.cache_control.as_ref()))
 	}
 
 	/// Returns true only if there is a ChatResponseFormat::JsonMode
