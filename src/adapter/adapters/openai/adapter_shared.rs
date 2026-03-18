@@ -169,12 +169,22 @@ impl OpenAIAdapter {
 			payload.x_insert("stop", options_set.stop_sequences())?;
 		}
 
+		// GPT-5.x and o-series models require "max_completion_tokens" instead of "max_tokens"
+		let max_tokens_key = if model_name.starts_with("gpt-5")
+			|| model_name.starts_with("o1")
+			|| model_name.starts_with("o3")
+			|| model_name.starts_with("o4")
+		{
+			"max_completion_tokens"
+		} else {
+			"max_tokens"
+		};
 		if let Some(max_tokens) = options_set.max_tokens() {
-			payload.x_insert("max_tokens", max_tokens)?;
+			payload.x_insert(max_tokens_key, max_tokens)?;
 		} else if let Some(custom) = custom.as_ref()
 			&& let Some(max_tokens) = custom.default_max_tokens
 		{
-			payload.x_insert("max_tokens", max_tokens)?;
+			payload.x_insert(max_tokens_key, max_tokens)?;
 		}
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("top_p", top_p)?;

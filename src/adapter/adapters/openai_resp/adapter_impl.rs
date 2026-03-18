@@ -175,7 +175,7 @@ impl Adapter for OpenAIRespAdapter {
 		}
 
 		if let Some(max_tokens) = chat_options.max_tokens() {
-			payload.x_insert("max_tokens", max_tokens)?;
+			payload.x_insert("max_output_tokens", max_tokens)?;
 		}
 		if let Some(top_p) = chat_options.top_p() {
 			payload.x_insert("top_p", top_p)?;
