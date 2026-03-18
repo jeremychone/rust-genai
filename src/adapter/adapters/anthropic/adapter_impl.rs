@@ -44,7 +44,7 @@ fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &Re
 			ReasoningEffort::Minimal => "low",
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
-			ReasoningEffort::High => "high",
+			ReasoningEffort::High | ReasoningEffort::XHigh => "high",
 			ReasoningEffort::Max if support_reasoning_max => "max",
 			ReasoningEffort::Max => "high",
 			// we apture for later
@@ -89,7 +89,7 @@ fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &Re
 			ReasoningEffort::Budget(budget) => Some(*budget),
 			ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
 			ReasoningEffort::Medium => Some(REASONING_MEDIUM),
-			ReasoningEffort::High | ReasoningEffort::Max => Some(REASONING_HIGH),
+			ReasoningEffort::High | ReasoningEffort::Max | ReasoningEffort::XHigh => Some(REASONING_HIGH),
 		};
 
 		if let Some(thinking_budget) = thinking_budget {
