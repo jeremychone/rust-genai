@@ -228,8 +228,10 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `capture_raw_body`: Capture raw HTTP response body.
 - `seed`: Deterministic generation.
 - `service_tier`: `Flex`, `Auto`, `Default` (OpenAI).
+- `prompt_cache_key`: OpenAI prompt cache key.
+- `prompt_cache_retention`: `PromptCacheRetention` enum (OpenAI).
 - `extra_headers`: `Headers` added to the request.
-- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_extra_headers(headers)`.
+- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)`, `with_prompt_cache_retention(retention)`, `with_extra_headers(headers)`.
 - Deprecated: `with_json_mode(bool)` in favor of `with_response_format(ChatResponseFormat::JsonMode)`.
 
 ### `ChatResponseFormat`
@@ -270,6 +272,15 @@ OpenAI service tier preference for flex processing.
 
 - Variants: `Flex`, `Auto`, `Default`.
 - `variant_name()`, `as_keyword()`, `from_keyword(name)`.
+- Implements `Display`, `FromStr`.
+
+### `PromptCacheRetention`
+
+OpenAI prompt cache retention policy.
+
+- Variants: `InMemory`, `Hours24`.
+- `variant_name()`, `as_keyword()`, `from_keyword(name)`.
+- Serializes as `"in_memory"` / `"24h"`.
 - Implements `Display`, `FromStr`.
 
 ## Embedding

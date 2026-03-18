@@ -43,6 +43,9 @@ pub enum Error {
 	#[display("Failed to parse service tier. Actual: '{actual}'")]
 	ServiceTierParsing { actual: String },
 
+	#[display("Failed to parse prompt cache retention. Actual: '{actual}'")]
+	PromptCacheRetentionParsing { actual: String },
+
 	// -- Chat Output
 	#[display("No chat response from model '{model_iden}'")]
 	NoChatResponse { model_iden: ModelIden },
