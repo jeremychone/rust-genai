@@ -162,6 +162,7 @@ impl Adapter for CohereAdapter {
 			stop_reason,
 			usage,
 			captured_raw_body: None, // Set by the client exec_chat
+			response_id: None,
 		})
 	}
 
