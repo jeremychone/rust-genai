@@ -5,17 +5,22 @@
 
 - `!` API CHANGE - `ContentPart::CustomPart.model_iden` is now `Option`
 - `!` API CHANGE - `all_model_names()` - now live (with AuthResolver support)
+- `!` API NEW - chat-level prompt cache `CacheControl` with openai prompt_cache_key Support
 - `!` API NEW - New `ModelSpec` to define custom endpoint, model, .. 
 - `+` API NEW - Add `ContentPart::ReasoningContent` support
 - `+` API NEW - expose provider `stop_reason` in chat responses
 - `+` API NEW - add typed and normalized built-in tools, `ToolName`, `ToolConfig`, `WebSearch`, and related tool support
 - `+` API NEW - WebSearch builtin tool spport for Anthropic, OpenAI, Gemini
 - `^` API NEW - Add support for `ReasoningEffort::Max` (Anthropic) and `ReasoningEffort::XHigh` (OpenAI) 
+- `+` openap - now support 
+- `!` openai - route GPT-5 models through the OpenAI Responses API
+- `^` openai - now support prompt_cache_key in `ChatOptions` (and `prompt_cache_retention` via `CacheControl`)
+- `^` openai - add request-level prompt cache support and use `instructions` for Responses API system prompts
 - `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
 - `+` ollama - implement native API support (BIG)
 - `+` provider - add Aliyun adapter, namespace only
 - `^` anthropic - add support for adaptive thinking
-- `^` anthropic - implement missing prompt caching fixes, cache token capture and normalization, TTL support, and per-part cache control support
+- `-` anthropic - implement missing prompt caching fixes, cache token capture and normalization, TTL support, and per-part cache control support
 - `^` doc - sync llm api reference, spec rules, and tool spec
 - `-` openai - fix streamer to emit delta content from `finish_reason` message
 - `-` gemini - fix JSON schema compatibility and usage-only stream tail handling
