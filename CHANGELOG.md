@@ -5,8 +5,9 @@
 
 - `!` API CHANGE - `ContentPart::CustomPart.model_iden` is now `Option`
 - `!` API CHANGE - `all_model_names()` - now live (with AuthResolver support)
-- `!` API NEW - chat-level prompt cache `CacheControl` with openai prompt_cache_key Support
-- `!` API NEW - New `ModelSpec` to define custom endpoint, model, .. 
+- `^` API NEW - chat-level prompt cache `CacheControl` with openai prompt_cache_key Support
+- `+` API NEW - New `ModelSpec` to define custom endpoint, model, .. 
+- `+` API NEW - add openai resp stateful sessions — `previous_response_id`, `store`, `response_id` (PR #168)
 - `+` API NEW - Add `ContentPart::ReasoningContent` support
 - `+` API NEW - expose provider `stop_reason` in chat responses
 - `+` API NEW - add typed and normalized built-in tools, `ToolName`, `ToolConfig`, `WebSearch`, and related tool support
