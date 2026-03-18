@@ -26,6 +26,9 @@ pub struct InterStreamEnd {
 
 	// When `ChatOptions..capture_thought_signatures == true` (implied or explicit)
 	pub captured_thought_signatures: Option<Vec<String>>,
+
+	// Response ID for stateful sessions (OpenAI Responses API).
+	pub captured_response_id: Option<String>,
 }
 
 /// Intermediary StreamEvent

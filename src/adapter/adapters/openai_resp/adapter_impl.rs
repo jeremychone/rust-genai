@@ -100,14 +100,29 @@ impl Adapter for OpenAIRespAdapter {
 		let mut chat_req = chat_req;
 		chat_req.system = None;
 
+		// -- Extract stateful session fields before consuming chat_req
+		let previous_response_id = chat_req.previous_response_id.clone();
+		let explicit_store = chat_req.store;
+
 		// -- Build the basic payload
 		let OpenAIRespRequestParts {
 			input_items: messages,
 			tools,
 		} = Self::into_openai_request_parts(&model, chat_req)?;
 
+		// Store: always opt-in. If not explicitly set, default is false.
+		// Privacy first: we never implicitly set store=true, even when previous_response_id is set.
+		// If previous_response_id is set without store=true, log a warning — the caller must be explicit.
+		let store = explicit_store.unwrap_or(false);
+		if previous_response_id.is_some() && explicit_store != Some(true) {
+			tracing::warn!(
+				"previous_response_id is set but store is not explicitly true — \
+				 stateful session requires store=true to work. Set `store: Some(true)` explicitly."
+			);
+		}
+
 		let mut payload = json!({
-			"store": false,
+			"store": store,
 			"model": model_name,
 			"input": messages,
 			"stream": stream,
@@ -116,6 +131,11 @@ impl Adapter for OpenAIRespAdapter {
 		// -- System prompt as instructions
 		if let Some(instructions) = &instructions {
 			payload.x_insert("instructions", instructions.as_str())?;
+		}
+
+		// -- Stateful session: add previous_response_id
+		if let Some(prev_id) = &previous_response_id {
+			payload.x_insert("previous_response_id", prev_id.as_str())?;
 		}
 
 		// -- Set reasoning effort
@@ -251,6 +271,7 @@ impl Adapter for OpenAIRespAdapter {
 			stop_reason: Some(StopReason::from(resp.status)),
 			usage,
 			captured_raw_body,
+			response_id: Some(resp.id),
 		})
 	}
 

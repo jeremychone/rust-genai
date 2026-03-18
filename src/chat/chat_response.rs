@@ -126,6 +126,19 @@ pub struct ChatResponse {
 	/// IMPORTANT: (since 0.5.3) This is populated at the client.exec_chat when the options capture_raw_body is set to true
 	/// Raw response body (only if asked via options.capture_raw_body)
 	pub captured_raw_body: Option<serde_json::Value>,
+
+	/// Response ID for stateful sessions (OpenAI Responses API).
+	/// Use as `previous_response_id` in the next request to continue the conversation server-side.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub response_id: Option<String>,
+}
+
+impl ChatResponse {
+	/// Set response_id (builder pattern for adapter construction).
+	pub fn with_response_id(mut self, id: Option<String>) -> Self {
+		self.response_id = id;
+		self
+	}
 }
 
 // Getters

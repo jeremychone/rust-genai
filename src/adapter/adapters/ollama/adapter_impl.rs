@@ -197,6 +197,7 @@ impl Adapter for OllamaAdapter {
 				.map(StopReason::from),
 			usage,
 			captured_raw_body,
+			response_id: None,
 		})
 	}
 

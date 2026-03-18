@@ -208,6 +208,7 @@ impl futures::Stream for OpenAIRespStreamer {
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
 								captured_thought_signatures: None,
+								captured_response_id: Some(response.id),
 							};
 
 							return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
@@ -232,6 +233,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							self.captured_data.stop_reason = Some(response.status.clone());
 							// For incomplete, we might still want to return what we have?
 							// But for now, let's treat it as a successful end but with whatever we captured.
+							let resp_id = response.id.clone();
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: response.usage.map(Into::into),
 								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
@@ -239,6 +241,7 @@ impl futures::Stream for OpenAIRespStreamer {
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
 								captured_thought_signatures: None,
+								captured_response_id: Some(resp_id),
 							};
 
 							return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
@@ -267,6 +270,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls: self.captured_data.tool_calls.take(),
 							captured_thought_signatures: None,
+							captured_response_id: None,
 						};
 						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
 					}

@@ -118,6 +118,9 @@ pub struct StreamEnd {
 
 	/// Captured reasoning content if `ChatOptions.capture_reasoning` is enabled.
 	pub captured_reasoning_content: Option<String>,
+
+	/// Response ID for stateful sessions (OpenAI Responses API).
+	pub captured_response_id: Option<String>,
 }
 
 impl From<InterStreamEnd> for StreamEnd {
@@ -175,6 +178,7 @@ impl From<InterStreamEnd> for StreamEnd {
 			captured_stop_reason: inter_end.captured_stop_reason,
 			captured_content,
 			captured_reasoning_content: inter_end.captured_reasoning_content,
+			captured_response_id: inter_end.captured_response_id,
 		}
 	}
 }
