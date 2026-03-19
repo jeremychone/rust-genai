@@ -5,7 +5,7 @@ use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
 use genai::chat::{ChatMessage, ChatRequest};
 use tracing_subscriber::EnvFilter;
 
-const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
+const MODEL_OPENAI: &str = "gpt-5.4-mini"; //
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 // or namespaced with simple anme "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
 const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-20b";
