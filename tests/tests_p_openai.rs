@@ -8,10 +8,11 @@ use genai::resolver::AuthData;
 // note: "gpt-4o-mini" has issue when image & pdf
 // as for 2025-08-08 gpt-5-mini does not support temperature & stop sequence
 const MODEL_LATEST: &str = "gpt-5.4";
-const MODEL_GPT_5_MINI: &str = "gpt-5-mini"; // for the streaming reasoning test
+const MODEL_MINI: &str = "gpt-5.4-mini"; // for the streaming reasoning test
+const MODEL_MINI_XHIGH: &str = "gpt-5.4-mini-xhigh";
 const AUDIO_MODEL: &str = "gpt-audio-mini";
 const MODEL2: &str = "gpt-4.1-mini"; // for temperature & stop sequence
-const MODEL_NS: &str = "openai::gpt-4.1-mini";
+const MODEL_NS: &str = "openai::gpt-5.4-mini";
 
 // region:    --- Provider Specific
 
@@ -45,7 +46,7 @@ async fn test_chat_reasoning_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_verbosity_ok() -> TestResult<()> {
-	common_tests::common_test_chat_verbosity_ok(MODEL_GPT_5_MINI).await
+	common_tests::common_test_chat_verbosity_ok(MODEL_MINI).await
 }
 
 #[tokio::test]
@@ -84,7 +85,7 @@ async fn test_chat_stop_sequences_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_cache_implicit_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL_GPT_5_MINI).await
+	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL_MINI).await
 }
 
 // endregion: --- Chat Implicit Cache
@@ -104,7 +105,7 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 	// NOTE: gpt-5.1 even when reasoning is Medium, does not give reasoning when simple chat when streaming
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL_GPT_5_MINI, Some(Check::REASONING_USAGE)).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL_MINI_XHIGH, Some(Check::REASONING_USAGE)).await
 }
 
 #[tokio::test]
