@@ -9,14 +9,14 @@ use genai::resolver::AuthData;
 // "gemini-2.5-flash-zero"
 const MODEL_GPRO_3: &str = "gemini-3-pro-preview";
 const MODEL_FLASH_3: &str = "gemini-3-flash-preview"; // pure gem, fast, cheap, and good!
-const MODEL: &str = "gemini-2.5-flash";
+const MODEL_FLASH_2_5: &str = "gemini-2.5-flash";
 const MODEL_NS: &str = "gemini::gemini-2.5-flash";
 
 // region:    --- Chat
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL, None).await
+	common_tests::common_test_chat_simple_ok(MODEL_FLASH_2_5, None).await
 }
 
 #[tokio::test]
@@ -36,22 +36,22 @@ async fn test_chat_namespaced_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_multi_system_ok() -> TestResult<()> {
-	common_tests::common_test_chat_multi_system_ok(MODEL).await
+	common_tests::common_test_chat_multi_system_ok(MODEL_FLASH_2_5).await
 }
 
 #[tokio::test]
 async fn test_chat_json_structured_ok() -> TestResult<()> {
-	common_tests::common_test_chat_json_structured_ok(MODEL, Some(Check::USAGE)).await
+	common_tests::common_test_chat_json_structured_ok(MODEL_FLASH_2_5, Some(Check::USAGE)).await
 }
 
 #[tokio::test]
 async fn test_chat_temperature_ok() -> TestResult<()> {
-	common_tests::common_test_chat_temperature_ok(MODEL).await
+	common_tests::common_test_chat_temperature_ok(MODEL_FLASH_2_5).await
 }
 
 #[tokio::test]
 async fn test_chat_stop_sequences_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
+	common_tests::common_test_chat_stop_sequences_ok(MODEL_FLASH_2_5).await
 }
 
 // endregion: --- Chat
@@ -71,17 +71,17 @@ async fn test_chat_stop_sequences_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_stream_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL_FLASH_3, None).await
 }
 
 #[tokio::test]
 async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
+	common_tests::common_test_chat_stream_capture_content_ok(MODEL_FLASH_3).await
 }
 
 #[tokio::test]
 async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
+	common_tests::common_test_chat_stream_capture_all_ok(MODEL_FLASH_3, None).await
 }
 
 // endregion: --- Chat Stream Tests
@@ -96,22 +96,22 @@ async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_b64_ok(MODEL).await
+	common_tests::common_test_chat_image_b64_ok(MODEL_FLASH_2_5).await
 }
 
 #[tokio::test]
 async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_pdf_b64_ok(MODEL).await
+	common_tests::common_test_chat_pdf_b64_ok(MODEL_FLASH_2_5).await
 }
 
 #[tokio::test]
 async fn test_chat_binary_image_file_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_file_ok(MODEL).await
+	common_tests::common_test_chat_image_file_ok(MODEL_FLASH_2_5).await
 }
 
 #[tokio::test]
 async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
+	common_tests::common_test_chat_multi_binary_b64_ok(MODEL_FLASH_2_5).await
 }
 
 // endregion: --- Binary Tests
@@ -120,12 +120,12 @@ async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_tool_simple_ok() -> TestResult<()> {
-	common_tests::common_test_tool_simple_ok(MODEL).await
+	common_tests::common_test_tool_simple_ok(MODEL_FLASH_2_5).await
 }
 
 #[tokio::test]
 async fn test_tool_full_flow_ok() -> TestResult<()> {
-	common_tests::common_test_tool_full_flow_ok(MODEL).await
+	common_tests::common_test_tool_full_flow_ok(MODEL_FLASH_2_5).await
 }
 
 #[tokio::test]
@@ -201,7 +201,7 @@ async fn test_tool_google_web_search_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_resolver_auth_ok() -> TestResult<()> {
-	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("GEMINI_API_KEY")).await
+	common_tests::common_test_resolver_auth_ok(MODEL_FLASH_2_5, AuthData::from_env("GEMINI_API_KEY")).await
 }
 
 // endregion: --- Resolver Tests

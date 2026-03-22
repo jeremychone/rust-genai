@@ -631,10 +631,15 @@ pub async fn common_test_chat_stream_simple_ok(model: &str, checks: Option<Check
 		stream_end.captured_usage.is_none(),
 		"StreamEnd should not have any meta_usage"
 	);
-	assert!(
-		stream_end.captured_content.is_none(),
-		"StreamEnd should not have any captured_content"
-	);
+
+	// NOTE: with gemini 3, signature is always sent back in the captured message content, even if
+	//       the captured_content is not set (because it meant capture message content)
+	//
+	let no_captured_text = match stream_end.captured_content.as_ref() {
+		None => true,
+		Some(cc) => cc.texts().is_empty(),
+	};
+	assert!(no_captured_text, "StreamEnd should not have any text captured_content");
 
 	// -- Check Reasoning Content
 	if contains_checks(checks, Check::REASONING_CONTENT) {
