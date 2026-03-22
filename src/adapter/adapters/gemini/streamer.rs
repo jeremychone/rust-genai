@@ -108,11 +108,13 @@ impl futures::Stream for GeminiStreamer {
 								self.captured_data.stop_reason = stop_reason;
 							}
 
-							// -- Extract text and toolcall
-							// WARNING: Assume that only ONE tool call per message (or take the last one)
+							// -- Extract text, reasoning, and tool calls from content parts.
+							// Gemini can return multiple functionCall parts in a single
+							// streaming chunk (parallel tool calls), so we collect all of
+							// them instead of keeping only the last one.
 							let mut stream_text_content: String = String::new();
 							let mut stream_reasoning_content: Option<String> = None;
-							let mut stream_tool_call: Option<ToolCall> = None;
+							let mut stream_tool_calls: Vec<ToolCall> = Vec::new();
 							let mut stream_thought: Option<String> = None;
 
 							for g_content_item in content {
@@ -122,11 +124,9 @@ impl futures::Stream for GeminiStreamer {
 									}
 									GeminiChatContent::Text(text) => stream_text_content.push_str(&text),
 									GeminiChatContent::Binary(_) => {
-										// For now, we do not stream binary content, as Gemini may send binary content in multiple chunks and we don't want to emit incomplete binary data.
-										// Instead, we will capture the binary content in the captured_data and emit it at the end of the stream.
-										// We can consider adding a streaming event for binary content in the future if there is a use case for it.
+										// For now, we do not stream binary content.
 									}
-									GeminiChatContent::ToolCall(tool_call) => stream_tool_call = Some(tool_call),
+									GeminiChatContent::ToolCall(tool_call) => stream_tool_calls.push(tool_call),
 									GeminiChatContent::ThoughtSignature(thought) => stream_thought = Some(thought),
 								}
 							}
@@ -180,8 +180,8 @@ impl futures::Stream for GeminiStreamer {
 								self.pending_events.push_back(InterStreamEvent::Chunk(stream_text_content));
 							}
 
-							// 3. Tool Call
-							if let Some(tool_call) = stream_tool_call {
+							// 3. Tool Calls (supports parallel tool calls from Gemini)
+							for tool_call in stream_tool_calls {
 								if self.options.capture_tool_calls {
 									match self.captured_data.tool_calls {
 										Some(ref mut tool_calls) => tool_calls.push(tool_call.clone()),
@@ -189,7 +189,7 @@ impl futures::Stream for GeminiStreamer {
 									}
 								}
 								if self.options.capture_usage {
-									self.captured_data.usage = Some(usage);
+									self.captured_data.usage = Some(usage.clone());
 								}
 								self.pending_events.push_back(InterStreamEvent::ToolCallChunk(tool_call));
 							}
