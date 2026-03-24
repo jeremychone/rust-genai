@@ -112,8 +112,12 @@ impl ClientBuilder {
 			let reqwest_client = builder.build().expect("Failed to build reqwest client");
 			WebClient::from_reqwest_client(reqwest_client)
 		} else {
-			// Use default WebClient
-			WebClient::default()
+			// Use default WebClient with performance optimizations
+			let default_config = super::web_config::WebConfig::default();
+			let mut builder = reqwest::Client::builder();
+			builder = default_config.apply_to_builder(builder);
+			let reqwest_client = builder.build().expect("Failed to build reqwest client");
+			WebClient::from_reqwest_client(reqwest_client)
 		};
 
 		let inner = super::ClientInner { web_client, config };
