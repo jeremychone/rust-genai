@@ -44,3 +44,7 @@ serial_test = "3.2"
 base64 = "0.22.0"  # Check for the latest version
 bitflags = "2.8"
 gcp_auth = "0.12"
+# -- Yakbak (HTTP record/replay for integration tests)
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio", "http1"] }
+http-body-util = "0.1"

@@ -1,0 +1,100 @@
+[{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "**Gathering Weather Information**\n\nI'm currently focused on retrieving the weather details for Paris, France. I've determined that the `get_weather` tool is the appropriate one to use. I've also correctly set the `unit` parameter to 'C' to ensure Celsius readings, and I have the `city` parameter set to 'Paris'. I am about to set the `country` parameter.\n\n\n",
+            "thought": true
+          }
+        ],
+        "role": "model"
+      },
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 107,
+    "totalTokenCount": 170,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 107
+      }
+    ],
+    "thoughtsTokenCount": 63
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "vgvDaaOcGtmWvdIPuqb0qA0"
+}
+,
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "**Refining Data Retrieval**\n\nI've successfully set the city and unit parameters, and now the country has been set to 'France'. I am retrieving weather data as requested. I realize the `get_weather` tool only provides temperature, not a comprehensive weather description, so I will inform the user about this shortly after I return the temperature. I will clarify the tool's limitations to ensure the user has complete information.\n\n\n",
+            "thought": true
+          }
+        ],
+        "role": "model"
+      },
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 107,
+    "totalTokenCount": 219,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 107
+      }
+    ],
+    "thoughtsTokenCount": 112
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "vgvDaaOcGtmWvdIPuqb0qA0"
+}
+,
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "functionCall": {
+              "name": "get_weather",
+              "args": {
+                "country": "France",
+                "unit": "C",
+                "city": "Paris"
+              }
+            },
+            "thoughtSignature": "CmYBvj72+2f+ejt7tXAIds2JkUOed1CaH/dBNbTjCltv4W44sCmu9gacHB0HUOX3FT0hdNmT264Q40CJeltRZ3JbiZciQd81KICGvlUddYlzASQ3e5AEnrRSrsktDi+Tmv415Kua6iEK1wEBvj72+49g3Im5cUZjk2iGIqmWAVIby9CqE2v1lxldGU/ERXDBnhc2sPnDYZXbqnKU2fpkEyoftZazuuH3eLtxRq9CtXVSkXRMDH600eO16s8lSOkSyXQ0FrkwCsWQY98iWJuLkXbzV5kfajogrSV4AYSR7m/IFx3ilM65In9TBBiCwD21aqkymxbi703tbOPn1u6h7wiYvEVKoUqLUbU8ZlFTFpEuEOnNEDUfI74Bk1ZuoQCtN8F1w3QhIZ7eKqEBy9132bTc3MnPXQ+3NCC1hd5sM6iVRQqCAgG+Pvb7Y9p8EYWMB2UB+dcIKkL+rN0bM5TtI69akv7DGnkrkNoUekffMkIKd02xEUdiz1WaLAPFUCj1IIa3rOpzC95+94KXOIc/m+ZcXVdDb94JLLUKJkjZxMSqWGQ3iwYPb7K4SSd8LnYC4/JupJVqwa64rT8k3wHIi+8gUAyPzbqKyJKwE0r9kka+E9NDhlrz+6miFoamo+95aTq+DFudeLAyJrAMWChQEL3/bf3k2bmhlj8ZnHsR1uKkwOQ/p75jzt/dvWkN8qVR6F717EbWs9eG8y/NyYXe7LrSPt3FMKo7D44W+6Vgit3L0dZyshBjNZYIifw8XBTrs7Z2KvBbLQ=="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "finishMessage": "Model generated function call(s)."
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 107,
+    "candidatesTokenCount": 23,
+    "totalTokenCount": 242,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 107
+      }
+    ],
+    "thoughtsTokenCount": 112
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "vgvDaaOcGtmWvdIPuqb0qA0"
+}
+]
