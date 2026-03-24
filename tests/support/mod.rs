@@ -10,6 +10,7 @@ mod data;
 mod helpers;
 mod seeders;
 mod test_error;
+pub mod yakbak;
 
 pub use asserts::*;
 pub use helpers::*;
