@@ -126,6 +126,7 @@ impl Adapter for OpenAIRespAdapter {
 			"model": model_name,
 			"input": messages,
 			"stream": stream,
+			"include": ["reasoning.encrypted_content"],
 		});
 
 		// -- System prompt as instructions
@@ -142,10 +143,7 @@ impl Adapter for OpenAIRespAdapter {
 		if let Some(reasoning_effort) = reasoning_effort
 			&& let Some(keyword) = reasoning_effort.as_keyword()
 		{
-			// NOTE: For now, we do not set the "summary" property to generate the reasoning summary
-
-			payload.x_insert("reasoning", json!({"effort": keyword}))?;
-			// TODO: needs to find a way to add summary: auto, concise, detailed
+			payload.x_insert("reasoning", json!({"effort": keyword, "summary": "detailed"}))?;
 		}
 
 		// -- Tools
@@ -255,12 +253,22 @@ impl Adapter for OpenAIRespAdapter {
 
 		// -- Capture the content
 		let mut content: MessageContent = MessageContent::default();
-		let reasoning_content: Option<String> = None;
+		let mut reasoning_content: Option<String> = None;
 
 		// -- Extract the content message
 		for output_item in resp.output {
 			let parts = ContentPart::from_resp_output_item(output_item)?;
-			content.extend(parts);
+			for part in parts {
+				match part {
+					ContentPart::ReasoningContent(rc) => {
+						match reasoning_content {
+							Some(ref mut existing) => existing.push_str(&rc),
+							None => reasoning_content = Some(rc),
+						}
+					}
+					other => content.push(other),
+				}
+			}
 		}
 
 		Ok(ChatResponse {

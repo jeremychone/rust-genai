@@ -61,6 +61,21 @@ enum RespStreamEvent {
 		delta: String,
 	},
 
+	#[serde(rename = "response.reasoning_summary_text.delta")]
+	ReasoningSummaryTextDelta {
+		#[serde(default)]
+		_output_index: usize,
+		#[serde(default)]
+		_content_index: usize,
+		delta: String,
+	},
+
+	#[serde(rename = "response.reasoning_summary_part.added")]
+	ReasoningSummaryPartAdded {},
+
+	#[serde(rename = "response.reasoning_summary_part.done")]
+	ReasoningSummaryPartDone {},
+
 	#[serde(rename = "response.function_call_arguments.delta")]
 	FunctionCallArgumentsDelta {
 		#[serde(default)]
@@ -155,7 +170,8 @@ impl futures::Stream for OpenAIRespStreamer {
 							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(delta))));
 						}
 
-						RespStreamEvent::ReasoningTextDelta { delta, .. } => {
+						RespStreamEvent::ReasoningTextDelta { delta, .. }
+						| RespStreamEvent::ReasoningSummaryTextDelta { delta, .. } => {
 							if self.options.capture_reasoning_content {
 								match self.captured_data.reasoning_content {
 									Some(ref mut c) => c.push_str(&delta),
@@ -163,6 +179,10 @@ impl futures::Stream for OpenAIRespStreamer {
 								}
 							}
 							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(delta))));
+						}
+
+						RespStreamEvent::ReasoningSummaryPartAdded {} | RespStreamEvent::ReasoningSummaryPartDone {} => {
+							continue;
 						}
 
 						RespStreamEvent::FunctionCallArgumentsDelta { output_index, delta } => {

@@ -44,6 +44,23 @@ impl ContentPart {
 
 				parts.push(tool_call.into());
 			}
+			ItemType::Reasoning => {
+				// Extract reasoning summary text from the summary array
+				// Each entry: {"type": "summary_text", "text": "..."}
+				if let Ok(summary_items) = item_value.x_remove::<Vec<Value>>("summary") {
+					let mut reasoning_text = String::new();
+					for mut summary_item in summary_items {
+						if let Ok("summary_text") = summary_item.x_get_str("type")
+							&& let Ok(text) = summary_item.x_remove::<String>("text")
+						{
+							reasoning_text.push_str(&text);
+						}
+					}
+					if !reasoning_text.is_empty() {
+						parts.push(ContentPart::ReasoningContent(reasoning_text));
+					}
+				}
+			}
 		}
 
 		Ok(parts)
@@ -56,6 +73,7 @@ impl ContentPart {
 enum ItemType {
 	Message,
 	FunctionCall,
+	Reasoning,
 }
 
 impl ItemType {
@@ -64,6 +82,7 @@ impl ItemType {
 		match typ {
 			"message" => Some(ItemType::Message),
 			"function_call" => Some(ItemType::FunctionCall),
+			"reasoning" => Some(ItemType::Reasoning),
 			_ => None,
 		}
 	}
