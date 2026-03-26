@@ -13,6 +13,7 @@ use crate::adapter::groq::GroqAdapter;
 use crate::adapter::mimo::MimoAdapter;
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::vertex::VertexAdapter;
 use crate::adapter::xai::XaiAdapter;
 use crate::adapter::{Adapter as _, zai};
 use crate::{ModelName, Result};
@@ -56,6 +57,9 @@ pub enum AdapterKind {
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
 	Ollama,
+	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
+	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
+	Vertex,
 }
 
 /// Serialization/Parse implementations
@@ -79,6 +83,7 @@ impl AdapterKind {
 			AdapterKind::Aliyun => "Aliyun",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
+			AdapterKind::Vertex => "Vertex",
 		}
 	}
 
@@ -101,6 +106,7 @@ impl AdapterKind {
 			AdapterKind::Aliyun => "aliyun",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
+			AdapterKind::Vertex => "vertex",
 		}
 	}
 
@@ -122,6 +128,7 @@ impl AdapterKind {
 			"aliyun" => Some(AdapterKind::Aliyun),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
+			"vertex" => Some(AdapterKind::Vertex),
 			_ => None,
 		}
 	}
@@ -148,6 +155,7 @@ impl AdapterKind {
 			AdapterKind::Aliyun => AliyunAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Cohere => CohereAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Ollama => OllamaAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Vertex => VertexAdapter::DEFAULT_API_KEY_ENV_NAME,
 		}
 	}
 }
@@ -173,6 +181,7 @@ impl AdapterKind {
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
 	/// - e.g., for ZAI coding plan with `coding::glm-4.6`
+	/// - e.g., for vertex with `vertex::gemini-2.5-flash` or `vertex::claude-sonnet-4-6`
 	///
 	/// And all adapters can be force namspaced as well.
 	///

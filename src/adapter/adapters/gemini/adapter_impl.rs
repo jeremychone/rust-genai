@@ -16,10 +16,10 @@ use value_ext::JsonValueExt;
 pub struct GeminiAdapter;
 
 // Per gemini doc (https://x.com/jeremychone/status/1916501987371438372)
-const REASONING_ZERO: u32 = 0;
-const REASONING_LOW: u32 = 1000;
-const REASONING_MEDIUM: u32 = 8000;
-const REASONING_HIGH: u32 = 24000;
+pub(in crate::adapter) const REASONING_ZERO: u32 = 0;
+pub(in crate::adapter) const REASONING_LOW: u32 = 1000;
+pub(in crate::adapter) const REASONING_MEDIUM: u32 = 8000;
+pub(in crate::adapter) const REASONING_HIGH: u32 = 24000;
 
 /// Important
 /// - For now Low and Minimal aare the same for geminia
@@ -119,121 +119,13 @@ impl Adapter for GeminiAdapter {
 		let ServiceTarget { endpoint, auth, model } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
 
-		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
-
-		// -- headers (empty for gemini)
 		let headers = Headers::from(("x-goog-api-key".to_string(), api_key.to_string()));
 
-		// -- Reasoning Budget
-		let (provider_model_name, computed_reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
-			// No explicity reasoning_effort, try to infer from model name suffix (supports -zero)
-			(model, None) => {
-				// let model_name: &str = &model.model_name;
-				if let Some((prefix, last)) = model_name.rsplit_once('-') {
-					let reasoning = match last {
-						// 'zero' is a gemini special
-						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
-						"none" => Some(ReasoningEffort::None),
-						"low" | "minimal" => Some(ReasoningEffort::Low),
-						"medium" => Some(ReasoningEffort::Medium),
-						"high" => Some(ReasoningEffort::High),
-						"xhigh" => Some(ReasoningEffort::XHigh),
-						"max" => Some(ReasoningEffort::Max),
-						_ => None,
-					};
-					// create the model name if there was a `-..` reasoning suffix
-					let model = if reasoning.is_some() { prefix } else { model };
+		let (payload, provider_model_name) =
+			Self::build_gemini_request_payload(&model, model_name, chat_req, options_set)?;
 
-					(model, reasoning)
-				} else {
-					(model, None)
-				}
-			}
-			// TOOD: make it more elegant
-			(model, Some(effort)) => (model, Some(effort.clone())),
-		};
-
-		// -- parts
-		let GeminiChatRequestParts {
-			system,
-			contents,
-			tools,
-		} = Self::into_gemini_request_parts(&model, chat_req)?;
-
-		// -- Playload
-		let mut payload = json!({
-			"contents": contents,
-		});
-
-		// -- Set the reasoning effort
-		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			// -- For gemini-3 use the thinkingLevel if Low or High (does not support medium for now)
-			if provider_model_name.contains("gemini-3") {
-				match computed_reasoning_effort {
-					ReasoningEffort::Low | ReasoningEffort::Minimal => {
-						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "LOW")?;
-					}
-					ReasoningEffort::High | ReasoningEffort::Max => {
-						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "HIGH")?;
-					}
-					// Fallback on thinkingBudget
-					other => {
-						insert_gemini_thinking_budget_value(&mut payload, &other)?;
-					}
-				}
-			}
-			// -- Otherwise, Do thinking budget
-			else {
-				insert_gemini_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
-			}
-			// -- Always include thoughts when reasoning effort is set since you are already paying for them
-			payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
-		}
-
-		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
-		//       Right now, it is omitted (since the spec states it can only be "user" or "model")
-		//       It seems to work. https://ai.google.dev/api/rest/v1beta/models/generateContent
-		if let Some(system) = system {
-			payload.x_insert(
-				"systemInstruction",
-				json!({
-					"parts": [ { "text": system }]
-				}),
-			)?;
-		}
-
-		// -- Tools
-		if let Some(tools) = tools {
-			payload.x_insert("tools", tools)?;
-		}
-
-		// -- Response Format
-		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
-			payload.x_insert("/generationConfig/responseMimeType", "application/json")?;
-			let mut schema = st_json.schema.clone();
-			super::openapi_schema::to_openapi_schema(&mut schema);
-			payload.x_insert("/generationConfig/responseJsonSchema", schema)?;
-		}
-
-		// -- Add supported ChatOptions
-		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("/generationConfig/temperature", temperature)?;
-		}
-
-		if !options_set.stop_sequences().is_empty() {
-			payload.x_insert("/generationConfig/stopSequences", options_set.stop_sequences())?;
-		}
-
-		if let Some(max_tokens) = options_set.max_tokens() {
-			payload.x_insert("/generationConfig/maxOutputTokens", max_tokens)?;
-		}
-		if let Some(top_p) = options_set.top_p() {
-			payload.x_insert("/generationConfig/topP", top_p)?;
-		}
-
-		// -- url
-		let provider_model = model.from_name(provider_model_name);
+		let provider_model = model.from_name(&provider_model_name);
 		let url = Self::get_service_url(&provider_model, service_type, endpoint)?;
 
 		Ok(WebRequestData { url, headers, payload })
@@ -358,7 +250,7 @@ impl Adapter for GeminiAdapter {
 
 /// Support functions for GeminiAdapter
 impl GeminiAdapter {
-	pub(super) fn body_to_gemini_chat_response(model_iden: &ModelIden, mut body: Value) -> Result<GeminiChatResponse> {
+	pub(in crate::adapter) fn body_to_gemini_chat_response(model_iden: &ModelIden, mut body: Value) -> Result<GeminiChatResponse> {
 		// If the body has an `error` property, then it is assumed to be an error.
 		if body.get("error").is_some() {
 			return Err(Error::ChatResponse {
@@ -460,8 +352,115 @@ impl GeminiAdapter {
 		})
 	}
 
+	/// Builds the Gemini JSON payload from a ChatRequest, including reasoning budget
+	/// resolution, system instruction, tools, response format, and chat options.
+	/// Returns (payload, provider_model_name) where provider_model_name may differ
+	/// from model_name if a reasoning suffix was stripped.
+	pub(in crate::adapter) fn build_gemini_request_payload(
+		model: &ModelIden,
+		model_name: &str,
+		chat_req: ChatRequest,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<(Value, String)> {
+		// -- Reasoning Budget
+		let (provider_model_name, computed_reasoning_effort) = match (model_name, options_set.reasoning_effort()) {
+			// No explicit reasoning_effort, try to infer from model name suffix (supports -zero)
+			(model, None) => {
+				if let Some((prefix, last)) = model_name.rsplit_once('-') {
+					let reasoning = match last {
+						// 'zero' is a gemini special
+						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
+						"none" => Some(ReasoningEffort::None),
+						"low" | "minimal" => Some(ReasoningEffort::Low),
+						"medium" => Some(ReasoningEffort::Medium),
+						"high" => Some(ReasoningEffort::High),
+						"xhigh" => Some(ReasoningEffort::XHigh),
+						"max" => Some(ReasoningEffort::Max),
+						_ => None,
+					};
+					let model = if reasoning.is_some() { prefix } else { model };
+					(model, reasoning)
+				} else {
+					(model, None)
+				}
+			}
+			// TOOD: make it more elegant
+			(model, Some(effort)) => (model, Some(effort.clone())),
+		};
+
+		// -- parts
+		let GeminiChatRequestParts {
+			system,
+			contents,
+			tools,
+		} = Self::into_gemini_request_parts(model, chat_req)?;
+
+		let mut payload = json!({ "contents": contents });
+
+		// -- Set the reasoning effort
+		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
+			// -- For gemini-3 use the thinkingLevel if Low or High (does not support medium for now)
+			if provider_model_name.contains("gemini-3") {
+				match computed_reasoning_effort {
+					ReasoningEffort::Low | ReasoningEffort::Minimal => {
+						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "LOW")?;
+					}
+					ReasoningEffort::High | ReasoningEffort::Max => {
+						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "HIGH")?;
+					}
+					// Fallback on thinkingBudget
+					other => {
+						insert_gemini_thinking_budget_value(&mut payload, &other)?;
+					}
+				}
+			}
+			// -- Otherwise, Do thinking budget
+			else {
+				insert_gemini_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
+			}
+			// -- Always include thoughts when reasoning effort is set since you are already paying for them
+			payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
+		}
+
+		// Note: It's unclear from the spec if the content of systemInstruction should have a role.
+		//       Right now, it is omitted (since the spec states it can only be "user" or "model")
+		//       It seems to work. https://ai.google.dev/api/rest/v1beta/models/generateContent
+		if let Some(system) = system {
+			payload.x_insert(
+				"systemInstruction",
+				json!({ "parts": [{ "text": system }] }),
+			)?;
+		}
+
+		if let Some(tools) = tools {
+			payload.x_insert("tools", tools)?;
+		}
+
+		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
+			payload.x_insert("/generationConfig/responseMimeType", "application/json")?;
+			let mut schema = st_json.schema.clone();
+			super::openapi_schema::to_openapi_schema(&mut schema);
+			payload.x_insert("/generationConfig/responseJsonSchema", schema)?;
+		}
+
+		if let Some(temperature) = options_set.temperature() {
+			payload.x_insert("/generationConfig/temperature", temperature)?;
+		}
+		if !options_set.stop_sequences().is_empty() {
+			payload.x_insert("/generationConfig/stopSequences", options_set.stop_sequences())?;
+		}
+		if let Some(max_tokens) = options_set.max_tokens() {
+			payload.x_insert("/generationConfig/maxOutputTokens", max_tokens)?;
+		}
+		if let Some(top_p) = options_set.top_p() {
+			payload.x_insert("/generationConfig/topP", top_p)?;
+		}
+
+		Ok((payload, provider_model_name.to_string()))
+	}
+
 	/// See gemini doc: https://ai.google.dev/api/generate-content#UsageMetadata
-	pub(super) fn into_usage(mut usage_value: Value) -> Usage {
+	pub(in crate::adapter) fn into_usage(mut usage_value: Value) -> Usage {
 		let total_tokens: Option<i32> = usage_value.x_take("totalTokenCount").ok();
 
 		// -- Compute prompt tokens
@@ -537,7 +536,7 @@ impl GeminiAdapter {
 	/// - `ChatRole::System` is concatenated (with an empty line) into a single `system` for the system instruction.
 	///   - This adapter uses version v1beta, which supports `systemInstruction`
 	/// - The eventual `chat_req.system` is pushed first into the "systemInstruction"
-	fn into_gemini_request_parts(
+	pub(in crate::adapter) fn into_gemini_request_parts(
 		model_iden: &ModelIden, // use for error reporting
 		chat_req: ChatRequest,
 	) -> Result<GeminiChatRequestParts> {
@@ -853,13 +852,13 @@ pub enum GeminiTool {
 }
 
 /// FIXME: need to be Vec<GeminiChatContent>
-pub(super) struct GeminiChatResponse {
+pub(in crate::adapter) struct GeminiChatResponse {
 	pub content: Vec<GeminiChatContent>,
 	pub usage: Usage,
 	pub stop_reason: Option<String>,
 }
 
-pub(super) enum GeminiChatContent {
+pub(in crate::adapter) enum GeminiChatContent {
 	Text(String),
 	Binary(Binary),
 	ToolCall(ToolCall),
@@ -867,13 +866,13 @@ pub(super) enum GeminiChatContent {
 	ThoughtSignature(String),
 }
 
-struct GeminiChatRequestParts {
-	system: Option<String>,
+pub(in crate::adapter) struct GeminiChatRequestParts {
+	pub system: Option<String>,
 	/// The chat history (user and assistant, except for the last user message which is a message)
-	contents: Vec<Value>,
+	pub contents: Vec<Value>,
 
 	/// The tools to use
-	tools: Option<Vec<Value>>,
+	pub tools: Option<Vec<Value>>,
 }
 
 // region:    --- Helpers

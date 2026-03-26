@@ -14,5 +14,6 @@ pub(super) mod ollama;
 pub(super) mod openai;
 pub(super) mod openai_resp;
 pub(super) mod together;
+pub(super) mod vertex;
 pub(super) mod xai;
 pub(super) mod zai;
