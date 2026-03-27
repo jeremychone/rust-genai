@@ -29,11 +29,12 @@ const CLAUDE_MODEL: &str = "vertex::claude-sonnet-4-6";
 /// Required env vars:
 ///   - GCP_SERVICE_ACCOUNT: JSON content of the service account key
 ///   - VERTEX_PROJECT_ID: Your GCP project ID
-///   - VERTEX_LOCATION: GCP region (defaults to "us-central1" if not set)
+///   - VERTEX_LOCATION: GCP region (uses "global" location if not set)
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 	tracing_subscriber::fmt()
 		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
 		.init();
 
 	let gcp_env_name: Arc<str> = "GCP_SERVICE_ACCOUNT".into();
@@ -58,8 +59,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 		})
 	};
 
+	// -- Create the AuthResolver
 	let auth_resolver = AuthResolver::from_resolver_async_fn(resolve_fn);
 
+	// -- Create Chat Client
 	let client = Client::builder().with_auth_resolver(auth_resolver).build();
 
 	// -- Example 1: Gemini on Vertex AI

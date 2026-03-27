@@ -59,10 +59,12 @@ impl Adapter for VertexAdapter {
 			warn!("VERTEX_PROJECT_ID env var is not set; Vertex AI requests will use a malformed URL");
 			String::new()
 		});
+		// Model availability varies by region. See https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/locations for details.
 		let base_url = match std::env::var("VERTEX_LOCATION") {
 			Ok(location) => format!(
 				"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/"
 			),
+			// When no location is set, fall back to "global"
 			Err(_) => format!("https://aiplatform.googleapis.com/v1/projects/{project_id}/locations/global/"),
 		};
 		Endpoint::from_owned(base_url)
@@ -127,6 +129,7 @@ impl Adapter for VertexAdapter {
 		let publisher = VertexPublisher::from_model_name(model_name)?;
 		let model_name = model_name.to_string();
 
+		// For Vertex AI the "api key" is an OAuth2 Bearer token supplied by the AuthResolver
 		let api_key = get_api_key(auth, &model)?;
 		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
@@ -258,7 +261,7 @@ impl VertexAdapter {
 		}
 
 		let max_tokens = AnthropicAdapter::resolve_max_tokens(model_name, &options_set);
-		payload.x_insert("max_tokens", max_tokens)?;
+		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
 
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("top_p", top_p)?;

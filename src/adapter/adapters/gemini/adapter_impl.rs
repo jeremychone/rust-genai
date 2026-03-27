@@ -119,12 +119,14 @@ impl Adapter for GeminiAdapter {
 		let ServiceTarget { endpoint, auth, model } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
 
+		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 		let headers = Headers::from(("x-goog-api-key".to_string(), api_key.to_string()));
 
 		let (payload, provider_model_name) =
 			Self::build_gemini_request_payload(&model, model_name, chat_req, options_set)?;
 
+		// -- url
 		let provider_model = model.from_name(&provider_model_name);
 		let url = Self::get_service_url(&provider_model, service_type, endpoint)?;
 
@@ -378,8 +380,9 @@ impl GeminiAdapter {
 						"max" => Some(ReasoningEffort::Max),
 						_ => None,
 					};
-					let model = if reasoning.is_some() { prefix } else { model };
-					(model, reasoning)
+				// strip the reasoning suffix from the model name if one was matched
+				let model = if reasoning.is_some() { prefix } else { model };
+				(model, reasoning)
 				} else {
 					(model, None)
 				}
@@ -432,10 +435,12 @@ impl GeminiAdapter {
 			)?;
 		}
 
+		// -- Tools
 		if let Some(tools) = tools {
 			payload.x_insert("tools", tools)?;
 		}
 
+		// -- Response Format
 		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
 			payload.x_insert("/generationConfig/responseMimeType", "application/json")?;
 			let mut schema = st_json.schema.clone();
@@ -443,6 +448,7 @@ impl GeminiAdapter {
 			payload.x_insert("/generationConfig/responseJsonSchema", schema)?;
 		}
 
+		// -- Add supported ChatOptions
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("/generationConfig/temperature", temperature)?;
 		}

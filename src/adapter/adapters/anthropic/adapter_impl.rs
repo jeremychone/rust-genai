@@ -119,6 +119,7 @@ fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &Re
 //
 // fall back
 pub(in crate::adapter) const MAX_TOKENS_64K: u32 = 64000; // claude-opus-4-5 claude-sonnet... (4 and above), claude-haiku..., claude-3-7-sonnet,
+// custom
 pub(in crate::adapter) const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
 pub(in crate::adapter) const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
 pub(in crate::adapter) const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
@@ -433,6 +434,7 @@ impl AnthropicAdapter {
 	/// value if set, or a model-appropriate default.
 	pub(in crate::adapter) fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
 		options_set.max_tokens().unwrap_or_else(|| {
+			// most likely models used, so put first. Also a little wider with `claude-sonnet` (since name from version 4)
 			if model_name.contains("claude-sonnet")
 				|| model_name.contains("claude-haiku")
 				|| model_name.contains("claude-3-7-sonnet")
@@ -445,7 +447,9 @@ impl AnthropicAdapter {
 				MAX_TOKENS_8K
 			} else if model_name.contains("3-opus") || model_name.contains("3-haiku") {
 				MAX_TOKENS_4K
-			} else {
+			}
+			// for now, fall back on the 64K by default (might want to be more conservative)
+			else {
 				MAX_TOKENS_64K
 			}
 		})
