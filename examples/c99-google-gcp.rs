@@ -1,6 +1,5 @@
 use gcp_auth::{CustomServiceAccount, TokenProvider};
 use genai::Client;
-use genai::Headers;
 use genai::ModelIden;
 use genai::chat::printer::print_chat_stream;
 use genai::chat::{ChatMessage, ChatRequest};
@@ -9,8 +8,28 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tracing_subscriber::EnvFilter;
 
-const MODEL: &str = "gemini-2.0-flash";
+// With the Vertex adapter, use the `vertex::` namespace prefix.
+// The adapter handles URL construction and publisher routing automatically.
+const GEMINI_MODEL: &str = "vertex::gemini-2.5-flash";
+const CLAUDE_MODEL: &str = "vertex::claude-sonnet-4-6";
 
+/// This example shows how to use the Vertex AI adapter with an AuthResolver
+/// that obtains OAuth2 tokens from a GCP service account.
+///
+/// The `vertex::` adapter handles URL construction (region, project, publisher)
+/// and wire format dispatch (Gemini vs Anthropic) automatically.
+/// You only need to supply a Bearer token via the AuthResolver.
+///
+/// For an alternative approach without the Vertex adapter, you can use
+/// `AuthData::RequestOverride` with the Gemini adapter to manually construct
+/// the full Vertex URL and auth headers. See the git history of this file
+/// for that pattern, which also works as a general escape hatch for any
+/// custom endpoint/auth scenario.
+///
+/// Required env vars:
+///   - GCP_SERVICE_ACCOUNT: JSON content of the service account key
+///   - VERTEX_PROJECT_ID: Your GCP project ID
+///   - VERTEX_LOCATION: GCP region (uses "global" location if not set)
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 	tracing_subscriber::fmt()
@@ -18,11 +37,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
 		.init();
 
-	// Just an example of a data that will get captured (needs to be locable)
 	let gcp_env_name: Arc<str> = "GCP_SERVICE_ACCOUNT".into();
 
-	// -- Create the Async Auth resolve_fn closure
-	let resolve_fn = move |model: ModelIden| -> Pin<
+	// -- Create the Async Auth resolver that fetches OAuth2 tokens from the service account
+	let resolve_fn = move |_model: ModelIden| -> Pin<
 		Box<dyn Future<Output = Result<Option<AuthData>, genai::resolver::Error>> + Send + 'static>,
 	> {
 		let gcp_env_name = gcp_env_name.clone();
@@ -37,21 +55,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 				.token(scopes)
 				.await
 				.map_err(|e| genai::resolver::Error::Custom(e.to_string()))?;
-			let location = std::env::var("GCP_LOCATION").unwrap_or("us-central1".to_string());
-			let project_id = account.project_id().ok_or_else(|| {
-				genai::resolver::Error::Custom("GCP Auth: Service account has no project_id".to_string())
-			})?;
-			let url = format!(
-				"https://{}-aiplatform.googleapis.com/v1/projects/{}/locations/{}/publishers/google/models/{}:generateContent",
-				location, project_id, location, model.model_name
-			);
-
-			let auth_value = format!("Bearer {}", token.as_str());
-			let auth_header = Headers::from(("Authorization", auth_value));
-			Ok(Some(AuthData::RequestOverride {
-				headers: auth_header,
-				url,
-			}))
+			Ok(Some(AuthData::from_single(token.as_str())))
 		})
 	};
 
@@ -61,13 +65,19 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 	// -- Create Chat Client
 	let client = Client::builder().with_auth_resolver(auth_resolver).build();
 
-	// -- Create Chat Request
+	// -- Example 1: Gemini on Vertex AI
+	println!("--- Gemini on Vertex AI ---");
 	let chat_request = ChatRequest::default().with_system("Answer in one sentence");
 	let chat_request = chat_request.append_message(ChatMessage::user("Why is the sky blue?"));
-
-	// -- Executed
-	let stream = client.exec_chat_stream(MODEL, chat_request, None).await?;
-
+	let stream = client.exec_chat_stream(GEMINI_MODEL, chat_request, None).await?;
 	print_chat_stream(stream, None).await?;
+
+	// -- Example 2: Claude on Vertex AI (Model Garden)
+	println!("\n--- Claude on Vertex AI (Model Garden) ---");
+	let chat_request = ChatRequest::default().with_system("Answer in one sentence");
+	let chat_request = chat_request.append_message(ChatMessage::user("Why is the sky blue?"));
+	let stream = client.exec_chat_stream(CLAUDE_MODEL, chat_request, None).await?;
+	print_chat_stream(stream, None).await?;
+
 	Ok(())
 }
