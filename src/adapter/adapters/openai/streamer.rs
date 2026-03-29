@@ -18,6 +18,35 @@ fn take_stream_error(message_data: &mut Value, model_iden: &ModelIden) -> Option
 	})
 }
 
+fn take_finish_reason_usage(
+	message_data: &mut Value,
+	adapter_kind: AdapterKind,
+	capture_usage: bool,
+) -> Option<crate::chat::Usage> {
+	if !capture_usage {
+		return None;
+	}
+
+	match adapter_kind {
+		AdapterKind::Groq => Some(
+			message_data
+				.x_take("/x_groq/usage")
+				.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
+				.unwrap_or_default(),
+		),
+		AdapterKind::DeepSeek | AdapterKind::Zai | AdapterKind::Fireworks | AdapterKind::Together => Some(
+			message_data
+				.x_take("usage")
+				.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
+				.unwrap_or_default(),
+		),
+		_ => message_data
+			.x_take("usage")
+			.ok()
+			.map(|v| OpenAIAdapter::into_usage(adapter_kind, v)),
+	}
+}
+
 pub struct OpenAIStreamer {
 	inner: EventSourceStream,
 	options: StreamerOptions,
@@ -200,28 +229,10 @@ impl futures::Stream for OpenAIStreamer {
 								}
 							}
 
-							// NOTE: For Groq, the usage is captured when finish_reason indicates stopping, and in the `/x_groq/usage`
-							if self.options.capture_usage {
-								match adapter_kind {
-									AdapterKind::Groq => {
-										let usage = message_data
-											.x_take("/x_groq/usage")
-											.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
-											.unwrap_or_default(); // permissive for now
-										self.captured_data.usage = Some(usage)
-									}
-									AdapterKind::DeepSeek
-									| AdapterKind::Zai
-									| AdapterKind::Fireworks
-									| AdapterKind::Together => {
-										let usage = message_data
-											.x_take("usage")
-											.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
-											.unwrap_or_default();
-										self.captured_data.usage = Some(usage)
-									}
-									_ => (), // do nothing, will be captured the OpenAI way
-								}
+							if let Some(usage) =
+								take_finish_reason_usage(&mut message_data, adapter_kind, self.options.capture_usage)
+							{
+								self.captured_data.usage = Some(usage);
 							}
 
 							// NOTE: Some providers (e.g., mistral) send delta/content AND finish_reason
@@ -400,5 +411,40 @@ mod tests {
 			"choices": [{"delta": {"content": "hi"}}]
 		});
 		assert!(take_stream_error(&mut message_data, &test_model()).is_none());
+	}
+
+	#[test]
+	fn test_take_finish_reason_usage_reads_inline_openai_usage() {
+		let mut message_data = serde_json::json!({
+			"usage": {
+				"prompt_tokens": 11,
+				"completion_tokens": 3,
+				"total_tokens": 14
+			}
+		});
+
+		let usage =
+			take_finish_reason_usage(&mut message_data, AdapterKind::OpenAI, true).expect("usage should be captured");
+
+		assert_eq!(usage.prompt_tokens, Some(11));
+		assert_eq!(usage.completion_tokens, Some(3));
+		assert_eq!(usage.total_tokens, Some(14));
+		assert!(message_data.get("usage").is_some_and(Value::is_null));
+	}
+
+	#[test]
+	fn test_take_finish_reason_usage_respects_capture_flag() {
+		let mut message_data = serde_json::json!({
+			"usage": {
+				"prompt_tokens": 11,
+				"completion_tokens": 3,
+				"total_tokens": 14
+			}
+		});
+
+		let usage = take_finish_reason_usage(&mut message_data, AdapterKind::OpenAI, false);
+
+		assert!(usage.is_none());
+		assert_eq!(message_data["usage"]["prompt_tokens"], 11);
 	}
 }
