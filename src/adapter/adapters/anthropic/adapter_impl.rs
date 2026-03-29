@@ -11,7 +11,7 @@ use crate::webc::{EventSourceStream, WebResponse};
 use crate::{Headers, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 use tracing::info;
 use tracing::warn;
 use value_ext::JsonValueExt;
@@ -640,12 +640,20 @@ impl AnthropicAdapter {
 							}
 							ContentPart::ToolCall(tool_call) => {
 								has_tool_use = true;
+								// Anthropic API requires `input` to be an object, never null.
+								// Streaming parsers may produce null arguments when deltas are
+								// missing or empty; fall back to an empty object in that case.
+								let input = if tool_call.fn_arguments.is_null() {
+									Value::Object(Map::new())
+								} else {
+									tool_call.fn_arguments
+								};
 								// see: https://docs.anthropic.com/en/docs/build-with-claude/tool-use#example-of-successful-tool-result
 								values.push(json!({
 									"type": "tool_use",
 									"id": tool_call.call_id,
 									"name": tool_call.fn_name,
-									"input": tool_call.fn_arguments,
+									"input": input,
 								}));
 							}
 							// Unsupported for assistant role in Anthropic message content
