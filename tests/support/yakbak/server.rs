@@ -8,8 +8,8 @@ use hyper_util::rt::TokioIo;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
@@ -18,15 +18,9 @@ type BoxBody = http_body_util::combinators::BoxBody<Bytes, Infallible>;
 /// Chunk size for replay responses (matches typical TCP/HTTP chunk boundaries).
 const REPLAY_CHUNK_SIZE: usize = 8192;
 
-
 pub enum Mode {
-	Record {
-		backend_url: String,
-		cassette_dir: PathBuf,
-	},
-	Replay {
-		cassette_dir: PathBuf,
-	},
+	Record { backend_url: String, cassette_dir: PathBuf },
+	Replay { cassette_dir: PathBuf },
 }
 
 pub struct YakbakServer {
@@ -62,8 +56,6 @@ impl Drop for YakbakServer {
 		}
 	}
 }
-
-
 
 impl YakbakServer {
 	pub async fn start(mode: Mode) -> Result<Self, String> {
@@ -109,8 +101,6 @@ impl YakbakServer {
 		})
 	}
 }
-
-
 
 /// Returns a 500 error response with the given message.
 fn error_response(msg: String) -> Response<BoxBody> {
@@ -160,8 +150,6 @@ where
 	}
 }
 
-
-
 struct RecordState {
 	backend_url: String,
 	cassette_dir: PathBuf,
@@ -191,19 +179,13 @@ async fn handle_record(req: Request<Incoming>, state: &RecordState) -> Result<Re
 		.to_bytes();
 
 	// -- Forward to real backend
-	let forward_url = format!(
-		"{}{}",
-		state.backend_url.trim_end_matches('/'),
-		path_and_query
-	);
+	let forward_url = format!("{}{}", state.backend_url.trim_end_matches('/'), path_and_query);
 	eprintln!("[yakbak] RECORD {method} {forward_url}");
 
-	let mut builder = state
-		.client
-		.request(
-			reqwest::Method::from_bytes(method.as_str().as_bytes()).map_err(|e| format!("method: {e}"))?,
-			&forward_url,
-		);
+	let mut builder = state.client.request(
+		reqwest::Method::from_bytes(method.as_str().as_bytes()).map_err(|e| format!("method: {e}"))?,
+		&forward_url,
+	);
 	for (name, value) in &req_headers {
 		builder = builder.header(name.as_str(), value.as_str());
 	}
@@ -246,8 +228,6 @@ async fn handle_record(req: Request<Incoming>, state: &RecordState) -> Result<Re
 		.body(Full::new(resp_body).map_err(|never| match never {}).boxed())
 		.map_err(|e| format!("build response: {e}"))
 }
-
-
 
 struct ReplayState {
 	cassette_dir: PathBuf,
@@ -320,4 +300,3 @@ fn infer_content_type(body: &str) -> &'static str {
 		"text/plain"
 	}
 }
-

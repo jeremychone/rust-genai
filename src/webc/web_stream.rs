@@ -127,9 +127,9 @@ impl Stream for WebStream {
 							Err(e) => {
 								if e.error_len().is_some() {
 									// Actual invalid UTF-8 (not just incomplete) — fatal error.
-									return Poll::Ready(Some(Err(Box::new(
-										String::from_utf8(raw).unwrap_err(),
-									) as BoxError)));
+									return Poll::Ready(Some(Err(
+										Box::new(String::from_utf8(raw).unwrap_err()) as BoxError
+									)));
 								}
 								e.valid_up_to()
 							}

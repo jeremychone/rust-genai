@@ -32,7 +32,9 @@ async fn test_yakbak_openai_resp_reasoning_stream() -> TestResult<()> {
 	// Exact text content
 	assert_eq!(
 		extract.content.as_deref(),
-		Some("The sky looks blue because molecules in Earth\u{2019}s atmosphere scatter shorter blue wavelengths of sunlight more strongly than longer red wavelengths, so the scattered light reaching your eyes is mostly blue."),
+		Some(
+			"The sky looks blue because molecules in Earth\u{2019}s atmosphere scatter shorter blue wavelengths of sunlight more strongly than longer red wavelengths, so the scattered light reaching your eyes is mostly blue."
+		),
 		"Text should match recorded response exactly"
 	);
 
@@ -82,7 +84,10 @@ async fn test_yakbak_openai_resp_stream_tools() -> TestResult<()> {
 	// Exact tool call details
 	let tc = &tool_calls[0];
 	assert_eq!(tc.fn_name, "get_weather");
-	assert_eq!(tc.fn_arguments, json!({"city": "Paris", "country": "France", "unit": "C"}));
+	assert_eq!(
+		tc.fn_arguments,
+		json!({"city": "Paris", "country": "France", "unit": "C"})
+	);
 	assert!(!tc.call_id.is_empty());
 
 	// Exact usage
@@ -105,12 +110,8 @@ async fn test_yakbak_openai_resp_stream_tools() -> TestResult<()> {
 async fn test_yakbak_openai_resp_utf8_chunking_bug() -> TestResult<()> {
 	let (client, _server) = replay_client("openai_resp", "utf8_chunking_bug").await?;
 
-	let chat_req = ChatRequest::new(vec![
-		ChatMessage::user("Say something in Japanese."),
-	]);
-	let options = ChatOptions::default()
-		.with_capture_content(true)
-		.with_capture_usage(true);
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Say something in Japanese.")]);
+	let options = ChatOptions::default().with_capture_content(true).with_capture_usage(true);
 
 	let stream_res = client
 		.exec_chat_stream("openai_resp::o3-mini", chat_req, Some(&options))
@@ -119,7 +120,11 @@ async fn test_yakbak_openai_resp_utf8_chunking_bug() -> TestResult<()> {
 
 	// The content should contain Japanese characters intact
 	let content = extract.content.ok_or("Should have streamed content")?;
-	assert!(content.contains("日本語のテスト"), "Content should contain Japanese text, got: {}...", &content[content.len().saturating_sub(100)..]);
+	assert!(
+		content.contains("日本語のテスト"),
+		"Content should contain Japanese text, got: {}...",
+		&content[content.len().saturating_sub(100)..]
+	);
 
 	// Usage should be captured
 	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;

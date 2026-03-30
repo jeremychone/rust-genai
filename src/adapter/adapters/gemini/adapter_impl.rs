@@ -252,7 +252,10 @@ impl Adapter for GeminiAdapter {
 
 /// Support functions for GeminiAdapter
 impl GeminiAdapter {
-	pub(in crate::adapter) fn body_to_gemini_chat_response(model_iden: &ModelIden, mut body: Value) -> Result<GeminiChatResponse> {
+	pub(in crate::adapter) fn body_to_gemini_chat_response(
+		model_iden: &ModelIden,
+		mut body: Value,
+	) -> Result<GeminiChatResponse> {
 		// If the body has an `error` property, then it is assumed to be an error.
 		if body.get("error").is_some() {
 			return Err(Error::ChatResponse {
@@ -380,9 +383,9 @@ impl GeminiAdapter {
 						"max" => Some(ReasoningEffort::Max),
 						_ => None,
 					};
-				// strip the reasoning suffix from the model name if one was matched
-				let model = if reasoning.is_some() { prefix } else { model };
-				(model, reasoning)
+					// strip the reasoning suffix from the model name if one was matched
+					let model = if reasoning.is_some() { prefix } else { model };
+					(model, reasoning)
 				} else {
 					(model, None)
 				}
@@ -429,10 +432,7 @@ impl GeminiAdapter {
 		//       Right now, it is omitted (since the spec states it can only be "user" or "model")
 		//       It seems to work. https://ai.google.dev/api/rest/v1beta/models/generateContent
 		if let Some(system) = system {
-			payload.x_insert(
-				"systemInstruction",
-				json!({ "parts": [{ "text": system }] }),
-			)?;
+			payload.x_insert("systemInstruction", json!({ "parts": [{ "text": system }] }))?;
 		}
 
 		// -- Tools

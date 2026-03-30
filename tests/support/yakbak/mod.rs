@@ -47,11 +47,7 @@ pub async fn replay_client(provider: &str, scenario: &str) -> TestResult<(Client
 /// Build a genai `Client` that talks through a yakbak record proxy to a real backend.
 ///
 /// Returns `(client, server)` — call `server.shutdown().await` when done to flush cassettes.
-pub async fn record_client(
-	provider: &str,
-	scenario: &str,
-	backend_url: &str,
-) -> TestResult<(Client, YakbakServer)> {
+pub async fn record_client(provider: &str, scenario: &str, backend_url: &str) -> TestResult<(Client, YakbakServer)> {
 	let cassette_dir = format!("tests/data/yakbak/{provider}/{scenario}");
 	let server = YakbakServer::start(Mode::Record {
 		backend_url: backend_url.to_string(),

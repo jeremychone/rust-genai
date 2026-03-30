@@ -61,9 +61,9 @@ impl Adapter for VertexAdapter {
 		});
 		// Model availability varies by region. See https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/locations for details.
 		let base_url = match std::env::var("VERTEX_LOCATION") {
-			Ok(location) => format!(
-				"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/"
-			),
+			Ok(location) => {
+				format!("https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/")
+			}
 			// When no location is set, fall back to "global"
 			Err(_) => format!("https://aiplatform.googleapis.com/v1/projects/{project_id}/locations/global/"),
 		};
@@ -134,12 +134,24 @@ impl Adapter for VertexAdapter {
 		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
 
 		match publisher {
-			VertexPublisher::Google => {
-				Self::to_gemini_web_request_data(model, &model_name, endpoint, headers, service_type, chat_req, options_set)
-			}
-			VertexPublisher::Anthropic => {
-				Self::to_anthropic_web_request_data(model, &model_name, endpoint, headers, service_type, chat_req, options_set)
-			}
+			VertexPublisher::Google => Self::to_gemini_web_request_data(
+				model,
+				&model_name,
+				endpoint,
+				headers,
+				service_type,
+				chat_req,
+				options_set,
+			),
+			VertexPublisher::Anthropic => Self::to_anthropic_web_request_data(
+				model,
+				&model_name,
+				endpoint,
+				headers,
+				service_type,
+				chat_req,
+				options_set,
+			),
 		}
 	}
 

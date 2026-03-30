@@ -11,10 +11,9 @@
 mod support;
 
 use genai::chat::*;
+use serde_json::json;
 use support::yakbak::record_client;
 use support::{TestResult, extract_stream_end};
-use serde_json::json;
-
 
 fn openai_backend() -> String {
 	std::env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1/".to_string())
@@ -38,8 +37,14 @@ async fn record_openai_resp_reasoning_stream() -> TestResult<()> {
 
 	let stream_res = client.exec_chat_stream(OPENAI_MODEL, chat_req, Some(&options)).await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
-	eprintln!("[record] Stream content: {:?}", extract.content.as_deref().map(|s| &s[..s.len().min(80)]));
-	eprintln!("[record] Stream reasoning: {:?}", extract.reasoning_content.as_deref().map(|s| &s[..s.len().min(80)]));
+	eprintln!(
+		"[record] Stream content: {:?}",
+		extract.content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
+	eprintln!(
+		"[record] Stream reasoning: {:?}",
+		extract.reasoning_content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
 
 	server.shutdown().await;
 	Ok(())
@@ -65,7 +70,6 @@ async fn record_openai_resp_reasoning_stream_tools() -> TestResult<()> {
 	server.shutdown().await;
 	Ok(())
 }
-
 
 fn seed_tool_request() -> ChatRequest {
 	ChatRequest::new(vec![
