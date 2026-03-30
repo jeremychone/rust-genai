@@ -424,7 +424,12 @@ impl GeminiAdapter {
 			else {
 				insert_gemini_thinking_budget_value(&mut payload, &computed_reasoning_effort)?;
 			}
-			// -- Always include thoughts when reasoning effort is set since you are already paying for them
+		}
+
+		// -- Opt-in for includeThoughts: only request thought content when
+		// the caller explicitly asks for reasoning content capture.
+		// Thought *signatures* are always returned by the API regardless of this flag.
+		if options_set.capture_reasoning_content() == Some(true) {
 			payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
 		}
 
