@@ -201,13 +201,29 @@ impl futures::Stream for OpenAIRespStreamer {
 								self.captured_data.tool_calls = Some(tool_calls.clone());
 							}
 
+							// Extract encrypted reasoning content from output items
+							// (OpenAI equivalent of Gemini thought signatures).
+							if self.options.capture_reasoning_content {
+								let mut thought_sigs: Vec<String> = Vec::new();
+								for item in &response.output {
+									if item.x_get_str("type").ok() == Some("reasoning")
+										&& let Ok(encrypted) = item.x_get_str("encrypted_content")
+									{
+										thought_sigs.push(encrypted.to_string());
+									}
+								}
+								if !thought_sigs.is_empty() {
+									self.captured_data.thought_signatures = Some(thought_sigs);
+								}
+							}
+
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: self.captured_data.usage.take(),
 								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
-								captured_thought_signatures: None,
+								captured_thought_signatures: self.captured_data.thought_signatures.take(),
 								captured_response_id: Some(response.id),
 							};
 
