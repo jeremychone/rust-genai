@@ -1,6 +1,6 @@
 use bytes::Bytes;
-use http_body_util::{BodyExt, Full};
-use hyper::body::Incoming;
+use http_body_util::{BodyExt, Full, StreamBody};
+use hyper::body::{Frame, Incoming};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
@@ -12,6 +12,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
+
+type BoxBody = http_body_util::combinators::BoxBody<Bytes, Infallible>;
+
+/// Chunk size for replay responses (matches typical TCP/HTTP chunk boundaries).
+const REPLAY_CHUNK_SIZE: usize = 8192;
 
 
 pub enum Mode {
@@ -108,19 +113,19 @@ impl YakbakServer {
 
 
 /// Returns a 500 error response with the given message.
-fn error_response(msg: String) -> Response<Full<Bytes>> {
+fn error_response(msg: String) -> Response<BoxBody> {
 	eprintln!("[yakbak] ERROR: {msg}");
 	Response::builder()
 		.status(500)
 		.header("content-type", "text/plain")
-		.body(Full::new(Bytes::from(msg)))
+		.body(Full::new(Bytes::from(msg)).map_err(|never| match never {}).boxed())
 		.unwrap()
 }
 
 async fn run_server<F, Fut>(listener: TcpListener, mut shutdown_rx: oneshot::Receiver<()>, handler: F)
 where
 	F: Fn(Request<Incoming>) -> Fut + Send + Sync + Clone + 'static,
-	Fut: std::future::Future<Output = Result<Response<Full<Bytes>>, String>> + Send + 'static,
+	Fut: std::future::Future<Output = Result<Response<BoxBody>, String>> + Send + 'static,
 {
 	loop {
 		tokio::select! {
@@ -164,7 +169,7 @@ struct RecordState {
 	client: reqwest::Client,
 }
 
-async fn handle_record(req: Request<Incoming>, state: &RecordState) -> Result<Response<Full<Bytes>>, String> {
+async fn handle_record(req: Request<Incoming>, state: &RecordState) -> Result<Response<BoxBody>, String> {
 	// -- Extract request parts
 	let method = req.method().clone();
 	let path_and_query = req
@@ -238,7 +243,7 @@ async fn handle_record(req: Request<Incoming>, state: &RecordState) -> Result<Re
 		resp_builder = resp_builder.header("content-type", &resp_content_type);
 	}
 	resp_builder
-		.body(Full::new(resp_body))
+		.body(Full::new(resp_body).map_err(|never| match never {}).boxed())
 		.map_err(|e| format!("build response: {e}"))
 }
 
@@ -249,7 +254,7 @@ struct ReplayState {
 	counter: AtomicUsize,
 }
 
-async fn handle_replay(_req: Request<Incoming>, state: &ReplayState) -> Result<Response<Full<Bytes>>, String> {
+async fn handle_replay(_req: Request<Incoming>, state: &ReplayState) -> Result<Response<BoxBody>, String> {
 	// -- List .txt files in sorted order
 	let mut files: Vec<PathBuf> = Vec::new();
 	let mut dir = tokio::fs::read_dir(&state.cassette_dir)
@@ -279,16 +284,28 @@ async fn handle_replay(_req: Request<Incoming>, state: &ReplayState) -> Result<R
 	// -- Infer content-type from body content
 	let content_type = infer_content_type(&body_str);
 	eprintln!(
-		"[yakbak] REPLAY {} ({} bytes, ct={})",
+		"[yakbak] REPLAY {} ({} bytes, ct={}, chunk_size={})",
 		file.display(),
 		body.len(),
-		content_type
+		content_type,
+		REPLAY_CHUNK_SIZE,
 	);
+
+	// -- Stream response in fixed-size chunks (like real HTTP servers do).
+	// This uses HTTP/1.1 chunked transfer encoding, which is how real API
+	// servers deliver SSE responses. This is important because it means
+	// multi-byte UTF-8 characters can be split across chunk boundaries.
+	let chunks: Vec<Result<Frame<Bytes>, Infallible>> = body
+		.chunks(REPLAY_CHUNK_SIZE)
+		.map(|chunk| Ok(Frame::data(Bytes::copy_from_slice(chunk))))
+		.collect();
+	let stream = futures::stream::iter(chunks);
+	let stream_body = StreamBody::new(stream);
 
 	Response::builder()
 		.status(200)
 		.header("content-type", content_type)
-		.body(Full::new(Bytes::from(body)))
+		.body(stream_body.boxed())
 		.map_err(|e| format!("build response: {e}"))
 }
 

@@ -24,6 +24,10 @@ pub struct WebStream {
 	partial_message: Option<String>,
 	// If a poll retrieved multiple messages, we keep them to be sent in the next poll
 	remaining_messages: Option<VecDeque<String>>,
+	// Incomplete trailing UTF-8 bytes from the previous chunk.
+	// When a multi-byte character is split across TCP/HTTP chunk boundaries,
+	// the trailing bytes are carried over to be prepended to the next chunk.
+	utf8_carry: Vec<u8>,
 }
 
 pub enum StreamMode {
@@ -42,6 +46,7 @@ impl WebStream {
 			bytes_stream: None,
 			partial_message: None,
 			remaining_messages: None,
+			utf8_carry: Vec::new(),
 		}
 	}
 
@@ -53,6 +58,7 @@ impl WebStream {
 			bytes_stream: None,
 			partial_message: None,
 			remaining_messages: None,
+			utf8_carry: Vec::new(),
 		}
 	}
 }
@@ -110,10 +116,30 @@ impl Stream for WebStream {
 			if let Some(ref mut stream) = this.bytes_stream {
 				match stream.as_mut().poll_next(cx) {
 					Poll::Ready(Some(Ok(bytes))) => {
-						let buff_string = match String::from_utf8(bytes.to_vec()) {
-							Ok(s) => s,
-							Err(e) => return Poll::Ready(Some(Err(Box::new(e) as BoxError))),
+						// -- Incremental UTF-8 decoding: prepend any carried-over
+						// bytes from the previous chunk, decode as much valid UTF-8
+						// as possible, and carry over any incomplete trailing sequence.
+						let mut raw = std::mem::take(&mut this.utf8_carry);
+						raw.extend_from_slice(&bytes);
+
+						let valid_up_to = match std::str::from_utf8(&raw) {
+							Ok(_) => raw.len(),
+							Err(e) => {
+								if e.error_len().is_some() {
+									// Actual invalid UTF-8 (not just incomplete) — fatal error.
+									return Poll::Ready(Some(Err(Box::new(
+										String::from_utf8(raw).unwrap_err(),
+									) as BoxError)));
+								}
+								e.valid_up_to()
+							}
 						};
+
+						// Carry over incomplete trailing bytes for the next chunk.
+						this.utf8_carry = raw[valid_up_to..].to_vec();
+
+						// We already validated raw[..valid_up_to] is valid UTF-8 above.
+						let buff_string = String::from_utf8(raw[..valid_up_to].to_vec()).unwrap();
 
 						// -- Iterate through the parts
 						let buff_response = match this.stream_mode {
