@@ -52,7 +52,7 @@ impl Adapter for OpenAIRespAdapter {
 	/// - `.store = false` - To maintain consistent behavior with other chat completions, store is set to false
 	/// - `.instructions` For now we do not use the top ".instructions" (genai::ChatRequest.system),
 	///   but just add this top system as a regular system message.
-	/// - `.summary` right now, supporting "generate reasoning summary" is not supported
+	/// - `.summary` reasoning summary is opt-in via `ChatOptions.capture_reasoning_content(true)` → `"detailed"`
 	///
 	fn to_web_request_data(
 		target: ServiceTarget,
@@ -142,10 +142,17 @@ impl Adapter for OpenAIRespAdapter {
 		if let Some(reasoning_effort) = reasoning_effort
 			&& let Some(keyword) = reasoning_effort.as_keyword()
 		{
-			// NOTE: For now, we do not set the "summary" property to generate the reasoning summary
+			let mut reasoning_obj = json!({"effort": keyword});
 
-			payload.x_insert("reasoning", json!({"effort": keyword}))?;
-			// TODO: needs to find a way to add summary: auto, concise, detailed
+			// Opt-in: only request detailed reasoning summaries when the caller
+			// explicitly asks for reasoning content capture.
+			if chat_options.capture_reasoning_content() == Some(true) {
+				reasoning_obj
+					.x_insert("summary", "detailed")
+					.map_err(|e| Error::Internal(format!("reasoning summary insert: {e}")))?;
+			}
+
+			payload.x_insert("reasoning", reasoning_obj)?;
 		}
 
 		// -- Tools
