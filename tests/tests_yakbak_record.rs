@@ -1,10 +1,24 @@
 //! Recording scripts for yakbak cassettes.
 //!
-//! These are `#[ignore]` tests — run manually with real API keys:
+//! These are `#[ignore]` tests — run manually with real API keys.
+//! Each provider's keys and base URLs are independent; you only need
+//! the credentials for the provider(s) you want to record.
 //!
 //! ```sh
-//! OPENAI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored
+//! # Record all providers (need all keys):
+//! OPENAI_API_KEY=... GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored
+//!
+//! # Record only Gemini scenarios:
+//! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini
+//!
+//! # Record only OpenAI scenarios:
+//! OPENAI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_openai
+//!
+//! # Record a single scenario by name:
+//! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_thinking_stream
 //! ```
+//!
+//! Optional env vars for custom endpoints: `OPENAI_BASE_URL`, `GEMINI_BASE_URL`.
 //!
 //! Each test records a response cassette to `tests/data/yakbak/{provider}/{scenario}/`.
 
@@ -66,6 +80,41 @@ async fn record_openai_resp_reasoning_stream_tools() -> TestResult<()> {
 	eprintln!("[record] Stream reasoning: {:?}", extract.reasoning_content.is_some());
 	let tool_calls = &extract.stream_end.captured_tool_calls();
 	eprintln!("[record] Tool calls: {:?}", tool_calls.as_ref().map(|tc| tc.len()));
+
+	server.shutdown().await;
+	Ok(())
+}
+
+fn gemini_backend() -> String {
+	std::env::var("GEMINI_BASE_URL").unwrap_or_else(|_| "https://generativelanguage.googleapis.com/v1beta/".to_string())
+}
+
+const GEMINI_MODEL: &str = "gemini-2.5-flash";
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_thinking_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini", "thinking_stream", &gemini_backend()).await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence."),
+		ChatMessage::user("Why is the sky blue?"),
+	]);
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true);
+
+	let stream_res = client.exec_chat_stream(GEMINI_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Stream content: {:?}",
+		extract.content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
+	eprintln!(
+		"[record] Stream reasoning: {:?}",
+		extract.reasoning_content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
 
 	server.shutdown().await;
 	Ok(())

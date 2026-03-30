@@ -31,3 +31,6 @@ jobs:
 
       - name: Run OpenAI replay tests
         run: cargo test --test tests_yakbak_openai_resp
+
+      - name: Run Gemini replay tests
+        run: cargo test --test tests_yakbak_gemini
