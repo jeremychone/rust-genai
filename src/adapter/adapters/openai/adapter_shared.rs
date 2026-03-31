@@ -51,7 +51,7 @@ impl OpenAIAdapter {
 		};
 		let mut full_url = base_url.join(suffix).map_err(|err| {
 			Error::Internal(format!(
-				"Cannot joing suffix '{suffix}' for url: {base_url}. Cause:\n{err}"
+				"Cannot join suffix '{suffix}' for url: {base_url}. Cause:\n{err}"
 			))
 		})?;
 		full_url.set_query(original_query_params);
@@ -126,25 +126,13 @@ impl OpenAIAdapter {
 				ChatResponseFormat::JsonMode => Some(json!({"type": "json_object"})),
 				ChatResponseFormat::JsonSpec(st_json) => {
 					// "type": "json_schema", "json_schema": {...}
-
-					let mut schema = st_json.schema.clone();
-					schema.x_walk(|parent_map, name| {
-						if name == "type" {
-							let typ = parent_map.get("type").and_then(|v| v.as_str()).unwrap_or("");
-							if typ == "object" {
-								parent_map.insert("additionalProperties".to_string(), false.into());
-							}
-						}
-						true
-					});
-
 					Some(json!({
 						"type": "json_schema",
 						"json_schema": {
 							"name": st_json.name.clone(),
 							"strict": true,
 							// TODO: add description
-							"schema": schema,
+							"schema": st_json.schema_with_additional_properties_false(),
 						}
 					}))
 				}

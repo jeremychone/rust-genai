@@ -33,7 +33,12 @@ fn has_model(model_prefixes: &[&str], model_name: &str) -> bool {
 	model_prefixes.iter().any(|prefix| model_name.contains(prefix))
 }
 
-fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &ReasoningEffort) -> Result<()> {
+fn insert_anthropic_reasoning(
+	payload: &mut Value,
+	output_config: &mut Map<String, Value>,
+	model_name: &str,
+	effort: &ReasoningEffort,
+) -> Result<()> {
 	let mut budget: Option<u32> = None;
 	let support_effort = has_model(SUPPORT_EFFORT_MODELS, model_name);
 	let support_reasoning_max = has_model(SUPPORT_REASONING_MAX_MODELS, model_name);
@@ -49,7 +54,7 @@ fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &Re
 			ReasoningEffort::Max | ReasoningEffort::XHigh if support_reasoning_max => "max",
 			ReasoningEffort::XHigh => "high",
 			ReasoningEffort::Max => "high",
-			// we apture for later
+			// we capture for later
 			ReasoningEffort::Budget(val) => {
 				budget = Some(*val); // not very elegant
 				""
@@ -57,14 +62,9 @@ fn insert_anthropic_reasoning(payload: &mut Value, model_name: &str, effort: &Re
 			ReasoningEffort::None => "",
 		};
 
-		// if we have an effort, we set it
+		// if we have an effort, write into the shared output_config map
 		if !effort.is_empty() {
-			payload.x_insert(
-				"output_config",
-				json!({
-					"effort": effort
-				}),
-			)?;
+			output_config.insert("effort".to_string(), json!(effort));
 		}
 	}
 
@@ -218,9 +218,7 @@ impl Adapter for AnthropicAdapter {
 
 		// -- headers
 		let headers = Headers::from(vec![
-			// headers
 			("x-api-key".to_string(), api_key),
-			("anthropic-beta".to_string(), "effort-2025-11-24,structured-outputs-2025-11-13".to_string()),
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		]);
 
@@ -280,8 +278,12 @@ impl Adapter for AnthropicAdapter {
 		}
 
 		// -- Set the reasoning effort
+		// Both reasoning effort and structured-output format write into `output_config`.
+		// Build a shared map so both contributions end up in the same object.
+		let mut output_config: Map<String, Value> = Map::new();
+
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			insert_anthropic_reasoning(&mut payload, model_name, &computed_reasoning_effort)?;
+			insert_anthropic_reasoning(&mut payload, &mut output_config, model_name, &computed_reasoning_effort)?;
 		}
 
 		if let Some(cache_control) = options_set.cache_control() {
@@ -293,20 +295,19 @@ impl Adapter for AnthropicAdapter {
 		// -- Add supported ChatOptions
 		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
 			// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-outputs
+			// Note: Anthropic's json_schema format does not use a schema name; JsonSpec.name is intentionally omitted.
+			output_config.insert(
+				"format".to_string(),
+				json!({
+					"type": "json_schema",
+					"schema": st_json.schema_with_additional_properties_false(),
+				}),
+			);
+		}
 
-			// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
-			let mut schema = st_json.schema.clone();
-			schema.x_walk(|parent_map, name| {
-				if name == "type" && matches!(parent_map.get("type"), Some(Value::String(s)) if s == "object") {
-                    parent_map.insert("additionalProperties".into(), Value::Bool(false));
-				}
-				true
-			});
-
-			payload.x_insert("output_format", json!({
-				"type": "json_schema",
-				"schema": schema,
-			}))?;
+		// Insert output_config once, merging effort + format into a single object.
+		if !output_config.is_empty() {
+			payload.x_insert("output_config", Value::Object(output_config))?;
 		}
 
 		if let Some(temperature) = options_set.temperature() {
@@ -919,6 +920,60 @@ pub(in crate::adapter) struct AnthropicRequestParts {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::adapter::{Adapter, ServiceType};
+	use crate::chat::{ChatOptions, ChatRequest, JsonSpec};
+	use crate::resolver::AuthData;
+	use crate::ServiceTarget;
+
+	/// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
+	/// on a model that uses the `output_config` effort API (e.g. `claude-sonnet-4-6`), both
+	/// `effort` and `format` must appear inside the same `output_config` JSON object.
+	#[test]
+	fn test_output_config_merges_effort_and_format() {
+		let chat_options = ChatOptions {
+			reasoning_effort: Some(ReasoningEffort::High),
+			response_format: Some(ChatResponseFormat::JsonSpec(JsonSpec::new(
+				"anthropic_ignores_name", // NOTE: Anthropic doesn't recognize a "name" field
+				json!({"type": "object", "properties": {}}),
+			))),
+			..Default::default()
+		};
+
+		let model_iden = ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6");
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(),
+			auth: AuthData::from_single("test-key"),
+			model: model_iden,
+		};
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+
+		let result = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		);
+
+		let web_req = result.expect("to_web_request_data should succeed");
+		let output_config = web_req
+			.payload
+			.get("output_config")
+			.expect("output_config must be present");
+
+		assert_eq!(
+			output_config.get("effort").and_then(|v| v.as_str()),
+			Some("high"),
+			"effort must be present in output_config"
+		);
+		assert_eq!(
+			output_config
+				.get("format")
+				.and_then(|f| f.get("type"))
+				.and_then(|v| v.as_str()),
+			Some("json_schema"),
+			"format.type must be present in output_config"
+		);
+	}
 
 	#[test]
 	fn test_cache_control_to_json_ephemeral() {
