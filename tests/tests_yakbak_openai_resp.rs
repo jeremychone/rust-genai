@@ -33,7 +33,7 @@ async fn test_yakbak_openai_resp_reasoning_stream() -> TestResult<()> {
 	assert_eq!(
 		extract.content.as_deref(),
 		Some(
-			"The sky looks blue because molecules in Earth\u{2019}s atmosphere scatter shorter blue wavelengths of sunlight more strongly than longer red wavelengths, so the scattered light reaching your eyes is mostly blue."
+			"The sky looks blue because molecules in Earth\u{2019}s atmosphere scatter shorter blue wavelengths of sunlight more strongly than longer red wavelengths, sending more blue light to our eyes."
 		),
 		"Text should match recorded response exactly"
 	);
@@ -41,8 +41,20 @@ async fn test_yakbak_openai_resp_reasoning_stream() -> TestResult<()> {
 	// Exact usage
 	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
 	assert_eq!(usage.prompt_tokens, Some(21));
-	assert_eq!(usage.completion_tokens, Some(48));
-	assert_eq!(usage.total_tokens, Some(69));
+	assert_eq!(usage.completion_tokens, Some(45));
+	assert_eq!(usage.total_tokens, Some(66));
+
+	// Encrypted reasoning content should be captured as thought signatures
+	let thought_sigs = extract
+		.stream_end
+		.captured_thought_signatures()
+		.ok_or("Should have thought signatures (encrypted reasoning content)")?;
+	assert_eq!(thought_sigs.len(), 1, "Should have exactly one thought signature");
+	assert!(
+		thought_sigs[0].len() > 100,
+		"Encrypted content should be substantial, got {} bytes",
+		thought_sigs[0].len()
+	);
 
 	Ok(())
 }
@@ -93,8 +105,8 @@ async fn test_yakbak_openai_resp_stream_tools() -> TestResult<()> {
 	// Exact usage
 	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
 	assert_eq!(usage.prompt_tokens, Some(106));
-	assert_eq!(usage.completion_tokens, Some(36));
-	assert_eq!(usage.total_tokens, Some(142));
+	assert_eq!(usage.completion_tokens, Some(45));
+	assert_eq!(usage.total_tokens, Some(151));
 
 	Ok(())
 }

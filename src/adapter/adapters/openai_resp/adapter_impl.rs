@@ -155,6 +155,12 @@ impl Adapter for OpenAIRespAdapter {
 			payload.x_insert("reasoning", reasoning_obj)?;
 		}
 
+		// -- Opt-in: request encrypted reasoning content (thought signatures)
+		// when the caller explicitly asks for reasoning content capture.
+		if chat_options.capture_reasoning_content() == Some(true) {
+			payload.x_insert("include", json!(["reasoning.encrypted_content"]))?;
+		}
+
 		// -- Tools
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
