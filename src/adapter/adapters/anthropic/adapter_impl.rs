@@ -755,6 +755,7 @@ impl AnthropicAdapter {
 			description,
 			schema,
 			config,
+			..
 		} = tool;
 
 		let name = match name {

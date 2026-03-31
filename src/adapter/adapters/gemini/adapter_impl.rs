@@ -785,6 +785,7 @@ impl GeminiAdapter {
 			description,
 			schema,
 			config,
+			..
 		} = tool;
 
 		// Built-in WebSearch for Gemini

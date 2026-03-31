@@ -37,6 +37,12 @@ pub struct Tool {
 	/// ```
 	pub schema: Option<Value>,
 
+	/// When `true`, the provider enforces strict schema validation on tool-call arguments.
+	/// For OpenAI this sets `"strict": true` and auto-injects `"additionalProperties": false`
+	/// on every `"type": "object"` node in the schema.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub strict: Option<bool>,
+
 	/// Optional configuration for the tool.
 	///
 	/// Useful with embedded provider tools (e.g., Google Search for Gemini).
@@ -82,6 +88,7 @@ impl Tool {
 			name: name.into(),
 			description: None,
 			schema: None,
+			strict: None,
 			config: None,
 		}
 	}
@@ -104,6 +111,13 @@ impl Tool {
 	/// Set the JSON Schema for the tool parameters. Returns self for chaining.
 	pub fn with_schema(mut self, parameters: Value) -> Self {
 		self.schema = Some(parameters);
+		self
+	}
+
+	/// Enable strict schema validation for tool-call arguments.
+	/// When `true`, OpenAI enforces exact schema conformance.
+	pub fn with_strict(mut self, strict: bool) -> Self {
+		self.strict = Some(strict);
 		self
 	}
 
