@@ -21,7 +21,7 @@ pub struct ChatMessage {
 	pub options: Option<MessageOptions>,
 }
 
-/// Constructors
+// region:    --- Constructors
 impl ChatMessage {
 	/// Constructs a system message.
 	pub fn system(content: impl Into<MessageContent>) -> Self {
@@ -50,8 +50,9 @@ impl ChatMessage {
 		}
 	}
 }
+// endregion: --- Constructors
 
-/// Computed accessors
+// region:    --- Accessors
 impl ChatMessage {
 	/// Returns an approximate in-memory size of this `ChatMessage`, in bytes,
 	/// computed as the size of the content plus.
@@ -60,7 +61,9 @@ impl ChatMessage {
 		self.content.size()
 	}
 }
+// endregion: --- Accessors
 
+// region:    --- Builders
 impl ChatMessage {
 	/// Attaches options to this message.
 	pub fn with_options(mut self, options: impl Into<MessageOptions>) -> Self {
@@ -87,6 +90,8 @@ impl ChatMessage {
 		ChatMessage::assistant(MessageContent::from_parts(parts))
 	}
 }
+// endregion: --- Builders
+
 // region:    --- MessageOptions
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
@@ -145,6 +150,8 @@ impl From<CacheControl> for MessageOptions {
 }
 // endregion: --- MessageOptions
 
+// region:    --- ChatRole
+
 /// Chat roles recognized across providers.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, derive_more::Display)]
 #[allow(missing_docs)]
@@ -154,6 +161,8 @@ pub enum ChatRole {
 	Assistant,
 	Tool,
 }
+
+// endregion: --- ChatRole
 
 // region:    --- Froms
 
