@@ -84,11 +84,7 @@ async fn test_yakbak_anthropic_tool_stream() -> TestResult<()> {
 	assert_eq!(tc.call_id, "toolu_01A2B3C4D5");
 
 	// -- Verify usage
-	let usage = extract
-		.stream_end
-		.captured_usage
-		.as_ref()
-		.ok_or("Should have usage")?;
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
 	assert_eq!(usage.prompt_tokens, Some(85));
 	assert_eq!(usage.completion_tokens, Some(42));
 

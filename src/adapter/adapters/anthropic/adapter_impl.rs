@@ -920,10 +920,10 @@ pub(in crate::adapter) struct AnthropicRequestParts {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::ServiceTarget;
 	use crate::adapter::{Adapter, ServiceType};
 	use crate::chat::{ChatOptions, ChatRequest, JsonSpec};
 	use crate::resolver::AuthData;
-	use crate::ServiceTarget;
 
 	/// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
 	/// on a model that uses the `output_config` effort API (e.g. `claude-sonnet-4-6`), both
@@ -955,10 +955,7 @@ mod tests {
 		);
 
 		let web_req = result.expect("to_web_request_data should succeed");
-		let output_config = web_req
-			.payload
-			.get("output_config")
-			.expect("output_config must be present");
+		let output_config = web_req.payload.get("output_config").expect("output_config must be present");
 
 		assert_eq!(
 			output_config.get("effort").and_then(|v| v.as_str()),
@@ -966,10 +963,7 @@ mod tests {
 			"effort must be present in output_config"
 		);
 		assert_eq!(
-			output_config
-				.get("format")
-				.and_then(|f| f.get("type"))
-				.and_then(|v| v.as_str()),
+			output_config.get("format").and_then(|f| f.get("type")).and_then(|v| v.as_str()),
 			Some("json_schema"),
 			"format.type must be present in output_config"
 		);
