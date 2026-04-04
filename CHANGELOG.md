@@ -3,26 +3,39 @@
 
 ## v0.6.0-beta WIP - [v0.6.0-alpha](https://github.com/jeremychone/rust-genai/compare/v0.5.3...HEAD)
 
+
 - `!` API CHANGE - `ContentPart::CustomPart.model_iden` is now `Option`
 - `!` API CHANGE - `all_model_names()` - now live (with AuthResolver support)
-- `^` API NEW - chat-level prompt cache `CacheControl` with openai prompt_cache_key Support
+- `!` openai_resp - gate `reasoning.encrypted_content` on `capture_reasoning_content`
+- `!` openai_resp - make `reasoning.summary` opt-in for `capture_reasoning_content`
+- `!` gemini - make `thinkingConfig/includeThoughts` opt-in for `capture_reasoning_content`
+- `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
+- `+` provider - add Google Vertex adapter with Gemini and Anthropic support
+- `+` anthropic - add JSON schema support
 - `+` API NEW - New `ModelSpec` to define custom endpoint, model, .. 
 - `+` API NEW - add openai resp stateful sessions — `previous_response_id`, `store`, `response_id` (PR #168)
 - `+` API NEW - Add `ContentPart::ReasoningContent` support
 - `+` API NEW - expose provider `stop_reason` in chat responses
 - `+` API NEW - add typed and normalized built-in tools, `ToolName`, `ToolConfig`, `WebSearch`, and related tool support
 - `+` API NEW - WebSearch builtin tool spport for Anthropic, OpenAI, Gemini
+- `+` tests - add yakbak Gemini streaming replay test
+- `+` tests - add yakbak HTTP record/replay integration test infrastructure
+- `+` provider - add Aliyun adapter, namespace only
+- `^` API NEW - chat-level prompt cache `CacheControl` with openai prompt_cache_key Support
+- `^` perf - enable HTTP optimizations, gzip, `TCP_NODELAY`, and HTTP/2 tuning
 - `^` API NEW - Add support for `ReasoningEffort::Max` (Anthropic) and `ReasoningEffort::XHigh` (OpenAI) 
-- `+` openap - now support 
-- `!` openai - route GPT-5 models through the OpenAI Responses API
+- `^` ollama - implement native API support (BIG)
+- `^` openai - route GPT-5 models through the OpenAI Responses API
 - `^` openai - now support prompt_cache_key in `ChatOptions` (and `prompt_cache_retention` via `CacheControl`)
 - `^` openai - add request-level prompt cache support and use `instructions` for Responses API system prompts
-- `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
-- `+` ollama - implement native API support (BIG)
-- `+` provider - add Aliyun adapter, namespace only
 - `^` anthropic - add support for adaptive thinking
-- `-` anthropic - implement missing prompt caching fixes, cache token capture and normalization, TTL support, and per-part cache control support
 - `^` doc - sync llm api reference, spec rules, and tool spec
+- `^` anthropic - emit incremental `ToolCallChunk` events during streaming
+- `-` openai_resp - fix buffering of incomplete UTF-8 sequences across stream chunks
+- `-` openai - capture inline usage from `finish_reason` stream chunks
+- `-` anthropic - guard against null `tool_call` arguments in request serialization
+- `-` anthropic - implement missing prompt caching fixes, cache token capture and normalization, TTL support, and per-part cache control support
+- `-` gemini - support parallel tool calls in streaming adapter
 - `-` openai - fix streamer to emit delta content from `finish_reason` message
 - `-` gemini - fix JSON schema compatibility and usage-only stream tail handling
 - `-` openai - surface SSE error payloads in streaming
