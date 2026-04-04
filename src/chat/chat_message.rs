@@ -111,6 +111,17 @@ pub struct MessageOptions {
 	pub cache_control: Option<CacheControl>,
 }
 
+impl MessageOptions {
+	pub fn new() -> Self {
+		Self { cache_control: None }
+	}
+
+	pub fn with_cache_control(mut self, cache_control: impl Into<CacheControl>) -> Self {
+		self.cache_control = Some(cache_control.into());
+		self
+	}
+}
+
 /// Cache control for prompt caching.
 ///
 /// Notes:

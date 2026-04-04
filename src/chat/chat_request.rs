@@ -113,6 +113,18 @@ impl ChatRequest {
 		self
 	}
 
+	/// Set the previous response ID for stateful sessions.
+	pub fn with_previous_response_id(mut self, previous_response_id: impl Into<String>) -> Self {
+		self.previous_response_id = Some(previous_response_id.into());
+		self
+	}
+
+	/// Set whether to store the response for stateful sessions.
+	pub fn with_store(mut self, store: bool) -> Self {
+		self.store = Some(store);
+		self
+	}
+
 	/// Append one tool.
 	pub fn append_tool(mut self, tool: impl Into<Tool>) -> Self {
 		self.tools.get_or_insert_with(Vec::new).push(tool.into());
@@ -173,6 +185,18 @@ impl ChatRequest {
 	#[deprecated(note = "use join_systems()")]
 	pub fn combine_systems(&self) -> Option<String> {
 		self.join_systems()
+	}
+}
+
+impl From<Vec<ChatMessage>> for ChatRequest {
+	fn from(messages: Vec<ChatMessage>) -> Self {
+		Self {
+			system: None,
+			messages,
+			tools: None,
+			previous_response_id: None,
+			store: None,
+		}
 	}
 }
 
