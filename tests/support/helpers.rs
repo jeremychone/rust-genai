@@ -1,6 +1,6 @@
 use super::TestResult;
 use bitflags::parser::to_writer;
-use genai::chat::{ChatStream, ChatStreamEvent, StreamEnd};
+use genai::chat::{ChatStream, ChatStreamEvent, StreamEnd, ToolCall};
 use tokio_stream::StreamExt;
 
 /// A macro to retrieve the value of an `Option` field from a struct, returning an error if the field is `None`.
@@ -78,6 +78,9 @@ pub struct StreamExtract {
 	pub content: Option<String>,
 
 	pub reasoning_content: Option<String>,
+
+	/// All ToolCallChunk events received during streaming, in order.
+	pub tool_call_chunks: Vec<ToolCall>,
 }
 
 pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<StreamExtract> {
@@ -85,6 +88,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 
 	let mut content: Vec<String> = Vec::new();
 	let mut reasoning_content: Vec<String> = Vec::new();
+	let mut tool_call_chunks: Vec<ToolCall> = Vec::new();
 
 	while let Some(Ok(stream_event)) = chat_stream.next().await {
 		match stream_event {
@@ -92,7 +96,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 			ChatStreamEvent::Chunk(s_chunk) => content.push(s_chunk.content),
 			ChatStreamEvent::ReasoningChunk(s_chunk) => reasoning_content.push(s_chunk.content),
 			ChatStreamEvent::ThoughtSignatureChunk(_) => (), // ignore thought signature chunks for now
-			ChatStreamEvent::ToolCallChunk(_) => (),         // ignore tool call chunks for now
+			ChatStreamEvent::ToolCallChunk(tc) => tool_call_chunks.push(tc.tool_call),
 			ChatStreamEvent::End(s_end) => {
 				stream_end = Some(s_end);
 				break;
@@ -108,6 +112,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 		stream_end,
 		content,
 		reasoning_content,
+		tool_call_chunks,
 	})
 }
 

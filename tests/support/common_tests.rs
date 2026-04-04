@@ -577,6 +577,7 @@ pub async fn common_test_chat_stream_cache_explicit_1h_ttl_ok(model: &str) -> Te
 		stream_end,
 		content,
 		reasoning_content: _,
+		..
 	} = extract_stream_end(chat_res.stream).await?;
 	let content = content.ok_or("extract_stream_end SHOULD have extracted some content")?;
 
@@ -622,6 +623,7 @@ pub async fn common_test_chat_stream_simple_ok(model: &str, checks: Option<Check
 		stream_end,
 		content,
 		reasoning_content,
+		..
 	} = extract_stream_end(chat_res.stream).await?;
 	let content = content.ok_or("extract_stream_end SHOULD have extracted some content")?;
 
@@ -673,6 +675,7 @@ pub async fn common_test_chat_stream_capture_content_ok(model: &str) -> TestResu
 		stream_end,
 		content,
 		reasoning_content,
+		..
 	} = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check meta_usage
@@ -720,6 +723,7 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 		stream_end,
 		content,
 		reasoning_content,
+		..
 	} = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check meta_usage
@@ -772,6 +776,7 @@ pub async fn common_test_chat_stream_tool_capture_ok(model: &str) -> TestResult<
 		stream_end,
 		content,
 		reasoning_content,
+		..
 	} = extract_stream_end(chat_res.stream).await?;
 
 	// -- Check
