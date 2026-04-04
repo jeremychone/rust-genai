@@ -1,5 +1,5 @@
 /// Note: MessageContent is used for ChatRequest and ChatResponse.
-use crate::chat::{Binary, ContentPart, ToolCall, ToolResponse};
+use crate::chat::{Binary, ContentPart, CustomPart, ToolCall, ToolResponse};
 use serde::{Deserialize, Serialize};
 
 /// Message content container used in ChatRequest and ChatResponse.
@@ -30,6 +30,13 @@ impl MessageContent {
 	pub fn from_tool_calls(tool_calls: Vec<ToolCall>) -> Self {
 		Self {
 			parts: tool_calls.into_iter().map(ContentPart::ToolCall).collect(),
+		}
+	}
+
+	/// Build from the provided tool responses.
+	pub fn from_tool_responses(tool_responses: Vec<ToolResponse>) -> Self {
+		Self {
+			parts: tool_responses.into_iter().map(ContentPart::ToolResponse).collect(),
 		}
 	}
 }
@@ -166,6 +173,16 @@ impl MessageContent {
 		self.parts.into_iter().filter_map(|p| p.into_binary()).collect()
 	}
 
+	/// Return references to all ThoughtSignature parts as &str.
+	pub fn thought_signatures(&self) -> Vec<&str> {
+		self.parts.iter().filter_map(|p| p.as_thought_signature()).collect()
+	}
+
+	/// Consume and return all ThoughtSignature parts as owned Strings.
+	pub fn into_thought_signatures(self) -> Vec<String> {
+		self.parts.into_iter().filter_map(|p| p.into_thought_signature()).collect()
+	}
+
 	/// Return references to all ToolCall parts.
 	pub fn tool_calls(&self) -> Vec<&ToolCall> {
 		self.parts
@@ -208,6 +225,16 @@ impl MessageContent {
 				_ => None,
 			})
 			.collect()
+	}
+
+	/// Return references to all custom parts.
+	pub fn custom_parts(&self) -> Vec<&CustomPart> {
+		self.parts.iter().filter_map(|p| p.as_custom()).collect()
+	}
+
+	/// Consume and return all custom parts.
+	pub fn into_custom_parts(self) -> Vec<CustomPart> {
+		self.parts.into_iter().filter_map(|p| p.into_custom()).collect()
 	}
 
 	/// True if there are no parts.
@@ -328,9 +355,19 @@ impl MessageContent {
 		self.parts.iter().any(|p| p.is_tool_response())
 	}
 
+	/// True if at least one part is a ThoughtSignature.
+	pub fn contains_thought_signature(&self) -> bool {
+		self.parts.iter().any(|p| p.is_thought_signature())
+	}
+
 	/// True if at least one part is ReasoningContent.
 	pub fn contains_reasoning_content(&self) -> bool {
 		self.parts.iter().any(|p| p.is_reasoning_content())
+	}
+
+	/// True if at least one part is Custom.
+	pub fn contains_custom(&self) -> bool {
+		self.parts.iter().any(|p| p.is_custom())
 	}
 }
 
@@ -376,6 +413,14 @@ impl From<ToolResponse> for MessageContent {
 	}
 }
 
+impl From<Vec<ToolResponse>> for MessageContent {
+	fn from(tool_responses: Vec<ToolResponse>) -> Self {
+		Self {
+			parts: tool_responses.into_iter().map(ContentPart::ToolResponse).collect(),
+		}
+	}
+}
+
 impl From<ContentPart> for MessageContent {
 	fn from(part: ContentPart) -> Self {
 		Self { parts: vec![part] }
@@ -386,6 +431,14 @@ impl From<Binary> for MessageContent {
 	fn from(bin: Binary) -> Self {
 		Self {
 			parts: vec![bin.into()],
+		}
+	}
+}
+
+impl From<CustomPart> for MessageContent {
+	fn from(custom_part: CustomPart) -> Self {
+		Self {
+			parts: vec![ContentPart::Custom(custom_part)],
 		}
 	}
 }

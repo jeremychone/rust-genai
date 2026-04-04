@@ -194,6 +194,24 @@ impl ContentPart {
 			None
 		}
 	}
+
+	/// Borrow the custom part if present.
+	pub fn as_custom(&self) -> Option<&CustomPart> {
+		if let ContentPart::Custom(custom_part) = self {
+			Some(custom_part)
+		} else {
+			None
+		}
+	}
+
+	/// Extract the custom part, consuming the part.
+	pub fn into_custom(self) -> Option<CustomPart> {
+		if let ContentPart::Custom(custom_part) = self {
+			Some(custom_part)
+		} else {
+			None
+		}
+	}
 }
 
 /// Computed accessors
@@ -267,5 +285,10 @@ impl ContentPart {
 	/// Returns true if this part is reasoning content.
 	pub fn is_reasoning_content(&self) -> bool {
 		matches!(self, ContentPart::ReasoningContent(_))
+	}
+
+	/// Returns true if this part is custom provider-specific content.
+	pub fn is_custom(&self) -> bool {
+		matches!(self, ContentPart::Custom(_))
 	}
 }

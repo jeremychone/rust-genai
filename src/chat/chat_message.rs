@@ -49,6 +49,15 @@ impl ChatMessage {
 			options: None,
 		}
 	}
+
+	/// Constructs a tool message.
+	pub fn tool(content: impl Into<MessageContent>) -> Self {
+		Self {
+			role: ChatRole::Tool,
+			content: content.into(),
+			options: None,
+		}
+	}
 }
 // endregion: --- Constructors
 
@@ -186,22 +195,13 @@ impl From<Vec<ToolCall>> for ChatMessage {
 
 impl From<ToolResponse> for ChatMessage {
 	fn from(value: ToolResponse) -> Self {
-		Self {
-			role: ChatRole::Tool,
-			content: MessageContent::from(value),
-			options: None,
-		}
+		ChatMessage::tool(value)
 	}
 }
 
 impl From<Vec<ToolResponse>> for ChatMessage {
 	fn from(responses: Vec<ToolResponse>) -> Self {
-		let parts: Vec<ContentPart> = responses.into_iter().map(ContentPart::ToolResponse).collect();
-		Self {
-			role: ChatRole::Tool,
-			content: MessageContent::from_parts(parts),
-			options: None,
-		}
+		ChatMessage::tool(MessageContent::from(responses))
 	}
 }
 
