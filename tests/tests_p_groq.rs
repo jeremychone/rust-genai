@@ -4,14 +4,7 @@ use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-// Note: In groq, the llama3.1 or gemma models fail to produce JSON without a proposed schema.
-//       With the "tool-use" groq version, it will work correctly.
-// Works with: "deepseek-r1-distill-llama-70b" (does not support json mode)
-// "mistral-saba-24b" (require term acceptance)
-// "llama-3.1-8b-instant", moonshotai/kimi-k2-instruct,
-// "meta-llama/llama-4-maverick-17b-128e-instruct" ($0.6) not part of groq fixed name list, needs to be namespaced
-const MODEL: &str = "groq::meta-llama/llama-4-maverick-17b-128e-instruct";
-const MODEL_NS: &str = "groq::llama-3.1-8b-instant";
+const MODEL: &str = "groq::openai/gpt-oss-20b";
 
 // region:    --- Chat
 
@@ -22,7 +15,7 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_namespaced_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
+	common_tests::common_test_chat_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
