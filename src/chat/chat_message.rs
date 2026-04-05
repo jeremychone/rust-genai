@@ -112,7 +112,7 @@ impl ChatMessage {
 
 // region:    --- MessageOptions
 
-#[derive(Debug, Clone, Serialize, Deserialize, From)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, From)]
 /// Per-message options (e.g., cache control).
 pub struct MessageOptions {
 	#[from]
@@ -121,10 +121,6 @@ pub struct MessageOptions {
 }
 
 impl MessageOptions {
-	pub fn new() -> Self {
-		Self { cache_control: None }
-	}
-
 	pub fn with_cache_control(mut self, cache_control: impl Into<CacheControl>) -> Self {
 		self.cache_control = Some(cache_control.into());
 		self
