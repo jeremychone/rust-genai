@@ -64,3 +64,41 @@ The functionality is divided into specialized files/sub-modules:
 - **Decoupled Streaming:** The public `ChatStream` is an abstraction layer over an internal stream (`InterStream`), ensuring a consistent external interface regardless of adapter implementation details (like internal handling of usage reporting or reasoning chunks).
 - **Normalized Usage Metrics:** The `Usage` structure provides an OpenAI-compatible interface while allowing for provider-specific breakdowns (e.g., caching or reasoning tokens) via detailed sub-structures.
 - **Hierarchical Options:** `ChatOptions` can be applied globally at the client level or specifically per request. The internal resolution logic ensures request-specific options take precedence over client defaults.
+
+### Implemented API Notes
+
+- `ChatRequest` also supports stateful session helpers:
+  - `with_previous_response_id(...)`
+  - `with_store(...)`
+  - `From<Vec<ChatMessage>>`
+
+- `ChatMessage` includes:
+  - `ChatMessage::new(role, content)` as the generic constructor
+  - role-aware constructors like `system(...)`, `user(...)`, `assistant(...)`, and `tool(...)`
+  - `with_reasoning_content(...)`
+  - `assistant_tool_calls_with_thoughts(...)`
+
+- `MessageOptions` includes:
+  - `MessageOptions::new()`
+  - `with_cache_control(...)`
+
+- `MessageContent` includes additive collection and convenience helpers such as:
+  - `iter()` and `iter_mut()`
+  - `from_tool_responses(...)`
+  - singular `From<ToolCall>`
+  - first-item helpers for text, reasoning content, and thought signatures
+  - `contains_binary()`
+
+- `ChatOptions` includes both:
+  - `with_stop_sequences(...)` for replacement-style bulk assignment
+  - `with_stop_sequence(...)` for appending a single stop sequence
+
+- `ReasoningEffort` currently includes:
+  - `None`
+  - `Low`
+  - `Medium`
+  - `High`
+  - `XHigh`
+  - `Max`
+  - `Budget(u32)`
+  - legacy `Minimal`

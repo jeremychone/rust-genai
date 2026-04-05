@@ -21,16 +21,28 @@ The tool system is exposed primarily through the `genai::chat` module.
 
 ```rust
 pub struct Tool {
-    pub name: String,
+    pub name: ToolName,
     pub description: Option<String>,
     pub schema: Option<Value>,
-    pub config: Option<Value>,
+    pub config: Option<ToolConfig>,
 }
 ```
 
 - `Tool::new(name)`: Primary constructor.
+- `Tool::new_web_search()`: Constructor for the built-in web search tool.
 - `with_schema(value)`: Builder-style method to set the JSON parameters schema.
 - `with_description(text)`: Builder-style method to set the tool description.
+- `with_config(value)`: Builder-style method to set provider-specific tool configuration.
+
+#### `ToolName` - Normalized tool identifier.
+
+- `ToolName::Custom(String)`: User-defined custom tool name, serialized as a bare string.
+- `ToolName::WebSearch`: Built-in web search tool, serialized in a qualified form.
+
+#### `ToolConfig` - Tool configuration payload.
+
+- `ToolConfig::Custom(Value)`: Arbitrary JSON configuration for custom tools.
+- `ToolConfig::WebSearch(WebSearchConfig)`: Typed configuration for the built-in web search tool.
 
 #### `ToolCall` - Represents an invocation request emitted by the model.
 
@@ -97,4 +109,6 @@ if let Some(tool_call) = response.tool_calls().first() {
     let result = ToolResponse::new(&tool_call.call_id, "Rainy, 15°C");
 }
 ```
+
+For built-in provider tools, the normalized API can also use typed names and configs, for example `Tool::new_web_search()` together with `ToolConfig::WebSearch(...)`.
 

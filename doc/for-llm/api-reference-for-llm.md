@@ -259,8 +259,8 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 
 Provider-specific hint for reasoning intensity/budget.
 
-- Variants: `None`, `Low`, `Medium`, `High`, `Budget(u32)`, `Minimal` (legacy, for <= gpt-5).
-- `variant_name()`: Returns lowercase name (`"none"`, `"low"`, `"medium"`, `"high"`, `"budget"`, `"minimal"`).
+- Variants: `None`, `Low`, `Medium`, `High`, `XHigh`, `Max`, `Budget(u32)`, `Minimal` (legacy, for <= gpt-5).
+- `variant_name()`: Returns lowercase name (`"none"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`, `"budget"`, `"minimal"`).
 - `as_keyword()`: Returns `Option<&'static str>` (None for `Budget`).
 - `from_keyword(name)`: Parses keyword string.
 - `from_model_name(model_name)`: If model name ends with `-<effort>`, returns `(Some(effort), trimmed_name)`.
@@ -326,11 +326,30 @@ OpenAI service tier preference for flex processing.
 
 ### `Tool`
 
-- `name: String`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `config: Option<Value>`.
+- `name: ToolName`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `config: Option<ToolConfig>`.
 - `Tool::new(name)`: Constructor.
+- `Tool::new_web_search()`: Constructor for the built-in web search tool.
 - `with_description(desc)`, `with_schema(parameters)`, `with_config(config)`: Chainable setters.
 - `size()`: Approximate in-memory size.
 - `config`: Optional provider-specific config.
+
+### `ToolName`
+
+- `WebSearch`: Built-in provider web-search tool.
+- `Custom(String)`: User-defined tool name.
+- `as_str()`: Returns the normalized display name.
+- Implements `Display`, `AsRef<str>`, `From<String>`, `From<&String>`, `From<&str>`.
+- Serialization:
+  - `Custom("get_weather")` -> `"get_weather"`
+  - `WebSearch` -> `{"WebSearch": null}`
+
+### `ToolConfig`
+
+- `WebSearch(WebSearchConfig)`: Typed config for the built-in web-search tool.
+- `Custom(serde_json::Value)`: Arbitrary JSON config for custom tools.
+- Serialization:
+  - `Custom(json)` -> raw JSON value
+  - `WebSearch(config)` -> `{"WebSearch": {...}}`
 
 ### `ToolCall`
 
