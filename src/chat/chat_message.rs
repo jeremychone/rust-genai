@@ -23,6 +23,15 @@ pub struct ChatMessage {
 
 // region:    --- Constructors
 impl ChatMessage {
+	/// Constructs a message for the provided role.
+	pub fn new(role: ChatRole, content: impl Into<MessageContent>) -> Self {
+		Self {
+			role,
+			content: content.into(),
+			options: None,
+		}
+	}
+
 	/// Constructs a system message.
 	pub fn system(content: impl Into<MessageContent>) -> Self {
 		Self {

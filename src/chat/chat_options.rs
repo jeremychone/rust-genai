@@ -134,6 +134,12 @@ impl ChatOptions {
 		self
 	}
 
+	/// Appends one stop sequence.
+	pub fn with_stop_sequence(mut self, value: impl Into<String>) -> Self {
+		self.stop_sequences.push(value.into());
+		self
+	}
+
 	/// Enables or disables normalization of reasoning content (e.g., `<think>...</think>`).
 	pub fn with_normalize_reasoning_content(mut self, value: bool) -> Self {
 		self.normalize_reasoning_content = Some(value);
