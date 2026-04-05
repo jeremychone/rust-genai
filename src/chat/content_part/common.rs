@@ -242,6 +242,12 @@ impl ContentPart {
 	pub fn is_text(&self) -> bool {
 		matches!(self, ContentPart::Text(_))
 	}
+
+	/// Returns true if this part is binary.
+	pub fn is_binary(&self) -> bool {
+		matches!(self, ContentPart::Binary(_))
+	}
+
 	/// Returns true if this part is a binary image (content_type starts with "image/").
 	pub fn is_image(&self) -> bool {
 		match self {

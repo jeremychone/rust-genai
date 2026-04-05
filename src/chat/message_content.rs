@@ -145,6 +145,14 @@ impl FromIterator<ContentPart> for MessageContent {
 
 /// Getters
 impl MessageContent {
+	pub fn iter(&self) -> Iter<'_, ContentPart> {
+		self.parts.iter()
+	}
+
+	pub fn iter_mut(&mut self) -> IterMut<'_, ContentPart> {
+		self.parts.iter_mut()
+	}
+
 	/// Return all parts.
 	pub fn parts(&self) -> &Vec<ContentPart> {
 		&self.parts
@@ -296,6 +304,38 @@ impl MessageContent {
 		first_text_part.into_text()
 	}
 
+	/// Return the first reasoning content part, if any.
+	///
+	/// Does not concatenate multiple reasoning content parts.
+	pub fn first_reasoning_content(&self) -> Option<&str> {
+		let first_reasoning_part = self.parts.iter().find(|p| p.is_reasoning_content())?;
+		first_reasoning_part.as_reasoning_content()
+	}
+
+	/// Consume and return the first reasoning content part as a String, if any.
+	///
+	/// Does not concatenate multiple reasoning content parts.
+	pub fn into_first_reasoning_content(self) -> Option<String> {
+		let first_reasoning_part = self.parts.into_iter().find(|p| p.is_reasoning_content())?;
+		first_reasoning_part.into_reasoning_content()
+	}
+
+	/// Return the first thought signature part, if any.
+	///
+	/// Does not concatenate multiple thought signature parts.
+	pub fn first_thought_signature(&self) -> Option<&str> {
+		let first_thought_signature_part = self.parts.iter().find(|p| p.is_thought_signature())?;
+		first_thought_signature_part.as_thought_signature()
+	}
+
+	/// Consume and return the first thought signature part as a String, if any.
+	///
+	/// Does not concatenate multiple thought signature parts.
+	pub fn into_first_thought_signature(self) -> Option<String> {
+		let first_thought_signature_part = self.parts.into_iter().find(|p| p.is_thought_signature())?;
+		first_thought_signature_part.into_thought_signature()
+	}
+
 	/// Join all text parts, separating segments with a blank line.
 	pub fn joined_texts(&self) -> Option<String> {
 		let texts = self.texts();
@@ -343,6 +383,11 @@ impl MessageContent {
 	/// True if at least one part is text.
 	pub fn contains_text(&self) -> bool {
 		self.parts.iter().any(|p| p.is_text())
+	}
+
+	/// True if at least one part is binary.
+	pub fn contains_binary(&self) -> bool {
+		self.parts.iter().any(|p| p.is_binary())
 	}
 
 	/// True if at least one part is a ToolCall.
@@ -401,6 +446,14 @@ impl From<Vec<ToolCall>> for MessageContent {
 	fn from(tool_calls: Vec<ToolCall>) -> Self {
 		Self {
 			parts: tool_calls.into_iter().map(ContentPart::ToolCall).collect(),
+		}
+	}
+}
+
+impl From<ToolCall> for MessageContent {
+	fn from(tool_call: ToolCall) -> Self {
+		Self {
+			parts: vec![ContentPart::ToolCall(tool_call)],
 		}
 	}
 }
