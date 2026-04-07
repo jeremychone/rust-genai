@@ -86,3 +86,95 @@ impl Adapter for GithubCopilotAdapter {
 		OpenAIAdapter::to_embed_response(model_iden, web_response, options_set)
 	}
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::ServiceTarget;
+	use crate::adapter::{Adapter, ServiceType};
+	use crate::chat::{ChatOptionsSet, ChatRequest};
+	use crate::resolver::AuthData;
+
+	fn test_target() -> ServiceTarget {
+		ServiceTarget {
+			endpoint: GithubCopilotAdapter::default_endpoint(),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::GithubCopilot, "openai/gpt-4.1-mini"),
+		}
+	}
+
+	fn make_request(service_type: ServiceType) -> WebRequestData {
+		GithubCopilotAdapter::to_web_request_data(
+			test_target(),
+			service_type,
+			ChatRequest::from_user("hello"),
+			ChatOptionsSet::default(),
+		)
+		.expect("to_web_request_data should succeed")
+	}
+
+	#[test]
+	fn test_url_construction() {
+		let data = make_request(ServiceType::Chat);
+		assert_eq!(data.url, "https://models.github.ai/inference/chat/completions");
+	}
+
+	#[test]
+	fn test_accept_header() {
+		let data = make_request(ServiceType::Chat);
+		let accept = data
+			.headers
+			.iter()
+			.find(|(k, _)| k.eq_ignore_ascii_case("Accept"))
+			.map(|(_, v)| v.as_str());
+		assert_eq!(accept, Some("application/vnd.github+json"));
+	}
+
+	#[test]
+	fn test_authorization_header() {
+		let data = make_request(ServiceType::Chat);
+		let auth = data
+			.headers
+			.iter()
+			.find(|(k, _)| k.eq_ignore_ascii_case("Authorization"))
+			.map(|(_, v)| v.as_str());
+		assert_eq!(auth, Some("Bearer test-key"));
+	}
+
+	#[test]
+	fn test_payload_model_name() {
+		let data = make_request(ServiceType::Chat);
+		let model = data.payload.get("model").and_then(|v| v.as_str());
+		assert_eq!(model, Some("openai/gpt-4.1-mini"));
+	}
+
+	#[test]
+	fn test_payload_messages() {
+		let data = make_request(ServiceType::Chat);
+		let messages = data.payload.get("messages").and_then(|v| v.as_array());
+		assert!(messages.is_some(), "payload should have messages array");
+		let messages = messages.unwrap();
+		assert!(!messages.is_empty(), "messages array should not be empty");
+		let last = messages.last().unwrap();
+		let content = last.get("content").and_then(|v| v.as_str());
+		assert_eq!(content, Some("hello"));
+	}
+
+	#[test]
+	fn test_payload_stream_false_for_chat() {
+		let data = make_request(ServiceType::Chat);
+		let stream = data.payload.get("stream").and_then(|v| v.as_bool());
+		assert_eq!(stream, Some(false));
+	}
+
+	#[test]
+	fn test_payload_stream_true_for_chat_stream() {
+		let data = make_request(ServiceType::ChatStream);
+		let stream = data.payload.get("stream").and_then(|v| v.as_bool());
+		assert_eq!(stream, Some(true));
+	}
+}
+
+// endregion: --- Tests

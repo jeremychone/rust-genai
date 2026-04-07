@@ -18,6 +18,7 @@ const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
 const MODEL_COHERE: &str = "command-r7b-12-2024";
+const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
@@ -35,6 +36,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
 	(MODEL_COHERE, "COHERE_API_KEY"),
+	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
