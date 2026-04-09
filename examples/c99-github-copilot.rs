@@ -8,7 +8,7 @@ use genai::chat::{ChatMessage, ChatRequest};
 //   "github_copilot::google/gemini-2.5-pro"
 //   "github_copilot::xai/grok-3-mini"
 // Requires GITHUB_TOKEN environment variable (PAT with `models` scope).
-const MODEL: &str = "github_copilot::openai/gpt-4.1";
+const MODEL: &str = "github_copilot::openai/gpt-5";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

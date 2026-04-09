@@ -65,7 +65,7 @@ pub enum AdapterKind {
 	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
 	Vertex,
 	/// GitHub Models inference API (multi-publisher gateway for OpenAI, Anthropic, and Google models).
-	/// Uses namespace routing: `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, `github_copilot::google/gemini-2.5-pro`
+	/// Uses namespace routing: `github_copilot::openai/gpt-5`, `github_copilot::anthropic/claude-sonnet-4-6`, `github_copilot::google/gemini-2.5-pro`
 	GithubCopilot,
 }
 
