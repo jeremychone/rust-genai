@@ -208,6 +208,10 @@ impl futures::Stream for OpenAIStreamer {
 							self.captured_data.stop_reason = Some(finish_reason);
 							// NOTE: Some providers (e.g., Ollama) send tool_calls AND finish_reason in the same message.
 							// We need to capture tool_calls here before continuing to the next message.
+							// Capture tool_calls that arrive in the same chunk as finish_reason.
+							// After capturing, emit the first ToolCallChunk so downstream
+							// consumers (e.g. agent loops) see the tool call event.
+							let mut first_tool_call_event: Option<ToolCall> = None;
 							if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls")
 								&& delta_tool_calls != Value::Null
 								&& let Some(delta_tool_calls) = delta_tool_calls.as_array()
@@ -224,7 +228,10 @@ impl futures::Stream for OpenAIStreamer {
 										let fn_name = function.x_take::<String>("name").unwrap_or_default();
 										let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 
-										self.capture_tool_call(index as usize, call_id, fn_name, arguments);
+										let tc = self.capture_tool_call(index as usize, call_id, fn_name, arguments);
+										if first_tool_call_event.is_none() {
+											first_tool_call_event = Some(tc);
+										}
 									}
 								}
 							}
@@ -265,6 +272,12 @@ impl futures::Stream for OpenAIStreamer {
 									}
 								}
 								return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(reasoning_content))));
+							}
+
+							// If we captured a tool call in the finish_reason chunk,
+							// emit it as a ToolCallChunk so the agent loop sees it.
+							if let Some(tc) = first_tool_call_event {
+								return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tc))));
 							}
 
 							continue;
