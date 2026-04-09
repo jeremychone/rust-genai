@@ -34,3 +34,6 @@ jobs:
 
       - name: Run Gemini replay tests
         run: cargo test --test tests_yakbak_gemini
+
+      - name: Run GitHub Copilot replay tests
+        run: cargo test --test tests_yakbak_github_copilot
