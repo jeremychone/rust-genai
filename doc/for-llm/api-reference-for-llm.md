@@ -30,7 +30,8 @@ genai (crate root / lib.rs)
 - **ModelSpec**: Specifies a model at three resolution levels: `Name`, `Iden`, or `Target`.
 - **ServiceTarget**: Fully resolved call target: `ModelIden` + `Endpoint` + `AuthData`.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
-- **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Cohere`, `Ollama`.
+- **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Cohere`, `Ollama`, `GithubCopilot`.
+  - `GithubCopilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
 
 ## Client & Configuration
 
@@ -482,7 +483,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Cohere`, `Ollama`.
+Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Cohere`, `Ollama`, `GithubCopilot`.
 
 - `as_str()`: Display name (e.g., `"OpenAI"`, `"xAi"`).
 - `as_lower_str()`: Lowercase name (e.g., `"openai"`, `"xai"`).
@@ -506,7 +507,7 @@ Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`
   - `glm*` -> `Zai`.
   - Fallback -> `Ollama`.
 - **Namespacing**: `namespace::model_name` (e.g., `together::meta-llama/...`, `nebius::Qwen/...`).
-  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `openai_resp::`)
+  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `openai_resp::`, `github_copilot::`)
   - Special: `coding::` namespace maps to `Zai` adapter.
 - **Ollama Fallback**: Unrecognized non-namespaced names default to `Ollama` adapter (localhost:11434).
 - **Reasoning Normalization**: Automatic extraction for DeepSeek/Ollama `<think>` blocks when `normalize_reasoning_content` is enabled.

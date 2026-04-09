@@ -7,6 +7,7 @@ pub(super) mod cohere;
 pub(super) mod deepseek;
 pub(super) mod fireworks;
 pub(super) mod gemini;
+pub(super) mod github_copilot;
 pub(super) mod groq;
 pub(super) mod mimo;
 pub(super) mod nebius;

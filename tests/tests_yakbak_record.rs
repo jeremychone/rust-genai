@@ -6,7 +6,7 @@
 //!
 //! ```sh
 //! # Record all providers (need all keys):
-//! OPENAI_API_KEY=... GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored
+//! OPENAI_API_KEY=... GEMINI_API_KEY=... GITHUB_TOKEN=... cargo test --test tests_yakbak_record -- --ignored
 //!
 //! # Record only Gemini scenarios:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini
@@ -14,11 +14,14 @@
 //! # Record only OpenAI scenarios:
 //! OPENAI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_openai
 //!
+//! # Record only GitHub Copilot scenarios:
+//! GITHUB_TOKEN=... cargo test --test tests_yakbak_record -- --ignored record_github_copilot
+//!
 //! # Record a single scenario by name:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_thinking_stream
 //! ```
 //!
-//! Optional env vars for custom endpoints: `OPENAI_BASE_URL`, `GEMINI_BASE_URL`.
+//! Optional env vars for custom endpoints: `OPENAI_BASE_URL`, `GEMINI_BASE_URL`, `GITHUB_COPILOT_BASE_URL`.
 //!
 //! Each test records a response cassette to `tests/data/yakbak/{provider}/{scenario}/`.
 
@@ -115,6 +118,51 @@ async fn record_gemini_thinking_stream() -> TestResult<()> {
 		"[record] Stream reasoning: {:?}",
 		extract.reasoning_content.as_deref().map(|s| &s[..s.len().min(80)])
 	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+fn github_copilot_backend() -> String {
+	std::env::var("GITHUB_COPILOT_BASE_URL").unwrap_or_else(|_| "https://models.github.ai/inference/".to_string())
+}
+
+const GITHUB_COPILOT_MODEL: &str = "github_copilot::openai/gpt-4.1-mini";
+
+#[tokio::test]
+#[ignore]
+async fn record_github_copilot_simple_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("github_copilot", "simple_stream", &github_copilot_backend()).await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence"),
+		ChatMessage::user("Why is the sky blue?"),
+	]);
+	let options = ChatOptions::default().with_capture_content(true);
+
+	let stream_res = client.exec_chat_stream(GITHUB_COPILOT_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Stream content: {:?}",
+		extract.content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_github_copilot_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("github_copilot", "tool_stream", &github_copilot_backend()).await?;
+
+	let chat_req = seed_tool_request();
+	let options = ChatOptions::default().with_capture_content(true).with_capture_tool_calls(true);
+
+	let stream_res = client.exec_chat_stream(GITHUB_COPILOT_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	let tool_calls = &extract.stream_end.captured_tool_calls();
+	eprintln!("[record] Tool calls: {:?}", tool_calls.as_ref().map(|tc| tc.len()));
 
 	server.shutdown().await;
 	Ok(())

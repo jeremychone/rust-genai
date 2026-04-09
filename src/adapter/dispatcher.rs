@@ -1,4 +1,5 @@
 use super::groq::GroqAdapter;
+use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
 use crate::adapter::adapters::mimo::MimoAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
@@ -51,6 +52,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::default_endpoint(),
 			AdapterKind::Ollama => OllamaAdapter::default_endpoint(),
 			AdapterKind::Vertex => VertexAdapter::default_endpoint(),
+			AdapterKind::GithubCopilot => GithubCopilotAdapter::default_endpoint(),
 		}
 	}
 
@@ -73,6 +75,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::default_auth(),
 			AdapterKind::Ollama => OllamaAdapter::default_auth(),
 			AdapterKind::Vertex => VertexAdapter::default_auth(),
+			AdapterKind::GithubCopilot => GithubCopilotAdapter::default_auth(),
 		}
 	}
 
@@ -95,6 +98,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::all_model_names(kind, endpoint, auth).await,
 			AdapterKind::Ollama => OllamaAdapter::all_model_names(kind, endpoint, auth).await,
 			AdapterKind::Vertex => VertexAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::GithubCopilot => GithubCopilotAdapter::all_model_names(kind, endpoint, auth).await,
 		}
 	}
 
@@ -117,6 +121,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Ollama => OllamaAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Vertex => VertexAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::GithubCopilot => GithubCopilotAdapter::get_service_url(model, service_type, endpoint),
 		}
 	}
 
@@ -151,6 +156,9 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Vertex => VertexAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::GithubCopilot => {
+				GithubCopilotAdapter::to_web_request_data(target, service_type, chat_req, options_set)
+			}
 		}
 	}
 
@@ -177,6 +185,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Vertex => VertexAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::GithubCopilot => GithubCopilotAdapter::to_chat_response(model_iden, web_response, options_set),
 		}
 	}
 
@@ -203,6 +212,9 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Vertex => VertexAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::GithubCopilot => {
+				GithubCopilotAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+			}
 		}
 	}
 
@@ -233,6 +245,7 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Vertex => VertexAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::GithubCopilot => GithubCopilotAdapter::to_embed_request_data(target, embed_req, options_set),
 		}
 	}
 
@@ -262,6 +275,9 @@ impl AdapterDispatcher {
 			AdapterKind::Cohere => CohereAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Ollama => OllamaAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Vertex => VertexAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::GithubCopilot => {
+				GithubCopilotAdapter::to_embed_response(model_iden, web_response, options_set)
+			}
 		}
 	}
 }

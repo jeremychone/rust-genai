@@ -1,3 +1,4 @@
+use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
 use crate::adapter::adapters::ollama::OllamaAdapter;
 use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
@@ -60,6 +61,9 @@ pub enum AdapterKind {
 	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
 	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
 	Vertex,
+	/// GitHub Models inference API (multi-publisher gateway for OpenAI, Anthropic, and Google models).
+	/// Uses namespace routing: `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, `github_copilot::google/gemini-2.5-pro`
+	GithubCopilot,
 }
 
 /// Serialization/Parse implementations
@@ -84,6 +88,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 			AdapterKind::Vertex => "Vertex",
+			AdapterKind::GithubCopilot => "GithubCopilot",
 		}
 	}
 
@@ -107,6 +112,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 			AdapterKind::Vertex => "vertex",
+			AdapterKind::GithubCopilot => "github_copilot",
 		}
 	}
 
@@ -129,6 +135,7 @@ impl AdapterKind {
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			"vertex" => Some(AdapterKind::Vertex),
+			"github_copilot" => Some(AdapterKind::GithubCopilot),
 			_ => None,
 		}
 	}
@@ -156,6 +163,7 @@ impl AdapterKind {
 			AdapterKind::Cohere => CohereAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Ollama => OllamaAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Vertex => VertexAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::GithubCopilot => GithubCopilotAdapter::DEFAULT_API_KEY_ENV_NAME,
 		}
 	}
 }
