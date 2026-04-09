@@ -158,11 +158,14 @@ impl OpenAIAdapter {
 			payload.x_insert("stop", options_set.stop_sequences())?;
 		}
 
-		// GPT-5.x and o-series models require "max_completion_tokens" instead of "max_tokens"
-		let max_tokens_key = if model_name.starts_with("gpt-5")
-			|| model_name.starts_with("o1")
-			|| model_name.starts_with("o3")
-			|| model_name.starts_with("o4")
+		// GPT-5.x and o-series models require "max_completion_tokens" instead of "max_tokens".
+		// GitHub Copilot and other gateway adapters may namespace the upstream model name
+		// (e.g. "openai/gpt-5-chat"), so match on the tail segment too.
+		let upstream_model_name = model_name.rsplit('/').next().unwrap_or(model_name);
+		let max_tokens_key = if upstream_model_name.starts_with("gpt-5")
+			|| upstream_model_name.starts_with("o1")
+			|| upstream_model_name.starts_with("o3")
+			|| upstream_model_name.starts_with("o4")
 		{
 			"max_completion_tokens"
 		} else {
@@ -488,11 +491,21 @@ struct OpenAIRequestParts {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::ServiceTarget;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ContentPart, MessageContent, ToolCall};
+	use crate::chat::{ChatMessage, ChatOptions, ContentPart, MessageContent, ToolCall};
+	use crate::resolver::AuthData;
 
 	fn test_model() -> ModelIden {
 		ModelIden::new(AdapterKind::OpenAI, "test-model")
+	}
+
+	fn namespaced_gpt5_target() -> ServiceTarget {
+		ServiceTarget {
+			endpoint: Endpoint::from_static("https://models.github.ai/inference/"),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::GithubCopilot, "openai/gpt-5"),
+		}
 	}
 
 	/// When an assistant message carries reasoning_content, it must appear
@@ -538,6 +551,28 @@ mod tests {
 		assert!(
 			assistant_json.get("reasoning_content").is_none(),
 			"reasoning_content should be absent when not set"
+		);
+	}
+
+	#[test]
+	fn test_namespaced_gpt5_uses_max_completion_tokens() {
+		let chat_options = ChatOptions::default().with_max_tokens(42);
+		let data = OpenAIAdapter::util_to_web_request_data(
+			namespaced_gpt5_target(),
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			ChatOptionsSet::default().with_chat_options(Some(&chat_options)),
+			None,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(
+			data.payload.get("max_completion_tokens").and_then(|v| v.as_u64()),
+			Some(42)
+		);
+		assert!(
+			data.payload.get("max_tokens").is_none(),
+			"namespaced GPT-5 models should not use max_tokens"
 		);
 	}
 }
