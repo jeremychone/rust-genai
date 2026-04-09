@@ -2,8 +2,11 @@ use genai::Client;
 use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
 use genai::chat::{ChatMessage, ChatRequest};
 
-// GitHub Copilot uses the GitHub Models API.
-// Models are namespaced as `github_copilot::publisher/model-name`.
+// GitHub Copilot uses the GitHub Models API (multi-publisher gateway).
+// The model name after `github_copilot::` is sent verbatim to the API, so other publishers work too:
+//   "github_copilot::anthropic/claude-sonnet-4-6"
+//   "github_copilot::google/gemini-2.5-pro"
+//   "github_copilot::xai/grok-3-mini"
 // Requires GITHUB_TOKEN environment variable (PAT with `models` scope).
 const MODEL: &str = "github_copilot::openai/gpt-4.1";
 

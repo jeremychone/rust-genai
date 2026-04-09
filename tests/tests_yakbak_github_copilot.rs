@@ -1,13 +1,16 @@
 //! Replay integration tests for the GitHub Copilot adapter.
 //!
 //! These tests use pre-recorded cassettes from `tests/data/yakbak/github_copilot/`
-//! and assert that content and tool calls flow through correctly.
+//! and assert that content and tool calls flow through correctly. GitHub Copilot
+//! supports multiple publishers, but these cassettes stick to `openai/gpt-4.1-mini`
+//! for deterministic replay coverage.
 //!
 //! GitHub Copilot uses the OpenAI Chat Completions protocol via the GitHub
 //! Models inference API, so cassettes are in standard `data: {...}` SSE format.
 //! The GitHub Models API does NOT return actual usage tokens in streaming
 //! responses, but may emit a `prompt_filter_results` message with empty choices
-//! that causes the streamer to capture a default (all-None) Usage struct.
+//! that causes the streamer to capture a default (all-None) Usage struct. Other
+//! publishers are supported by the adapter too, but are not recorded here.
 
 mod support;
 

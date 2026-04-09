@@ -15,7 +15,11 @@ impl GithubCopilotAdapter {
 
 /// The GitHub Copilot adapter uses the GitHub Models inference API,
 /// which is OpenAI-compatible with additional GitHub-specific headers.
-/// Models are namespaced as `publisher/model-name` (e.g., `openai/gpt-4.1`).
+/// Supports multiple publishers — the model name after `github_copilot::` is sent verbatim to the API:
+/// - `github_copilot::openai/gpt-4.1-mini`
+/// - `github_copilot::anthropic/claude-sonnet-4-6`
+/// - `github_copilot::google/gemini-2.5-pro`
+/// - `github_copilot::xai/grok-3-mini`
 impl Adapter for GithubCopilotAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 

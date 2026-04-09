@@ -7,6 +7,9 @@ use serial_test::serial;
 const MODEL: &str = "github_copilot::openai/gpt-4.1-mini";
 const MODEL_NS: &str = "github_copilot::openai/gpt-4.1-mini";
 
+// NOTE: GitHub Copilot supports multiple publishers (openai/, anthropic/, google/, xai/, meta/).
+// Tests use openai/gpt-4.1-mini as the default. Other publishers work with the same adapter.
+
 // region:    --- Chat
 
 #[tokio::test]

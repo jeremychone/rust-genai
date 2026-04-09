@@ -18,6 +18,7 @@ const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
 const MODEL_COHERE: &str = "command-r7b-12-2024";
+// or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
 const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
