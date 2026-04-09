@@ -38,7 +38,7 @@ strum = { version = "0.28", features = ["derive"] }
 uuid = { version = "1.21.0", features = ["v4"] }
 
 [dev-dependencies]
-simple-fs = "0.11"
+simple-fs = "0.12"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 serial_test = "3.2"
 base64 = "0.22.0"  # Check for the latest version
