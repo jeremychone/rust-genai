@@ -4,19 +4,29 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{Headers, Result, ServiceTarget};
+use crate::{Error, Headers, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 pub struct GithubCopilotAdapter;
 
 impl GithubCopilotAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "GITHUB_TOKEN";
+
+	fn catalog_url(endpoint: &Endpoint) -> Result<String> {
+		let base_url = endpoint.base_url();
+		let base_url = reqwest::Url::parse(base_url)
+			.map_err(|err| Error::Internal(format!("Cannot parse url: {base_url}. Cause:\n{err}")))?;
+		let catalog_url = base_url
+			.join("../catalog/models")
+			.map_err(|err| Error::Internal(format!("Cannot build catalog url from {base_url}. Cause:\n{err}")))?;
+		Ok(catalog_url.to_string())
+	}
 }
 
 /// The GitHub Copilot adapter uses the GitHub Models inference API,
 /// which is OpenAI-compatible with additional GitHub-specific headers.
 /// Supports multiple publishers — the model name after `github_copilot::` is sent verbatim to the API:
-/// - `github_copilot::openai/gpt-4.1-mini`
+/// - `github_copilot::openai/gpt-5`
 /// - `github_copilot::anthropic/claude-sonnet-4-6`
 /// - `github_copilot::google/gemini-2.5-pro`
 /// - `github_copilot::xai/grok-3-mini`
@@ -36,7 +46,41 @@ impl Adapter for GithubCopilotAdapter {
 	}
 
 	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
-		OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth).await
+		// -- auth / headers
+		let api_key = auth.single_key_value().ok();
+		let headers = api_key
+			.map(|api_key| {
+				Headers::from(vec![
+					("Authorization".to_string(), format!("Bearer {api_key}")),
+					("Accept".to_string(), "application/vnd.github+json".to_string()),
+				])
+			})
+			.unwrap_or_default();
+
+		// -- Exec request
+		let catalog_url = Self::catalog_url(&endpoint)?;
+		let web_c = crate::webc::WebClient::default();
+		let res = web_c
+			.do_get(&catalog_url, &headers)
+			.await
+			.map_err(|webc_error| crate::Error::WebAdapterCall {
+				adapter_kind: kind,
+				webc_error,
+			})?;
+
+		// -- Parse flat top-level JSON array (GitHub catalog is NOT wrapped in {"data": [...]})
+		let mut models: Vec<String> = Vec::new();
+		if let serde_json::Value::Array(models_value) = res.body {
+			for mut model in models_value {
+				use value_ext::JsonValueExt;
+				let model_name: String = model.x_take("id")?;
+				models.push(model_name);
+			}
+		} else {
+			tracing::warn!("GitHub Copilot catalog response was not a JSON array — returning empty model list");
+		}
+
+		Ok(models)
 	}
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
@@ -105,7 +149,7 @@ mod tests {
 		ServiceTarget {
 			endpoint: GithubCopilotAdapter::default_endpoint(),
 			auth: AuthData::from_single("test-key"),
-			model: ModelIden::new(AdapterKind::GithubCopilot, "openai/gpt-4.1-mini"),
+			model: ModelIden::new(AdapterKind::GithubCopilot, "openai/gpt-5"),
 		}
 	}
 
@@ -151,7 +195,7 @@ mod tests {
 	fn test_payload_model_name() {
 		let data = make_request(ServiceType::Chat);
 		let model = data.payload.get("model").and_then(|v| v.as_str());
-		assert_eq!(model, Some("openai/gpt-4.1-mini"));
+		assert_eq!(model, Some("openai/gpt-5"));
 	}
 
 	#[test]
@@ -178,6 +222,13 @@ mod tests {
 		let data = make_request(ServiceType::ChatStream);
 		let stream = data.payload.get("stream").and_then(|v| v.as_bool());
 		assert_eq!(stream, Some(true));
+	}
+
+	#[test]
+	fn test_catalog_url_uses_configured_endpoint() {
+		let endpoint = Endpoint::from_owned("https://proxy.example.test/inference/");
+		let url = GithubCopilotAdapter::catalog_url(&endpoint).expect("catalog url should be derived from endpoint");
+		assert_eq!(url, "https://proxy.example.test/catalog/models");
 	}
 }
 
