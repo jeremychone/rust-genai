@@ -130,7 +130,7 @@ fn github_copilot_backend() -> String {
 	std::env::var("GITHUB_COPILOT_BASE_URL").unwrap_or_else(|_| "https://models.github.ai/inference/".to_string())
 }
 
-const GITHUB_COPILOT_MODEL: &str = "github_copilot::openai/gpt-4.1-mini";
+const GITHUB_COPILOT_MODEL: &str = "github_copilot::openai/gpt-5";
 
 #[tokio::test]
 #[ignore]
