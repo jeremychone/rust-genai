@@ -396,18 +396,32 @@ impl OpenAIAdapter {
 			tools
 				.into_iter()
 				.map(|tool| {
-					// TODO: Need to handle the error correctly
-					// TODO: Needs to have a custom serializer (tool should not have to match to a provider)
-					// NOTE: Right now, low probability, so, we just return null if cannot convert to value.
+					let strict = tool.strict.unwrap_or(false);
+					let mut parameters = tool.schema;
+
+					// When strict mode is enabled, OpenAI requires `additionalProperties: false`
+					// on every object node in the schema.
+					if strict {
+						if let Some(ref mut schema_val) = parameters {
+							schema_val.x_walk(|parent_map, prop_name| {
+								if prop_name == "type" {
+									let typ = parent_map.get("type").and_then(|v| v.as_str()).unwrap_or("");
+									if typ == "object" {
+										parent_map.insert("additionalProperties".to_string(), false.into());
+									}
+								}
+								true
+							});
+						}
+					}
+
 					json!({
 						"type": "function",
 						"function": {
 							"name": tool.name,
 							"description": tool.description,
-							"parameters": tool.schema,
-							// TODO: If we need to support `strict: true` we need to add additionalProperties: false into the schema
-							//       above (like structured output)
-							"strict": false,
+							"parameters": parameters,
+							"strict": strict,
 						}
 					})
 				})
