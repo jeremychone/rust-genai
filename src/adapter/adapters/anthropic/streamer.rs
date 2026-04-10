@@ -239,7 +239,24 @@ impl futures::Stream for AnthropicStreamer {
 						}
 
 						"ping" => continue, // Loop to the next event
-						other => tracing::warn!("UNKNOWN MESSAGE TYPE: {other}"),
+						"error" => {
+							// Anthropic may emit an `event: error` mid-stream (e.g. overloaded_error,
+							// rate_limit, internal_server_error). Propagate it as a typed error so the
+							// caller can surface the real cause instead of silently ending the stream.
+							tracing::warn!("Anthropic stream error event, data: {}", message.data);
+							let body: Value = serde_json::from_str(&message.data).unwrap_or_else(|_| {
+								Value::String(message.data.clone())
+							});
+							self.done = true;
+							return Poll::Ready(Some(Err(Error::ChatResponse {
+								model_iden: self.options.model_iden.clone(),
+								body,
+							})));
+						}
+						other => tracing::warn!(
+							"UNKNOWN MESSAGE TYPE: {other}, data: {}",
+							message.data
+						),
 					}
 				}
 				Some(Err(err)) => {
