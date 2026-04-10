@@ -47,6 +47,8 @@ impl Adapter for OllamaCloudAdapter {
 				let model_name: String = model.x_take("name")?;
 				models.push(model_name);
 			}
+		} else {
+			// TODO: Need to add tracing
 		}
 		Ok(models)
 	}

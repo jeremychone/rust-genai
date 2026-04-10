@@ -6,7 +6,7 @@
 //!
 //! ```sh
 //! # Record all providers (need all keys):
-//! OPENAI_API_KEY=... GEMINI_API_KEY=... GITHUB_TOKEN=... cargo test --test tests_yakbak_record -- --ignored
+//! OPENAI_API_KEY=... GEMINI_API_KEY=... GITHUB_TOKEN=... OLLAMA_API_KEY=... cargo test --test tests_yakbak_record -- --ignored
 //!
 //! # Record only Gemini scenarios:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini
@@ -17,11 +17,14 @@
 //! # Record only GitHub Copilot scenarios:
 //! GITHUB_TOKEN=... cargo test --test tests_yakbak_record -- --ignored record_github_copilot
 //!
+//! # Record only Ollama Cloud scenarios:
+//! OLLAMA_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_ollama_cloud
+//!
 //! # Record a single scenario by name:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_thinking_stream
 //! ```
 //!
-//! Optional env vars for custom endpoints: `OPENAI_BASE_URL`, `GEMINI_BASE_URL`, `GITHUB_COPILOT_BASE_URL`.
+//! Optional env vars for custom endpoints: `OPENAI_BASE_URL`, `GEMINI_BASE_URL`, `GITHUB_COPILOT_BASE_URL`, `OLLAMA_CLOUD_BASE_URL`.
 //!
 //! Each test records a response cassette to `tests/data/yakbak/{provider}/{scenario}/`.
 
@@ -192,4 +195,32 @@ fn seed_tool_request() -> ChatRequest {
 		},
 		"required": ["city", "country", "unit"],
 	})))
+}
+
+fn ollama_cloud_backend() -> String {
+	std::env::var("OLLAMA_CLOUD_BASE_URL").unwrap_or_else(|_| "https://ollama.com/".to_string())
+}
+
+const OLLAMA_CLOUD_MODEL: &str = "ollama_cloud::gemma3:4b";
+
+#[tokio::test]
+#[ignore]
+async fn record_ollama_cloud_simple_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("ollama_cloud", "simple_stream", &ollama_cloud_backend()).await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence."),
+		ChatMessage::user("Why is the sky blue?"),
+	]);
+	let options = ChatOptions::default().with_capture_content(true);
+
+	let stream_res = client.exec_chat_stream(OLLAMA_CLOUD_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Stream content: {:?}",
+		extract.content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
+
+	server.shutdown().await;
+	Ok(())
 }

@@ -59,7 +59,7 @@ pub enum AdapterKind {
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
 	Ollama,
-	/// For Ollama Cloud (cloud.ollama.com) - uses native Ollama protocol with Bearer auth
+	/// For Ollama Cloud (ollama.com) - uses native Ollama protocol with Bearer auth
 	OllamaCloud,
 	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
 	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`

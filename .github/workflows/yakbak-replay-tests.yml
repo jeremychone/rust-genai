@@ -37,3 +37,6 @@ jobs:
 
       - name: Run GitHub Copilot replay tests
         run: cargo test --test tests_yakbak_github_copilot
+
+      - name: Run Ollama Cloud replay tests
+        run: cargo test --test tests_yakbak_ollama_cloud
