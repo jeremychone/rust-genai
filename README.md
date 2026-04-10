@@ -1,6 +1,6 @@
 # genai, Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **GitHub Copilot** (GitHub Models API).
+Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **GitHub Copilot** (GitHub Models API).
 
 Also supports a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
@@ -72,6 +72,7 @@ const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
 const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "llama-3.1-8b-instant";
 const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
+const MODEL_OLLAMA_CLOUD: &str = "ollama_cloud::gemma3:4b";
 const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
@@ -92,6 +93,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
 	(MODEL_OLLAMA, ""),
+	(MODEL_OLLAMA_CLOUD, "OLLAMA_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
 	(MODEL_COHERE, "COHERE_API_KEY"),
 	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
@@ -104,6 +106,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - starts_with "gemini"   -> Gemini
 //  - model in Groq models   -> Groq
 //  - starts_with "glm"      -> ZAI
+//  - starts_with "ollama_cloud::" -> OllamaCloud
 //  - For anything else      -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`
