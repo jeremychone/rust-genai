@@ -87,16 +87,17 @@ impl Adapter for OllamaCloudAdapter {
 			payload.x_insert("tools", tools)?;
 		}
 
-		if let Some(format) = chat_options.response_format() {
-			if matches!(format, crate::chat::ChatResponseFormat::JsonMode) {
-				payload.x_insert("format", "json")?;
-			}
+		if let Some(format) = chat_options.response_format()
+			&& matches!(format, crate::chat::ChatResponseFormat::JsonMode)
+		{
+			payload.x_insert("format", "json")?;
 		}
 
-		let mut headers = Headers::from(("Authorization", format!("Bearer {api_key}")));
+		let mut headers = Headers::default();
 		if let Some(extra_headers) = chat_options.extra_headers() {
 			headers.merge_with(extra_headers);
 		}
+		headers.merge(Headers::from(("Authorization", format!("Bearer {api_key}"))));
 
 		Ok(WebRequestData { url, headers, payload })
 	}
@@ -141,10 +142,11 @@ impl Adapter for OllamaCloudAdapter {
 			payload.x_insert("truncate", truncate)?;
 		}
 
-		let mut headers = Headers::from(("Authorization", format!("Bearer {api_key}")));
+		let mut headers = Headers::default();
 		if let Some(extra_headers) = options_set.headers() {
 			headers.merge_with(extra_headers);
 		}
+		headers.merge(Headers::from(("Authorization", format!("Bearer {api_key}"))));
 
 		Ok(WebRequestData { url, headers, payload })
 	}
