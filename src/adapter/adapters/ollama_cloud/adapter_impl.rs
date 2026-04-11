@@ -1,13 +1,15 @@
 use crate::Headers;
 use crate::adapter::adapters::ollama::OllamaAdapter;
+use crate::adapter::adapters::ollama::OllamaRequestParts;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{Error, ModelIden, Result, ServiceTarget};
+use crate::{ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
+use serde_json::json;
 use value_ext::JsonValueExt;
 
 pub struct OllamaCloudAdapter;
@@ -29,28 +31,9 @@ impl Adapter for OllamaCloudAdapter {
 	}
 
 	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
-		let base_url = endpoint.base_url();
-		let url = format!("{base_url}api/tags");
-
 		let api_key = get_api_key(auth, &ModelIden::new(adapter_kind, ""))?;
 		let headers = Headers::from(vec![("Authorization", format!("Bearer {api_key}"))]);
-
-		let web_c = crate::webc::WebClient::default();
-		let mut res = web_c.do_get(&url, &headers).await.map_err(|webc_error| Error::WebAdapterCall {
-			adapter_kind,
-			webc_error,
-		})?;
-
-		let mut models: Vec<String> = Vec::new();
-		if let serde_json::Value::Array(models_value) = res.body.x_take("models")? {
-			for mut model in models_value {
-				let model_name: String = model.x_take("name")?;
-				models.push(model_name);
-			}
-		} else {
-			// TODO: Need to add tracing
-		}
-		Ok(models)
+		OllamaAdapter::list_model_names(adapter_kind, endpoint, headers).await
 	}
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
@@ -63,12 +46,59 @@ impl Adapter for OllamaCloudAdapter {
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key(target.auth.clone(), &target.model)?;
-		let mut web_req = OllamaAdapter::to_web_request_data(target, service_type, chat_req, chat_options)?;
-		web_req
-			.headers
-			.merge(Headers::from(("Authorization", format!("Bearer {api_key}"))));
-		Ok(web_req)
+		let ServiceTarget {
+			model, endpoint, auth, ..
+		} = target;
+		let api_key = get_api_key(auth, &model)?;
+		let url = OllamaAdapter::get_service_url(&model, service_type, endpoint)?;
+		let OllamaRequestParts { messages, tools } = OllamaAdapter::into_ollama_request_parts(chat_req)?;
+
+		let mut options = json!({});
+		if let Some(temperature) = chat_options.temperature() {
+			options.x_insert("temperature", temperature)?;
+		}
+		if let Some(top_p) = chat_options.top_p() {
+			options.x_insert("top_p", top_p)?;
+		}
+		if let Some(max_tokens) = chat_options.max_tokens() {
+			options.x_insert("num_predict", max_tokens)?;
+		}
+		if let Some(seed) = chat_options.seed() {
+			options.x_insert("seed", seed)?;
+		}
+		if !chat_options.stop_sequences().is_empty() {
+			options.x_insert("stop", chat_options.stop_sequences())?;
+		}
+
+		let stream = matches!(service_type, ServiceType::ChatStream);
+		let (_, model_name) = model.model_name.namespace_and_name();
+
+		let mut payload = json!({
+			"model": model_name,
+			"messages": messages,
+			"stream": stream,
+		});
+
+		if !options.as_object().unwrap().is_empty() {
+			payload.x_insert("options", options)?;
+		}
+
+		if let Some(tools) = tools {
+			payload.x_insert("tools", tools)?;
+		}
+
+		if let Some(format) = chat_options.response_format() {
+			if matches!(format, crate::chat::ChatResponseFormat::JsonMode) {
+				payload.x_insert("format", "json")?;
+			}
+		}
+
+		let mut headers = Headers::from(("Authorization", format!("Bearer {api_key}")));
+		if let Some(extra_headers) = chat_options.extra_headers() {
+			headers.merge_with(extra_headers);
+		}
+
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn to_chat_response(
@@ -92,12 +122,31 @@ impl Adapter for OllamaCloudAdapter {
 		embed_req: EmbedRequest,
 		options_set: EmbedOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let api_key = get_api_key(service_target.auth.clone(), &service_target.model)?;
-		let mut web_req = OllamaAdapter::to_embed_request_data(service_target, embed_req, options_set)?;
-		web_req
-			.headers
-			.merge(Headers::from(("Authorization", format!("Bearer {api_key}"))));
-		Ok(web_req)
+		let ServiceTarget {
+			model, endpoint, auth, ..
+		} = service_target;
+		let api_key = get_api_key(auth, &model)?;
+		let url = OllamaAdapter::get_service_url(&model, ServiceType::Embed, endpoint)?;
+		let (_, model_name) = model.model_name.namespace_and_name();
+
+		let mut payload = json!({
+			"model": model_name,
+			"input": embed_req.inputs(),
+		});
+
+		if let Some(dimensions) = options_set.dimensions() {
+			payload.x_insert("dimensions", dimensions)?;
+		}
+		if let Some(truncate) = options_set.truncate() {
+			payload.x_insert("truncate", truncate)?;
+		}
+
+		let mut headers = Headers::from(("Authorization", format!("Bearer {api_key}")));
+		if let Some(extra_headers) = options_set.headers() {
+			headers.merge_with(extra_headers);
+		}
+
+		Ok(WebRequestData { url, headers, payload })
 	}
 
 	fn to_embed_response(
