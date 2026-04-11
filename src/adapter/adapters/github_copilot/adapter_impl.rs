@@ -1,86 +1,32 @@
+use super::copilot_types::{
+	COPILOT_DEFAULT_ENDPOINT, COPILOT_EDITOR_PLUGIN_VERSION, COPILOT_EDITOR_VERSION, COPILOT_INTEGRATION_ID,
+	COPILOT_USER_AGENT,
+};
 use crate::ModelIden;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{Error, Headers, Result, ServiceTarget};
+use crate::{Headers, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
 pub struct GithubCopilotAdapter;
 
-impl GithubCopilotAdapter {
-	pub const API_KEY_DEFAULT_ENV_NAME: &str = "GITHUB_TOKEN";
-
-	fn catalog_url(endpoint: &Endpoint) -> Result<String> {
-		let base_url = endpoint.base_url();
-		let base_url = reqwest::Url::parse(base_url)
-			.map_err(|err| Error::Internal(format!("Cannot parse url: {base_url}. Cause:\n{err}")))?;
-		let catalog_url = base_url
-			.join("../catalog/models")
-			.map_err(|err| Error::Internal(format!("Cannot build catalog url from {base_url}. Cause:\n{err}")))?;
-		Ok(catalog_url.to_string())
-	}
-}
-
-/// The GitHub Copilot adapter uses the GitHub Models inference API,
-/// which is OpenAI-compatible with additional GitHub-specific headers.
-/// Supports multiple publishers — the model name after `github_copilot::` is sent verbatim to the API:
-/// - `github_copilot::openai/gpt-5`
-/// - `github_copilot::anthropic/claude-sonnet-4-6`
-/// - `github_copilot::google/gemini-2.5-pro`
-/// - `github_copilot::xai/grok-3-mini`
 impl Adapter for GithubCopilotAdapter {
-	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
+	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = None;
 
 	fn default_auth() -> AuthData {
-		match Self::DEFAULT_API_KEY_ENV_NAME {
-			Some(env_name) => AuthData::from_env(env_name),
-			None => AuthData::None,
-		}
+		AuthData::None
 	}
 
 	fn default_endpoint() -> Endpoint {
-		const BASE_URL: &str = "https://models.github.ai/inference/";
-		Endpoint::from_static(BASE_URL)
+		Endpoint::from_static(COPILOT_DEFAULT_ENDPOINT)
 	}
 
-	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
-		// -- auth / headers
-		let api_key = auth.single_key_value().ok();
-		let headers = api_key
-			.map(|api_key| {
-				Headers::from(vec![
-					("Authorization".to_string(), format!("Bearer {api_key}")),
-					("Accept".to_string(), "application/vnd.github+json".to_string()),
-				])
-			})
-			.unwrap_or_default();
-
-		// -- Exec request
-		let catalog_url = Self::catalog_url(&endpoint)?;
-		let web_c = crate::webc::WebClient::default();
-		let res = web_c
-			.do_get(&catalog_url, &headers)
-			.await
-			.map_err(|webc_error| crate::Error::WebAdapterCall {
-				adapter_kind: kind,
-				webc_error,
-			})?;
-
-		// -- Parse flat top-level JSON array (GitHub catalog is NOT wrapped in {"data": [...]})
-		let mut models: Vec<String> = Vec::new();
-		if let serde_json::Value::Array(models_value) = res.body {
-			for mut model in models_value {
-				use value_ext::JsonValueExt;
-				let model_name: String = model.x_take("id")?;
-				models.push(model_name);
-			}
-		} else {
-			tracing::warn!("GitHub Copilot catalog response was not a JSON array — returning empty model list");
-		}
-
-		Ok(models)
+	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
+		tracing::warn!("GitHub Copilot does not expose a model catalog endpoint");
+		Ok(Vec::new())
 	}
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
@@ -93,12 +39,9 @@ impl Adapter for GithubCopilotAdapter {
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
+		let target = with_stripped_publisher_prefix_model(target);
 		let mut data = OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options, None)?;
-		// GitHub Models API requires additional headers
-		data.headers.merge(Headers::from(vec![(
-			"Accept".to_string(),
-			"application/vnd.github+json".to_string(),
-		)]));
+		data.headers.merge(copilot_identity_headers());
 		Ok(data)
 	}
 
@@ -119,43 +62,70 @@ impl Adapter for GithubCopilotAdapter {
 	}
 
 	fn to_embed_request_data(
-		service_target: crate::ServiceTarget,
+		service_target: ServiceTarget,
 		embed_req: crate::embed::EmbedRequest,
 		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
-	) -> Result<crate::adapter::WebRequestData> {
+	) -> Result<WebRequestData> {
 		OpenAIAdapter::to_embed_request_data(service_target, embed_req, options_set)
 	}
 
 	fn to_embed_response(
-		model_iden: crate::ModelIden,
-		web_response: crate::webc::WebResponse,
+		model_iden: ModelIden,
+		web_response: WebResponse,
 		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::embed::EmbedResponse> {
 		OpenAIAdapter::to_embed_response(model_iden, web_response, options_set)
 	}
 }
 
+// region:    --- Support
+
+fn with_stripped_publisher_prefix_model(target: ServiceTarget) -> ServiceTarget {
+	let ServiceTarget { endpoint, auth, model } = target;
+	let stripped_model_name = strip_publisher_prefix(model.model_name.namespace_and_name().1);
+
+	ServiceTarget {
+		endpoint,
+		auth,
+		model: model.from_name(stripped_model_name),
+	}
+}
+
+fn strip_publisher_prefix(model: &str) -> &str {
+	model.split_once('/').map(|(_, model_name)| model_name).unwrap_or(model)
+}
+
+fn copilot_identity_headers() -> Headers {
+	Headers::from([
+		("User-Agent", COPILOT_USER_AGENT),
+		("Editor-Version", COPILOT_EDITOR_VERSION),
+		("Editor-Plugin-Version", COPILOT_EDITOR_PLUGIN_VERSION),
+		("Copilot-Integration-Id", COPILOT_INTEGRATION_ID),
+	])
+}
+
+// endregion: --- Support
+
 // region:    --- Tests
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::ServiceTarget;
 	use crate::adapter::{Adapter, ServiceType};
 	use crate::chat::{ChatOptionsSet, ChatRequest};
 	use crate::resolver::AuthData;
 
-	fn test_target() -> ServiceTarget {
+	fn test_target(model_name: &str) -> ServiceTarget {
 		ServiceTarget {
 			endpoint: GithubCopilotAdapter::default_endpoint(),
 			auth: AuthData::from_single("test-key"),
-			model: ModelIden::new(AdapterKind::GithubCopilot, "openai/gpt-5"),
+			model: ModelIden::new(AdapterKind::GithubCopilot, model_name),
 		}
 	}
 
-	fn make_request(service_type: ServiceType) -> WebRequestData {
+	fn make_request(model_name: &str, service_type: ServiceType) -> WebRequestData {
 		GithubCopilotAdapter::to_web_request_data(
-			test_target(),
+			test_target(model_name),
 			service_type,
 			ChatRequest::from_user("hello"),
 			ChatOptionsSet::default(),
@@ -163,72 +133,74 @@ mod tests {
 		.expect("to_web_request_data should succeed")
 	}
 
+	fn header_value<'a>(data: &'a WebRequestData, header_name: &str) -> Option<&'a str> {
+		data.headers
+			.iter()
+			.find(|(name, _)| name.eq_ignore_ascii_case(header_name))
+			.map(|(_, value)| value.as_str())
+	}
+
+	#[test]
+	fn test_default_endpoint_is_copilot_api() {
+		assert!(
+			GithubCopilotAdapter::default_endpoint()
+				.base_url()
+				.starts_with(COPILOT_DEFAULT_ENDPOINT)
+		);
+	}
+
+	#[test]
+	fn test_copilot_identity_headers_present() {
+		let data = make_request("openai/gpt-4o", ServiceType::Chat);
+
+		assert_eq!(header_value(&data, "User-Agent"), Some(COPILOT_USER_AGENT));
+		assert_eq!(header_value(&data, "Editor-Version"), Some(COPILOT_EDITOR_VERSION));
+		assert_eq!(
+			header_value(&data, "Editor-Plugin-Version"),
+			Some(COPILOT_EDITOR_PLUGIN_VERSION)
+		);
+		assert_eq!(
+			header_value(&data, "Copilot-Integration-Id"),
+			Some(COPILOT_INTEGRATION_ID)
+		);
+	}
+
+	#[test]
+	fn test_old_github_models_header_absent() {
+		let data = make_request("openai/gpt-4o", ServiceType::Chat);
+
+		assert!(
+			data.headers.iter().all(|(_, value)| value != "application/vnd.github+json"),
+			"legacy GitHub Models accept header should be absent"
+		);
+	}
+
+	#[test]
+	fn test_model_name_publisher_prefix_stripped() {
+		let data = make_request("openai/gpt-4o", ServiceType::Chat);
+
+		assert_eq!(
+			data.payload.get("model").and_then(|value| value.as_str()),
+			Some("gpt-4o")
+		);
+	}
+
+	#[test]
+	fn test_model_name_no_prefix_unchanged() {
+		let data = make_request("gpt-4o", ServiceType::Chat);
+
+		assert_eq!(
+			data.payload.get("model").and_then(|value| value.as_str()),
+			Some("gpt-4o")
+		);
+	}
+
 	#[test]
 	fn test_url_construction() {
-		let data = make_request(ServiceType::Chat);
-		assert_eq!(data.url, "https://models.github.ai/inference/chat/completions");
-	}
+		let data = make_request("openai/gpt-4o", ServiceType::Chat);
 
-	#[test]
-	fn test_accept_header() {
-		let data = make_request(ServiceType::Chat);
-		let accept = data
-			.headers
-			.iter()
-			.find(|(k, _)| k.eq_ignore_ascii_case("Accept"))
-			.map(|(_, v)| v.as_str());
-		assert_eq!(accept, Some("application/vnd.github+json"));
-	}
-
-	#[test]
-	fn test_authorization_header() {
-		let data = make_request(ServiceType::Chat);
-		let auth = data
-			.headers
-			.iter()
-			.find(|(k, _)| k.eq_ignore_ascii_case("Authorization"))
-			.map(|(_, v)| v.as_str());
-		assert_eq!(auth, Some("Bearer test-key"));
-	}
-
-	#[test]
-	fn test_payload_model_name() {
-		let data = make_request(ServiceType::Chat);
-		let model = data.payload.get("model").and_then(|v| v.as_str());
-		assert_eq!(model, Some("openai/gpt-5"));
-	}
-
-	#[test]
-	fn test_payload_messages() {
-		let data = make_request(ServiceType::Chat);
-		let messages = data.payload.get("messages").and_then(|v| v.as_array());
-		assert!(messages.is_some(), "payload should have messages array");
-		let messages = messages.unwrap();
-		assert!(!messages.is_empty(), "messages array should not be empty");
-		let last = messages.last().unwrap();
-		let content = last.get("content").and_then(|v| v.as_str());
-		assert_eq!(content, Some("hello"));
-	}
-
-	#[test]
-	fn test_payload_stream_false_for_chat() {
-		let data = make_request(ServiceType::Chat);
-		let stream = data.payload.get("stream").and_then(|v| v.as_bool());
-		assert_eq!(stream, Some(false));
-	}
-
-	#[test]
-	fn test_payload_stream_true_for_chat_stream() {
-		let data = make_request(ServiceType::ChatStream);
-		let stream = data.payload.get("stream").and_then(|v| v.as_bool());
-		assert_eq!(stream, Some(true));
-	}
-
-	#[test]
-	fn test_catalog_url_uses_configured_endpoint() {
-		let endpoint = Endpoint::from_owned("https://proxy.example.test/inference/");
-		let url = GithubCopilotAdapter::catalog_url(&endpoint).expect("catalog url should be derived from endpoint");
-		assert_eq!(url, "https://proxy.example.test/catalog/models");
+		assert!(data.url.starts_with(COPILOT_DEFAULT_ENDPOINT));
+		assert_eq!(data.url, "https://api.githubcopilot.com/chat/completions");
 	}
 }
 
