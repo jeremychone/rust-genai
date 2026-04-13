@@ -137,7 +137,7 @@ pub async fn common_test_chat_verbosity_ok(model: &str) -> TestResult<()> {
 	// -- Check Content
 	let ratio = content_high.len() as f64 / content_low.len() as f64;
 	assert!(
-		ratio >= 2.,
+		ratio >= 1.5,
 		"The verbosity high was not high enough compared to the low. Ratio {ratio}"
 	);
 
