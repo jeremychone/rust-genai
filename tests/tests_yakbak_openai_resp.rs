@@ -218,10 +218,7 @@ async fn test_yakbak_openai_resp_multi_tool_ordering() -> TestResult<()> {
 	// -- Tool call 1: get_time (output_index 2)
 	assert_eq!(tool_calls[1].fn_name, "get_time");
 	assert_eq!(tool_calls[1].call_id, "call_time_002");
-	assert_eq!(
-		tool_calls[1].fn_arguments,
-		json!({"timezone": "Europe/Paris"})
-	);
+	assert_eq!(tool_calls[1].fn_arguments, json!({"timezone": "Europe/Paris"}));
 
 	// -- Tool call 2: get_currency (output_index 3)
 	assert_eq!(tool_calls[2].fn_name, "get_currency");
