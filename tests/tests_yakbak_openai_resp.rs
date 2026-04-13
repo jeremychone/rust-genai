@@ -146,3 +146,96 @@ async fn test_yakbak_openai_resp_utf8_chunking_bug() -> TestResult<()> {
 
 	Ok(())
 }
+
+/// Regression test: tool calls from a streamed response must be returned in the
+/// same order as their `output_index` from the SSE stream.
+///
+/// Before the fix, `HashMap::drain()` yielded entries in arbitrary hash-bucket
+/// order, so the final `Vec<ToolCall>` could be shuffled across runs even though
+/// the input stream was identical.  Replacing `HashMap` with `BTreeMap` (keyed by
+/// `output_index`) guarantees sorted iteration order.
+///
+/// This cassette contains 3 parallel tool calls at output indices 1, 2, 3:
+///   1 → get_weather(city=Paris, country=France, unit=C)
+///   2 → get_time(timezone=Europe/Paris)
+///   3 → get_currency(from=USD, to=EUR, amount=100)
+#[tokio::test]
+async fn test_yakbak_openai_resp_multi_tool_ordering() -> TestResult<()> {
+	let (client, _server) = replay_client("openai_resp", "multi_tool_ordering").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("You are a helpful assistant. Use tools when needed."),
+		ChatMessage::user("What's the weather, time, and USD→EUR rate for Paris?"),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city":    { "type": "string" },
+			"country": { "type": "string" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"]
+	})))
+	.append_tool(Tool::new("get_time").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"timezone": { "type": "string" }
+		},
+		"required": ["timezone"]
+	})))
+	.append_tool(Tool::new("get_currency").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"from":   { "type": "string" },
+			"to":     { "type": "string" },
+			"amount": { "type": "number" }
+		},
+		"required": ["from", "to", "amount"]
+	})));
+
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream("openai_resp::gpt-5.4-mini", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	// -- Exactly 3 tool calls
+	let tool_calls = extract.stream_end.captured_tool_calls().ok_or("Should have tool calls")?;
+	assert_eq!(tool_calls.len(), 3, "Expected exactly 3 tool calls");
+
+	// -- Tool call 0: get_weather (output_index 1)
+	assert_eq!(tool_calls[0].fn_name, "get_weather");
+	assert_eq!(tool_calls[0].call_id, "call_weather_001");
+	assert_eq!(
+		tool_calls[0].fn_arguments,
+		json!({"city": "Paris", "country": "France", "unit": "C"})
+	);
+
+	// -- Tool call 1: get_time (output_index 2)
+	assert_eq!(tool_calls[1].fn_name, "get_time");
+	assert_eq!(tool_calls[1].call_id, "call_time_002");
+	assert_eq!(
+		tool_calls[1].fn_arguments,
+		json!({"timezone": "Europe/Paris"})
+	);
+
+	// -- Tool call 2: get_currency (output_index 3)
+	assert_eq!(tool_calls[2].fn_name, "get_currency");
+	assert_eq!(tool_calls[2].call_id, "call_currency_003");
+	assert_eq!(
+		tool_calls[2].fn_arguments,
+		json!({"from": "USD", "to": "EUR", "amount": 100})
+	);
+
+	// -- Usage
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(usage.prompt_tokens, Some(150));
+	assert_eq!(usage.completion_tokens, Some(80));
+	assert_eq!(usage.total_tokens, Some(230));
+
+	Ok(())
+}
