@@ -6,7 +6,7 @@ use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -20,7 +20,7 @@ pub struct OpenAIRespStreamer {
 	done: bool,
 	captured_data: StreamerCapturedData,
 
-	in_progress_tool_calls: HashMap<usize, ToolCall>,
+	in_progress_tool_calls: BTreeMap<usize, ToolCall>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -88,7 +88,7 @@ impl OpenAIRespStreamer {
 			done: false,
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
-			in_progress_tool_calls: HashMap::new(),
+			in_progress_tool_calls: BTreeMap::new(),
 		}
 	}
 }
@@ -187,7 +187,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							}
 
 							let mut tool_calls = Vec::new();
-							for (_, mut tc) in self.in_progress_tool_calls.drain() {
+							for (_, mut tc) in std::mem::take(&mut self.in_progress_tool_calls) {
 								// Parse arguments if they are strings
 								if let Some(args_str) = tc.fn_arguments.as_str()
 									&& let Ok(args_val) = serde_json::from_str(args_str)
