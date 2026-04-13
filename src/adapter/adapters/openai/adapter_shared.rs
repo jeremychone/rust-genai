@@ -401,18 +401,16 @@ impl OpenAIAdapter {
 
 					// When strict mode is enabled, OpenAI requires `additionalProperties: false`
 					// on every object node in the schema.
-					if strict {
-						if let Some(ref mut schema_val) = parameters {
-							schema_val.x_walk(|parent_map, prop_name| {
-								if prop_name == "type" {
-									let typ = parent_map.get("type").and_then(|v| v.as_str()).unwrap_or("");
-									if typ == "object" {
-										parent_map.insert("additionalProperties".to_string(), false.into());
-									}
+					if strict && let Some(ref mut schema_val) = parameters {
+						schema_val.x_walk(|parent_map, prop_name| {
+							if prop_name == "type" {
+								let typ = parent_map.get("type").and_then(|v| v.as_str()).unwrap_or("");
+								if typ == "object" {
+									parent_map.insert("additionalProperties".to_string(), false.into());
 								}
-								true
-							});
-						}
+							}
+							true
+						});
 					}
 
 					json!({

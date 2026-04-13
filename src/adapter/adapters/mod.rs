@@ -12,6 +12,7 @@ pub(super) mod groq;
 pub(super) mod mimo;
 pub(super) mod nebius;
 pub(super) mod ollama;
+pub(super) mod ollama_cloud;
 pub(super) mod openai;
 pub(super) mod openai_resp;
 pub(super) mod together;

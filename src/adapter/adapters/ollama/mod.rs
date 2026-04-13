@@ -6,9 +6,12 @@
 // region:    --- Modules
 
 mod adapter_impl;
+mod adapter_shared;
 mod streamer;
 
 pub use adapter_impl::*;
+#[allow(unused_imports)]
+pub use adapter_shared::*;
 pub use streamer::*;
 
 // endregion: --- Modules

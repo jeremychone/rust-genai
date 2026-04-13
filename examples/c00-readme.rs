@@ -13,6 +13,7 @@ const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
 const MODEL_GEMINI: &str = "gemini-2.0-flash";
 const MODEL_GROQ: &str = "groq::openai/gpt-oss-20b";
 const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:2b`
+const MODEL_OLLAMA_CLOUD: &str = "ollama_cloud::gemma3:4b";
 const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
@@ -29,6 +30,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
 	(MODEL_OLLAMA, ""),
+	(MODEL_OLLAMA_CLOUD, "OLLAMA_API_KEY"),
 	(MODEL_FIREWORKS, "FIREWORKS_API_KEY"),
 	(MODEL_TOGETHER, "TOGETHER_API_KEY"),
 	(MODEL_GROQ, "GROQ_API_KEY"),
@@ -47,6 +49,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - starts_with "gemini"   -> Gemini
 //  - model in Groq models   -> Groq
 //  - starts_with "glm"      -> ZAI
+//  - starts_with "ollama_cloud::" -> OllamaCloud
 //  - For anything else      -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`

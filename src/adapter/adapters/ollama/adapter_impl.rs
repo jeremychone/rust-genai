@@ -1,16 +1,16 @@
 //! API DOC: <https://github.com/ollama/ollama/blob/main/docs/api.md>
 
+use super::adapter_shared::OllamaRequestParts;
 use crate::Headers;
+use crate::Result;
 use crate::adapter::ollama::OllamaStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse, ContentPart,
-	MessageContent, StopReason, Tool, ToolCall, ToolName, Usage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse, MessageContent, StopReason, ToolCall,
 };
 use crate::embed::{EmbedResponse, Embedding};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebResponse;
-use crate::{Error, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Value, json};
@@ -36,31 +36,7 @@ impl Adapter for OllamaAdapter {
 	}
 
 	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
-		let base_url = endpoint.base_url();
-		let url = format!("{base_url}api/tags");
-
-		let web_c = crate::webc::WebClient::default();
-		let mut res = web_c
-			.do_get(&url, &Headers::default())
-			.await
-			.map_err(|webc_error| Error::WebAdapterCall {
-				adapter_kind,
-				webc_error,
-			})?;
-
-		let mut models: Vec<String> = Vec::new();
-
-		if let Value::Array(models_value) = res.body.x_take("models")? {
-			for mut model in models_value {
-				let model_name: String = model.x_take("name")?;
-				models.push(model_name);
-			}
-		} else {
-			// TODO: Need to add tracing
-			// error!("OllamaAdapter::list_models did not have any models {res:?}");
-		}
-
-		Ok(models)
+		Self::list_model_names(adapter_kind, endpoint, Headers::default()).await
 	}
 
 	fn get_service_url(_model_iden: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
@@ -281,133 +257,3 @@ impl Adapter for OllamaAdapter {
 }
 
 // endregion: --- Adapter Impl
-
-// region:    --- Support
-
-impl OllamaAdapter {
-	fn into_usage(body: &mut Value) -> Usage {
-		let prompt_tokens = body.x_take::<i32>("prompt_eval_count").ok();
-		let completion_tokens = body.x_take::<i32>("eval_count").ok();
-		let total_tokens = match (prompt_tokens, completion_tokens) {
-			(Some(p), Some(c)) => Some(p + c),
-			_ => None,
-		};
-
-		Usage {
-			prompt_tokens,
-			completion_tokens,
-			total_tokens,
-			..Default::default()
-		}
-	}
-
-	/// Takes the GenAI ChatMessages and constructs the JSON Messages for Ollama.
-	fn into_ollama_request_parts(chat_req: ChatRequest) -> Result<OllamaRequestParts> {
-		let mut messages = Vec::new();
-
-		// -- System
-		if let Some(system) = chat_req.system {
-			messages.push(json!({
-				"role": "system",
-				"content": system,
-			}));
-		}
-
-		// -- Messages
-		for msg in chat_req.messages {
-			let mut ollama_msg = json!({
-				"role": msg.role.to_string().to_lowercase(),
-			});
-
-			let mut content = String::new();
-			let mut images = Vec::new();
-			let mut tool_calls = Vec::new();
-
-			for part in msg.content {
-				match part {
-					ContentPart::Text(txt) => content.push_str(&txt),
-					ContentPart::Binary(Binary {
-						content_type, source, ..
-					}) => {
-						if content_type.starts_with("image/") {
-							// Note: Ollama native API expects images in base64 format in a field named "images" as an array.
-							if let BinarySource::Base64(data) = source {
-								images.push(data);
-							}
-						}
-					}
-					ContentPart::ToolCall(tool_call) => {
-						tool_calls.push(json!({
-							"function": {
-								"name": tool_call.fn_name,
-								"arguments": tool_call.fn_arguments,
-							}
-						}));
-					}
-					ContentPart::ToolResponse(tr) => {
-						// Note: Ollama native API expects role "tool" for tool response
-						ollama_msg.x_insert("content", tr.content)?;
-					}
-					_ => {}
-				}
-			}
-
-			if !content.is_empty() {
-				ollama_msg.x_insert("content", content)?;
-			}
-			if !images.is_empty() {
-				ollama_msg.x_insert("images", images)?;
-			}
-			if !tool_calls.is_empty() {
-				ollama_msg.x_insert("tool_calls", tool_calls)?;
-			}
-
-			messages.push(ollama_msg);
-		}
-
-		// -- Tools
-		let tools = chat_req
-			.tools
-			.map(|tools| tools.into_iter().map(Self::tool_to_ollama_tool).collect::<Result<Vec<Value>>>())
-			.transpose()?;
-
-		Ok(OllamaRequestParts { messages, tools })
-	}
-
-	fn tool_to_ollama_tool(tool: Tool) -> Result<Value> {
-		let Tool {
-			name,
-			description,
-			schema,
-			..
-		} = tool;
-
-		let name = match name {
-			ToolName::WebSearch => "web_search".to_string(),
-			ToolName::Custom(name) => name,
-		};
-
-		let mut tool_value = json!({
-			"type": "function",
-			"function": {
-				"name": name,
-			}
-		});
-
-		if let Some(description) = description {
-			tool_value.x_insert("/function/description", description)?;
-		}
-		if let Some(parameters) = schema {
-			tool_value.x_insert("/function/parameters", parameters)?;
-		}
-
-		Ok(tool_value)
-	}
-}
-
-struct OllamaRequestParts {
-	messages: Vec<Value>,
-	tools: Option<Vec<Value>>,
-}
-
-// endregion: --- Support

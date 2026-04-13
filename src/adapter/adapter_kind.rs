@@ -1,5 +1,6 @@
 use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
 use crate::adapter::adapters::ollama::OllamaAdapter;
+use crate::adapter::adapters::ollama_cloud::OllamaCloudAdapter;
 use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
@@ -58,6 +59,8 @@ pub enum AdapterKind {
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
 	Ollama,
+	/// For Ollama Cloud (ollama.com) - uses native Ollama protocol with Bearer auth
+	OllamaCloud,
 	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
 	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
 	Vertex,
@@ -87,6 +90,7 @@ impl AdapterKind {
 			AdapterKind::Aliyun => "Aliyun",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
+			AdapterKind::OllamaCloud => "OllamaCloud",
 			AdapterKind::Vertex => "Vertex",
 			AdapterKind::GithubCopilot => "GithubCopilot",
 		}
@@ -111,6 +115,7 @@ impl AdapterKind {
 			AdapterKind::Aliyun => "aliyun",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
+			AdapterKind::OllamaCloud => "ollama_cloud",
 			AdapterKind::Vertex => "vertex",
 			AdapterKind::GithubCopilot => "github_copilot",
 		}
@@ -134,6 +139,7 @@ impl AdapterKind {
 			"aliyun" => Some(AdapterKind::Aliyun),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
+			"ollama_cloud" => Some(AdapterKind::OllamaCloud),
 			"vertex" => Some(AdapterKind::Vertex),
 			"github_copilot" => Some(AdapterKind::GithubCopilot),
 			_ => None,
@@ -162,6 +168,7 @@ impl AdapterKind {
 			AdapterKind::Aliyun => AliyunAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Cohere => CohereAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Ollama => OllamaAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::OllamaCloud => OllamaCloudAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Vertex => VertexAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::GithubCopilot => GithubCopilotAdapter::DEFAULT_API_KEY_ENV_NAME,
 		}
