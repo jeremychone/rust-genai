@@ -21,8 +21,16 @@ impl Client {
 	///
 	/// - Adapters should filter non-chat models until more skills are supported.
 	///   Future: `model_names(adapter_kind, Option<&[Skill]>)`.
-	pub async fn all_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		let (auth, endpoint) = self.config().resolve_adapter_config(adapter_kind).await?;
+	pub async fn all_model_names(
+		&self,
+		adapter_kind: AdapterKind,
+		service_target: Option<ServiceTarget>,
+	) -> Result<Vec<String>> {
+		let (auth, endpoint) = if let Some(ServiceTarget { endpoint, auth, .. }) = service_target {
+			(auth, endpoint)
+		} else {
+			self.config().resolve_adapter_config(adapter_kind).await?
+		};
 		let models = AdapterDispatcher::all_model_names(adapter_kind, endpoint, auth).await?;
 		Ok(models)
 	}
