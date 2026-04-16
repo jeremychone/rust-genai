@@ -12,6 +12,7 @@ use crate::{Headers, ModelIden};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Map, Value, json};
+use std::sync::OnceLock;
 use tracing::info;
 use tracing::warn;
 use value_ext::JsonValueExt;
@@ -33,6 +34,29 @@ fn has_model(model_prefixes: &[&str], model_name: &str) -> bool {
 	model_prefixes.iter().any(|prefix| model_name.contains(prefix))
 }
 
+/// Returns true when the given model name looks like a Claude Opus model with
+/// version >= 4.7 (e.g. `claude-opus-4-7`, `claude-opus-5-0`, ...).
+///
+/// The regex is unanchored and tolerates arbitrary prefixes/suffixes around the
+/// core `claude-opus-<major>-<minor>` portion. Any parse or regex failure is
+/// treated as a conservative `false`.
+fn is_opus_4_7_or_higher(model_name: &str) -> bool {
+	static RE: OnceLock<Option<regex::Regex>> = OnceLock::new();
+	let re = RE.get_or_init(|| regex::Regex::new(r"claude-opus-(\d+)-(\d+)").ok());
+	let Some(re) = re.as_ref() else {
+		return false;
+	};
+	let Some(caps) = re.captures(model_name) else {
+		return false;
+	};
+	let major = caps.get(1).and_then(|m| m.as_str().parse::<u32>().ok());
+	let minor = caps.get(2).and_then(|m| m.as_str().parse::<u32>().ok());
+	match (major, minor) {
+		(Some(major), Some(minor)) => (major, minor) >= (4, 7),
+		_ => false,
+	}
+}
+
 fn insert_anthropic_reasoning(
 	payload: &mut Value,
 	output_config: &mut Map<String, Value>,
@@ -43,6 +67,7 @@ fn insert_anthropic_reasoning(
 	let support_effort = has_model(SUPPORT_EFFORT_MODELS, model_name);
 	let support_reasoning_max = has_model(SUPPORT_REASONING_MAX_MODELS, model_name);
 	let support_adaptive = has_model(SUPPORT_ADAPTTIVE_THINK_MODELS, model_name);
+	let support_xhigh = is_opus_4_7_or_higher(model_name);
 
 	// if support effort, we default with effor
 	if support_effort {
@@ -51,7 +76,9 @@ fn insert_anthropic_reasoning(
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
+			ReasoningEffort::XHigh if support_xhigh => "xhigh",
 			ReasoningEffort::Max | ReasoningEffort::XHigh if support_reasoning_max => "max",
+			ReasoningEffort::Max if support_xhigh => "max",
 			ReasoningEffort::XHigh => "high",
 			ReasoningEffort::Max => "high",
 			// we capture for later
