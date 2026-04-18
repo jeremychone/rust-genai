@@ -20,10 +20,12 @@ const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
 const MODEL_COHERE: &str = "command-r7b-12-2024";
 // or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
-const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
+const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-5";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
+// GitHub Copilot uses OAuth Device Flow (no API key).
+// Set GITHUB_COPILOT_ENABLED=1 to enable it in this example.
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- De/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
@@ -39,7 +41,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
 	(MODEL_COHERE, "COHERE_API_KEY"),
-	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
+	(MODEL_GITHUB_COPILOT, "GITHUB_COPILOT_ENABLED"),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule

@@ -1,14 +1,15 @@
 mod support;
 
 use crate::support::{Check, TestResult, common_tests};
-use genai::resolver::AuthData;
+use genai::Client;
+use genai::adapter::AdapterKind;
 use serial_test::serial;
 
-const MODEL: &str = "github_copilot::openai/gpt-4.1-mini";
-const MODEL_NS: &str = "github_copilot::openai/gpt-4.1-mini";
+const MODEL: &str = "github_copilot::openai/gpt-5";
+const MODEL_NS: &str = "github_copilot::meta/meta-llama-3.1-8b-instruct";
 
 // NOTE: GitHub Copilot supports multiple publishers (openai/, anthropic/, google/, xai/, meta/).
-// Tests use openai/gpt-4.1-mini as the default. Other publishers work with the same adapter.
+// Tests use openai/gpt-5 as the default. Other publishers work with the same adapter.
 
 // region:    --- Chat
 
@@ -70,12 +71,9 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
-// GitHub Models API does not return usage tokens (prompt_tokens) in streaming responses
-// #[tokio::test]
-// #[serial(github_copilot)]
-// async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
-// 	common_tests::common_test_chat_stream_capture_all_ok(MODEL, None).await
-// }
+// GitHub Copilot API does not emit streaming token counts for these models,
+// so capture-all cannot satisfy the shared nonzero-usage assertion.
+// See yakbak coverage in `tests/tests_yakbak_github_copilot.rs`.
 
 #[tokio::test]
 #[serial(github_copilot)]
@@ -87,23 +85,27 @@ async fn test_chat_stream_tool_capture_ok() -> TestResult<()> {
 
 // region:    --- Binary Tests
 
-// GitHub Models API binary support not yet verified for this model
+// GitHub Copilot API: base64 images supported; URL images fail (proxy issue); PDF not supported
 
+// URL-based images fail — GitHub proxy returns "Failed to download image" (HTTP 400)
 // #[tokio::test]
 // async fn test_chat_binary_image_url_ok() -> TestResult<()> {
 // 	common_tests::common_test_chat_image_url_ok(MODEL).await
 // }
 
-// #[tokio::test]
-// async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
-// 	common_tests::common_test_chat_image_b64_ok(MODEL).await
-// }
+#[tokio::test]
+#[serial(github_copilot)]
+async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
+	common_tests::common_test_chat_image_b64_ok(MODEL).await
+}
 
+// PDF binary not supported by GitHub Copilot API
 // #[tokio::test]
 // async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
 // 	common_tests::common_test_chat_pdf_b64_ok(MODEL).await
 // }
 
+// Multi-binary includes PDF — PDF not supported by GitHub Copilot API
 // #[tokio::test]
 // async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
 // 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
@@ -127,23 +129,18 @@ async fn test_tool_full_flow_ok() -> TestResult<()> {
 
 // endregion: --- Tool Tests
 
-// region:    --- Resolver Tests
+// region:    --- List
 
 #[tokio::test]
 #[serial(github_copilot)]
-async fn test_resolver_auth_ok() -> TestResult<()> {
-	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("GITHUB_TOKEN")).await
+async fn test_list_models() -> TestResult<()> {
+	let client = Client::default();
+	let models = client.all_model_names(AdapterKind::GithubCopilot).await?;
+	assert!(
+		models.is_empty(),
+		"GitHub Copilot does not expose a model catalog; expected empty list"
+	);
+	Ok(())
 }
-
-// endregion: --- Resolver Tests
-
-// region:    --- List
-
-// GitHub Models API does not support the /models listing endpoint (returns 404)
-// #[tokio::test]
-// #[serial(github_copilot)]
-// async fn test_list_models() -> TestResult<()> {
-// 	common_tests::common_test_list_models(AdapterKind::GithubCopilot, "gpt-4.1-mini").await
-// }
 
 // endregion: --- List

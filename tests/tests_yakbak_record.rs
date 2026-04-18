@@ -5,8 +5,8 @@
 //! the credentials for the provider(s) you want to record.
 //!
 //! ```sh
-//! # Record all providers (need all keys):
-//! OPENAI_API_KEY=... GEMINI_API_KEY=... GITHUB_TOKEN=... OLLAMA_API_KEY=... cargo test --test tests_yakbak_record -- --ignored
+//! # Record all providers (need all provider auth configured):
+//! OPENAI_API_KEY=... GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored
 //!
 //! # Record only Gemini scenarios:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini
@@ -15,7 +15,8 @@
 //! OPENAI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_openai
 //!
 //! # Record only GitHub Copilot scenarios:
-//! GITHUB_TOKEN=... cargo test --test tests_yakbak_record -- --ignored record_github_copilot
+//! # First complete the GitHub Copilot OAuth device flow used by the adapter.
+//! cargo test --test tests_yakbak_record -- --ignored record_github_copilot
 //!
 //! # Record only Ollama Cloud scenarios:
 //! OLLAMA_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_ollama_cloud
@@ -127,10 +128,10 @@ async fn record_gemini_thinking_stream() -> TestResult<()> {
 }
 
 fn github_copilot_backend() -> String {
-	std::env::var("GITHUB_COPILOT_BASE_URL").unwrap_or_else(|_| "https://models.github.ai/inference/".to_string())
+	std::env::var("GITHUB_COPILOT_BASE_URL").unwrap_or_else(|_| "https://api.githubcopilot.com".to_string())
 }
 
-const GITHUB_COPILOT_MODEL: &str = "github_copilot::openai/gpt-4.1-mini";
+const GITHUB_COPILOT_MODEL: &str = "github_copilot::openai/gpt-5";
 
 #[tokio::test]
 #[ignore]

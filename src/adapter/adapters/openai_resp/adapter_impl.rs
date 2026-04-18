@@ -60,6 +60,94 @@ impl Adapter for OpenAIRespAdapter {
 		chat_req: ChatRequest,
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
+		Self::util_to_web_request_data(target, service_type, chat_req, chat_options)
+	}
+
+	fn to_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatResponse> {
+		let WebResponse { body, .. } = web_response;
+
+		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
+
+		let resp: RespResponse = serde_json::from_value(body)?;
+
+		// -- Capture the provider_model_iden
+		let provider_model_iden = model_iden.from_name(&resp.model);
+
+		// -- Capture the usage
+		let usage = resp.usage.map(Usage::from).unwrap_or_default();
+
+		// -- Capture the content
+		let mut content: MessageContent = MessageContent::default();
+		let reasoning_content: Option<String> = None;
+
+		// -- Extract the content message
+		for output_item in resp.output {
+			let parts = ContentPart::from_resp_output_item(output_item)?;
+			content.extend(parts);
+		}
+
+		Ok(ChatResponse {
+			content,
+			reasoning_content,
+			model_iden,
+			provider_model_iden,
+			stop_reason: Some(StopReason::from(resp.status)),
+			usage,
+			captured_raw_body,
+			response_id: Some(resp.id),
+		})
+	}
+
+	fn to_chat_stream(
+		model_iden: ModelIden,
+		reqwest_builder: RequestBuilder,
+		options_sets: ChatOptionsSet<'_, '_>,
+	) -> Result<ChatStreamResponse> {
+		let event_source = EventSourceStream::new(reqwest_builder);
+		let openai_stream = OpenAIRespStreamer::new(event_source, model_iden.clone(), options_sets);
+		let chat_stream = ChatStream::from_inter_stream(openai_stream);
+
+		Ok(ChatStreamResponse {
+			model_iden,
+			stream: chat_stream,
+		})
+	}
+
+	fn to_embed_request_data(
+		_service_target: ServiceTarget,
+		_embed_req: crate::embed::EmbedRequest,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		Err(crate::Error::AdapterNotSupported {
+			adapter_kind: crate::adapter::AdapterKind::OpenAIResp,
+			feature: "embeddings".to_string(),
+		})
+	}
+
+	fn to_embed_response(
+		_model_iden: ModelIden,
+		_web_response: WebResponse,
+		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
+	) -> Result<crate::embed::EmbedResponse> {
+		Err(crate::Error::AdapterNotSupported {
+			adapter_kind: crate::adapter::AdapterKind::OpenAIResp,
+			feature: "embeddings".to_string(),
+		})
+	}
+}
+
+/// Support functions for other adapters that share OpenAI APIs
+impl OpenAIRespAdapter {
+	pub(in crate::adapter::adapters) fn util_to_web_request_data(
+		target: ServiceTarget,
+		service_type: ServiceType,
+		chat_req: ChatRequest,
+		chat_options: ChatOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
 		let adapter_kind = model.adapter_kind;
@@ -237,85 +325,6 @@ impl Adapter for OpenAIRespAdapter {
 		Ok(WebRequestData { url, headers, payload })
 	}
 
-	fn to_chat_response(
-		model_iden: ModelIden,
-		web_response: WebResponse,
-		options_set: ChatOptionsSet<'_, '_>,
-	) -> Result<ChatResponse> {
-		let WebResponse { body, .. } = web_response;
-
-		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
-
-		let resp: RespResponse = serde_json::from_value(body)?;
-
-		// -- Capture the provider_model_iden
-		let provider_model_iden = model_iden.from_name(&resp.model);
-
-		// -- Capture the usage
-		let usage = resp.usage.map(Usage::from).unwrap_or_default();
-
-		// -- Capture the content
-		let mut content: MessageContent = MessageContent::default();
-		let reasoning_content: Option<String> = None;
-
-		// -- Extract the content message
-		for output_item in resp.output {
-			let parts = ContentPart::from_resp_output_item(output_item)?;
-			content.extend(parts);
-		}
-
-		Ok(ChatResponse {
-			content,
-			reasoning_content,
-			model_iden,
-			provider_model_iden,
-			stop_reason: Some(StopReason::from(resp.status)),
-			usage,
-			captured_raw_body,
-			response_id: Some(resp.id),
-		})
-	}
-
-	fn to_chat_stream(
-		model_iden: ModelIden,
-		reqwest_builder: RequestBuilder,
-		options_sets: ChatOptionsSet<'_, '_>,
-	) -> Result<ChatStreamResponse> {
-		let event_source = EventSourceStream::new(reqwest_builder);
-		let openai_stream = OpenAIRespStreamer::new(event_source, model_iden.clone(), options_sets);
-		let chat_stream = ChatStream::from_inter_stream(openai_stream);
-
-		Ok(ChatStreamResponse {
-			model_iden,
-			stream: chat_stream,
-		})
-	}
-
-	fn to_embed_request_data(
-		_service_target: ServiceTarget,
-		_embed_req: crate::embed::EmbedRequest,
-		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
-	) -> Result<WebRequestData> {
-		Err(crate::Error::AdapterNotSupported {
-			adapter_kind: crate::adapter::AdapterKind::OpenAIResp,
-			feature: "embeddings".to_string(),
-		})
-	}
-
-	fn to_embed_response(
-		_model_iden: ModelIden,
-		_web_response: WebResponse,
-		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
-	) -> Result<crate::embed::EmbedResponse> {
-		Err(crate::Error::AdapterNotSupported {
-			adapter_kind: crate::adapter::AdapterKind::OpenAIResp,
-			feature: "embeddings".to_string(),
-		})
-	}
-}
-
-/// Support functions for other adapters that share OpenAI APIs
-impl OpenAIRespAdapter {
 	pub(in crate::adapter::adapters) fn util_get_service_url(
 		_model: &ModelIden,
 		service_type: ServiceType,

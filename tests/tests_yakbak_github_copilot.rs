@@ -2,12 +2,12 @@
 //!
 //! These tests use pre-recorded cassettes from `tests/data/yakbak/github_copilot/`
 //! and assert that content and tool calls flow through correctly. GitHub Copilot
-//! supports multiple publishers, but these cassettes stick to `openai/gpt-4.1-mini`
+//! supports multiple publishers, but these cassettes stick to `openai/gpt-5`
 //! for deterministic replay coverage.
 //!
 //! GitHub Copilot uses the OpenAI Chat Completions protocol via the GitHub
-//! Models inference API, so cassettes are in standard `data: {...}` SSE format.
-//! The GitHub Models API does NOT return actual usage tokens in streaming
+//! Copilot API, so cassettes are in standard `data: {...}` SSE format.
+//! The GitHub Copilot API does NOT return actual usage tokens in streaming
 //! responses, but may emit a `prompt_filter_results` message with empty choices
 //! that causes the streamer to capture a default (all-None) Usage struct. Other
 //! publishers are supported by the adapter too, but are not recorded here.
@@ -30,7 +30,7 @@ async fn test_yakbak_github_copilot_simple_stream() -> TestResult<()> {
 	let options = ChatOptions::default().with_capture_content(true).with_capture_usage(true);
 
 	let stream_res = client
-		.exec_chat_stream("github_copilot::openai/gpt-4.1-mini", chat_req, Some(&options))
+		.exec_chat_stream("github_copilot::openai/gpt-5", chat_req, Some(&options))
 		.await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 
@@ -38,11 +38,14 @@ async fn test_yakbak_github_copilot_simple_stream() -> TestResult<()> {
 	assert_eq!(
 		extract.content.as_deref(),
 		Some(
-			"The sky is blue because molecules in the Earth's atmosphere scatter shorter blue wavelengths of sunlight more than longer red wavelengths."
+			"The sky appears blue because tiny molecules in the atmosphere scatter shorter (blue) wavelengths of sunlight more efficiently than longer (red) wavelengths, a process called Rayleigh scattering, sending more blue light to our eyes from all directions."
 		),
 		"Text should match recorded response exactly"
 	);
 
+	// GitHub Copilot's recorded response has no real token counts.
+	// The shared OpenAI streamer currently preserves an all-None Usage struct
+	// when the provider sends an empty usage object in an otherwise valid stream.
 	let usage = extract.stream_end.captured_usage.as_ref();
 	if let Some(usage) = usage {
 		assert!(usage.prompt_tokens.is_none());
@@ -77,7 +80,7 @@ async fn test_yakbak_github_copilot_tool_stream() -> TestResult<()> {
 		.with_capture_usage(true);
 
 	let stream_res = client
-		.exec_chat_stream("github_copilot::openai/gpt-4.1-mini", chat_req, Some(&options))
+		.exec_chat_stream("github_copilot::openai/gpt-5", chat_req, Some(&options))
 		.await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 

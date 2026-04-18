@@ -15,6 +15,7 @@ mod adapters;
 mod dispatcher;
 
 // -- Flatten (private, crate, public)
+pub use adapters::github_copilot::*;
 use adapters::*;
 
 pub(crate) use adapter_types::*;

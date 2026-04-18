@@ -31,7 +31,7 @@ genai (crate root / lib.rs)
 - **ServiceTarget**: Fully resolved call target: `ModelIden` + `Endpoint` + `AuthData`.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
 - **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Cohere`, `Ollama`, `OllamaCloud`, `GithubCopilot`.
-  - `GithubCopilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
+  - `GithubCopilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-5`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `OllamaCloud` is the hosted Ollama Cloud service (`ollama.com`). Uses the same native Ollama protocol as the local `Ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via `ollama_cloud::model_name` namespace (e.g., `ollama_cloud::gemma3:4b`).
 
 ## Client & Configuration

@@ -1,6 +1,6 @@
 # genai, Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **GitHub Copilot** (GitHub Models API).
+Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **GitHub Copilot** (OAuth Device Flow).
 
 Also supports a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
@@ -44,7 +44,7 @@ See [CHANGELOG](CHANGELOG.md)
 
 ## Key Features
 
-- Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- Native Multi-AI Provider/Model: OpenAI, Anthropic, Gemini, Ollama, Groq, xAI, DeepSeek, GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
@@ -78,7 +78,7 @@ const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_COHERE: &str = "command-r7b-12-2024";
 // or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
-const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
+const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-5";
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
@@ -96,8 +96,10 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_OLLAMA_CLOUD, "OLLAMA_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
 	(MODEL_COHERE, "COHERE_API_KEY"),
-	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
+	(MODEL_GITHUB_COPILOT, ""),
 ];
+
+// GitHub Copilot authenticates via OAuth device flow, so it does not use an env var key.
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
 //  - starts_with "gpt"      -> OpenAI
