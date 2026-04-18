@@ -4,6 +4,7 @@ use super::copilot_types::{
 };
 use crate::ModelIden;
 use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::openai_resp::OpenAIRespAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
@@ -30,7 +31,11 @@ impl Adapter for GithubCopilotAdapter {
 	}
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
-		OpenAIAdapter::util_get_service_url(model, service_type, endpoint)
+		if needs_responses_api(model) {
+			OpenAIRespAdapter::util_get_service_url(model, service_type, endpoint)
+		} else {
+			OpenAIAdapter::util_get_service_url(model, service_type, endpoint)
+		}
 	}
 
 	fn to_web_request_data(
@@ -40,7 +45,11 @@ impl Adapter for GithubCopilotAdapter {
 		chat_options: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let target = with_stripped_publisher_prefix_model(target);
-		let mut data = OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options, None)?;
+		let mut data = if needs_responses_api(&target.model) {
+			OpenAIRespAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options)?
+		} else {
+			OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, chat_options, None)?
+		};
 		data.headers.merge(copilot_identity_headers());
 		Ok(data)
 	}
@@ -50,7 +59,11 @@ impl Adapter for GithubCopilotAdapter {
 		web_response: WebResponse,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
-		OpenAIAdapter::to_chat_response(model_iden, web_response, options_set)
+		if needs_responses_api(&model_iden) {
+			OpenAIRespAdapter::to_chat_response(model_iden, web_response, options_set)
+		} else {
+			OpenAIAdapter::to_chat_response(model_iden, web_response, options_set)
+		}
 	}
 
 	fn to_chat_stream(
@@ -58,7 +71,11 @@ impl Adapter for GithubCopilotAdapter {
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+		if needs_responses_api(&model_iden) {
+			OpenAIRespAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+		} else {
+			OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+		}
 	}
 
 	fn to_embed_request_data(
@@ -79,6 +96,15 @@ impl Adapter for GithubCopilotAdapter {
 }
 
 // region:    --- Support
+
+/// Determine whether the model requires the OpenAI Responses API (`/responses`)
+/// rather than Chat Completions (`/chat/completions`).
+/// Uses `AdapterKind::from_model()` on the stripped model name for generic detection.
+fn needs_responses_api(model: &ModelIden) -> bool {
+	let (_, name) = model.model_name.namespace_and_name();
+	let stripped = strip_publisher_prefix(name);
+	matches!(AdapterKind::from_model(stripped), Ok(AdapterKind::OpenAIResp))
+}
 
 fn with_stripped_publisher_prefix_model(target: ServiceTarget) -> ServiceTarget {
 	let ServiceTarget { endpoint, auth, model } = target;
@@ -201,6 +227,52 @@ mod tests {
 
 		assert!(data.url.starts_with(COPILOT_DEFAULT_ENDPOINT));
 		assert_eq!(data.url, "https://api.githubcopilot.com/chat/completions");
+	}
+
+	#[test]
+	fn test_gpt5_url_uses_responses() {
+		let data = make_request("openai/gpt-5", ServiceType::Chat);
+
+		assert!(data.url.contains("responses"));
+		assert!(!data.url.contains("chat/completions"));
+	}
+
+	#[test]
+	fn test_gpt5_mini_url_uses_responses() {
+		let data = make_request("openai/gpt-5.4-mini", ServiceType::Chat);
+
+		assert!(data.url.contains("responses"));
+		assert!(!data.url.contains("chat/completions"));
+	}
+
+	#[test]
+	fn test_gpt5_payload_uses_input_format() {
+		let data = make_request("openai/gpt-5", ServiceType::Chat);
+
+		assert!(data.payload.get("input").is_some());
+		assert!(data.payload.get("messages").is_none());
+	}
+
+	#[test]
+	fn test_gpt5_payload_has_store_field() {
+		let data = make_request("openai/gpt-5", ServiceType::Chat);
+
+		assert!(data.payload.get("store").is_some());
+	}
+
+	#[test]
+	fn test_gpt5_copilot_headers_still_present() {
+		let data = make_request("openai/gpt-5", ServiceType::Chat);
+
+		assert_eq!(header_value(&data, "Editor-Version"), Some(COPILOT_EDITOR_VERSION));
+	}
+
+	#[test]
+	fn test_gpt4o_url_unchanged() {
+		let data = make_request("openai/gpt-4o", ServiceType::Chat);
+
+		assert!(data.url.contains("chat/completions"));
+		assert!(!data.url.contains("responses"));
 	}
 }
 
