@@ -14,6 +14,7 @@ pub struct ClientConfig {
 	pub(super) web_config: Option<WebConfig>,
 	pub(super) chat_options: Option<ChatOptions>,
 	pub(super) embed_options: Option<EmbedOptions>,
+	pub(super) default_adapter_kind: Option<AdapterKind>,
 }
 
 /// Chainable setters related to the ClientConfig.
@@ -60,6 +61,24 @@ impl ClientConfig {
 		self
 	}
 
+	/// Sets a default [`AdapterKind`] for resolving a bare model name.
+	///
+	/// When set, calls like `client.exec_chat("some-model", ...)` skip the
+	/// `AdapterKind::from_model` heuristic (which falls back to `Ollama` for
+	/// unrecognized names) and use the configured adapter instead. Useful
+	/// for callers that have already expressed provider intent via
+	/// `AuthResolver` / `ServiceTargetResolver` and want their custom model
+	/// names to route through the chosen provider rather than the Ollama
+	/// fallback.
+	///
+	/// Explicit namespacing (`openai::some-model`) and `ModelSpec::Iden`
+	/// calls are unaffected — they continue to take precedence over the
+	/// default.
+	pub fn with_default_adapter_kind(mut self, adapter_kind: AdapterKind) -> Self {
+		self.default_adapter_kind = Some(adapter_kind);
+		self
+	}
+
 	/// Returns the WebConfig, if set.
 	pub fn web_config(&self) -> Option<&WebConfig> {
 		self.web_config.as_ref()
@@ -91,6 +110,11 @@ impl ClientConfig {
 	/// Returns the default EmbedOptions, if set.
 	pub fn embed_options(&self) -> Option<&EmbedOptions> {
 		self.embed_options.as_ref()
+	}
+
+	/// Returns the default [`AdapterKind`] for bare model names, if set.
+	pub fn default_adapter_kind(&self) -> Option<AdapterKind> {
+		self.default_adapter_kind
 	}
 }
 
@@ -199,7 +223,15 @@ impl ClientConfig {
 	pub async fn resolve_model_spec(&self, spec: ModelSpec) -> Result<ServiceTarget> {
 		match spec {
 			ModelSpec::Name(name) => {
-				let adapter_kind = AdapterKind::from_model(&name)?;
+				// If the caller set a default adapter on the client, let it
+				// win over model-name inference — but only when the name is
+				// not explicitly namespaced (e.g. `openai::some-model`).
+				// Namespaced names always take precedence so a single client
+				// can still target multiple providers when desired.
+				let adapter_kind = match (self.default_adapter_kind, AdapterKind::from_model_namespace(&name)) {
+					(Some(default), None) => default,
+					_ => AdapterKind::from_model(&name)?,
+				};
 				let model = ModelIden::new(adapter_kind, name);
 				self.resolve_service_target(model).await
 			}

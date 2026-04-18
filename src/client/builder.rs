@@ -1,3 +1,4 @@
+use crate::adapter::AdapterKind;
 use crate::chat::ChatOptions;
 use crate::resolver::{
 	AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, IntoServiceTargetResolverFn, ModelMapper,
@@ -92,6 +93,19 @@ impl ClientBuilder {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
 		let model_mapper = ModelMapper::from_mapper_fn(model_mapper_fn);
 		client_config.model_mapper = Some(model_mapper);
+		self
+	}
+
+	/// Set a default [`AdapterKind`] for resolving bare model names (creates
+	/// `ClientConfig` if absent).
+	///
+	/// See [`ClientConfig::with_default_adapter_kind`] for details. Useful
+	/// when you've already pinned the provider via auth / service-target
+	/// resolvers and want unrecognized model names to route through that
+	/// provider instead of falling back to Ollama.
+	pub fn with_default_adapter_kind(mut self, adapter_kind: AdapterKind) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.default_adapter_kind = Some(adapter_kind);
 		self
 	}
 }
