@@ -136,6 +136,20 @@ Cause:\n{cause}
 	#[display("Adapter '{adapter_kind}' does not support feature '{feature}'")]
 	AdapterNotSupported { adapter_kind: AdapterKind, feature: String },
 
+	#[display(
+		"Client is bound to adapter '{bound}' but model '{model}' resolved to adapter '{requested}'. \
+A Client configured with `with_adapter_kind` targets a single provider — its \
+AuthResolver and ServiceTargetResolver are gated on that adapter, so routing \
+through a different one would silently drop auth and the configured endpoint. \
+Drop the `::` namespace prefix or `ModelSpec::Iden`, or build a Client without \
+`with_adapter_kind` for per-call routing."
+	)]
+	AdapterKindMismatch {
+		bound: AdapterKind,
+		requested: AdapterKind,
+		model: String,
+	},
+
 	#[display("Internal error: {_0}")]
 	Internal(String),
 
