@@ -11,6 +11,53 @@ use support::yakbak::replay_client;
 use support::{TestResult, extract_stream_end};
 
 #[tokio::test]
+async fn test_yakbak_openai_resp_reasoning_summary_capture() -> TestResult<()> {
+	// Regression for the two-part fix applied in
+	// `adapter_impl.rs` (request side inserts
+	// `reasoning.summary="detailed"` when
+	// `capture_reasoning_content=true`) and `streamer.rs` (parses
+	// `response.reasoning_summary_text.delta` events emitted by the
+	// Responses API). The cassette was recorded against the real
+	// API with both halves present — if either regresses, this
+	// test's `reasoning_content` assertion starts failing.
+	let (client, _server) = replay_client("openai_resp", "reasoning_summary_capture").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer concisely."),
+		ChatMessage::user("Why is 47 * 23 = 1081? Reason step by step."),
+	]);
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true);
+
+	let stream_res = client
+		.exec_chat_stream("openai_resp::gpt-5.4-mini", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let reasoning = extract
+		.reasoning_content
+		.as_deref()
+		.ok_or("reasoning_content should be populated")?;
+	assert!(
+		!reasoning.is_empty(),
+		"reasoning_content populated but empty"
+	);
+	// First summary chunk for the recorded prompt starts with a
+	// header line we can pin — the API formats summaries as
+	// "**Topic**\n\nFirst line..." and the exact header is stable
+	// for a fixed prompt.
+	assert!(
+		reasoning.starts_with("**"),
+		"reasoning_content should start with a summary header, got: {:?}",
+		&reasoning[..reasoning.len().min(60)]
+	);
+
+	Ok(())
+}
+
+#[tokio::test]
 async fn test_yakbak_openai_resp_reasoning_stream() -> TestResult<()> {
 	let (client, _server) = replay_client("openai_resp", "reasoning_stream").await?;
 

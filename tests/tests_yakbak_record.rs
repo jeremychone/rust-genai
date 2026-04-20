@@ -72,6 +72,42 @@ async fn record_openai_resp_reasoning_stream() -> TestResult<()> {
 
 #[tokio::test]
 #[ignore]
+async fn record_openai_resp_reasoning_summary_capture() -> TestResult<()> {
+	// Regression for the two-part fix. Pairs effort=Low with
+	// capture_reasoning_content=true so the API actually emits
+	// summary deltas (effort alone with no capture gets no summary;
+	// capture alone gets effort="none" server-default → no reasoning
+	// at all; both required IN PRACTICE on current models). Once
+	// emitted, the `response.reasoning_summary_text.delta` events
+	// must land in `captured_reasoning_content` — previously the
+	// streamer only parsed the `response.reasoning_text.delta`
+	// family and silently dropped summaries.
+	let (client, mut server) =
+		record_client("openai_resp", "reasoning_summary_capture", &openai_backend()).await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer concisely."),
+		ChatMessage::user("Why is 47 * 23 = 1081? Reason step by step."),
+	]);
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+
+	let stream_res = client.exec_chat_stream(OPENAI_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] reasoning_summary_capture reasoning_content: {:?}",
+		extract.reasoning_content.as_deref().map(|s| &s[..s.len().min(200)])
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+#[tokio::test]
+#[ignore]
 async fn record_openai_resp_reasoning_stream_tools() -> TestResult<()> {
 	let (client, mut server) = record_client("openai_resp", "reasoning_stream_tools", &openai_backend()).await?;
 

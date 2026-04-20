@@ -61,6 +61,25 @@ enum RespStreamEvent {
 		delta: String,
 	},
 
+	// Responses API emits distilled reasoning *summaries* under a
+	// separate event family when the request opts into
+	// `reasoning.summary = "detailed"`. These are not identical to
+	// the raw reasoning-text stream; they're a provider-side summary
+	// of the reasoning. Treat them the same way at the adapter layer
+	// — append into `captured_data.reasoning_content` — so callers
+	// get a single normalized stream regardless of which family the
+	// provider chose to emit. Without this handler the summary
+	// events fell through to `Unknown` and the reasoning_content
+	// field came back empty despite a correct request.
+	#[serde(rename = "response.reasoning_summary_text.delta")]
+	ReasoningSummaryTextDelta {
+		#[serde(default)]
+		_output_index: usize,
+		#[serde(default)]
+		_summary_index: usize,
+		delta: String,
+	},
+
 	#[serde(rename = "response.function_call_arguments.delta")]
 	FunctionCallArgumentsDelta {
 		#[serde(default)]
@@ -156,6 +175,16 @@ impl futures::Stream for OpenAIRespStreamer {
 						}
 
 						RespStreamEvent::ReasoningTextDelta { delta, .. } => {
+							if self.options.capture_reasoning_content {
+								match self.captured_data.reasoning_content {
+									Some(ref mut c) => c.push_str(&delta),
+									None => self.captured_data.reasoning_content = Some(delta.clone()),
+								}
+							}
+							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(delta))));
+						}
+
+						RespStreamEvent::ReasoningSummaryTextDelta { delta, .. } => {
 							if self.options.capture_reasoning_content {
 								match self.captured_data.reasoning_content {
 									Some(ref mut c) => c.push_str(&delta),
