@@ -138,20 +138,35 @@ impl Adapter for OpenAIRespAdapter {
 			payload.x_insert("previous_response_id", prev_id.as_str())?;
 		}
 
-		// -- Set reasoning effort
-		if let Some(reasoning_effort) = reasoning_effort
-			&& let Some(keyword) = reasoning_effort.as_keyword()
-		{
-			let mut reasoning_obj = json!({"effort": keyword});
+		// -- Set reasoning options
+		//
+		// The `reasoning` object on the request controls two things:
+		//   * `.effort` — how much reasoning the model should do
+		//   * `.summary` — whether a text summary of the reasoning is
+		//     returned in the response (required to populate
+		//     `ChatResponse.reasoning_content` for the Responses API)
+		//
+		// Either half is sufficient to warrant inserting the object;
+		// previously the object was only emitted when `reasoning_effort`
+		// was set, which silently defeated `capture_reasoning_content(true)`
+		// on its own — callers asking for reasoning capture got no
+		// `summary=detailed` opt-in, and every response came back with
+		// empty `reasoning_content`.
+		let capture_reasoning = chat_options.capture_reasoning_content() == Some(true);
+		let effort_keyword = reasoning_effort.and_then(|e| e.as_keyword());
 
-			// Opt-in: only request detailed reasoning summaries when the caller
-			// explicitly asks for reasoning content capture.
-			if chat_options.capture_reasoning_content() == Some(true) {
+		if effort_keyword.is_some() || capture_reasoning {
+			let mut reasoning_obj = json!({});
+			if let Some(keyword) = effort_keyword {
+				reasoning_obj
+					.x_insert("effort", keyword)
+					.map_err(|e| Error::Internal(format!("reasoning effort insert: {e}")))?;
+			}
+			if capture_reasoning {
 				reasoning_obj
 					.x_insert("summary", "detailed")
 					.map_err(|e| Error::Internal(format!("reasoning summary insert: {e}")))?;
 			}
-
 			payload.x_insert("reasoning", reasoning_obj)?;
 		}
 
