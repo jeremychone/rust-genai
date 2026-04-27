@@ -242,7 +242,7 @@ impl AdapterKind {
 			Ok(Self::Xai)
 		} else if model.starts_with("glm") {
 			Ok(Self::Zai)
-		} else if model.starts_with("deepseek-chat") || model.starts_with("deepseek-reasoner") {
+		} else if model.starts_with("deepseek-") {
 			Ok(Self::DeepSeek)
 		}
 		// For now, fallback to Ollama

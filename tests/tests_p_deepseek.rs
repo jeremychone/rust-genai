@@ -4,8 +4,9 @@ use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-const MODEL: &str = "deepseek-chat";
-const MODEL_NS: &str = "deepseek::deepseek-chat";
+// "deepseek-v4-flash" "deepseek-v4-pro"  Note: deepseek-chat and deepseek-reasoner will be deprecrated from deepseek
+const MODEL: &str = "deepseek-v4-flash";
+const MODEL_NS: &str = "deepseek::deepseek-v4-pro";
 
 // region:    --- Chat
 
