@@ -281,17 +281,13 @@ fn new_with_pretty_json_array(
 						last_idx = idx + 1;
 					}
 				}
-				'[' => {
-					if depth == 0 {
-						messages.push("[".to_string());
-						last_idx = idx + 1;
-					}
+				'[' if depth == 0 => {
+					messages.push("[".to_string());
+					last_idx = idx + 1;
 				}
-				']' => {
-					if depth == 0 {
-						messages.push("]".to_string());
-						last_idx = idx + 1;
-					}
+				']' if depth == 0 => {
+					messages.push("]".to_string());
+					last_idx = idx + 1;
 				}
 				_ => {
 					// Ignore other characters outside of objects (whitespace, commas)

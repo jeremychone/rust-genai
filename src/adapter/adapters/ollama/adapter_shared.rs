@@ -82,14 +82,12 @@ impl OllamaAdapter {
 				match part {
 					ContentPart::Text(txt) => content.push_str(&txt),
 					ContentPart::Binary(Binary {
-						content_type, source, ..
-					}) => {
-						if content_type.starts_with("image/") {
-							// Note: Ollama native API expects images in base64 format in a field named "images" as an array.
-							if let BinarySource::Base64(data) = source {
-								images.push(data);
-							}
-						}
+						content_type,
+						source: BinarySource::Base64(data),
+						..
+					}) if content_type.starts_with("image/") => {
+						// Note: Ollama native API expects images in base64 format in a field named "images" as an array.
+						images.push(data);
 					}
 					ContentPart::ToolCall(tool_call) => {
 						tool_calls.push(json!({

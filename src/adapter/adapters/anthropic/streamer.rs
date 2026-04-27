@@ -173,28 +173,26 @@ impl futures::Stream for AnthropicStreamer {
 						}
 						"content_block_stop" => {
 							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text) {
-								InProgressBlock::ToolUse { id, name, input } => {
+								InProgressBlock::ToolUse { id, name, input } if self.options.capture_tool_calls => {
 									// ToolCallChunks were already emitted incrementally
 									// during content_block_start and content_block_delta.
 									// Here we only finalize capture with parsed arguments.
-									if self.options.capture_tool_calls {
-										let fn_arguments = if input.is_empty() {
-											Value::Object(Map::new())
-										} else {
-											serde_json::from_str(&input)?
-										};
+									let fn_arguments = if input.is_empty() {
+										Value::Object(Map::new())
+									} else {
+										serde_json::from_str(&input)?
+									};
 
-										let tc = ToolCall {
-											call_id: id,
-											fn_name: name,
-											fn_arguments,
-											thought_signatures: None,
-										};
+									let tc = ToolCall {
+										call_id: id,
+										fn_name: name,
+										fn_arguments,
+										thought_signatures: None,
+									};
 
-										match self.captured_data.tool_calls {
-											Some(ref mut t) => t.push(tc),
-											None => self.captured_data.tool_calls = Some(vec![tc]),
-										}
+									match self.captured_data.tool_calls {
+										Some(ref mut t) => t.push(tc),
+										None => self.captured_data.tool_calls = Some(vec![tc]),
 									}
 								}
 								_ => {

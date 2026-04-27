@@ -110,17 +110,13 @@ async fn test_chat_stream_non_empty_chunk_deepseek_ok() -> TestResult<()> {
 
 	while let Some(result) = stream.next().await {
 		match result? {
-			ChatStreamEvent::Chunk(chunk) => {
-				if !chunk.content.is_empty() {
-					found_non_empty = true;
-					break;
-				}
+			ChatStreamEvent::Chunk(chunk) if !chunk.content.is_empty() => {
+				found_non_empty = true;
+				break;
 			}
-			ChatStreamEvent::ReasoningChunk(chunk) => {
-				if !chunk.content.is_empty() {
-					found_non_empty = true;
-					break;
-				}
+			ChatStreamEvent::ReasoningChunk(chunk) if !chunk.content.is_empty() => {
+				found_non_empty = true;
+				break;
 			}
 			ChatStreamEvent::End(_) => break,
 			_ => {}
