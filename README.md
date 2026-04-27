@@ -1,6 +1,6 @@
 # genai, Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **GitHub Copilot** (GitHub Models API).
+Currently natively supports: **OpenAI**, **OpenAI Responses**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **GitHub Copilot** (GitHub Models API).
 
 Also supports a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
@@ -17,6 +17,35 @@ Provides a single, ergonomic API for many generative AI providers, such as Anthr
 **NOTE:** Big update with **v0.5.0**: New adapters (BigModel, MIMO), Gemini Thinking support, Anthropic Reasoning Effort, and a more robust internal streaming engine.
 
 [Docs for LLMs](doc/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
+
+## Model to Adapter Resolution
+
+By default, the library resolves the `AdapterKind` (AI Provider) based on the model name prefix:
+
+- **OpenAI**: `gpt-*` (most), `o1-*`, `o3-*`, `o4-*`, `chatgpt-*`, `codex-*`
+- **OpenAI Responses**: `gpt-5-*`, `gpt-*` (containing `codex` or `pro`)
+- **Anthropic**: `claude-*`
+- **Gemini**: `gemini-*`
+- **xAI**: `grok-*`
+- **DeepSeek**: `deepseek-*`
+- **Zai**: `glm-*`
+- **Cohere**: `command-*`, `embed-*`
+- **Mimo**: `mimo-*`
+- **Fireworks**: contains `fireworks`
+- **Ollama**: Fallback for any other names, which defaults to local Ollama.
+
+### Namespacing (Forcing an Adapter)
+
+You can force a specific adapter by using the `adapter_kind::model_name` syntax. This is the recommended way for many providers and for disambiguating OpenAI-compatible services.
+
+- `groq::llama-3.1-8b-instant` (Forces **Groq** adapter)
+- `together::meta-llama/Llama-3-8b-chat-hf` (Forces **Together** adapter)
+- `ollama_cloud::gemma3:4b` (Forces **OllamaCloud** adapter)
+- `github_copilot::openai/gpt-4.1-mini` (Forces **GithubCopilot** adapter)
+- `nebius::Qwen/Qwen3-235B-A22B` (Forces **Nebius** adapter)
+- `coding::glm-4.6` (Special namespace for **Zai** coding subscription)
+
+For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
 ## v0.5.x - (2026-01-09...)
 
@@ -100,7 +129,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule
-//  - starts_with "gpt"      -> OpenAI
+//  - starts_with "gpt"      -> OpenAI (or OpenAI Responses for gpt-5/codex/pro)
 //  - starts_with "claude"   -> Anthropic
 //  - starts_with "command"  -> Cohere
 //  - starts_with "gemini"   -> Gemini
