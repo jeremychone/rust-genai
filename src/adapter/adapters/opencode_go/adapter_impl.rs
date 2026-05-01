@@ -50,16 +50,7 @@ impl Adapter for OpenCodeGoAdapter {
 	}
 
 	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
-		let mut models = OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth).await?;
-		// Hardcoded fallback: ensure MiniMax models are present even if the API
-		// listing omits them. Task 1 validation confirmed they appear, but we
-		// keep this as a safety net for future API changes.
-		for minimax_model in ["minimax-m2.5", "minimax-m2.7"] {
-			if !models.iter().any(|m| m == minimax_model) {
-				models.push(minimax_model.to_string());
-			}
-		}
-		Ok(models)
+		OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth).await
 	}
 
 	fn get_service_url(model: &ModelIden, _service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
