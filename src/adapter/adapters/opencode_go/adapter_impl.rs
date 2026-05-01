@@ -31,7 +31,7 @@ enum OpenCodeGoModelKind {
 
 impl OpenCodeGoModelKind {
 	fn from_model_name(name: &str) -> Self {
-		if name.get(..8).map_or(false, |s| s.eq_ignore_ascii_case("minimax-")) {
+		if name.to_lowercase().starts_with("minimax-") {
 			Self::Anthropic
 		} else {
 			Self::OpenAI
