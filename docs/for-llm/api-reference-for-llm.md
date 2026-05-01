@@ -4,7 +4,7 @@ Comprehensive, dry reference for the `genai` Rust library.
 All public types, methods, and module structure are documented below.
 
 ```toml
-genai = "0.6.0-alpha"
+genai = "0.6.0-beta.19-WIP"
 ```
 
 ## Crate Structure
@@ -30,9 +30,10 @@ genai (crate root / lib.rs)
 - **ModelSpec**: Specifies a model at three resolution levels: `Name`, `Iden`, or `Target`.
 - **ServiceTarget**: Fully resolved call target: `ModelIden` + `Endpoint` + `AuthData`.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
-- **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Cohere`, `Ollama`, `OllamaCloud`, `GithubCopilot`.
+- **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `Vertex`, `GithubCopilot`.
   - `GithubCopilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `OllamaCloud` is the hosted Ollama Cloud service (`ollama.com`). Uses the same native Ollama protocol as the local `Ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via `ollama_cloud::model_name` namespace (e.g., `ollama_cloud::gemma3:4b`).
+  - `Vertex` is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
 
 ## Client & Configuration
 
@@ -132,12 +133,16 @@ Fully resolved call target.
 - `system`: Initial system string (optional).
 - `messages`: `Vec<ChatMessage>`.
 - `tools`: `Vec<Tool>` (optional).
+- `previous_response_id`: Previous response ID for stateful sessions, OpenAI Responses API.
+- `store`: Whether to store the response for later stateful continuation, OpenAI Responses API.
 - **Constructors**: `new(messages)`, `from_system(text)`, `from_user(text)`, `from_messages(vec)`.
 - `with_system(text)`: Sets/replaces system prompt (chainable).
 - `append_message(msg)`: Adds a message to the sequence.
 - `append_messages(iter)`: Adds multiple messages.
 - `with_tools(iter)`: Replaces the tool set.
 - `append_tool(tool)`: Adds a single tool definition.
+- `with_previous_response_id(id)`: Sets the previous response ID for stateful sessions.
+- `with_store(bool)`: Enables or disables response storage for stateful sessions.
 - `append_tool_use_from_stream_end(end, tool_response)`: Simplifies tool-use loops by appending the assistant turn (with thoughts/tools) and the tool result.
 - `iter_systems()`: Iterator over all system content (top-level + system-role messages).
 - `join_systems()`: Concatenates all system content into one string with blank line separators.
@@ -147,13 +152,14 @@ Fully resolved call target.
 - `role`: `System`, `User`, `Assistant`, `Tool`.
 - `content`: `MessageContent` (multipart).
 - `options`: `Option<MessageOptions>`.
-- **Constructors**: `ChatMessage::system(text)`, `user(text)`, `assistant(text)`.
+- **Constructors**: `ChatMessage::new(role, content)`, `system(text)`, `user(text)`, `assistant(text)`, `tool(text)`.
 - `with_options(options)`: Attaches `MessageOptions` (chainable).
 - `with_reasoning_content(reasoning: Option<String>)`: Appends `ContentPart::ReasoningContent` when provided. Since v0.6.0.
 - `assistant_tool_calls_with_thoughts(calls, thoughts)`: For continuing tool exchanges where thoughts must precede tool calls.
 - `size()`: Approximate in-memory size in bytes.
 - `From<Vec<ToolCall>>`: Creates assistant message with tool calls (auto-prepends thoughts if present on first call).
 - `From<ToolResponse>`: Creates tool-role message.
+- `From<Vec<ToolResponse>>`: Creates a tool-role multipart message.
 
 ### `ChatRole`
 
@@ -165,6 +171,7 @@ Fully resolved call target.
 Per-message options.
 
 - `cache_control: Option<CacheControl>`.
+- `with_cache_control(cache_control)`: Sets the cache control hint.
 - `From<CacheControl>`: Convenience conversion.
 
 ### `CacheControl`
@@ -186,15 +193,15 @@ Different providers support different variants and scopes.
 ### `MessageContent` (Multipart)
 
 - Transparent wrapper for `Vec<ContentPart>`.
-- **Constructors**: `from_text(text)`, `from_parts(vec)`, `from_tool_calls(vec)`.
+- **Constructors**: `from_text(text)`, `from_parts(vec)`, `from_tool_calls(vec)`, `from_tool_responses(vec)`.
 - **Mutation**: `push(part)`, `insert(idx, part)`, `prepend(part)`, `extend_front(parts)`, `append(part)` (chainable), `extended(iter)` (chainable).
-- **Getters**: `parts()`, `into_parts()`, `texts()`, `into_texts()`, `binaries()`, `into_binaries()`, `tool_calls()`, `into_tool_calls()`, `tool_responses()`, `into_tool_responses()`.
-- **Convenient**: `first_text()`, `into_first_text()`, `joined_texts()` (joins with blank line), `into_joined_texts()`.
-- **Queries**: `is_empty()`, `len()`, `is_text_empty()`, `is_text_only()`, `contains_text()`, `contains_tool_call()`, `contains_tool_response()`.
-- **Reasoning helpers**: `reasoning_contents()`, `into_reasoning_contents()`, `joined_reasoning_content()`, `contains_reasoning_content()`. Since v0.6.0.
+- **Getters**: `parts()`, `into_parts()`, `texts()`, `into_texts()`, `binaries()`, `into_binaries()`, `thought_signatures()`, `into_thought_signatures()`, `tool_calls()`, `into_tool_calls()`, `tool_responses()`, `into_tool_responses()`, `custom_parts()`, `into_custom_parts()`.
+- **Convenient**: `first_text()`, `into_first_text()`, `first_thought_signature()`, `into_first_thought_signature()`, `joined_texts()` (joins with blank line), `into_joined_texts()`.
+- **Queries**: `is_empty()`, `len()`, `is_text_empty()`, `is_text_only()`, `contains_text()`, `contains_binary()`, `contains_tool_call()`, `contains_tool_response()`, `contains_thought_signature()`, `contains_custom()`.
+- **Reasoning helpers**: `reasoning_contents()`, `into_reasoning_contents()`, `first_reasoning_content()`, `into_first_reasoning_content()`, `joined_reasoning_content()`, `contains_reasoning_content()`. Since v0.6.0.
 - `size()`: Approximate in-memory size.
-- Implements `IntoIterator`, `FromIterator<ContentPart>`, `Extend<ContentPart>`.
-- `From<&str>`, `From<String>`, `From<Vec<ToolCall>>`, `From<ToolResponse>`, `From<ContentPart>`, `From<Binary>`, `From<Vec<ContentPart>>`.
+- Implements `IntoIterator`, `IntoIterator for &MessageContent`, `IntoIterator for &mut MessageContent`, `FromIterator<ContentPart>`, `Extend<ContentPart>`.
+- `From<&str>`, `From<&String>`, `From<String>`, `From<Vec<ToolCall>>`, `From<ToolCall>`, `From<ToolResponse>`, `From<Vec<ToolResponse>>`, `From<ContentPart>`, `From<Binary>`, `From<CustomPart>`, `From<Vec<ContentPart>>`.
 
 ### `ContentPart`
 
@@ -206,9 +213,10 @@ A single content segment in a chat message.
 - `ToolResponse(ToolResponse)`: Result of function call. `From<ToolResponse>`.
 - `ThoughtSignature(String)`: Thought-signature metadata (for providers that emit signed thoughts). Not auto-from; use constructor.
 - `ReasoningContent(String)`: Reasoning text content, distinct from thought signatures. Since v0.6.0.
-- **Constructors**: `from_text(text)`, `from_binary_base64(content_type, content, name)`, `from_binary_url(content_type, url, name)`, `from_binary_file(path)`.
-- **Accessors**: `as_text()`, `into_text()`, `as_tool_call()`, `into_tool_call()`, `as_tool_response()`, `into_tool_response()`, `as_binary()`, `into_binary()`, `as_thought_signature()`, `into_thought_signature()`, `as_reasoning_content()`, `into_reasoning_content()` (reasoning accessors since v0.6.0).
-- **Queries**: `is_text()`, `is_image()`, `is_audio()`, `is_pdf()`, `is_tool_call()`, `is_tool_response()`, `is_thought_signature()`, `is_reasoning_content()` (`is_reasoning_content()` since v0.6.0).
+- `Custom(CustomPart)`: Provider-specific custom content with optional `model_iden`.
+- **Constructors**: `from_text(text)`, `from_binary_base64(content_type, content, name)`, `from_binary_url(content_type, url, name)`, `from_binary_file(path)`, `from_custom(data, model_iden)`.
+- **Accessors**: `as_text()`, `into_text()`, `as_tool_call()`, `into_tool_call()`, `as_tool_response()`, `into_tool_response()`, `as_binary()`, `into_binary()`, `as_thought_signature()`, `into_thought_signature()`, `as_reasoning_content()`, `into_reasoning_content()` (reasoning accessors since v0.6.0), `as_custom()`, `into_custom()`.
+- **Queries**: `is_text()`, `is_binary()`, `is_image()`, `is_audio()`, `is_pdf()`, `is_tool_call()`, `is_tool_response()`, `is_thought_signature()`, `is_reasoning_content()` (`is_reasoning_content()` since v0.6.0), `is_custom()`.
 - `size()`: Approximate in-memory size.
 
 ### `Binary`
@@ -328,10 +336,10 @@ OpenAI service tier preference for flex processing.
 
 ### `Tool`
 
-- `name: ToolName`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `config: Option<ToolConfig>`.
+- `name: ToolName`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `strict: Option<bool>`, `config: Option<ToolConfig>`.
 - `Tool::new(name)`: Constructor.
 - `Tool::new_web_search()`: Constructor for the built-in web search tool.
-- `with_description(desc)`, `with_schema(parameters)`, `with_config(config)`: Chainable setters.
+- `with_description(desc)`, `with_schema(parameters)`, `with_strict(bool)`, `with_config(config)`: Chainable setters.
 - `size()`: Approximate in-memory size.
 - `config`: Optional provider-specific config.
 
@@ -352,6 +360,16 @@ OpenAI service tier preference for flex processing.
 - Serialization:
   - `Custom(json)` -> raw JSON value
   - `WebSearch(config)` -> `{"WebSearch": {...}}`
+
+### `WebSearchConfig`
+
+Typed configuration for the built-in web-search tool.
+
+- `max_uses: Option<u32>`: Maximum web-search uses when supported by the provider.
+- `allowed_domains: Option<Vec<String>>`: Restrict search to specific domains when supported.
+- `blocked_domains: Option<Vec<String>>`: Block specific domains when supported.
+
+Use through `Tool::new_web_search().with_config(WebSearchConfig { ... })` or `ToolConfig::WebSearch(config)`.
 
 ### `ToolCall`
 
@@ -431,6 +449,7 @@ Note: All token fields are `Option<i32>`. Zero values from providers are deseria
 
 ### `AuthData`
 
+- `None`: No authentication data. Used for unauthenticated targets or resolver-controlled flows.
 - `FromEnv(String)`: Env var name to lookup.
 - `Key(String)`: The API key directly.
 - `RequestOverride { url, headers }`: For unorthodox auth or endpoint overrides (e.g., Vertex AI, Bedrock).
@@ -484,7 +503,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Cohere`, `Ollama`, `OllamaCloud`, `GithubCopilot`.
+Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `Vertex`, `GithubCopilot`.
 
 - `as_str()`: Display name (e.g., `"OpenAI"`, `"xAi"`).
 - `as_lower_str()`: Lowercase name (e.g., `"openai"`, `"xai"`).
@@ -500,16 +519,19 @@ Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`
   - `gemini*` -> `Gemini`.
   - `claude*` -> `Anthropic`.
   - Contains `"fireworks"` -> `Fireworks`.
-  - In Groq model list -> `Groq`.
-  - In Mimo model list -> `Mimo`.
+  - `mimo-*` -> `Mimo`.
   - `command*`, `embed-*` -> `Cohere`.
-  - `deepseek-chat*` and `deepseek-reasoner*` -> `DeepSeek`.
+  - `deepseek-*` -> `DeepSeek`.
   - `grok*` -> `Xai`.
   - `glm*` -> `Zai`.
   - Fallback -> `Ollama`.
 - **Namespacing**: `namespace::model_name` (e.g., `together::meta-llama/...`, `nebius::Qwen/...`).
-  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `ollama_cloud::`, `openai_resp::`, `github_copilot::`)
+  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `ollama_cloud::`, `vertex::`, `openai_resp::`, `github_copilot::`)
   - Special: `coding::` namespace maps to `Zai` adapter.
+- **Namespace-only or recommended namespace providers**:
+  - `groq::model_name` is required for direct Groq targeting in v0.6.0-beta.
+  - `vertex::model_name` targets Google Vertex AI Model Garden.
+  - `aliyun::model_name` targets Aliyun's OpenAI-compatible service.
 - **Ollama Fallback**: Unrecognized non-namespaced names default to `Ollama` adapter (localhost:11434).
 - **Reasoning Normalization**: Automatic extraction for DeepSeek/Ollama `<think>` blocks when `normalize_reasoning_content` is enabled.
 
@@ -524,6 +546,7 @@ Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`
   - `VerbosityParsing { actual }`: Failed to parse verbosity.
   - `ReasoningParsingError { actual }`: Failed to parse reasoning effort.
   - `ServiceTierParsing { actual }`: Failed to parse service tier.
+  - `PromptCacheRetentionParsing { actual }`: Failed to parse prompt cache retention.
   - `NoChatResponse { model_iden }`: No response from model.
   - `InvalidJsonResponseElement { info }`: Invalid JSON in response.
   - `RequiresApiKey { model_iden }`: API key required.
