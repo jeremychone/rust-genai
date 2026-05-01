@@ -21,6 +21,9 @@ impl OpenCodeGoAdapter {
 
 /// Internal enum to dispatch wire format based on model name prefix.
 /// MiniMax models use Anthropic protocol; all others use OpenAI protocol.
+/// Unrecognized model names silently fall back to the OpenAI path, reflecting
+/// the dynamic nature of the OpenCode Go proxy which may add new OpenAI-compatible
+/// models at any time.
 enum OpenCodeGoModelKind {
 	OpenAI,
 	Anthropic,
@@ -28,7 +31,7 @@ enum OpenCodeGoModelKind {
 
 impl OpenCodeGoModelKind {
 	fn from_model_name(name: &str) -> Self {
-		if name.to_lowercase().starts_with("minimax-") {
+		if name.get(..8).map_or(false, |s| s.eq_ignore_ascii_case("minimax-")) {
 			Self::Anthropic
 		} else {
 			Self::OpenAI
@@ -42,7 +45,10 @@ impl Adapter for OpenCodeGoAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
 	fn default_auth() -> AuthData {
-		AuthData::from_env("OPENCODE_GO_API_KEY")
+		match Self::DEFAULT_API_KEY_ENV_NAME {
+			Some(env_name) => AuthData::from_env(env_name),
+			None => AuthData::None,
+		}
 	}
 
 	fn default_endpoint() -> Endpoint {
@@ -190,7 +196,7 @@ mod tests {
 	use super::*;
 	use crate::ServiceTarget;
 	use crate::adapter::{Adapter, ServiceType};
-	use crate::chat::{ChatOptionsSet, ChatRequest};
+	use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest};
 	use crate::embed::{EmbedOptionsSet, EmbedRequest};
 	use crate::resolver::AuthData;
 
@@ -345,6 +351,38 @@ mod tests {
 			data.url.ends_with("messages"),
 			"Minimax-m2.5 should route to messages URL: {}",
 			data.url
+		);
+	}
+
+	#[test]
+	fn test_minimax_payload_with_options() {
+		let target = test_target("minimax-m2.5");
+		let chat_options = ChatOptions::default()
+			.with_temperature(0.5)
+			.with_max_tokens(100);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let data = OpenCodeGoAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello").with_system("system-prompt"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(
+			data.payload.get("temperature").and_then(|v| v.as_f64()),
+			Some(0.5),
+			"temperature should be present"
+		);
+		assert_eq!(
+			data.payload.get("max_tokens").and_then(|v| v.as_u64()),
+			Some(100),
+			"max_tokens should be present"
+		);
+		assert_eq!(
+			data.payload.get("system").and_then(|v| v.as_str()),
+			Some("system-prompt"),
+			"system should be present"
 		);
 	}
 
