@@ -1,6 +1,6 @@
 # genai, Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **OpenAI Responses**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **Aliyun**, **Google Vertex**, **GitHub Copilot** (GitHub Models API).
+Currently natively supports: **OpenAI**, **OpenAI Responses**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **OpenCode Go**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **Aliyun**, **Google Vertex**, **GitHub Copilot** (GitHub Models API).
 
 Also supports a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
@@ -31,6 +31,7 @@ By default, the library resolves the `AdapterKind` (AI Provider) based on the mo
 - **Zai**: `glm-*`
 - **Cohere**: `command-*`, `embed-*`
 - **Mimo**: `mimo-*`
+- **OpenCode Go**: namespace `opencode_go::` only
 - **Fireworks**: contains `fireworks`
 - **Ollama**: Fallback for any other names, which defaults to local Ollama.
 
@@ -46,6 +47,8 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `aliyun::qwen-plus` (Forces **Aliyun** adapter)
 - `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
 - `coding::glm-4.6` (Special namespace for **Zai** coding subscription)
+- `opencode_go::minimax-m2.5` (Forces **OpenCodeGo** adapter)
+- `opencode_go::glm-5` (Forces **OpenCodeGo** adapter)
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
@@ -75,7 +78,7 @@ See [CHANGELOG](CHANGELOG.md)
 
 ## Key Features
 
-- Native Multi-AI Provider/Model: OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- Native Multi-AI Provider/Model: OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
