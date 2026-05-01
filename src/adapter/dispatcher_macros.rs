@@ -99,6 +99,15 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::opencode_go::[<OpenCodeGo Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::BedrockApi => {
+				type A = crate::adapter::adapters::bedrock::[<BedrockApi Adapter>];
+				$body
+			}
+			#[cfg(feature = "bedrock-sigv4")]
+			crate::adapter::AdapterKind::BedrockSigv4 => {
+				type A = crate::adapter::adapters::bedrock::[<BedrockSigv4 Adapter>];
+				$body
+			}
 		}
 	};
 }
