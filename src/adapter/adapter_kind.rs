@@ -6,6 +6,9 @@ use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::aliyun::AliyunAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::adapters::bedrock::BedrockApiAdapter;
+#[cfg(feature = "bedrock-sigv4")]
+use crate::adapter::adapters::bedrock::BedrockSigv4Adapter;
 use crate::adapter::bigmodel::BigModelAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
@@ -67,6 +70,16 @@ pub enum AdapterKind {
 	/// GitHub Models inference API (multi-publisher gateway for OpenAI, Anthropic, and Google models).
 	/// Uses namespace routing: `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, `github_copilot::google/gemini-2.5-pro`
 	GithubCopilot,
+	/// AWS Bedrock Converse API, authenticated with a simple Bearer token from
+	/// `BEDROCK_API_KEY`. Always available — no extra Cargo feature or dependencies required.
+	/// Namespace: `bedrock_api::anthropic.claude-sonnet-4-5-20250929-v1:0`.
+	BedrockApi,
+	/// AWS Bedrock Converse API, authenticated via SigV4 + the AWS credential chain
+	/// (env, profile, SSO, IMDS, AssumeRole).
+	/// Namespace: `bedrock_sigv4::anthropic.claude-sonnet-4-5-20250929-v1:0`.
+	/// Requires the `bedrock-sigv4` Cargo feature.
+	#[cfg(feature = "bedrock-sigv4")]
+	BedrockSigv4,
 }
 
 /// Serialization/Parse implementations
@@ -93,6 +106,9 @@ impl AdapterKind {
 			AdapterKind::OllamaCloud => "OllamaCloud",
 			AdapterKind::Vertex => "Vertex",
 			AdapterKind::GithubCopilot => "GithubCopilot",
+			AdapterKind::BedrockApi => "BedrockApi",
+			#[cfg(feature = "bedrock-sigv4")]
+			AdapterKind::BedrockSigv4 => "BedrockSigv4",
 		}
 	}
 
@@ -118,6 +134,9 @@ impl AdapterKind {
 			AdapterKind::OllamaCloud => "ollama_cloud",
 			AdapterKind::Vertex => "vertex",
 			AdapterKind::GithubCopilot => "github_copilot",
+			AdapterKind::BedrockApi => "bedrock_api",
+			#[cfg(feature = "bedrock-sigv4")]
+			AdapterKind::BedrockSigv4 => "bedrock_sigv4",
 		}
 	}
 
@@ -142,6 +161,9 @@ impl AdapterKind {
 			"ollama_cloud" => Some(AdapterKind::OllamaCloud),
 			"vertex" => Some(AdapterKind::Vertex),
 			"github_copilot" => Some(AdapterKind::GithubCopilot),
+			"bedrock_api" => Some(AdapterKind::BedrockApi),
+			#[cfg(feature = "bedrock-sigv4")]
+			"bedrock_sigv4" => Some(AdapterKind::BedrockSigv4),
 			_ => None,
 		}
 	}
@@ -171,6 +193,9 @@ impl AdapterKind {
 			AdapterKind::OllamaCloud => OllamaCloudAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Vertex => VertexAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::GithubCopilot => GithubCopilotAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::BedrockApi => BedrockApiAdapter::DEFAULT_API_KEY_ENV_NAME,
+			#[cfg(feature = "bedrock-sigv4")]
+			AdapterKind::BedrockSigv4 => BedrockSigv4Adapter::DEFAULT_API_KEY_ENV_NAME,
 		}
 	}
 }
