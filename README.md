@@ -48,7 +48,6 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
 - `coding::glm-4.6` (Special namespace for **Zai** coding subscription)
 - `opencode_go::minimax-m2.5` (Forces **OpenCodeGo** adapter)
-- `opencode_go::glm-5` (Forces **OpenCodeGo** adapter)
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
