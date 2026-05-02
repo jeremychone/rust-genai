@@ -10,6 +10,7 @@ use crate::chat::CacheControl;
 use crate::chat::chat_req_response_format::ChatResponseFormat;
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::ops::Deref;
 
 /// Options considered by all `Client::exec_*` chat calls.
@@ -76,6 +77,12 @@ pub struct ChatOptions {
 
 	/// OpenAI prompt cache key.
 	pub prompt_cache_key: Option<String>,
+
+	/// Provider-specific extra request payload merged by the adapter.
+	///
+	/// This is primarily useful for OpenAI-compatible providers that expose
+	/// non-standard request fields.
+	pub extra_body: Option<Value>,
 }
 
 /// Chainable Setters
@@ -191,6 +198,12 @@ impl ChatOptions {
 	/// Sets the OpenAI prompt cache key.
 	pub fn with_prompt_cache_key(mut self, key: impl Into<String>) -> Self {
 		self.prompt_cache_key = Some(key.into());
+		self
+	}
+
+	/// Sets provider-specific extra body fields.
+	pub fn with_extra_body(mut self, value: Value) -> Self {
+		self.extra_body = Some(value);
 		self
 	}
 
@@ -577,6 +590,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.prompt_cache_key.as_deref())
 			.or_else(|| self.client.and_then(|client| client.prompt_cache_key.as_deref()))
+	}
+
+	pub fn extra_body(&self) -> Option<&Value> {
+		self.chat
+			.and_then(|chat| chat.extra_body.as_ref())
+			.or_else(|| self.client.and_then(|client| client.extra_body.as_ref()))
 	}
 
 	pub fn cache_control(&self) -> Option<&CacheControl> {
