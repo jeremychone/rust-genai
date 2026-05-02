@@ -202,11 +202,21 @@ impl OpenAIAdapter {
 			}
 		}
 
+		// -- Provider-specific payload extension
+		// Merged last so callers can intentionally override previously set fields.
+		if let Some(extra_body) = options_set.extra_body() {
+			payload.x_merge(extra_body.clone())?;
+		}
+
 		Ok(WebRequestData { url, headers, payload })
 	}
 
 	/// Note: Needs to be called from super::streamer as well
 	pub(super) fn into_usage(adapter: AdapterKind, usage_value: Value) -> Usage {
+		if usage_value.is_null() {
+			return Usage::default();
+		}
+
 		// NOTE: here we make sure we do not fail since we do not want to break a response because usage parsing fail
 		let usage = serde_json::from_value(usage_value).map_err(|err| {
 			error!("Fail to deserialize usage. Cause: {err}");
@@ -489,10 +499,44 @@ struct OpenAIRequestParts {
 mod tests {
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ContentPart, MessageContent, ToolCall};
+	use crate::chat::{ChatMessage, ChatOptions, ContentPart, MessageContent, ToolCall};
 
 	fn test_model() -> ModelIden {
 		ModelIden::new(AdapterKind::OpenAI, "test-model")
+	}
+
+	#[test]
+	fn test_extra_body_merged_into_chat_completion_payload() {
+		let chat_options = ChatOptions::default()
+			.with_temperature(0.2)
+			.with_extra_body(json!({"temperature": 0.7, "enable_thinking": false}));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			model: test_model(),
+			auth: AuthData::from_single("test-key"),
+			endpoint: Endpoint::from_static("https://api.openai.com/v1/"),
+		};
+
+		let web_req = OpenAIAdapter::util_to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+			None,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["enable_thinking"], false);
+		assert_eq!(web_req.payload["temperature"], 0.7);
+	}
+
+	#[test]
+	fn test_null_usage_is_treated_as_absent_usage() {
+		let usage = OpenAIAdapter::into_usage(AdapterKind::OpenAI, Value::Null);
+
+		assert!(usage.prompt_tokens.is_none());
+		assert!(usage.completion_tokens.is_none());
+		assert!(usage.total_tokens.is_none());
 	}
 
 	/// When an assistant message carries reasoning_content, it must appear
