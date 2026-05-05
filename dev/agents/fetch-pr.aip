@@ -1,0 +1,144 @@
+# Options
+
+```toml
+model = "flash"
+```
+
+# Data
+
+```lua
+local pr_id, wb_name = aip.text.split_first(input, ",")
+
+if not pr_id or not wb_name then
+    error("Invalid input format. Expected 'PR_ID,WORKBENCH_NAME'")
+end
+
+pr_id = aip.text.trim(pr_id)
+wb_name = aip.text.trim(wb_name)
+
+local pr_res = aip.cmd.exec("gh", {"pr", "view", pr_id, "--json", "title,url,body,comments"})
+if pr_res.error or pr_res.exit ~= 0 then
+    error("Failed to fetch PR " .. pr_id .. " details with gh: " .. (pr_res.stderr or pr_res.error or "unknown error"))
+end
+
+local pr = aip.json.parse(pr_res.stdout or "")
+if not pr or pr.error then
+    error("Failed to parse PR " .. pr_id .. " details JSON: " .. (pr and pr.error or "empty response"))
+end
+
+local function string_value(value)
+    value = value_or(value, "")
+
+    if type(value) == "string" then
+        return value
+    end
+
+    return tostring(value)
+end
+
+local title = aip.text.trim(string_value(pr.title))
+if title == "" then
+    error("Failed to fetch PR " .. pr_id .. " title with gh: empty title")
+end
+
+local url = aip.text.trim(string_value(pr.url))
+
+local words = {}
+for word in string.gmatch(string.lower(title), "%w+") do
+    table.insert(words, word)
+    if #words == 3 then
+        break
+    end
+end
+
+while #words < 3 do
+    table.insert(words, "pr")
+end
+
+local diff_res = aip.cmd.exec("gh", {"pr", "diff", pr_id})
+if diff_res.error or diff_res.exit ~= 0 then
+    error("Failed to fetch PR " .. pr_id .. " diff with gh: " .. (diff_res.stderr or diff_res.error or "unknown error"))
+end
+
+local title_slug = table.concat(words, "-")
+local data_dir = aip.path.join("_workbench", {wb_name, "data"})
+local patch_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-patch-" .. title_slug .. ".md")
+local description_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-description-" .. title_slug .. ".md")
+
+aip.file.ensure_dir(data_dir)
+
+local patch_content = table.concat({
+    "# " .. pr_id .. " " .. title .. " Patch",
+    "url: " .. url,
+    "",
+}, "\n") .. "\n" .. aip.text.trim_end(diff_res.stdout or "") .. "\n"
+
+local body = aip.text.trim_end(string_value(pr.body))
+if body == "" then
+    body = "_No description provided._"
+end
+
+local description_lines = {
+    "# " .. pr_id .. " " .. title,
+    "url: " .. url,
+    "",
+    "## Descriptions",
+    "",
+    body,
+    "",
+    "## Comments",
+    "",
+}
+
+local comments = value_or(pr.comments, {})
+if type(comments) ~= "table" or #comments == 0 then
+    table.insert(description_lines, "_No comments._")
+else
+    for index, comment in ipairs(comments) do
+        if index > 1 then
+            table.insert(description_lines, "")
+        end
+
+        local author = "unknown"
+        if type(comment.author) == "table" then
+            author = aip.text.trim(string_value(comment.author.login))
+        else
+            author = aip.text.trim(string_value(comment.author))
+        end
+
+        if author == "" then
+            author = "unknown"
+        end
+
+        local created_at = aip.text.trim(string_value(comment.createdAt))
+        local heading = "### Comment from " .. author
+        if created_at ~= "" then
+            heading = heading .. " at " .. created_at
+        end
+
+        local comment_body = aip.text.trim_end(string_value(comment.body))
+        if comment_body == "" then
+            comment_body = "_No comment body._"
+        end
+
+        table.insert(description_lines, heading)
+        table.insert(description_lines, "")
+        table.insert(description_lines, comment_body)
+    end
+end
+
+local description_content = table.concat(description_lines, "\n") .. "\n"
+
+aip.file.save(patch_file_path, patch_content, {single_trailing_newline = true})
+aip.file.save(description_file_path, description_content, {single_trailing_newline = true})
+
+return "Successfully saved PR #" .. pr_id .. " patch to " .. patch_file_path .. " and description to " .. description_file_path
+```
+
+# Output
+
+```lua
+-- Repository is inferred from Cargo.toml context.
+
+return data
+```
