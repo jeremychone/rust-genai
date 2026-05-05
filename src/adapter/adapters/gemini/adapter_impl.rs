@@ -406,7 +406,7 @@ impl GeminiAdapter {
 		// -- Set the reasoning effort
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
 			// -- For gemini-3, gemma-4 use the thinkingLevel
-      let models = ["gemini-3", "gemma-4"];
+			let models = ["gemini-3", "gemma-4"];
 			if models.iter().any(|m| provider_model_name.contains(m)) {
 				let thinking_level = match computed_reasoning_effort {
 					ReasoningEffort::None => None,
