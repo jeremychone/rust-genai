@@ -2,6 +2,7 @@ mod support;
 
 pub(super) mod aliyun;
 pub(super) mod anthropic;
+pub(super) mod bedrock;
 pub(super) mod bigmodel;
 pub(super) mod cohere;
 pub(super) mod deepseek;
