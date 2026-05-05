@@ -30,19 +30,19 @@ async fn test_yakbak_gemini_thinking_stream() -> TestResult<()> {
 	assert_eq!(
 		extract.content.as_deref(),
 		Some(
-			"The sky is blue because molecules in Earth's atmosphere scatter shorter-wavelength blue light from the sun more efficiently than longer-wavelength red light."
+			"The sky is blue because the Earth's atmosphere, primarily nitrogen and oxygen molecules, scatters shorter, bluer wavelengths of sunlight more efficiently than longer wavelengths, dispersing blue light across the sky."
 		),
 	);
 
-	// Reasoning should be substantial (862 chars from recorded)
+	// Reasoning should be substantial (1604 chars from recorded)
 	let reasoning = extract.reasoning_content.as_deref().ok_or("Should have reasoning")?;
-	assert_eq!(reasoning.len(), 862, "reasoning length should be exactly 862 chars");
-	assert!(reasoning.starts_with("**Defining Sky Color**"));
+	assert_eq!(reasoning.len(), 1604, "reasoning length should be exactly 1604 chars");
+	assert!(reasoning.starts_with("**Defining Atmospheric Color**"));
 
 	// Exact usage
 	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
 	assert_eq!(usage.prompt_tokens, Some(12));
-	assert_eq!(usage.completion_tokens, Some(230));
+	assert_eq!(usage.completion_tokens, Some(732));
 
 	Ok(())
 }

@@ -103,7 +103,7 @@ impl Adapter for VertexAdapter {
 			VertexPublisher::Google => match service_type {
 				ServiceType::Chat => format!("{base_url}{publisher_path}/models/{model_name}:generateContent"),
 				ServiceType::ChatStream => {
-					format!("{base_url}{publisher_path}/models/{model_name}:streamGenerateContent")
+					format!("{base_url}{publisher_path}/models/{model_name}:streamGenerateContent?alt=sse")
 				}
 				ServiceType::Embed => format!("{base_url}{publisher_path}/models/{model_name}:predict"),
 			},
