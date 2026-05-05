@@ -1,0 +1,78 @@
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": null, "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "1", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": ".  **An", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "alyze the Request:", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "**\n    *  ", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " Command: \"Say", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " hello\"\n", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "    *   Constraint", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": ": \"in one", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " word\"\n\n2.", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "  **Ident", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "ify Potential", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " Responses:**\n   ", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " *   Hello", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "\n    *  ", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " Hi\n    *", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "   Hey\n   ", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " *   Greetings", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "\n    *  ", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " Howdy\n\n3", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": ".  **Select", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " the Best Response", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": ":**\n    *", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "   \"Hello\"", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " is the most direct", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " and accurate", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " translation of the", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " command.\n", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "    *   It", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " strictly adher", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "es to the \"", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "one word\" constraint", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": ".\n\n4. ", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": " **Form", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "ulate Output:**\n", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning_content": "    *   Hello", "tool_calls": null}, "logprobs": null, "finish_reason": null}], "usage": null}
+
+data: {"id": "chatcmpl-RbLQzNQRyMU0Bqm4QDurFp4J", "object": "chat.completion.chunk", "created": 1777623080, "model": "frank/GLM-5.1", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Hello", "reasoning_content": null, "tool_calls": null}, "logprobs": null, "finish_reason": "stop"}], "usage": {"prompt_tokens": 10, "total_tokens": 133, "completion_tokens": 123, "estimated_cost": 0.0, "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": null}}}
+
+data: [DONE]
+
+data: {"choices":[],"cost":"0"}
+

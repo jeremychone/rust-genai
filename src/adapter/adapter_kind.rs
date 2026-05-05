@@ -1,5 +1,6 @@
 use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
 use crate::adapter::adapters::ollama::OllamaAdapter;
+use crate::adapter::adapters::opencode_go::OpenCodeGoAdapter;
 use crate::adapter::adapters::ollama_cloud::OllamaCloudAdapter;
 use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
@@ -67,6 +68,9 @@ pub enum AdapterKind {
 	/// GitHub Models inference API (multi-publisher gateway for OpenAI, Anthropic, and Google models).
 	/// Uses namespace routing: `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, `github_copilot::google/gemini-2.5-pro`
 	GithubCopilot,
+	/// OpenCode Go proxy (OpenAI-compatible adapter for the OpenCode ecosystem).
+	/// Namespace: `opencode_go::model-name` — route any model via the OpenCode Go gateway.
+	OpenCodeGo,
 }
 
 /// Serialization/Parse implementations
@@ -93,6 +97,7 @@ impl AdapterKind {
 			AdapterKind::OllamaCloud => "OllamaCloud",
 			AdapterKind::Vertex => "Vertex",
 			AdapterKind::GithubCopilot => "GithubCopilot",
+			AdapterKind::OpenCodeGo => "OpenCodeGo",
 		}
 	}
 
@@ -118,6 +123,7 @@ impl AdapterKind {
 			AdapterKind::OllamaCloud => "ollama_cloud",
 			AdapterKind::Vertex => "vertex",
 			AdapterKind::GithubCopilot => "github_copilot",
+			AdapterKind::OpenCodeGo => "opencode_go",
 		}
 	}
 
@@ -142,6 +148,7 @@ impl AdapterKind {
 			"ollama_cloud" => Some(AdapterKind::OllamaCloud),
 			"vertex" => Some(AdapterKind::Vertex),
 			"github_copilot" => Some(AdapterKind::GithubCopilot),
+			"opencode_go" => Some(AdapterKind::OpenCodeGo),
 			_ => None,
 		}
 	}
@@ -171,6 +178,7 @@ impl AdapterKind {
 			AdapterKind::OllamaCloud => OllamaCloudAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Vertex => VertexAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::GithubCopilot => GithubCopilotAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::OpenCodeGo => OpenCodeGoAdapter::DEFAULT_API_KEY_ENV_NAME,
 		}
 	}
 }

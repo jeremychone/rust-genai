@@ -95,6 +95,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::github_copilot::[<GithubCopilot Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::OpenCodeGo => {
+				type A = crate::adapter::adapters::opencode_go::[<OpenCodeGo Adapter>];
+				$body
+			}
 		}
 	};
 }

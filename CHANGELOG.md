@@ -11,6 +11,7 @@
 - `!` gemini - make `thinkingConfig/includeThoughts` opt-in for `capture_reasoning_content`
 - `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
 - `+` provider - add Google Vertex adapter with Gemini and Anthropic support
+- `+` provider - add OpenCode Go adapter with dual-protocol routing (OpenAI for 12 models, Anthropic for 2 MiniMax models)
 - `+` anthropic - add JSON schema support
 - `+` API NEW - New `ModelSpec` to define custom endpoint, model, .. 
 - `+` API NEW - add openai resp stateful sessions — `previous_response_id`, `store`, `response_id` (PR #168)

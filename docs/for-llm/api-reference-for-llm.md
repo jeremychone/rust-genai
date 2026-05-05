@@ -30,10 +30,11 @@ genai (crate root / lib.rs)
 - **ModelSpec**: Specifies a model at three resolution levels: `Name`, `Iden`, or `Target`.
 - **ServiceTarget**: Fully resolved call target: `ModelIden` + `Endpoint` + `AuthData`.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
-- **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `Vertex`, `GithubCopilot`.
+- **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `OpenCodeGo`, `Vertex`, `GithubCopilot`.
   - `GithubCopilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `OllamaCloud` is the hosted Ollama Cloud service (`ollama.com`). Uses the same native Ollama protocol as the local `Ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via `ollama_cloud::model_name` namespace (e.g., `ollama_cloud::gemma3:4b`).
   - `Vertex` is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
+- `OpenCodeGo` is a curated open coding model proxy with dual-protocol routing via the `opencode_go::` namespace. Uses `OPENCODE_GO_API_KEY`.
 
 ## Client & Configuration
 
@@ -503,7 +504,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `Vertex`, `GithubCopilot`.
+Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `OpenCodeGo`, `Vertex`, `GithubCopilot`.
 
 - `as_str()`: Display name (e.g., `"OpenAI"`, `"xAi"`).
 - `as_lower_str()`: Lowercase name (e.g., `"openai"`, `"xai"`).
@@ -526,7 +527,7 @@ Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`
   - `glm*` -> `Zai`.
   - Fallback -> `Ollama`.
 - **Namespacing**: `namespace::model_name` (e.g., `together::meta-llama/...`, `nebius::Qwen/...`).
-  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `ollama_cloud::`, `vertex::`, `openai_resp::`, `github_copilot::`)
+  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `ollama_cloud::`, `opencode_go::`, `vertex::`, `openai_resp::`, `github_copilot::`)
   - Special: `coding::` namespace maps to `Zai` adapter.
 - **Namespace-only or recommended namespace providers**:
   - `groq::model_name` is required for direct Groq targeting in v0.6.0-beta.
