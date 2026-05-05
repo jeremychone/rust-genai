@@ -7,7 +7,7 @@ use crate::chat::{
 	StopReason, Tool, ToolCall, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::{WebResponse, WebStream};
+use crate::webc::{EventSourceStream, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Value, json};
@@ -104,7 +104,7 @@ impl Adapter for GeminiAdapter {
 		let (_, model_name) = model.model_name.namespace_and_name();
 		let url = match service_type {
 			ServiceType::Chat => format!("{base_url}models/{model_name}:generateContent"),
-			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent"),
+			ServiceType::ChatStream => format!("{base_url}models/{model_name}:streamGenerateContent?alt=sse"),
 			ServiceType::Embed => format!("{base_url}models/{model_name}:embedContent"), // Gemini embeddings API
 		};
 		Ok(url)
@@ -220,9 +220,9 @@ impl Adapter for GeminiAdapter {
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatStreamResponse> {
-		let web_stream = WebStream::new_with_pretty_json_array(reqwest_builder);
+		let event_source = EventSourceStream::new(reqwest_builder);
 
-		let gemini_stream = GeminiStreamer::new(web_stream, model_iden.clone(), options_set);
+		let gemini_stream = GeminiStreamer::new(event_source, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(gemini_stream);
 
 		Ok(ChatStreamResponse {
