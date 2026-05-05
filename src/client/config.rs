@@ -14,6 +14,7 @@ pub struct ClientConfig {
 	pub(super) web_config: Option<WebConfig>,
 	pub(super) chat_options: Option<ChatOptions>,
 	pub(super) embed_options: Option<EmbedOptions>,
+	pub(super) adapter_kind: Option<AdapterKind>,
 }
 
 /// Chainable setters related to the ClientConfig.
@@ -60,6 +61,33 @@ impl ClientConfig {
 		self
 	}
 
+	/// Binds this Client to a single [`AdapterKind`].
+	///
+	/// A Client that has configured an [`AuthResolver`] or [`ServiceTargetResolver`]
+	/// scoped to a specific adapter is *already* physically single-provider: both
+	/// resolvers gate on `adapter_kind`, so any call that routes through a
+	/// different adapter silently drops auth and the configured endpoint. Setting
+	/// `adapter_kind` on the Client makes that constraint explicit and drives
+	/// routing directly, bypassing the [`AdapterKind::from_model`] name-sniffing
+	/// heuristic (which falls back to Ollama for unrecognized names).
+	///
+	/// When set:
+	/// - [`ModelSpec::Name`] routes through this adapter. A `::` namespace prefix
+	///   or other embedded adapter reference is a usage error (see
+	///   [`Error::AdapterKindMismatch`]).
+	/// - [`ModelSpec::Iden`] must carry the same adapter; otherwise returns
+	///   [`Error::AdapterKindMismatch`] instead of silently producing a
+	///   misconfigured request.
+	/// - [`ModelSpec::Target`] is passed through unchanged (callers handing in a
+	///   fully-resolved target have already opted out of Client-level routing).
+	///
+	/// Leave unset for the classic multi-provider shape (route per-call by model
+	/// name).
+	pub fn with_adapter_kind(mut self, adapter_kind: AdapterKind) -> Self {
+		self.adapter_kind = Some(adapter_kind);
+		self
+	}
+
 	/// Returns the WebConfig, if set.
 	pub fn web_config(&self) -> Option<&WebConfig> {
 		self.web_config.as_ref()
@@ -91,6 +119,11 @@ impl ClientConfig {
 	/// Returns the default EmbedOptions, if set.
 	pub fn embed_options(&self) -> Option<&EmbedOptions> {
 		self.embed_options.as_ref()
+	}
+
+	/// Returns the bound [`AdapterKind`], if set via [`Self::with_adapter_kind`].
+	pub fn adapter_kind(&self) -> Option<AdapterKind> {
+		self.adapter_kind
 	}
 }
 
@@ -188,23 +221,195 @@ impl ClientConfig {
 
 	/// Resolves a [`ModelSpec`] to a [`ServiceTarget`].
 	///
-	/// The resolution behavior depends on the variant:
+	/// The resolution behavior depends on the variant and on whether the
+	/// Client has been bound to an adapter via [`Self::with_adapter_kind`]:
 	///
-	/// - [`ModelSpec::Name`]: Infers adapter from name, then applies full resolution
-	///   (model mapper, auth resolver, service target resolver).
+	/// - [`ModelSpec::Name`]: if a bound adapter is set, routes the bare
+	///   name through it (a `::` namespace prefix in the name is rejected as
+	///   [`Error::AdapterKindMismatch`] when it would resolve to a different
+	///   adapter). Otherwise infers adapter from the name.
 	///
-	/// - [`ModelSpec::Iden`]: Skips adapter inference, applies full resolution.
+	/// - [`ModelSpec::Iden`]: if a bound adapter is set and differs from the
+	///   Iden's adapter, returns [`Error::AdapterKindMismatch`]. Otherwise
+	///   proceeds with the Iden as given.
 	///
-	/// - [`ModelSpec::Target`]: Returns the target directly, running only the service target resolver.
+	/// - [`ModelSpec::Target`]: returns the target directly, running only
+	///   the service target resolver. A fully-resolved target has already
+	///   opted out of Client-level routing.
 	pub async fn resolve_model_spec(&self, spec: ModelSpec) -> Result<ServiceTarget> {
 		match spec {
 			ModelSpec::Name(name) => {
-				let adapter_kind = AdapterKind::from_model(&name)?;
+				let resolved = AdapterKind::from_model(&name)?;
+				let adapter_kind = match self.adapter_kind {
+					Some(bound) => {
+						// If the name carries an explicit `::` namespace that
+						// resolves to a different adapter, that's a
+						// misconfiguration: the bound Client's resolvers
+						// won't fire for it. Reject loudly.
+						if resolved != bound && AdapterKind::from_model_namespace(&name).is_some() {
+							return Err(Error::AdapterKindMismatch {
+								bound,
+								requested: resolved,
+								model: name.to_string(),
+							});
+						}
+						bound
+					}
+					None => resolved,
+				};
 				let model = ModelIden::new(adapter_kind, name);
 				self.resolve_service_target(model).await
 			}
-			ModelSpec::Iden(model) => self.resolve_service_target(model).await,
+			ModelSpec::Iden(model) => {
+				if let Some(bound) = self.adapter_kind
+					&& model.adapter_kind != bound
+				{
+					return Err(Error::AdapterKindMismatch {
+						bound,
+						requested: model.adapter_kind,
+						model: model.model_name.to_string(),
+					});
+				}
+				self.resolve_service_target(model).await
+			}
 			ModelSpec::Target(target) => self.run_service_target_resolver(target).await,
 		}
 	}
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::resolver::{AuthData, AuthResolver, Endpoint, ServiceTargetResolver};
+
+	/// Build a ClientConfig bound to the given adapter, with an
+	/// auth/service-target resolver pair gated on that same adapter —
+	/// mirroring the real-world configuration shape this feature is meant
+	/// to model. The service_target_resolver records the adapter it
+	/// received so tests can assert routing landed where expected.
+	fn bound_config(adapter_kind: AdapterKind, observed_endpoint: &'static str) -> ClientConfig {
+		ClientConfig::default()
+			.with_adapter_kind(adapter_kind)
+			.with_auth_resolver(AuthResolver::from_resolver_fn(
+				move |model_iden: ModelIden| -> std::result::Result<Option<AuthData>, crate::resolver::Error> {
+					if model_iden.adapter_kind == adapter_kind {
+						Ok(Some(AuthData::from_single("test-key")))
+					} else {
+						// Simulate the real-world gating: mismatched adapter
+						// gets no auth — which is exactly the silent failure
+						// that motivated this feature.
+						Ok(None)
+					}
+				},
+			))
+			.with_service_target_resolver(ServiceTargetResolver::from_resolver_fn(
+				move |mut service_target: crate::ServiceTarget| -> std::result::Result<crate::ServiceTarget, crate::resolver::Error> {
+					if service_target.model.adapter_kind == adapter_kind {
+						service_target.endpoint = Endpoint::from_static(observed_endpoint);
+					}
+					Ok(service_target)
+				},
+			))
+	}
+
+	#[tokio::test]
+	async fn bound_client_routes_bare_name_through_bound_adapter() {
+		// `mini-max-m2.7` hits no prefix matcher — without a bound
+		// adapter it would fall through to Ollama. With `with_adapter_kind`,
+		// it must route through OpenAI instead.
+		let config = bound_config(AdapterKind::OpenAI, "https://custom.example/v1");
+		let target = config
+			.resolve_model_spec(ModelSpec::Name("mini-max-m2.7".into()))
+			.await
+			.expect("bound name should resolve");
+		assert_eq!(target.model.adapter_kind, AdapterKind::OpenAI);
+		assert_eq!(target.endpoint.base_url(), "https://custom.example/v1");
+	}
+
+	#[tokio::test]
+	async fn bound_client_rejects_mismatched_namespace() {
+		// Bound to OpenAI, but caller passes an explicit `anthropic::...`
+		// namespace. The resolvers would silently drop (no auth, default
+		// endpoint). Return AdapterKindMismatch instead.
+		let config = bound_config(AdapterKind::OpenAI, "https://custom.example/v1");
+		let err = config
+			.resolve_model_spec(ModelSpec::Name("anthropic::claude-3-5-sonnet".into()))
+			.await
+			.expect_err("mismatched namespace should error");
+		match err {
+			Error::AdapterKindMismatch { bound, requested, .. } => {
+				assert_eq!(bound, AdapterKind::OpenAI);
+				assert_eq!(requested, AdapterKind::Anthropic);
+			}
+			other => panic!("expected AdapterKindMismatch, got {other:?}"),
+		}
+	}
+
+	#[tokio::test]
+	async fn bound_client_accepts_matching_namespace() {
+		// Redundant but harmless: `openai::gpt-4` against a Client bound
+		// to OpenAI. The namespace matches, so the call proceeds normally.
+		let config = bound_config(AdapterKind::OpenAI, "https://custom.example/v1");
+		let target = config
+			.resolve_model_spec(ModelSpec::Name("openai::gpt-4".into()))
+			.await
+			.expect("matching namespace should resolve");
+		assert_eq!(target.model.adapter_kind, AdapterKind::OpenAI);
+	}
+
+	#[tokio::test]
+	async fn bound_client_rejects_mismatched_iden() {
+		// ModelSpec::Iden carries its own AdapterKind. If it disagrees
+		// with the bound one, same silent-drop failure mode — reject.
+		let config = bound_config(AdapterKind::OpenAI, "https://custom.example/v1");
+		let iden = ModelIden::new(AdapterKind::Gemini, "gemini-1.5-pro");
+		let err = config
+			.resolve_model_spec(ModelSpec::Iden(iden))
+			.await
+			.expect_err("mismatched iden should error");
+		assert!(matches!(
+			err,
+			Error::AdapterKindMismatch {
+				bound: AdapterKind::OpenAI,
+				requested: AdapterKind::Gemini,
+				..
+			}
+		));
+	}
+
+	#[tokio::test]
+	async fn unbound_client_preserves_inference() {
+		// No `with_adapter_kind` set → classic behavior. `gpt-4` should
+		// infer to OpenAI via the prefix matcher, and the service-target
+		// resolver (gated on OpenAI) should fire.
+		let config = bound_config(AdapterKind::OpenAI, "https://custom.example/v1");
+		// Strip the binding to simulate an unbound Client that still has
+		// resolvers attached (closest real-world unbound config).
+		let config = ClientConfig {
+			adapter_kind: None,
+			..config
+		};
+		let target = config
+			.resolve_model_spec(ModelSpec::Name("gpt-4".into()))
+			.await
+			.expect("unbound name should resolve via inference");
+		assert_eq!(target.model.adapter_kind, AdapterKind::OpenAI);
+	}
+
+	#[test]
+	fn bound_client_exposes_adapter_kind_via_getter() {
+		// `Client::adapter_kind()` is the introspection getter a
+		// caller uses to read the bound provider back off a built
+		// Client (without having to carry the AdapterKind alongside
+		// it). Set path returns Some, unset path returns None.
+		let bound = crate::Client::builder().with_adapter_kind(AdapterKind::OpenAI).build();
+		assert_eq!(bound.adapter_kind(), Some(AdapterKind::OpenAI));
+
+		let unbound = crate::Client::default();
+		assert_eq!(unbound.adapter_kind(), None);
+	}
+}
+
+// endregion: --- Tests

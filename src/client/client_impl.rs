@@ -27,6 +27,19 @@ impl Client {
 		Ok(models)
 	}
 
+	/// Returns the bound [`AdapterKind`] for this Client, if any.
+	///
+	/// Set via [`ClientBuilder::with_adapter_kind`] at construction
+	/// time — `None` for Clients that did not opt into the bound
+	/// shape and still use per-call model-name inference. Useful for
+	/// callers that want to introspect a Client without tracking the
+	/// provider in parallel state.
+	///
+	/// [`ClientBuilder::with_adapter_kind`]: crate::ClientBuilder::with_adapter_kind
+	pub fn adapter_kind(&self) -> Option<AdapterKind> {
+		self.config().adapter_kind()
+	}
+
 	/// Builds a ModelIden by inferring AdapterKind from the model name.
 	pub fn default_model(&self, model_name: &str) -> Result<ModelIden> {
 		// -- First get the default ModelInfo
