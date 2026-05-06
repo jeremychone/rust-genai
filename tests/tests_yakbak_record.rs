@@ -169,12 +169,22 @@ async fn record_gemini_tool_stream() -> TestResult<()> {
 	let (client, mut server) = record_client("gemini", "tool_stream", &gemini_backend()).await?;
 
 	let chat_req = seed_tool_request();
-	let options = ChatOptions::default().with_capture_content(true).with_capture_tool_calls(true);
+	// High reasoning effort so the model emits reasoning content alongside the
+	// functionCall — the cassette then exercises both paths in the SSE streamer.
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::High)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true);
 
 	let stream_res = client.exec_chat_stream(GEMINI_TOOL_MODEL, chat_req, Some(&options)).await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 	let tool_calls = &extract.stream_end.captured_tool_calls();
 	eprintln!("[record] Tool calls: {:?}", tool_calls.as_ref().map(|tc| tc.len()));
+	eprintln!(
+		"[record] Reasoning len: {:?}",
+		extract.reasoning_content.as_deref().map(|s| s.len())
+	);
 
 	server.shutdown().await;
 	Ok(())

@@ -66,13 +66,18 @@ async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 		"required": ["city", "country", "unit"],
 	})));
 
-	let options = ChatOptions::default().with_capture_content(true).with_capture_tool_calls(true);
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::High)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true);
 
 	let stream_res = client
 		.exec_chat_stream("gemini-3.1-flash-lite-preview", chat_req, Some(&options))
 		.await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 
+	// Tool call assertions
 	let tool_calls = extract
 		.stream_end
 		.captured_tool_calls()
@@ -83,6 +88,28 @@ async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 	assert_eq!(first.fn_name, "get_weather");
 	let args = first.fn_arguments.as_object().ok_or("fn_arguments should be an object")?;
 	assert_eq!(args.get("city").and_then(|v| v.as_str()), Some("Paris"));
+
+	// Thought-signature assertions: Gemini 3.x emits opaque `thoughtSignature`
+	// parts alongside tool calls (replacing the legacy `thought:true`+text shape).
+	// The cassette confirms thinking happened (thoughtsTokenCount=114) and the
+	// streamer forwards the signature into captured_content.
+	let thought_signatures = extract
+		.stream_end
+		.captured_thought_signatures()
+		.ok_or("Should have captured thought signatures")?;
+	assert!(
+		!thought_signatures.is_empty(),
+		"Should have at least one thought signature"
+	);
+	assert!(
+		thought_signatures[0].len() > 100,
+		"Thought signature should be a non-trivial opaque blob"
+	);
+	// And it should also be attached to the first tool call for tool-use handoff.
+	assert!(
+		first.thought_signatures.as_ref().is_some_and(|t| !t.is_empty()),
+		"First tool call should carry thought_signatures for handoff"
+	);
 
 	Ok(())
 }
