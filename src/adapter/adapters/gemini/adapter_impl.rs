@@ -405,19 +405,19 @@ impl GeminiAdapter {
 
 		// -- Set the reasoning effort
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			// -- For gemini-3 use the thinkingLevel if Low or High (does not support medium for now)
-			if provider_model_name.contains("gemini-3") {
-				match computed_reasoning_effort {
-					ReasoningEffort::Low | ReasoningEffort::Minimal => {
-						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "LOW")?;
-					}
-					ReasoningEffort::High | ReasoningEffort::Max => {
-						payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", "HIGH")?;
-					}
-					// Fallback on thinkingBudget
-					other => {
-						insert_gemini_thinking_budget_value(&mut payload, &other)?;
-					}
+			// -- For gemini-3, gemma-4 use the thinkingLevel
+			let models = ["gemini-3", "gemma-4"];
+			if models.iter().any(|m| provider_model_name.contains(m)) {
+				let thinking_level = match computed_reasoning_effort {
+					ReasoningEffort::None => None,
+					ReasoningEffort::Budget(_) => None,
+					ReasoningEffort::Minimal => Some("MINIMAL"),
+					ReasoningEffort::Low => Some("LOW"),
+					ReasoningEffort::Medium => Some("MEDIUM"),
+					ReasoningEffort::High | ReasoningEffort::Max | ReasoningEffort::XHigh => Some("HIGH"),
+				};
+				if let Some(thinking_level) = thinking_level {
+					payload.x_insert("/generationConfig/thinkingConfig/thinkingLevel", thinking_level)?;
 				}
 			}
 			// -- Otherwise, Do thinking budget
