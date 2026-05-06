@@ -16,7 +16,7 @@ end
 pr_id = aip.text.trim(pr_id)
 wb_name = aip.text.trim(wb_name)
 
-local pr_res = aip.cmd.exec("gh", {"pr", "view", pr_id, "--json", "title,url,body,comments,author,createdAt"})
+local pr_res = aip.cmd.exec("gh", {"pr", "view", pr_id, "--json", "title,url,body,comments,author,createdAt,headRefName,headRepository,headRepositoryOwner"})
 if pr_res.error or pr_res.exit ~= 0 then
     error("Failed to fetch PR " .. pr_id .. " details with gh: " .. (pr_res.stderr or pr_res.error or "unknown error"))
 end
@@ -56,6 +56,19 @@ end
 
 local created_at = aip.text.trim(string_value(pr.createdAt))
 
+local head_ref = aip.text.trim(string_value(pr.headRefName))
+local head_repo_name = ""
+if type(pr.headRepository) == "table" then
+    head_repo_name = aip.text.trim(string_value(pr.headRepository.name))
+end
+local head_repo_owner = ""
+if type(pr.headRepositoryOwner) == "table" then
+    head_repo_owner = aip.text.trim(string_value(pr.headRepositoryOwner.login))
+end
+
+local source = head_repo_owner .. ":" .. head_ref
+local git_remote_url = "git@github.com:" .. head_repo_owner .. "/" .. head_repo_name .. ".git"
+
 local words = {}
 for word in string.gmatch(string.lower(title), "%w+") do
     table.insert(words, word)
@@ -80,13 +93,21 @@ local description_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-descri
 
 aip.file.ensure_dir(data_dir)
 
-local patch_content = table.concat({
-    "# " .. pr_id .. " " .. title .. " Patch",
+local header_lines = {
+    "# PR " .. pr_id .. " - " .. title,
     "url: " .. url,
     "author: " .. author,
     "time: " .. created_at,
+    "source: " .. source,
     "",
-}, "\n") .. "\n" .. aip.text.trim_end(diff_res.stdout or "") .. "\n"
+    "```bash",
+    "git fetch " .. git_remote_url .. " " .. head_ref,
+    "git switch -c pr-" .. head_ref .. " FETCH_HEAD",
+    "```",
+}
+local common_header = table.concat(header_lines, "\n")
+
+local patch_content = common_header .. "\n\n" .. aip.text.trim_end(diff_res.stdout or "") .. "\n"
 
 local body = aip.text.trim_end(string_value(pr.body))
 if body == "" then
@@ -94,53 +115,46 @@ if body == "" then
 end
 
 local description_lines = {
-    "# " .. pr_id .. " " .. title,
-    "url: " .. url,
-    "author: " .. author,
-    "time: " .. created_at,
+    common_header,
     "",
-    "## Descriptions",
+    "---",
+    "**Description:**",
     "",
     body,
-    "",
-    "## Comments",
-    "",
 }
 
 local comments = value_or(pr.comments, {})
-if type(comments) ~= "table" or #comments == 0 then
-    table.insert(description_lines, "_No comments._")
-else
-    for index, comment in ipairs(comments) do
-        if index > 1 then
-            table.insert(description_lines, "")
-        end
-
-        local author = "unknown"
+if type(comments) == "table" and #comments > 0 then
+    for _, comment in ipairs(comments) do
+        local c_author = "unknown"
         if type(comment.author) == "table" then
-            author = aip.text.trim(string_value(comment.author.login))
+            c_author = aip.text.trim(string_value(comment.author.login))
         else
-            author = aip.text.trim(string_value(comment.author))
+            c_author = aip.text.trim(string_value(comment.author))
         end
 
-        if author == "" then
-            author = "unknown"
+        if c_author == "" then
+            c_author = "unknown"
         end
 
-        local created_at = aip.text.trim(string_value(comment.createdAt))
-        local heading = "### Comment from " .. author
-        if created_at ~= "" then
-            heading = heading .. " at " .. created_at
+        local c_created_at = aip.text.trim(string_value(comment.createdAt))
+        local c_body = aip.text.trim_end(string_value(comment.body))
+        if c_body == "" then
+            c_body = "_No comment body._"
         end
 
-        local comment_body = aip.text.trim_end(string_value(comment.body))
-        if comment_body == "" then
-            comment_body = "_No comment body._"
-        end
-
-        table.insert(description_lines, heading)
         table.insert(description_lines, "")
-        table.insert(description_lines, comment_body)
+        table.insert(description_lines, "---")
+
+        local comment_title = "**Comment from " .. c_author
+        if c_created_at ~= "" then
+            comment_title = comment_title .. " at " .. c_created_at
+        end
+        comment_title = comment_title .. " **"
+
+        table.insert(description_lines, comment_title)
+        table.insert(description_lines, "")
+        table.insert(description_lines, c_body)
     end
 end
 
