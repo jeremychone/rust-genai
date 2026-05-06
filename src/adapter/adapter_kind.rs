@@ -18,6 +18,7 @@ use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::groq::GroqAdapter;
 use crate::adapter::mimo::MimoAdapter;
 use crate::adapter::nebius::NebiusAdapter;
+use crate::adapter::moonshot::MoonshotAdapter;
 use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::vertex::VertexAdapter;
 use crate::adapter::xai::XaiAdapter;
@@ -47,6 +48,8 @@ pub enum AdapterKind {
 	Groq,
 	/// For Mimo (Mostly use OpenAI)
 	Mimo,
+	/// For Moonshot AI (Mostly use OpenAI)
+	Moonshot,
 	/// For Nebius (Mostly use OpenAI)
 	Nebius,
 	/// For xAI (Mostly use OpenAI)
@@ -99,6 +102,7 @@ impl AdapterKind {
 			AdapterKind::Together => "Together",
 			AdapterKind::Groq => "Groq",
 			AdapterKind::Mimo => "Mimo",
+			AdapterKind::Moonshot => "Moonshot",
 			AdapterKind::Nebius => "Nebius",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
@@ -128,6 +132,7 @@ impl AdapterKind {
 			AdapterKind::Together => "together",
 			AdapterKind::Groq => "groq",
 			AdapterKind::Mimo => "mimo",
+			AdapterKind::Moonshot => "moonshot",
 			AdapterKind::Nebius => "nebius",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
@@ -156,6 +161,7 @@ impl AdapterKind {
 			"together" => Some(AdapterKind::Together),
 			"groq" => Some(AdapterKind::Groq),
 			"mimo" => Some(AdapterKind::Mimo),
+			"moonshot" => Some(AdapterKind::Moonshot),
 			"nebius" => Some(AdapterKind::Nebius),
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
@@ -189,6 +195,7 @@ impl AdapterKind {
 			AdapterKind::Together => TogetherAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Groq => GroqAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Mimo => MimoAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Moonshot => MoonshotAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Nebius => NebiusAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Xai => XaiAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::DeepSeek => DeepSeekAdapter::DEFAULT_API_KEY_ENV_NAME,
@@ -277,6 +284,8 @@ impl AdapterKind {
 			Ok(Self::Zai)
 		} else if model.starts_with("deepseek-") {
 			Ok(Self::DeepSeek)
+		} else if model.starts_with("moonshot-") {
+			Ok(Self::Moonshot)
 		}
 		// For now, fallback to Ollama
 		else {

@@ -47,6 +47,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::groq::[<Groq Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Moonshot => {
+				type A = crate::adapter::moonshot::[<Moonshot Adapter>];
+				$body
+			}
 			crate::adapter::AdapterKind::Mimo => {
 				type A = crate::adapter::mimo::[<Mimo Adapter>];
 				$body
