@@ -73,7 +73,7 @@ impl BedrockStreamer {
 		let total_len = u32::from_be_bytes(self.buf[0..4].try_into().unwrap()) as usize;
 		let headers_len = u32::from_be_bytes(self.buf[4..8].try_into().unwrap()) as usize;
 
-		if total_len < 16 || total_len > 16 * 1024 * 1024 {
+		if !(16..=16 * 1024 * 1024).contains(&total_len) {
 			return Err(self.frame_err(format!("invalid event-stream total_len: {total_len}")));
 		}
 
@@ -228,10 +228,10 @@ impl BedrockStreamer {
 				}
 			}
 			"metadata" => {
-				if self.options.capture_usage {
-					if let Ok(usage_value) = payload.x_take::<Value>("usage") {
-						self.captured_data.usage = Some(parse_stream_usage(usage_value));
-					}
+				if self.options.capture_usage
+					&& let Ok(usage_value) = payload.x_take::<Value>("usage")
+				{
+					self.captured_data.usage = Some(parse_stream_usage(usage_value));
 				}
 			}
 			other => {
@@ -405,10 +405,7 @@ fn parse_headers(mut raw: &[u8]) -> std::result::Result<std::collections::HashMa
 fn parse_stream_usage(mut value: Value) -> Usage {
 	let input_tokens: i32 = value.x_take("inputTokens").ok().unwrap_or(0);
 	let output_tokens: i32 = value.x_take("outputTokens").ok().unwrap_or(0);
-	let total_tokens: i32 = value
-		.x_take("totalTokens")
-		.ok()
-		.unwrap_or(input_tokens + output_tokens);
+	let total_tokens: i32 = value.x_take("totalTokens").ok().unwrap_or(input_tokens + output_tokens);
 	Usage {
 		prompt_tokens: Some(input_tokens),
 		prompt_tokens_details: None,
@@ -466,7 +463,10 @@ mod tests {
 		streamer.buf.extend_from_slice(&frame);
 
 		let decoded = streamer.try_parse_frame().expect("parse ok").expect("frame present");
-		assert_eq!(decoded.headers.get(":event-type").map(String::as_str), Some("contentBlockDelta"));
+		assert_eq!(
+			decoded.headers.get(":event-type").map(String::as_str),
+			Some("contentBlockDelta")
+		);
 		assert_eq!(decoded.payload, payload);
 	}
 

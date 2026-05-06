@@ -56,7 +56,11 @@ pub(super) fn build_converse_payload(
 	let (_, model_name) = model_iden.model_name.namespace_and_name();
 	let publisher = BedrockPublisher::from_model_id(model_name);
 
-	let ConverseRequestParts { system, messages, tools } = into_converse_request_parts(chat_req)?;
+	let ConverseRequestParts {
+		system,
+		messages,
+		tools,
+	} = into_converse_request_parts(chat_req)?;
 
 	let mut payload = json!({ "messages": messages });
 
@@ -84,20 +88,17 @@ pub(super) fn build_converse_payload(
 	payload.x_insert("inferenceConfig", Value::Object(inference))?;
 
 	// additionalModelRequestFields — publisher-specific (reasoning, etc.)
-	if let Some(effort) = options_set.reasoning_effort() {
-		if let Some(additional) = publisher_additional_fields(publisher, effort) {
-			payload.x_insert("additionalModelRequestFields", additional)?;
-		}
+	if let Some(effort) = options_set.reasoning_effort()
+		&& let Some(additional) = publisher_additional_fields(publisher, effort)
+	{
+		payload.x_insert("additionalModelRequestFields", additional)?;
 	}
 
 	Ok(payload)
 }
 
 /// Parse a Converse JSON response into a genai `ChatResponse`.
-pub(super) fn parse_converse_response(
-	model_iden: ModelIden,
-	web_response: WebResponse,
-) -> Result<ChatResponse> {
+pub(super) fn parse_converse_response(model_iden: ModelIden, web_response: WebResponse) -> Result<ChatResponse> {
 	let WebResponse { mut body, .. } = web_response;
 
 	// -- Stop reason
@@ -309,15 +310,14 @@ fn into_converse_request_parts(chat_req: ChatRequest) -> Result<ConverseRequestP
 
 	let tools: Option<Vec<Value>> = chat_req
 		.tools
-		.map(|tools| {
-			tools
-				.into_iter()
-				.map(tool_to_converse_tool)
-				.collect::<Result<Vec<Value>>>()
-		})
+		.map(|tools| tools.into_iter().map(tool_to_converse_tool).collect::<Result<Vec<Value>>>())
 		.transpose()?;
 
-	Ok(ConverseRequestParts { system, messages, tools })
+	Ok(ConverseRequestParts {
+		system,
+		messages,
+		tools,
+	})
 }
 
 fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
@@ -395,7 +395,9 @@ fn tool_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 
 fn binary_to_converse_block(binary: Binary) -> Option<Value> {
 	let is_image = binary.is_image();
-	let Binary { content_type, source, .. } = binary;
+	let Binary {
+		content_type, source, ..
+	} = binary;
 
 	// Converse format: image blocks use { image: { format, source: { bytes } } }
 	// and document blocks use { document: { format, name, source: { bytes } } }.
