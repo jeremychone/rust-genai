@@ -102,10 +102,7 @@ async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 		"Reasoning summary should be substantial, got {} chars",
 		reasoning.len()
 	);
-	assert!(
-		reasoning.contains("Cairo"),
-		"Reasoning summary should mention Cairo"
-	);
+	assert!(reasoning.contains("Cairo"), "Reasoning summary should mention Cairo");
 
 	// -- Visible text content also streamed in this response
 	let content = extract.content.as_deref().ok_or("Should have visible text content")?;
