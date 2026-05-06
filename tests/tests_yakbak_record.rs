@@ -82,8 +82,7 @@ async fn record_openai_resp_reasoning_summary_capture() -> TestResult<()> {
 	// must land in `captured_reasoning_content` — previously the
 	// streamer only parsed the `response.reasoning_text.delta`
 	// family and silently dropped summaries.
-	let (client, mut server) =
-		record_client("openai_resp", "reasoning_summary_capture", &openai_backend()).await?;
+	let (client, mut server) = record_client("openai_resp", "reasoning_summary_capture", &openai_backend()).await?;
 
 	let chat_req = ChatRequest::new(vec![
 		ChatMessage::system("Answer concisely."),

@@ -39,9 +39,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 	const CLAUDE_MODEL: &str = "bedrock_sigv4::us.anthropic.claude-sonnet-4-5-20250929-v1:0";
 	const NOVA_MODEL: &str = "bedrock_sigv4::us.amazon.nova-pro-v1:0";
 
-	tracing_subscriber::fmt()
-		.with_env_filter(EnvFilter::new("genai=debug"))
-		.init();
+	tracing_subscriber::fmt().with_env_filter(EnvFilter::new("genai=debug")).init();
 
 	let client = Client::default();
 

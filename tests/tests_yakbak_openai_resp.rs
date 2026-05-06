@@ -40,10 +40,7 @@ async fn test_yakbak_openai_resp_reasoning_summary_capture() -> TestResult<()> {
 		.reasoning_content
 		.as_deref()
 		.ok_or("reasoning_content should be populated")?;
-	assert!(
-		!reasoning.is_empty(),
-		"reasoning_content populated but empty"
-	);
+	assert!(!reasoning.is_empty(), "reasoning_content populated but empty");
 	// First summary chunk for the recorded prompt starts with a
 	// header line we can pin — the API formats summaries as
 	// "**Topic**\n\nFirst line..." and the exact header is stable

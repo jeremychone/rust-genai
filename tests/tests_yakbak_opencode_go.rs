@@ -6,9 +6,9 @@
 
 mod support;
 
+use genai::ModelIden;
 use genai::adapter::AdapterKind;
 use genai::chat::*;
-use genai::ModelIden;
 use support::yakbak::replay_client;
 use support::{TestResult, extract_stream_end};
 
@@ -21,16 +21,10 @@ use support::{TestResult, extract_stream_end};
 async fn test_yakbak_opencode_go_minimax_chat() -> TestResult<()> {
 	let (client, _server) = replay_client("opencode_go", "minimax_chat").await?;
 
-	let chat_req = ChatRequest::new(vec![
-		ChatMessage::user("Say hello in one word"),
-	]);
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Say hello in one word")]);
 
 	let chat_res = client
-		.exec_chat(
-			ModelIden::new(AdapterKind::OpenCodeGo, "minimax-m2.5"),
-			chat_req,
-			None,
-		)
+		.exec_chat(ModelIden::new(AdapterKind::OpenCodeGo, "minimax-m2.5"), chat_req, None)
 		.await?;
 
 	// Verify the response has text content
@@ -49,9 +43,7 @@ async fn test_yakbak_opencode_go_minimax_chat() -> TestResult<()> {
 async fn test_yakbak_opencode_go_minimax_stream() -> TestResult<()> {
 	let (client, _server) = replay_client("opencode_go", "minimax_stream").await?;
 
-	let chat_req = ChatRequest::new(vec![
-		ChatMessage::user("Say hello in one word"),
-	]);
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Say hello in one word")]);
 
 	let options = ChatOptions::default().with_capture_content(true);
 
@@ -83,16 +75,10 @@ async fn test_yakbak_opencode_go_minimax_stream() -> TestResult<()> {
 async fn test_yakbak_opencode_go_openai_chat() -> TestResult<()> {
 	let (client, _server) = replay_client("opencode_go", "openai_chat").await?;
 
-	let chat_req = ChatRequest::new(vec![
-		ChatMessage::user("Say hello in one word"),
-	]);
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Say hello in one word")]);
 
 	let chat_res = client
-		.exec_chat(
-			ModelIden::new(AdapterKind::OpenCodeGo, "glm-5"),
-			chat_req,
-			None,
-		)
+		.exec_chat(ModelIden::new(AdapterKind::OpenCodeGo, "glm-5"), chat_req, None)
 		.await?;
 
 	// Verify the response has text content
@@ -111,9 +97,7 @@ async fn test_yakbak_opencode_go_openai_chat() -> TestResult<()> {
 async fn test_yakbak_opencode_go_openai_stream() -> TestResult<()> {
 	let (client, _server) = replay_client("opencode_go", "openai_stream").await?;
 
-	let chat_req = ChatRequest::new(vec![
-		ChatMessage::user("Say hello in one word"),
-	]);
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Say hello in one word")]);
 
 	let options = ChatOptions::default().with_capture_content(true);
 

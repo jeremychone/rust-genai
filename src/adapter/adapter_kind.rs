@@ -1,15 +1,15 @@
+use crate::adapter::adapters::bedrock::BedrockApiAdapter;
+#[cfg(feature = "bedrock-sigv4")]
+use crate::adapter::adapters::bedrock::BedrockSigv4Adapter;
 use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
 use crate::adapter::adapters::ollama::OllamaAdapter;
-use crate::adapter::adapters::opencode_go::OpenCodeGoAdapter;
 use crate::adapter::adapters::ollama_cloud::OllamaCloudAdapter;
 use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
+use crate::adapter::adapters::opencode_go::OpenCodeGoAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::aliyun::AliyunAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
-use crate::adapter::adapters::bedrock::BedrockApiAdapter;
-#[cfg(feature = "bedrock-sigv4")]
-use crate::adapter::adapters::bedrock::BedrockSigv4Adapter;
 use crate::adapter::bigmodel::BigModelAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;

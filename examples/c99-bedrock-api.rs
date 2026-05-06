@@ -23,9 +23,7 @@ const NOVA_MODEL: &str = "bedrock_api::global.amazon.nova-2-lite-v1:0";
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::fmt()
-		.with_env_filter(EnvFilter::new("genai=debug"))
-		.init();
+	tracing_subscriber::fmt().with_env_filter(EnvFilter::new("genai=debug")).init();
 
 	if std::env::var("BEDROCK_API_KEY").is_err() {
 		println!("Set BEDROCK_API_KEY to run this example.");

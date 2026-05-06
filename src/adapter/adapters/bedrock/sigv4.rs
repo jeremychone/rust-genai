@@ -27,9 +27,7 @@ pub(super) struct CachedCreds {
 
 /// Returns cached credentials + region, loading them on first use.
 pub(super) async fn get_credentials() -> Result<CachedCreds> {
-	let cached = CREDS_CACHE
-		.get_or_try_init(load_credentials_uncached)
-		.await?;
+	let cached = CREDS_CACHE.get_or_try_init(load_credentials_uncached).await?;
 	Ok(cached.clone())
 }
 
@@ -46,20 +44,15 @@ async fn load_credentials_uncached() -> Result<CachedCreds> {
 		.or_else(|| std::env::var("AWS_DEFAULT_REGION").ok())
 		.unwrap_or_else(|| "us-east-1".to_string());
 
-	let provider = config
-		.credentials_provider()
-		.ok_or_else(|| Error::AdapterNotSupported {
-			adapter_kind: crate::adapter::AdapterKind::BedrockSigv4,
-			feature: "AWS credentials (no provider found in default chain)".to_string(),
-		})?;
+	let provider = config.credentials_provider().ok_or_else(|| Error::AdapterNotSupported {
+		adapter_kind: crate::adapter::AdapterKind::BedrockSigv4,
+		feature: "AWS credentials (no provider found in default chain)".to_string(),
+	})?;
 
-	let creds = provider
-		.provide_credentials()
-		.await
-		.map_err(|err| Error::AdapterNotSupported {
-			adapter_kind: crate::adapter::AdapterKind::BedrockSigv4,
-			feature: format!("AWS credential resolution failed: {err}"),
-		})?;
+	let creds = provider.provide_credentials().await.map_err(|err| Error::AdapterNotSupported {
+		adapter_kind: crate::adapter::AdapterKind::BedrockSigv4,
+		feature: format!("AWS credential resolution failed: {err}"),
+	})?;
 
 	Ok(CachedCreds { creds, region })
 }
@@ -73,12 +66,7 @@ pub(super) fn cached_region(cached: &CachedCreds) -> &str {
 /// Sign a POST request (url + JSON body) for Bedrock Runtime and return the resulting
 /// headers ready to be merged into [`Headers`]. The body is passed by reference so we don't
 /// double-copy.
-pub(super) fn sign_request(
-	creds: &Credentials,
-	region: &str,
-	url: &str,
-	body: &[u8],
-) -> Result<Headers> {
+pub(super) fn sign_request(creds: &Credentials, region: &str, url: &str, body: &[u8]) -> Result<Headers> {
 	let identity = creds.clone().into();
 
 	let signing_params = v4::SigningParams::builder()
@@ -96,18 +84,10 @@ pub(super) fn sign_request(
 	let host = url_host(url).ok_or_else(|| sign_err(format!("could not extract host from url: {url}")))?;
 
 	// The sig headers to include at signing time. We pass the ones we intend to send.
-	let signing_headers: Vec<(&str, &str)> = vec![
-		("host", host),
-		("content-type", "application/json"),
-	];
+	let signing_headers: Vec<(&str, &str)> = vec![("host", host), ("content-type", "application/json")];
 
-	let signable = SignableRequest::new(
-		"POST",
-		url,
-		signing_headers.into_iter(),
-		SignableBody::Bytes(body),
-	)
-	.map_err(|err| sign_err(format!("signable request: {err}")))?;
+	let signable = SignableRequest::new("POST", url, signing_headers.into_iter(), SignableBody::Bytes(body))
+		.map_err(|err| sign_err(format!("signable request: {err}")))?;
 
 	let (signing_instructions, _sig) = sign(signable, &signing_params)
 		.map_err(|err| sign_err(format!("sign: {err}")))?
@@ -115,7 +95,8 @@ pub(super) fn sign_request(
 
 	// SigningInstructions carries headers (and possibly query params) to attach to the
 	// outgoing request.
-	let mut genai_headers_vec: Vec<(String, String)> = vec![("content-type".to_string(), "application/json".to_string())];
+	let mut genai_headers_vec: Vec<(String, String)> =
+		vec![("content-type".to_string(), "application/json".to_string())];
 	for (name, value) in signing_instructions.headers() {
 		genai_headers_vec.push((name.to_string(), value.to_string()));
 	}

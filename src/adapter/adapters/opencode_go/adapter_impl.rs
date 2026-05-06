@@ -81,20 +81,21 @@ impl Adapter for OpenCodeGoAdapter {
 		let model_kind = OpenCodeGoModelKind::from_model_name(model_name);
 
 		match model_kind {
-			OpenCodeGoModelKind::OpenAI => {
-				OpenAIAdapter::util_to_web_request_data(
-					ServiceTarget { endpoint, auth, model },
-					service_type,
-					chat_req,
-					options_set,
-					None,
-				)
-			}
+			OpenCodeGoModelKind::OpenAI => OpenAIAdapter::util_to_web_request_data(
+				ServiceTarget { endpoint, auth, model },
+				service_type,
+				chat_req,
+				options_set,
+				None,
+			),
 			OpenCodeGoModelKind::Anthropic => {
 				let model_name = model_name.to_string();
 
-				let AnthropicRequestParts { system, messages, tools } =
-					AnthropicAdapter::into_anthropic_request_parts(chat_req)?;
+				let AnthropicRequestParts {
+					system,
+					messages,
+					tools,
+				} = AnthropicAdapter::into_anthropic_request_parts(chat_req)?;
 
 				let stream = matches!(service_type, ServiceType::ChatStream);
 				let mut payload = json!({
@@ -162,7 +163,9 @@ impl Adapter for OpenCodeGoAdapter {
 
 		match model_kind {
 			OpenCodeGoModelKind::OpenAI => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
-			OpenCodeGoModelKind::Anthropic => AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			OpenCodeGoModelKind::Anthropic => {
+				AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+			}
 		}
 	}
 
@@ -307,10 +310,7 @@ mod tests {
 		for (name, model_name) in [("OpenAI", "glm-5"), ("Minimax", "minimax-m2.5")] {
 			let data = make_request(model_name, ServiceType::Chat);
 			let messages = data.payload.get("messages").and_then(|v| v.as_array());
-			assert!(
-				messages.is_some(),
-				"{name} payload should have messages array"
-			);
+			assert!(messages.is_some(), "{name} payload should have messages array");
 			let messages = messages.unwrap();
 			assert!(!messages.is_empty(), "{name} messages array should not be empty");
 			let last = messages.last().unwrap();
@@ -357,9 +357,7 @@ mod tests {
 	#[test]
 	fn test_minimax_payload_with_options() {
 		let target = test_target("minimax-m2.5");
-		let chat_options = ChatOptions::default()
-			.with_temperature(0.5)
-			.with_max_tokens(100);
+		let chat_options = ChatOptions::default().with_temperature(0.5).with_max_tokens(100);
 		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
 		let data = OpenCodeGoAdapter::to_web_request_data(
 			target,

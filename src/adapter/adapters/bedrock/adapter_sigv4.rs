@@ -3,9 +3,7 @@
 //! Requires the `bedrock-sigv4` Cargo feature.
 
 use crate::adapter::adapters::bedrock::converse::{build_converse_payload, parse_converse_response};
-use crate::adapter::adapters::bedrock::shared::{
-	async_stream_bytes, build_service_url, BEDROCK_RUNTIME_HOST_PREFIX,
-};
+use crate::adapter::adapters::bedrock::shared::{BEDROCK_RUNTIME_HOST_PREFIX, async_stream_bytes, build_service_url};
 use crate::adapter::adapters::bedrock::sigv4::{cached_region, get_credentials, sign_request};
 use crate::adapter::adapters::bedrock::streamer::BedrockStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -56,7 +54,11 @@ impl Adapter for BedrockSigv4Adapter {
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let ServiceTarget { endpoint, auth: _, model } = target;
+		let ServiceTarget {
+			endpoint,
+			auth: _,
+			model,
+		} = target;
 
 		// 1. Resolve credentials (cached). Only truly async on the first call per process.
 		let cached = tokio_block_on(get_credentials())?;
