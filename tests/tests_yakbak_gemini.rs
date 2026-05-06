@@ -53,15 +53,19 @@ async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 	let (client, _server) = replay_client("gemini", "tool_stream").await?;
 
 	let chat_req = ChatRequest::new(vec![
-		ChatMessage::system("You are a helpful assistant. Use tools when needed."),
-		ChatMessage::user("What is the temperature in C and weather, in Paris, France"),
+		ChatMessage::system("You are a thoughtful assistant. Always reason carefully before invoking tools."),
+		ChatMessage::user(
+			"Of these three cities — Berlin, Cairo, Paris — exactly one is in Africa. \
+			 Reason carefully about which one, then call get_weather for that city in Celsius. \
+			 Walk through your reasoning explicitly.",
+		),
 	])
 	.append_tool(Tool::new("get_weather").with_schema(json!({
 		"type": "object",
 		"properties": {
 			"city":    { "type": "string", "description": "The city name" },
-			"country": { "type": "string", "description": "The most likely country of this city name" },
-			"unit":    { "type": "string", "enum": ["C", "F"], "description": "The temperature unit. C for Celsius, F for Fahrenheit" }
+			"country": { "type": "string", "description": "The country" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
 		},
 		"required": ["city", "country", "unit"],
 	})));
@@ -73,39 +77,49 @@ async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 		.with_capture_tool_calls(true);
 
 	let stream_res = client
-		.exec_chat_stream("gemini-3.1-flash-lite-preview", chat_req, Some(&options))
+		.exec_chat_stream("gemini-3.1-pro-preview", chat_req, Some(&options))
 		.await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 
-	// Tool call assertions
+	// -- Tool call: model picked Cairo
 	let tool_calls = extract
 		.stream_end
 		.captured_tool_calls()
 		.ok_or("Should have captured tool calls")?;
-	assert!(!tool_calls.is_empty(), "Should have at least one tool call");
+	assert_eq!(tool_calls.len(), 1, "Should be exactly one tool call");
 
 	let first = &tool_calls[0];
 	assert_eq!(first.fn_name, "get_weather");
 	let args = first.fn_arguments.as_object().ok_or("fn_arguments should be an object")?;
-	assert_eq!(args.get("city").and_then(|v| v.as_str()), Some("Paris"));
+	assert_eq!(args.get("city").and_then(|v| v.as_str()), Some("Cairo"));
+	assert_eq!(args.get("unit").and_then(|v| v.as_str()), Some("C"));
 
-	// Thought-signature assertions: Gemini 3.x emits opaque `thoughtSignature`
-	// parts alongside tool calls (replacing the legacy `thought:true`+text shape).
-	// The cassette confirms thinking happened (thoughtsTokenCount=114) and the
-	// streamer forwards the signature into captured_content.
+	// -- Reasoning summary: pro-preview emits `thought:true` text parts
+	// alongside the function call when the prompt requires real reasoning.
+	let reasoning = extract.reasoning_content.as_deref().ok_or("Should have reasoning")?;
+	assert!(
+		reasoning.len() > 100,
+		"Reasoning summary should be substantial, got {} chars",
+		reasoning.len()
+	);
+	assert!(
+		reasoning.contains("Cairo"),
+		"Reasoning summary should mention Cairo"
+	);
+
+	// -- Visible text content also streamed in this response
+	let content = extract.content.as_deref().ok_or("Should have visible text content")?;
+	assert!(!content.is_empty(), "Visible text content should be non-empty");
+
+	// -- Thought signature: opaque blob attached to the first tool call for handoff
 	let thought_signatures = extract
 		.stream_end
 		.captured_thought_signatures()
 		.ok_or("Should have captured thought signatures")?;
 	assert!(
-		!thought_signatures.is_empty(),
-		"Should have at least one thought signature"
+		!thought_signatures.is_empty() && thought_signatures[0].len() > 100,
+		"Should have a non-trivial thought signature blob"
 	);
-	assert!(
-		thought_signatures[0].len() > 100,
-		"Thought signature should be a non-trivial opaque blob"
-	);
-	// And it should also be attached to the first tool call for tool-use handoff.
 	assert!(
 		first.thought_signatures.as_ref().is_some_and(|t| !t.is_empty()),
 		"First tool call should carry thought_signatures for handoff"

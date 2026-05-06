@@ -132,7 +132,7 @@ fn gemini_backend() -> String {
 }
 
 const GEMINI_MODEL: &str = "gemini-2.5-flash";
-const GEMINI_TOOL_MODEL: &str = "gemini-3.1-flash-lite-preview";
+const GEMINI_TOOL_MODEL: &str = "gemini-3.1-pro-preview";
 
 #[tokio::test]
 #[ignore]
@@ -168,9 +168,27 @@ async fn record_gemini_thinking_stream() -> TestResult<()> {
 async fn record_gemini_tool_stream() -> TestResult<()> {
 	let (client, mut server) = record_client("gemini", "tool_stream", &gemini_backend()).await?;
 
-	let chat_req = seed_tool_request();
-	// High reasoning effort so the model emits reasoning content alongside the
-	// functionCall — the cassette then exercises both paths in the SSE streamer.
+	// A reasoning-heavy prompt so the model emits `thought:true` summary parts
+	// alongside the `functionCall` — exercises text + reasoning + tool-call
+	// paths of the SSE streamer in a single cassette.
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("You are a thoughtful assistant. Always reason carefully before invoking tools."),
+		ChatMessage::user(
+			"Of these three cities — Berlin, Cairo, Paris — exactly one is in Africa. \
+			 Reason carefully about which one, then call get_weather for that city in Celsius. \
+			 Walk through your reasoning explicitly.",
+		),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city":    { "type": "string", "description": "The city name" },
+			"country": { "type": "string", "description": "The country" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})));
+
 	let options = ChatOptions::default()
 		.with_reasoning_effort(ReasoningEffort::High)
 		.with_capture_content(true)
