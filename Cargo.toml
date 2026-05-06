@@ -13,6 +13,20 @@ unsafe_code = "forbid"
 # unused = { level = "allow", priority = -1 } # For exploratory dev.
 # missing_docs = "warn"
 
+[features]
+default = []
+# AWS Bedrock Converse adapter using SigV4 signing + the full AWS credential chain.
+# Pulls in aws-config (env → profile → SSO → IMDS → AssumeRole) and aws-sigv4 (request signing).
+# Heavy: aws-config transitively adds aws-smithy-*, hyper, tower, h2.
+#
+# The simpler Bearer-token Bedrock adapter (BEDROCK_API_KEY) is always available — no feature
+# needed — since it has no extra dependencies.
+bedrock-sigv4 = [
+	"dep:aws-config",
+	"dep:aws-credential-types",
+	"dep:aws-sigv4",
+]
+
 [dependencies]
 # -- Tracing
 tracing = { version = "0.1", features = ["default"] }
@@ -38,6 +52,10 @@ value-ext = "0.1.3"
 strum = { version = "0.28", features = ["derive"] }
 uuid = { version = "1.21.0", features = ["v4"] }
 regex = "1"
+# -- AWS Bedrock (optional, `bedrock-sigv4` feature)
+aws-config = { version = "1", optional = true }
+aws-credential-types = { version = "1", optional = true }
+aws-sigv4 = { version = "1", optional = true }
 
 [dev-dependencies]
 simple-fs = "0.12"
