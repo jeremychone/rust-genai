@@ -249,6 +249,12 @@ impl Adapter for OpenAIRespAdapter {
 			}
 		}
 
+		// -- Provider-specific payload extension
+		// Merged last so callers can intentionally override previously set fields.
+		if let Some(extra_body) = chat_options.extra_body() {
+			payload.x_merge(extra_body.clone())?;
+		}
+
 		Ok(WebRequestData { url, headers, payload })
 	}
 
@@ -612,7 +618,31 @@ struct OpenAIRespRequestParts {
 mod tests {
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::ChatMessage;
+	use crate::chat::{ChatMessage, ChatOptions};
+
+	#[test]
+	fn test_extra_body_merged_into_response_payload() {
+		let chat_options = ChatOptions::default()
+			.with_top_p(0.3)
+			.with_extra_body(json!({"top_p": 0.9, "metadata": {"source": "test"}}));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(),
+		};
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["top_p"], 0.9);
+		assert_eq!(web_req.payload["metadata"]["source"], "test");
+	}
 
 	/// Test that assistant message text content uses "output_text" type (not "input_text").
 	///
