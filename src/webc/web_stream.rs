@@ -33,8 +33,10 @@ pub struct WebStream {
 pub enum StreamMode {
 	// This is used for Cohere with a single `\n`
 	Delimiter(&'static str),
-	// This is for Gemini (standard JSON array, pretty formatted)
-	PrettyJsonArray,
+	// Server-Sent Events: events terminated by `\n\n`, `\r\n\r\n`, or `\r\r`.
+	// Per the SSE spec, all line-ending variants are accepted; we normalize CR/LF
+	// to LF before splitting so a single `\n\n` delimiter matches all of them.
+	Sse,
 }
 
 impl WebStream {
@@ -50,9 +52,9 @@ impl WebStream {
 		}
 	}
 
-	pub fn new_with_pretty_json_array(reqwest_builder: RequestBuilder) -> Self {
+	pub fn new_with_sse(reqwest_builder: RequestBuilder) -> Self {
 		Self {
-			stream_mode: StreamMode::PrettyJsonArray,
+			stream_mode: StreamMode::Sse,
 			reqwest_builder: Some(reqwest_builder),
 			response_future: None,
 			bytes_stream: None,
@@ -146,9 +148,7 @@ impl Stream for WebStream {
 							StreamMode::Delimiter(delimiter) => {
 								process_buff_string_delimited(buff_string, &mut this.partial_message, delimiter)
 							}
-							StreamMode::PrettyJsonArray => {
-								new_with_pretty_json_array(buff_string, &mut this.partial_message)
-							}
+							StreamMode::Sse => process_buff_string_sse(buff_string, &mut this.partial_message),
 						};
 
 						let BuffResponse {
@@ -208,121 +208,24 @@ struct BuffResponse {
 	candidate_message: Option<String>,
 }
 
-/// Process a string buffer for the pretty_json_array (for Gemini)
-/// It will split the messages as follows:
-/// - If it starts with `[`, then the message will be `[`
-/// - Then, each main JSON object (from the first `{` to the last `}`) will become a message
-/// - Main JSON object `,` delimiter will be skipped
-/// - The ending `]` will be sent as a `]` message as well.
+/// Process a string buffer for SSE mode.
 ///
-/// IMPORTANT: Right now, it assumes each buff_string will contain the full main JSON object
-///            for each array item (which seems to be the case with Gemini).
-///            This probably needs to be made more robust later.
-fn new_with_pretty_json_array(
+/// Per the SSE spec, event boundaries can be `\n\n`, `\r\n\r\n`, or `\r\r`. Browsers
+/// normalize all CR/CRLF to LF before dispatching, so we do the same: collapse to LF
+/// and reuse the standard `\n\n` delimiter splitter. This keeps cross-chunk partial
+/// handling identical to the regular delimited path.
+fn process_buff_string_sse(
 	buff_string: String,
 	partial_message: &mut Option<String>,
 ) -> Result<BuffResponse, crate::webc::Error> {
-	let mut buff_str = buff_string.as_str();
-
-	let mut messages: Vec<String> = Vec::new();
-
-	// -- 1. Prepend partial message if any
-	let full_string_holder: String;
-	if let Some(partial) = partial_message.take() {
-		full_string_holder = format!("{}{}", partial, buff_str);
-		buff_str = full_string_holder.as_str();
-	}
-
-	// -- 2. Process the buffer
-	// We want to extract valid JSON objects.
-	// The stream is expected to be: `[` (optional), `{...}`, `,`, `{...}`, `]` (optional)
-	// We need to be robust against whitespace and commas.
-
-	let mut depth = 0;
-	let mut in_string = false;
-	let mut escape = false;
-	let mut start_idx = 0;
-	let mut last_idx = 0; // Track the end of the last processed object
-
-	for (idx, c) in buff_str.char_indices() {
-		if in_string {
-			if escape {
-				escape = false;
-			} else if c == '\\' {
-				escape = true;
-			} else if c == '"' {
-				in_string = false;
-			}
-		} else {
-			match c {
-				'"' => in_string = true,
-				'{' => {
-					if depth == 0 {
-						start_idx = idx;
-					}
-					depth += 1;
-				}
-				'}' => {
-					depth -= 1;
-					if depth == 0 {
-						// Found a complete JSON object
-						// idx is the byte index of '}'. We want to include it.
-						// '}' is 1 byte, so end range is idx + 1
-						let json_str = &buff_str[start_idx..idx + 1];
-
-						// Verify it's valid JSON (optional but good for safety)
-						if serde_json::from_str::<serde_json::Value>(json_str).is_ok() {
-							messages.push(json_str.to_string());
-						} else {
-							// Should not happen if logic is correct
-							tracing::warn!("WebStream: Extracted block failed JSON validation: {}", json_str);
-						}
-						// Update last_idx to point after this object
-						last_idx = idx + 1;
-					}
-				}
-				'[' if depth == 0 => {
-					messages.push("[".to_string());
-					last_idx = idx + 1;
-				}
-				']' if depth == 0 => {
-					messages.push("]".to_string());
-					last_idx = idx + 1;
-				}
-				_ => {
-					// Ignore other characters outside of objects (whitespace, commas)
-				}
-			}
-		}
-	}
-
-	// -- 3. Handle remaining partial
-	// last_idx points to the byte after the last successfully processed object/token
-	if last_idx < buff_str.len() {
-		let remaining = &buff_str[last_idx..];
-		if !remaining.trim().is_empty() {
-			*partial_message = Some(remaining.to_string());
-		}
-	}
-
-	// -- Return the buff response
-	let first_message = if !messages.is_empty() {
-		Some(messages[0].to_string())
-	} else {
-		None
+	// Normalize after concatenation with any prior partial — partial may have
+	// left a lone `\r` that pairs with the next chunk's leading `\n`.
+	let full_string = match partial_message.take() {
+		Some(partial) => format!("{partial}{buff_string}"),
+		None => buff_string,
 	};
-
-	let next_messages = if messages.len() > 1 {
-		Some(messages[1..].to_vec())
-	} else {
-		None
-	};
-
-	Ok(BuffResponse {
-		first_message,
-		next_messages,
-		candidate_message: partial_message.take(),
-	})
+	let normalized = full_string.replace("\r\n", "\n").replace('\r', "\n");
+	process_buff_string_delimited(normalized, partial_message, "\n\n")
 }
 
 /// Process a string buffer for the delimited mode (e.g., Cohere)

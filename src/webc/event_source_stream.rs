@@ -25,9 +25,10 @@ pub struct Message {
 
 impl EventSourceStream {
 	pub fn new(reqwest_builder: RequestBuilder) -> Self {
-		// Standard EventSource uses \n\n as event separator
+		// SSE event separator is `\n\n`, `\r\n\r\n`, or `\r\r`. WebStream's Sse mode
+		// normalizes CR/CRLF to LF and splits on `\n\n`, so all three forms work.
 		Self {
-			inner: WebStream::new_with_delimiter(reqwest_builder, "\n\n"),
+			inner: WebStream::new_with_sse(reqwest_builder),
 			opened: false,
 		}
 	}
