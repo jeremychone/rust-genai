@@ -131,6 +131,7 @@ fn gemini_backend() -> String {
 }
 
 const GEMINI_MODEL: &str = "gemini-2.5-flash";
+const GEMINI_TOOL_MODEL: &str = "gemini-3.1-pro-preview";
 
 #[tokio::test]
 #[ignore]
@@ -155,6 +156,51 @@ async fn record_gemini_thinking_stream() -> TestResult<()> {
 	eprintln!(
 		"[record] Stream reasoning: {:?}",
 		extract.reasoning_content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini", "tool_stream", &gemini_backend()).await?;
+
+	// A reasoning-heavy prompt so the model emits `thought:true` summary parts
+	// alongside the `functionCall` — exercises text + reasoning + tool-call
+	// paths of the SSE streamer in a single cassette.
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("You are a thoughtful assistant. Always reason carefully before invoking tools."),
+		ChatMessage::user(
+			"Of these three cities — Berlin, Cairo, Paris — exactly one is in Africa. \
+			 Reason carefully about which one, then call get_weather for that city in Celsius. \
+			 Walk through your reasoning explicitly.",
+		),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city":    { "type": "string", "description": "The city name" },
+			"country": { "type": "string", "description": "The country" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})));
+
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::High)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true);
+
+	let stream_res = client.exec_chat_stream(GEMINI_TOOL_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	let tool_calls = &extract.stream_end.captured_tool_calls();
+	eprintln!("[record] Tool calls: {:?}", tool_calls.as_ref().map(|tc| tc.len()));
+	eprintln!(
+		"[record] Reasoning len: {:?}",
+		extract.reasoning_content.as_deref().map(|s| s.len())
 	);
 
 	server.shutdown().await;
