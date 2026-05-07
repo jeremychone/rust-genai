@@ -1,9 +1,9 @@
 //! Convert JSON Schema to OpenAPI 3.0.3 Schema Object subset.
 //!
 //! Gemini uses the OpenAPI 3.0.3 Schema Object subset and rejects standard
-//! JSON Schema features such as `$ref`/`$defs`, composite keywords
-//! (`allOf`/`anyOf`/`oneOf`), array-type nullable (`"type": ["string", "null"]`),
-//! and `additionalProperties`.
+//! JSON Schema features such as `$ref`/`$defs`, array-type nullable
+//! (`"type": ["string", "null"]`), `const`, and JSON Schema-only keywords
+//! such as `patternProperties`.
 //!
 //! [`to_openapi_schema`] rewrites a JSON Schema in-place so that it conforms
 //! to the OpenAPI-compatible subset while preserving structural semantics.
@@ -20,9 +20,10 @@ use std::collections::HashSet;
 /// 3. Flatten single-element `allOf`/`anyOf`/`oneOf` and nullable
 ///    `anyOf`/`oneOf` patterns (the schemars `Option<T>` idiom).
 /// 4. Normalize `"type": ["T", "null"]` → `"type": "T"`.
-/// 5. Remove `additionalProperties` everywhere.
-/// 6. Recurse into `properties`, `items`, `prefixItems`, and remaining
-///    composite entries.
+/// 5. Rewrite `const` as an equivalent single-value `enum`.
+/// 6. Remove unsupported JSON Schema-only keywords.
+/// 7. Recurse into `properties`, `items`, `prefixItems`, `additionalProperties`,
+///    and remaining composite entries.
 pub(super) fn to_openapi_schema(schema: &mut Value) {
 	if let Value::Object(map) = schema {
 		// Step 1 + 2: resolve $ref and remove $defs
@@ -103,10 +104,13 @@ fn simplify_object(map: &mut Map<String, Value>) {
 	// Step 4: normalize nullable type arrays.
 	normalize_nullable_type(map);
 
-	// Step 5: remove additionalProperties.
-	map.remove("additionalProperties");
+	// Step 5: rewrite const.
+	rewrite_const_as_single_enum(map);
 
-	// Step 6: recurse into sub-schemas.
+	// Step 6: remove unsupported JSON Schema-only keywords.
+	strip_unsupported_json_schema_keywords(map);
+
+	// Step 7: recurse into sub-schemas.
 	recurse_into_children(map);
 }
 
@@ -160,7 +164,44 @@ fn normalize_nullable_type(map: &mut Map<String, Value>) {
 	}
 }
 
-/// Recurse into `properties`, `items`, `prefixItems`, and remaining composite entries.
+/// Rewrite JSON Schema `const` to OpenAPI-compatible `enum: [value]`.
+///
+/// A single-value enum is equivalent to `const` for JSON Schema validation, and
+/// Gemini accepts it in function declarations. When both are present, `const`
+/// is narrower and wins.
+fn rewrite_const_as_single_enum(map: &mut Map<String, Value>) {
+	if let Some(const_value) = map.remove("const") {
+		map.insert("enum".to_string(), Value::Array(vec![const_value]));
+	}
+}
+
+fn strip_unsupported_json_schema_keywords(map: &mut Map<String, Value>) {
+	for key in [
+		"$schema",
+		"$id",
+		"$anchor",
+		"$dynamicAnchor",
+		"$dynamicRef",
+		"$ref",
+		"patternProperties",
+		"unevaluatedProperties",
+		"unevaluatedItems",
+		"propertyNames",
+		"contains",
+		"minContains",
+		"maxContains",
+		"if",
+		"then",
+		"else",
+		"dependentSchemas",
+		"dependentRequired",
+		"not",
+	] {
+		map.remove(key);
+	}
+}
+
+/// Recurse into `properties`, `items`, `prefixItems`, `additionalProperties`, and remaining composite entries.
 fn recurse_into_children(map: &mut Map<String, Value>) {
 	// properties
 	if let Some(Value::Object(props)) = map.get_mut("properties") {
@@ -193,6 +234,11 @@ fn recurse_into_children(map: &mut Map<String, Value>) {
 				simplify_object(inner);
 			}
 		}
+	}
+
+	// additionalProperties can be a schema object.
+	if let Some(Value::Object(inner)) = map.get_mut("additionalProperties") {
+		simplify_object(inner);
 	}
 
 	// Remaining composite entries (if multi-variant composites survived flattening)
@@ -235,27 +281,87 @@ mod tests {
 	}
 
 	#[test]
-	fn test_removes_additional_properties() {
+	fn test_preserves_additional_properties() {
 		let mut schema = json!({
-			"type": "object",
-			"properties": {
-				"inner": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"x": { "type": "integer", "additionalProperties": false }
-					}
+		"type": "object",
+		"properties": {
+			"inner": {
+				"type": "object",
+				"additionalProperties": false,
+				"properties": {
+					"x": { "type": "integer", "additionalProperties": false }
 				}
+			}
 			},
 			"additionalProperties": false
 		});
 		to_openapi_schema(&mut schema);
 
-		assert!(schema.get("additionalProperties").is_none());
+		assert_eq!(schema["additionalProperties"], false);
 		let inner = &schema["properties"]["inner"];
-		assert!(inner.get("additionalProperties").is_none());
+		assert_eq!(inner["additionalProperties"], false);
 		let x = &inner["properties"]["x"];
-		assert!(x.get("additionalProperties").is_none());
+		assert_eq!(x["additionalProperties"], false);
+	}
+
+	#[test]
+	fn test_simplifies_additional_properties_schema() {
+		let mut schema = json!({
+			"type": "object",
+			"additionalProperties": {
+				"type": ["string", "null"],
+				"const": "ok"
+			}
+		});
+		to_openapi_schema(&mut schema);
+
+		assert_eq!(schema["additionalProperties"]["type"], "string");
+		assert_eq!(schema["additionalProperties"]["enum"], json!(["ok"]));
+	}
+
+	#[test]
+	fn test_const_rewritten_as_single_value_enum() {
+		let mut schema = json!({
+			"type": "object",
+			"properties": {
+				"target": {
+					"oneOf": [
+						{
+							"type": "object",
+							"properties": {
+								"relation": { "const": "self" }
+							},
+							"required": ["relation"]
+						},
+						{
+							"type": "object",
+							"properties": {
+								"relation": {
+									"type": "string",
+									"const": "child",
+									"enum": ["child", "sibling"]
+								},
+								"name": { "type": "string" }
+							},
+							"required": ["relation", "name"]
+						}
+					]
+				}
+			},
+			"required": ["target"]
+		});
+		to_openapi_schema(&mut schema);
+
+		let serialized = serde_json::to_string(&schema).unwrap();
+		assert!(!serialized.contains("\"const\""));
+		assert_eq!(
+			schema["properties"]["target"]["oneOf"][0]["properties"]["relation"]["enum"],
+			json!(["self"])
+		);
+		assert_eq!(
+			schema["properties"]["target"]["oneOf"][1]["properties"]["relation"]["enum"],
+			json!(["child"])
+		);
 	}
 
 	#[test]
@@ -371,8 +477,7 @@ mod tests {
 			schema["properties"]["address"]["properties"]["street"]["type"],
 			"string"
 		);
-		// additionalProperties removed from resolved def
-		assert!(schema["properties"]["address"].get("additionalProperties").is_none());
+		assert_eq!(schema["properties"]["address"]["additionalProperties"], false);
 	}
 
 	#[test]
@@ -420,6 +525,7 @@ mod tests {
 		// The cyclic ref will remain as $ref (unresolved) due to cycle detection.
 		assert!(schema.get("$defs").is_none());
 		assert_eq!(schema["properties"]["node"]["type"], "object");
+		assert!(schema["properties"]["node"]["properties"]["child"].get("$ref").is_none());
 	}
 
 	#[test]
@@ -461,7 +567,7 @@ mod tests {
 
 		// Top-level cleanup
 		assert!(schema.get("$defs").is_none());
-		assert!(schema.get("additionalProperties").is_none());
+		assert_eq!(schema["additionalProperties"], false);
 
 		// age: anyOf flattened
 		assert_eq!(schema["properties"]["age"]["type"], "integer");
@@ -471,7 +577,7 @@ mod tests {
 		assert_eq!(schema["properties"]["address"]["type"], "object");
 		assert!(schema["properties"]["address"].get("anyOf").is_none());
 		assert!(schema["properties"]["address"].get("$ref").is_none());
-		assert!(schema["properties"]["address"].get("additionalProperties").is_none());
+		assert_eq!(schema["properties"]["address"]["additionalProperties"], false);
 
 		// address.zip: nullable array type normalized
 		assert_eq!(schema["properties"]["address"]["properties"]["zip"]["type"], "string");
@@ -498,7 +604,7 @@ mod tests {
 
 		let items_schema = &schema["properties"]["items"]["items"];
 		assert_eq!(items_schema["properties"]["value"]["type"], "number");
-		assert!(items_schema.get("additionalProperties").is_none());
+		assert_eq!(items_schema["additionalProperties"], false);
 	}
 
 	#[test]
@@ -563,11 +669,38 @@ mod tests {
 			schema["properties"]["a"]["properties"]["b"]["properties"]["value"]["type"],
 			"string"
 		);
-		assert!(
-			schema["properties"]["a"]["properties"]["b"]
-				.get("additionalProperties")
-				.is_none()
+		assert_eq!(
+			schema["properties"]["a"]["properties"]["b"]["additionalProperties"],
+			false
 		);
+	}
+
+	#[test]
+	fn test_strips_unsupported_json_schema_keywords() {
+		let mut schema = json!({
+			"$schema": "https://json-schema.org/draft/2020-12/schema",
+			"type": "object",
+			"patternProperties": {
+				"^x_": { "type": "string" }
+			},
+			"properties": {
+				"name": {
+					"type": "string",
+					"not": { "enum": ["bad"] }
+				}
+			},
+			"if": { "properties": { "kind": { "const": "a" } } },
+			"then": { "required": ["name"] }
+		});
+		to_openapi_schema(&mut schema);
+
+		let serialized = serde_json::to_string(&schema).unwrap();
+		for keyword in ["\"$schema\"", "\"patternProperties\"", "\"not\"", "\"if\"", "\"then\""] {
+			assert!(
+				!serialized.contains(keyword),
+				"schema still contains {keyword}: {serialized}"
+			);
+		}
 	}
 }
 

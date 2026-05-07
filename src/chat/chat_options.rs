@@ -8,6 +8,7 @@
 use crate::Headers;
 use crate::chat::CacheControl;
 use crate::chat::chat_req_response_format::ChatResponseFormat;
+use crate::chat::chat_req_tool_choice::ToolChoice;
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -51,6 +52,9 @@ pub struct ChatOptions {
 	///
 	/// Note: Additional formats may be added in the future.
 	pub response_format: Option<ChatResponseFormat>,
+
+	/// Tool selection preference, when the provider supports function/tool calling.
+	pub tool_choice: Option<ToolChoice>,
 
 	// -- Reasoning options
 	/// Extract -style reasoning blocks into `ChatResponse.reasoning_content` when present.
@@ -156,6 +160,12 @@ impl ChatOptions {
 	/// Sets the response format.
 	pub fn with_response_format(mut self, res_format: impl Into<ChatResponseFormat>) -> Self {
 		self.response_format = Some(res_format.into());
+		self
+	}
+
+	/// Sets the tool selection preference.
+	pub fn with_tool_choice(mut self, tool_choice: ToolChoice) -> Self {
+		self.tool_choice = Some(tool_choice);
 		self
 	}
 
@@ -547,6 +557,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.response_format.as_ref())
 			.or_else(|| self.client.and_then(|client| client.response_format.as_ref()))
+	}
+
+	pub fn tool_choice(&self) -> Option<&ToolChoice> {
+		self.chat
+			.and_then(|chat| chat.tool_choice.as_ref())
+			.or_else(|| self.client.and_then(|client| client.tool_choice.as_ref()))
 	}
 
 	pub fn normalize_reasoning_content(&self) -> Option<bool> {

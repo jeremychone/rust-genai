@@ -4,7 +4,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
 	ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse, ContentPart, MessageContent, PromptTokensDetails,
-	ReasoningEffort, StopReason, Tool, ToolCall, ToolConfig, ToolName, Usage,
+	ReasoningEffort, StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -54,6 +54,18 @@ fn is_opus_4_7_or_higher(model_name: &str) -> bool {
 	match (major, minor) {
 		(Some(major), Some(minor)) => (major, minor) >= (4, 7),
 		_ => false,
+	}
+}
+
+fn anthropic_tool_choice(tool_choice: Option<&ToolChoice>) -> Option<Value> {
+	match tool_choice? {
+		ToolChoice::Auto => Some(json!({"type": "auto"})),
+		ToolChoice::None => Some(json!({"type": "none"})),
+		ToolChoice::Required => Some(json!({"type": "any"})),
+		ToolChoice::Tool { name } => Some(json!({
+			"type": "tool",
+			"name": name
+		})),
 	}
 }
 
@@ -302,6 +314,9 @@ impl Adapter for AnthropicAdapter {
 
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
+		}
+		if let Some(tool_choice) = anthropic_tool_choice(options_set.tool_choice()) {
+			payload.x_insert("tool_choice", tool_choice)?;
 		}
 
 		// -- Set the reasoning effort
@@ -950,7 +965,7 @@ mod tests {
 	use super::*;
 	use crate::ServiceTarget;
 	use crate::adapter::{Adapter, ServiceType};
-	use crate::chat::{ChatOptions, ChatRequest, JsonSpec};
+	use crate::chat::{ChatOptions, ChatRequest, JsonSpec, Tool, ToolChoice};
 	use crate::resolver::AuthData;
 
 	/// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
@@ -995,6 +1010,23 @@ mod tests {
 			Some("json_schema"),
 			"format.type must be present in output_config"
 		);
+	}
+
+	#[test]
+	fn test_tool_choice_required_serialized_on_anthropic_payload() {
+		let chat_options = ChatOptions::default().with_tool_choice(ToolChoice::Required);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6"),
+		};
+		let chat_req = ChatRequest::from_user("weather").with_tools(vec![Tool::new("get_weather")]);
+
+		let web_req = AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
+			.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["tool_choice"], json!({"type": "any"}));
 	}
 
 	#[test]
