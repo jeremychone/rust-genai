@@ -1,3 +1,5 @@
+use crate::adapter::adapters::baidu::BAIDU_CODING_ANTHROPIC_NAMESPACE;
+use crate::adapter::adapters::baidu::BAIDU_CODING_OPENAI_NAMESPACE;
 use crate::adapter::adapters::bedrock::BedrockApiAdapter;
 #[cfg(feature = "bedrock-sigv4")]
 use crate::adapter::adapters::bedrock::BedrockSigv4Adapter;
@@ -10,6 +12,7 @@ use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::aliyun::AliyunAdapter;
 use crate::adapter::anthropic::AnthropicAdapter;
+use crate::adapter::baidu::BaiduAdapter;
 use crate::adapter::bigmodel::BigModelAdapter;
 use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
@@ -62,6 +65,8 @@ pub enum AdapterKind {
 	BigModel,
 	/// For aliyun (Mostly use OpenAI)
 	Aliyun,
+	/// For baidu (Mostly use OpenAI)
+	Baidu,
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
@@ -109,6 +114,7 @@ impl AdapterKind {
 			AdapterKind::Zai => "Zai",
 			AdapterKind::BigModel => "BigModel",
 			AdapterKind::Aliyun => "Aliyun",
+			AdapterKind::Baidu => "Baidu",
 			AdapterKind::Cohere => "Cohere",
 			AdapterKind::Ollama => "Ollama",
 			AdapterKind::OllamaCloud => "OllamaCloud",
@@ -139,6 +145,7 @@ impl AdapterKind {
 			AdapterKind::Zai => "zai",
 			AdapterKind::BigModel => "bigmodel",
 			AdapterKind::Aliyun => "aliyun",
+			AdapterKind::Baidu => "baidu",
 			AdapterKind::Cohere => "cohere",
 			AdapterKind::Ollama => "ollama",
 			AdapterKind::OllamaCloud => "ollama_cloud",
@@ -168,6 +175,7 @@ impl AdapterKind {
 			"zai" => Some(AdapterKind::Zai),
 			"bigmodel" => Some(AdapterKind::BigModel),
 			"aliyun" => Some(AdapterKind::Aliyun),
+			"baidu" => Some(AdapterKind::Baidu),
 			"cohere" => Some(AdapterKind::Cohere),
 			"ollama" => Some(AdapterKind::Ollama),
 			"ollama_cloud" => Some(AdapterKind::OllamaCloud),
@@ -202,6 +210,7 @@ impl AdapterKind {
 			AdapterKind::Zai => ZaiAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::BigModel => BigModelAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Aliyun => AliyunAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Baidu => BaiduAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Cohere => CohereAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Ollama => OllamaAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::OllamaCloud => OllamaCloudAdapter::DEFAULT_API_KEY_ENV_NAME,
@@ -306,9 +315,11 @@ impl AdapterKind {
 		if let Some(adapter) = Self::from_lower_str(namespace) {
 			Some(adapter)
 		}
-		// -- Second, custom, for now, we harcode this exceptin here (might become more generic later)
+		// -- Second, custom namespaces
 		else if namespace == zai::ZAI_CODING_NAMESPACE {
 			Some(Self::Zai)
+		} else if namespace == BAIDU_CODING_OPENAI_NAMESPACE || namespace == BAIDU_CODING_ANTHROPIC_NAMESPACE {
+			Some(Self::Baidu)
 		}
 		//
 		// -- Otherwise, no adapter from namespace, because no matching namespace
