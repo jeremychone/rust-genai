@@ -4,17 +4,48 @@
 model = "flash"
 ```
 
+# Description
+
+Fetches PR details and diffs from GitHub using `gh` CLI and saves them as Markdown files in the workbench data directory.
+
+```sh
+aip run dev/agents/fetch-pr.aip -i "my-workbench:212"
+aip run dev/agents/fetch-pr.aip -i "new-workbenchs:214,215,216" -i "my-other:212"
+```
+
+# Before All
+
+```lua
+local new_inputs = {}
+
+for _, input_str in ipairs(inputs) do
+    local wb_name, pr_list_str = aip.text.split_first(input_str, ":")
+    if not wb_name or not pr_list_str then
+        error("Invalid input format. Expected 'WORKBENCH_NAME:PR_ID1,PR_ID2,...' (got: " .. tostring(input_str) .. ")")
+    end
+
+    wb_name = aip.text.trim(wb_name)
+
+    local remainder = pr_list_str
+    while remainder and remainder ~= "" do
+        local part, next_rem = aip.text.split_first(remainder, ",")
+        local pr_id = aip.text.trim(part or remainder)
+        if pr_id ~= "" then
+            table.insert(new_inputs, {name = wb_name, pr = pr_id})
+        end
+        remainder = next_rem
+        if not part then break end
+    end
+end
+
+return aip.flow.before_all_response({inputs = new_inputs})
+```
+
 # Data
 
 ```lua
-local pr_id, wb_name = aip.text.split_first(input, ",")
-
-if not pr_id or not wb_name then
-    error("Invalid input format. Expected 'PR_ID,WORKBENCH_NAME'")
-end
-
-pr_id = aip.text.trim(pr_id)
-wb_name = aip.text.trim(wb_name)
+local pr_id = input.pr
+local wb_name = input.name
 
 local pr_res = aip.cmd.exec("gh", {"pr", "view", pr_id, "--json", "title,url,body,comments,author,createdAt,headRefName,headRepository,headRepositoryOwner"})
 if pr_res.error or pr_res.exit ~= 0 then
