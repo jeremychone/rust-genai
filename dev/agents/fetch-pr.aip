@@ -194,7 +194,11 @@ local description_content = table.concat(description_lines, "\n") .. "\n"
 aip.file.save(patch_file_path, patch_content, {single_trailing_newline = true})
 aip.file.save(description_file_path, description_content, {single_trailing_newline = true})
 
-return "Successfully saved PR #" .. pr_id .. " patch to " .. patch_file_path .. " and description to " .. description_file_path
+return {
+    pr_id = pr_id,
+    patch_path = patch_file_path,
+    description_path = description_file_path
+}
 ```
 
 # Output
@@ -202,5 +206,30 @@ return "Successfully saved PR #" .. pr_id .. " patch to " .. patch_file_path .. 
 ```lua
 -- Repository is inferred from Cargo.toml context.
 
+if type(data) == "table" and data.pr_id then
+    print("Successfully saved PR #" .. data.pr_id .. "\n- " .. data.patch_path .. "\n- " .. data.description_path)
+end
+
 return data
+```
+
+# After All
+
+```lua
+local lines = {}
+
+for _, out in ipairs(outputs) do
+    if type(out) == "table" and out.pr_id then
+        table.insert(lines, "PR " .. out.pr_id)
+        table.insert(lines, "- " .. out.description_path)
+        table.insert(lines, "- " .. out.patch_path)
+    end
+end
+
+if #lines > 0 then
+    aip.run.pin("prs-fetched", {
+        label = "PRs fetched",
+        content = table.concat(lines, "\n")
+    })
+end
 ```
