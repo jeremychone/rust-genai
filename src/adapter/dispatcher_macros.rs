@@ -79,6 +79,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::aliyun::[<Aliyun Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Baidu => {
+				type A = crate::adapter::baidu::[<Baidu Adapter>];
+				$body
+			}
 			crate::adapter::AdapterKind::Cohere => {
 				type A = crate::adapter::cohere::[<Cohere Adapter>];
 				$body
