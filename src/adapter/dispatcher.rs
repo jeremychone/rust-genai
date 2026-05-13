@@ -9,6 +9,7 @@ use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::deepseek::DeepSeekAdapter;
 use crate::adapter::fireworks::FireworksAdapter;
 use crate::adapter::gemini::GeminiAdapter;
+use crate::adapter::aihubmix::AihubmixAdapter;
 use crate::adapter::nebius::NebiusAdapter;
 use crate::adapter::ollama::OllamaAdapter;
 use crate::adapter::openai::OpenAIAdapter;
@@ -43,6 +44,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::default_endpoint(),
 			AdapterKind::Mimo => MimoAdapter::default_endpoint(),
 			AdapterKind::Nebius => NebiusAdapter::default_endpoint(),
+			AdapterKind::Aihubmix => AihubmixAdapter::default_endpoint(),
 			AdapterKind::Xai => XaiAdapter::default_endpoint(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_endpoint(),
 			AdapterKind::Zai => ZaiAdapter::default_endpoint(),
@@ -65,6 +67,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::default_auth(),
 			AdapterKind::Mimo => MimoAdapter::default_auth(),
 			AdapterKind::Nebius => NebiusAdapter::default_auth(),
+			AdapterKind::Aihubmix => AihubmixAdapter::default_auth(),
 			AdapterKind::Xai => XaiAdapter::default_auth(),
 			AdapterKind::DeepSeek => DeepSeekAdapter::default_auth(),
 			AdapterKind::Zai => ZaiAdapter::default_auth(),
@@ -87,6 +90,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::all_model_names(kind, endpoint, auth).await,
 			AdapterKind::Mimo => MimoAdapter::all_model_names(kind, endpoint, auth).await,
 			AdapterKind::Nebius => NebiusAdapter::all_model_names(kind, endpoint, auth).await,
+			AdapterKind::Aihubmix => AihubmixAdapter::all_model_names(kind, endpoint, auth).await,
 			AdapterKind::Xai => XaiAdapter::all_model_names(kind, endpoint, auth).await,
 			AdapterKind::DeepSeek => DeepSeekAdapter::all_model_names(kind, endpoint, auth).await,
 			AdapterKind::Zai => ZaiAdapter::all_model_names(kind, endpoint, auth).await,
@@ -109,6 +113,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Mimo => MimoAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Nebius => NebiusAdapter::get_service_url(model, service_type, endpoint),
+			AdapterKind::Aihubmix => AihubmixAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Xai => XaiAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::DeepSeek => DeepSeekAdapter::get_service_url(model, service_type, endpoint),
 			AdapterKind::Zai => ZaiAdapter::get_service_url(model, service_type, endpoint),
@@ -143,6 +148,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Mimo => MimoAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_web_request_data(target, service_type, chat_req, options_set),
+			AdapterKind::Aihubmix => AihubmixAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_web_request_data(target, service_type, chat_req, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_web_request_data(target, service_type, chat_req, options_set),
@@ -169,6 +175,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Mimo => MimoAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_chat_response(model_iden, web_response, options_set),
+			AdapterKind::Aihubmix => AihubmixAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_response(model_iden, web_response, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_chat_response(model_iden, web_response, options_set),
@@ -195,6 +202,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Mimo => MimoAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			AdapterKind::Aihubmix => AihubmixAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Xai => XaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
@@ -225,6 +233,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Mimo => MimoAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_embed_request_data(target, embed_req, options_set),
+			AdapterKind::Aihubmix => AihubmixAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Xai => XaiAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_request_data(target, embed_req, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_embed_request_data(target, embed_req, options_set),
@@ -254,6 +263,7 @@ impl AdapterDispatcher {
 			AdapterKind::Groq => GroqAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Mimo => MimoAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Nebius => NebiusAdapter::to_embed_response(model_iden, web_response, options_set),
+			AdapterKind::Aihubmix => AihubmixAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Xai => XaiAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::DeepSeek => DeepSeekAdapter::to_embed_response(model_iden, web_response, options_set),
 			AdapterKind::Zai => ZaiAdapter::to_embed_response(model_iden, web_response, options_set),

@@ -1,5 +1,6 @@
 use crate::adapter::adapters::ollama::OllamaAdapter;
 use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
+use crate::adapter::adapters::aihubmix::AihubmixAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
 use crate::adapter::aliyun::AliyunAdapter;
@@ -43,6 +44,8 @@ pub enum AdapterKind {
 	Mimo,
 	/// For Nebius (Mostly use OpenAI)
 	Nebius,
+	/// For AIHubMix (OpenAI-compatible proxy)
+	Aihubmix,
 	/// For xAI (Mostly use OpenAI)
 	Xai,
 	/// For DeepSeek (Mostly use OpenAI)
@@ -76,6 +79,7 @@ impl AdapterKind {
 			AdapterKind::Groq => "Groq",
 			AdapterKind::Mimo => "Mimo",
 			AdapterKind::Nebius => "Nebius",
+			AdapterKind::Aihubmix => "AIHubMix",
 			AdapterKind::Xai => "xAi",
 			AdapterKind::DeepSeek => "DeepSeek",
 			AdapterKind::Zai => "Zai",
@@ -99,6 +103,7 @@ impl AdapterKind {
 			AdapterKind::Groq => "groq",
 			AdapterKind::Mimo => "mimo",
 			AdapterKind::Nebius => "nebius",
+			AdapterKind::Aihubmix => "aihubmix",
 			AdapterKind::Xai => "xai",
 			AdapterKind::DeepSeek => "deepseek",
 			AdapterKind::Zai => "zai",
@@ -121,6 +126,7 @@ impl AdapterKind {
 			"groq" => Some(AdapterKind::Groq),
 			"mimo" => Some(AdapterKind::Mimo),
 			"nebius" => Some(AdapterKind::Nebius),
+			"aihubmix" => Some(AdapterKind::Aihubmix),
 			"xai" => Some(AdapterKind::Xai),
 			"deepseek" => Some(AdapterKind::DeepSeek),
 			"zai" => Some(AdapterKind::Zai),
@@ -148,6 +154,7 @@ impl AdapterKind {
 			AdapterKind::Groq => GroqAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Mimo => MimoAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Nebius => NebiusAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::Aihubmix => AihubmixAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Xai => XaiAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::DeepSeek => DeepSeekAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::Zai => ZaiAdapter::DEFAULT_API_KEY_ENV_NAME,
