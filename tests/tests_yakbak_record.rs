@@ -120,6 +120,33 @@ async fn record_gemini_thinking_stream() -> TestResult<()> {
 	Ok(())
 }
 
+fn aihubmix_backend() -> String {
+	std::env::var("AIHUBMIX_BASE_URL").unwrap_or_else(|_| "https://aihubmix.com/v1/".to_string())
+}
+
+const AIHUBMIX_MODEL: &str = "aihubmix::gpt-4o-mini";
+
+#[tokio::test]
+#[ignore]
+async fn record_aihubmix_chat_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("aihubmix", "chat_stream", &aihubmix_backend()).await?;
+
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Say 'hello' and nothing else.")]);
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_usage(true);
+
+	let stream_res = client.exec_chat_stream(AIHUBMIX_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Stream content: {:?}",
+		extract.content.as_deref().map(|s| &s[..s.len().min(80)])
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
 fn seed_tool_request() -> ChatRequest {
 	ChatRequest::new(vec![
 		ChatMessage::system("You are a helpful assistant. Use tools when needed."),
