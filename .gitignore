@@ -15,6 +15,9 @@ _*
 # -- AIPack related
 ako-config.jsonc
 
+# -- API keys
+aihubmix.key
+
 # -- Rust
 target/
 # !Cargo.lock # commented by default
