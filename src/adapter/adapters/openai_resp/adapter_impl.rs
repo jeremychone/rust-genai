@@ -468,6 +468,39 @@ impl OpenAIRespAdapter {
 					// In the new OpenAI Responses API, the tool call are just items out of assistant message
 					let mut item_message_content: Vec<Value> = Vec::new();
 
+					// Pre-pass: encrypted reasoning blobs from prior turns must be
+					// carried back as top-level `{type: "reasoning"}` input items
+					// to keep the Responses-API prefix cache warm. Without this,
+					// even a verbatim resend of a prior turn re-processes every
+					// token. They precede the assistant message they belong to,
+					// mirroring the order the API emits them in the streaming
+					// response. The blobs ride in on `ContentPart::ThoughtSignature`
+					// parts (from `StreamEnd::captured_content`) or on
+					// `ToolCall::thought_signatures` (rust-genai's streamer stashes
+					// captured blobs there when there are tool calls).
+					for part in msg.content.iter() {
+						if let ContentPart::ThoughtSignature(blob) = part {
+							input_items.push(json!({
+								"type": "reasoning",
+								"encrypted_content": blob,
+								"summary": [],
+							}));
+						}
+					}
+					for part in msg.content.iter() {
+						if let ContentPart::ToolCall(tool_call) = part
+							&& let Some(sigs) = tool_call.thought_signatures.as_ref()
+						{
+							for blob in sigs {
+								input_items.push(json!({
+									"type": "reasoning",
+									"encrypted_content": blob,
+									"summary": [],
+								}));
+							}
+						}
+					}
+
 					for part in msg.content {
 						match part {
 							ContentPart::Text(text) => {
@@ -498,6 +531,8 @@ impl OpenAIRespAdapter {
 							// TODO: Probably need towarn on this one (probably need to add binary here)
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
+							// ThoughtSignature and ReasoningContent are emitted as
+							// top-level `type:reasoning` items in the pre-pass above.
 							ContentPart::ThoughtSignature(_) => {}
 							ContentPart::ReasoningContent(_) => {}
 							// Custom are ignored for this logic

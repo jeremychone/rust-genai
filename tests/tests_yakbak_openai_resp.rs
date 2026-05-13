@@ -280,3 +280,66 @@ async fn test_yakbak_openai_resp_multi_tool_ordering() -> TestResult<()> {
 
 	Ok(())
 }
+
+#[tokio::test]
+async fn test_yakbak_openai_resp_reasoning_stream_completed_empty() -> TestResult<()> {
+	// Regression for the `output_item.done` capture path in `streamer.rs`.
+	//
+	// Some Responses-API-shaped backends (proxies that forward to ChatGPT
+	// internal endpoints, custom Azure deployments, etc.) emit each
+	// `type:"reasoning"` item via `response.output_item.added` and
+	// `response.output_item.done` events, but then send a terminal
+	// `response.completed` whose `response.output` array is empty `[]`.
+	//
+	// Before the fix, the streamer only scanned `response.output` at
+	// completion time to pull out encrypted reasoning blobs — so on these
+	// backends, `captured_thought_signatures()` came back empty even
+	// though the wire had clearly delivered the blob. After the fix, the
+	// blob is captured as the `output_item.done` event fires, and falls
+	// back to the `response.output` scan only if the streaming events
+	// didn't carry it.
+	let (client, _server) = replay_client("openai_resp", "reasoning_stream_completed_empty").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence."),
+		ChatMessage::user("Why is the sky blue?"),
+	]);
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream("openai_resp::gpt-5.4-mini", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	// Encrypted reasoning content should still be captured — sourced from
+	// the `output_item.done` event, not from `response.output`.
+	let thought_sigs = extract
+		.stream_end
+		.captured_thought_signatures()
+		.ok_or("Should have captured thought signatures from output_item.done")?;
+	assert_eq!(
+		thought_sigs.len(),
+		1,
+		"Should have exactly one thought signature even when response.completed.output is empty"
+	);
+	assert!(
+		thought_sigs[0].len() > 100,
+		"Encrypted content should be substantial, got {} bytes",
+		thought_sigs[0].len()
+	);
+
+	// Text content still flows through the delta events.
+	assert_eq!(
+		extract.content.as_deref(),
+		Some(
+			"The sky looks blue because molecules in Earth\u{2019}s atmosphere scatter shorter blue wavelengths of sunlight more strongly than longer red wavelengths, sending more blue light to our eyes."
+		),
+		"Text content should still arrive via delta events"
+	);
+
+	Ok(())
+}
