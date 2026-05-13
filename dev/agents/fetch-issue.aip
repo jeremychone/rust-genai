@@ -100,7 +100,7 @@ while #words < 3 do
 end
 
 local title_slug = table.concat(words, "-")
-local data_dir = aip.path.join("_workbench", {wb_name, "data"})
+local data_dir = aip.path.join(".workbench", {wb_name, "data"})
 local description_file_path = aip.path.join(data_dir, "issue-" .. issue_id .. "-description-" .. title_slug .. ".md")
 
 aip.file.ensure_dir(data_dir)
