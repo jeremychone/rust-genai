@@ -504,7 +504,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `OpenCodeGo`, `Vertex`, `GithubCopilot`.
+Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Aihubmix`, `Mimo`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Cohere`, `Ollama`, `OllamaCloud`, `OpenCodeGo`, `Vertex`, `GithubCopilot`.
 
 - `as_str()`: Display name (e.g., `"OpenAI"`, `"xAi"`).
 - `as_lower_str()`: Lowercase name (e.g., `"openai"`, `"xai"`).
@@ -527,7 +527,7 @@ Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`
   - `glm*` -> `Zai`.
   - Fallback -> `Ollama`.
 - **Namespacing**: `namespace::model_name` (e.g., `together::meta-llama/...`, `nebius::Qwen/...`).
-  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `ollama_cloud::`, `opencode_go::`, `vertex::`, `openai_resp::`, `github_copilot::`)
+  - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `aihubmix::`, `mimo::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `cohere::`, `ollama::`, `ollama_cloud::`, `opencode_go::`, `vertex::`, `openai_resp::`, `github_copilot::`)
   - Special: `coding::` namespace maps to `Zai` adapter.
 - **Namespace-only or recommended namespace providers**:
   - `groq::model_name` is required for direct Groq targeting in v0.6.0-beta.

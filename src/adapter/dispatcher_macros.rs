@@ -47,6 +47,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::groq::[<Groq Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Aihubmix => {
+				type A = crate::adapter::adapters::aihubmix::[<Aihubmix Adapter>];
+				$body
+			}
 			crate::adapter::AdapterKind::Moonshot => {
 				type A = crate::adapter::moonshot::[<Moonshot Adapter>];
 				$body
