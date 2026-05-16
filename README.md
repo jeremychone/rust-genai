@@ -1,6 +1,6 @@
 # genai, Multi-AI Providers Library for Rust
 
-Currently natively supports: **OpenAI**, **OpenAI Responses**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **OpenCode Go**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **Aliyun**, **Google Vertex**, **GitHub Copilot** (GitHub Models API).
+Currently natively supports: **OpenAI**, **OpenAI Responses**, **Anthropic**, **Gemini**, **xAI**, **Ollama**, **Ollama Cloud**, **OpenCode Go**, **Groq**, **DeepSeek**, **Cohere**, **Together**, **Fireworks**, **Nebius**, **Mimo**, **Zai** (Zhipu AI), **BigModel**, **Aliyun**, **Google Vertex**, **GitHub Copilot** (GitHub Models API), **AIHubMix**.
 
 Also supports a custom URL with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
@@ -227,7 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## ChatOptions
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, Together, Fireworks, Nebius, Zai
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, AIHubMix
 
 | Property      | OpenAI Compatibles (*1) | Anthropic                   | Gemini `generationConfig.` | Cohere        |
 |---------------|-------------------------|-----------------------------|----------------------------|---------------|
@@ -246,7 +246,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, AIHubMix
 	- For **Groq**, the property `x_groq.usage.`
 	- At this point, **Ollama** does not emit input/output tokens when streaming due to a limitation in the Ollama OpenAI compatibility layer. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
 	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider (or None)

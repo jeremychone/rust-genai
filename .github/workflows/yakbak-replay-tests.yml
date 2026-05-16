@@ -40,3 +40,6 @@ jobs:
 
       - name: Run Ollama Cloud replay tests
         run: cargo test --test tests_yakbak_ollama_cloud
+
+      - name: Run AIHubMix replay tests
+        run: cargo test --test tests_yakbak_aihubmix
