@@ -47,6 +47,11 @@ return aip.flow.before_all_response({inputs = new_inputs})
 local pr_id = input.pr
 local wb_name = input.name
 
+aip.task.pin("workbench", {
+    label = "Workbench",
+    content = wb_name
+})
+
 local pr_res = aip.cmd.exec("gh", {"pr", "view", pr_id, "--json", "title,url,body,comments,author,createdAt,headRefName,headRepository,headRepositoryOwner"})
 if pr_res.error or pr_res.exit ~= 0 then
     error("Failed to fetch PR " .. pr_id .. " details with gh: " .. (pr_res.stderr or pr_res.error or "unknown error"))
