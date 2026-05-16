@@ -5,7 +5,7 @@ use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatResponseFormat, ChatRole, ContentPart,
-	ReasoningEffort, Usage,
+	ReasoningEffort, ToolChoice, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::{Error, Headers, Result};
@@ -29,6 +29,18 @@ fn insert_openai_reasoning_effort(payload: &mut Value, effort: &ReasoningEffort)
 	payload.x_insert("reasoning_effort", keyword)?;
 
 	Ok(())
+}
+
+fn openai_tool_choice(tool_choice: Option<&ToolChoice>) -> Option<Value> {
+	match tool_choice? {
+		ToolChoice::Auto => Some(json!("auto")),
+		ToolChoice::None => Some(json!("none")),
+		ToolChoice::Required => Some(json!("required")),
+		ToolChoice::Tool { name } => Some(json!({
+			"type": "function",
+			"function": { "name": name }
+		})),
+	}
 }
 
 /// Support functions for other adapters that share OpenAI APIs
@@ -118,6 +130,9 @@ impl OpenAIAdapter {
 		// -- Tools
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
+		}
+		if let Some(tool_choice) = openai_tool_choice(options_set.tool_choice()) {
+			payload.x_insert("tool_choice", tool_choice)?;
 		}
 
 		// -- Add options
@@ -499,7 +514,7 @@ struct OpenAIRequestParts {
 mod tests {
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ChatOptions, ContentPart, MessageContent, ToolCall};
+	use crate::chat::{ChatMessage, ChatOptions, ContentPart, MessageContent, Tool, ToolCall, ToolChoice};
 
 	fn test_model() -> ModelIden {
 		ModelIden::new(AdapterKind::OpenAI, "test-model")
@@ -528,6 +543,29 @@ mod tests {
 
 		assert_eq!(web_req.payload["enable_thinking"], false);
 		assert_eq!(web_req.payload["temperature"], 0.7);
+	}
+
+	#[test]
+	fn test_tool_choice_specific_tool_serialized_on_chat_completion_payload() {
+		let chat_options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			model: test_model(),
+			auth: AuthData::from_single("test-key"),
+			endpoint: Endpoint::from_static("https://api.openai.com/v1/"),
+		};
+		let chat_req = ChatRequest::from_user("weather").with_tools(vec![Tool::new("get_weather")]);
+
+		let web_req = OpenAIAdapter::util_to_web_request_data(target, ServiceType::Chat, chat_req, options_set, None)
+			.expect("to_web_request_data should succeed");
+
+		assert_eq!(
+			web_req.payload["tool_choice"],
+			json!({
+				"type": "function",
+				"function": { "name": "get_weather" }
+			})
+		);
 	}
 
 	#[test]

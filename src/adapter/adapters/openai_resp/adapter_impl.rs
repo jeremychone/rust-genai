@@ -5,7 +5,8 @@ use crate::adapter::openai_resp::resp_types::RespResponse;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
-	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, StopReason, Tool, ToolConfig, ToolName, Usage,
+	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, StopReason, Tool, ToolChoice, ToolConfig,
+	ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -16,6 +17,18 @@ use serde_json::{Map, Value, json};
 use value_ext::JsonValueExt;
 
 pub struct OpenAIRespAdapter;
+
+fn openai_resp_tool_choice(tool_choice: Option<&ToolChoice>) -> Option<Value> {
+	match tool_choice? {
+		ToolChoice::Auto => Some(json!("auto")),
+		ToolChoice::None => Some(json!("none")),
+		ToolChoice::Required => Some(json!("required")),
+		ToolChoice::Tool { name } => Some(json!({
+			"type": "function",
+			"name": name
+		})),
+	}
+}
 
 impl OpenAIRespAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "OPENAI_API_KEY";
@@ -179,6 +192,9 @@ impl Adapter for OpenAIRespAdapter {
 		// -- Tools
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
+		}
+		if let Some(tool_choice) = openai_resp_tool_choice(chat_options.tool_choice()) {
+			payload.x_insert("tool_choice", tool_choice)?;
 		}
 
 		// -- Compute response format
@@ -653,7 +669,7 @@ struct OpenAIRespRequestParts {
 mod tests {
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ChatOptions};
+	use crate::chat::{ChatMessage, ChatOptions, Tool, ToolChoice};
 
 	#[test]
 	fn test_extra_body_merged_into_response_payload() {
@@ -677,6 +693,29 @@ mod tests {
 
 		assert_eq!(web_req.payload["top_p"], 0.9);
 		assert_eq!(web_req.payload["metadata"]["source"], "test");
+	}
+
+	#[test]
+	fn test_tool_choice_specific_tool_serialized_on_response_payload() {
+		let chat_options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(),
+		};
+		let chat_req = ChatRequest::from_user("weather").with_tools(vec![Tool::new("get_weather")]);
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
+			.expect("to_web_request_data should succeed");
+
+		assert_eq!(
+			web_req.payload["tool_choice"],
+			json!({
+				"type": "function",
+				"name": "get_weather"
+			})
+		);
 	}
 
 	/// Test that assistant message text content uses "output_text" type (not "input_text").

@@ -4,7 +4,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
 	ChatStreamResponse, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
-	StopReason, Tool, ToolCall, ToolConfig, ToolName, Usage,
+	StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, ToolResponse, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebResponse};
@@ -38,6 +38,23 @@ fn insert_gemini_thinking_budget_value(payload: &mut Value, effort: &ReasoningEf
 		payload.x_insert("/generationConfig/thinkingConfig/thinkingBudget", budget)?;
 	}
 	Ok(())
+}
+
+fn gemini_tool_config(tool_choice: Option<&ToolChoice>) -> Option<Value> {
+	let tool_choice = tool_choice?;
+	let mut config = json!({
+		"functionCallingConfig": {
+			"mode": match tool_choice {
+				ToolChoice::Auto => "AUTO",
+				ToolChoice::None => "NONE",
+				ToolChoice::Required | ToolChoice::Tool { .. } => "ANY",
+			}
+		}
+	});
+	if let Some(name) = tool_choice.tool_name() {
+		config["functionCallingConfig"]["allowedFunctionNames"] = json!([name]);
+	}
+	Some(config)
 }
 
 // curl \
@@ -444,6 +461,9 @@ impl GeminiAdapter {
 		if let Some(tools) = tools {
 			payload.x_insert("tools", tools)?;
 		}
+		if let Some(tool_config) = gemini_tool_config(options_set.tool_choice()) {
+			payload.x_insert("toolConfig", tool_config)?;
+		}
 
 		// -- Response Format
 		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
@@ -600,11 +620,12 @@ impl GeminiAdapter {
 								}));
 							}
 							ContentPart::ToolResponse(tool_response) => {
+								let fn_name = gemini_function_response_name(&tool_response);
 								parts_values.push(json!({
 									"functionResponse": {
-										"name": tool_response.call_id,
+										"name": &fn_name,
 										"response": {
-											"name": tool_response.call_id,
+											"name": &fn_name,
 											"content": tool_response.content,
 										}
 									}
@@ -711,11 +732,12 @@ impl GeminiAdapter {
 								}));
 							}
 							ContentPart::ToolResponse(tool_response) => {
+								let fn_name = gemini_function_response_name(&tool_response);
 								parts_values.push(json!({
 									"functionResponse": {
-										"name": tool_response.call_id,
+										"name": &fn_name,
 										"response": {
-											"name": tool_response.call_id,
+											"name": &fn_name,
 											"content": tool_response.content,
 										}
 									}
@@ -904,11 +926,29 @@ fn take_bool(v: &mut Value, key: &str) -> bool {
 		.unwrap_or(false)
 }
 
+fn gemini_function_response_name(tool_response: &ToolResponse) -> String {
+	tool_response
+		.fn_name
+		.clone()
+		.or_else(|| infer_gemini_synthetic_call_fn_name(&tool_response.call_id))
+		.unwrap_or_else(|| tool_response.call_id.clone())
+}
+
+fn infer_gemini_synthetic_call_fn_name(call_id: &str) -> Option<String> {
+	let rest = call_id.strip_prefix("call#")?;
+	let (name, counter) = rest.rsplit_once('#')?;
+	if name.is_empty() || counter.parse::<usize>().is_err() {
+		return None;
+	}
+	Some(name.to_string())
+}
+
 // endregion: --- Helpers
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::chat::{ChatMessage, ChatOptions};
 
 	#[test]
 	fn merge_consecutive_tool_responses() {
@@ -944,6 +984,69 @@ mod tests {
 		assert_eq!(merged.len(), 1);
 		let parts = merged[0].get("parts").unwrap().as_array().unwrap();
 		assert_eq!(parts.len(), 3);
+	}
+
+	#[test]
+	fn function_response_uses_function_name_when_available() {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let chat_req = ChatRequest::new(vec![ChatMessage::from(
+			ToolResponse::new("call_123", "{}").with_fn_name("get_weather"),
+		)]);
+
+		let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+		let function_response = &parts.contents[0]["parts"][0]["functionResponse"];
+
+		assert_eq!(function_response["name"], "get_weather");
+		assert_eq!(function_response["response"]["name"], "get_weather");
+	}
+
+	#[test]
+	fn function_response_infers_name_from_gemini_synthetic_call_id() {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let chat_req = ChatRequest::new(vec![ChatMessage::from(ToolResponse::new("call#get_weather#0", "{}"))]);
+
+		let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+		let function_response = &parts.contents[0]["parts"][0]["functionResponse"];
+
+		assert_eq!(function_response["name"], "get_weather");
+		assert_eq!(function_response["response"]["name"], "get_weather");
+	}
+
+	#[test]
+	fn tool_choice_required_maps_to_gemini_any_mode() {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let options = ChatOptions::default().with_tool_choice(ToolChoice::Required);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let chat_req = ChatRequest::from_user("Use the weather tool.").with_tools(vec![Tool::new("get_weather")]);
+
+		let (payload, _) =
+			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
+				.unwrap();
+
+		assert_eq!(payload["toolConfig"]["functionCallingConfig"]["mode"], "ANY");
+		assert!(
+			payload["toolConfig"]["functionCallingConfig"]
+				.get("allowedFunctionNames")
+				.is_none()
+		);
+	}
+
+	#[test]
+	fn tool_choice_specific_tool_sets_gemini_allowed_function() {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let chat_req = ChatRequest::from_user("Use the weather tool.").with_tools(vec![Tool::new("get_weather")]);
+
+		let (payload, _) =
+			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
+				.unwrap();
+
+		assert_eq!(payload["toolConfig"]["functionCallingConfig"]["mode"], "ANY");
+		assert_eq!(
+			payload["toolConfig"]["functionCallingConfig"]["allowedFunctionNames"],
+			json!(["get_weather"])
+		);
 	}
 
 	#[test]
