@@ -1,0 +1,203 @@
+# Options
+
+```toml
+model = "flash"
+```
+
+# Description
+
+Fetches Issue details and comments from GitHub using `gh` CLI and saves them as Markdown files in the workbench data directory.
+
+```sh
+aip run dev/agents/fetch-issue.aip -i "my-workbench:212"
+aip run dev/agents/fetch-issue.aip -i "new-workbenchs:214,215,216" -i "my-other:212"
+```
+
+# Before All
+
+```lua
+local new_inputs = {}
+
+for _, input_str in ipairs(inputs) do
+    local wb_name, issue_list_str = aip.text.split_first(input_str, ":")
+    if not wb_name or not issue_list_str then
+        error("Invalid input format. Expected 'WORKBENCH_NAME:ISSUE_ID1,ISSUE_ID2,...' (got: " .. tostring(input_str) .. ")")
+    end
+
+    wb_name = aip.text.trim(wb_name)
+
+    local remainder = issue_list_str
+    while remainder and remainder ~= "" do
+        local part, next_rem = aip.text.split_first(remainder, ",")
+        local issue_id = aip.text.trim(part or remainder)
+        if issue_id ~= "" then
+            table.insert(new_inputs, {name = wb_name, issue = issue_id})
+        end
+        remainder = next_rem
+        if not part then break end
+    end
+end
+
+return aip.flow.before_all_response({inputs = new_inputs})
+```
+
+# Data
+
+```lua
+local issue_id = input.issue
+local wb_name = input.name
+
+local issue_res = aip.cmd.exec("gh", {"issue", "view", issue_id, "--json", "title,url,body,comments,author,createdAt"})
+if issue_res.error or issue_res.exit ~= 0 then
+    error("Failed to fetch Issue " .. issue_id .. " details with gh: " .. (issue_res.stderr or issue_res.error or "unknown error"))
+end
+
+local issue = aip.json.parse(issue_res.stdout or "")
+if not issue or issue.error then
+    error("Failed to parse Issue " .. issue_id .. " details JSON: " .. (issue and issue.error or "empty response"))
+end
+
+local function string_value(value)
+    value = value_or(value, "")
+
+    if type(value) == "string" then
+        return value
+    end
+
+    return tostring(value)
+end
+
+local title = aip.text.trim(string_value(issue.title))
+if title == "" then
+    error("Failed to fetch Issue " .. issue_id .. " title with gh: empty title")
+end
+
+local url = aip.text.trim(string_value(issue.url))
+
+local author = "unknown"
+if type(issue.author) == "table" then
+    author = aip.text.trim(string_value(issue.author.login))
+else
+    author = aip.text.trim(string_value(issue.author))
+end
+
+if author == "" then
+    author = "unknown"
+end
+
+local created_at = aip.text.trim(string_value(issue.createdAt))
+
+local words = {}
+for word in string.gmatch(string.lower(title), "%w+") do
+    table.insert(words, word)
+    if #words == 3 then
+        break
+    end
+end
+
+while #words < 3 do
+    table.insert(words, "issue")
+end
+
+local title_slug = table.concat(words, "-")
+local data_dir = aip.path.join(".workbench", {wb_name, "data"})
+local description_file_path = aip.path.join(data_dir, "issue-" .. issue_id .. "-description-" .. title_slug .. ".md")
+
+aip.file.ensure_dir(data_dir)
+
+local header_lines = {
+    "# Issue " .. issue_id .. " - " .. title,
+    "url: " .. url,
+    "author: " .. author,
+    "time: " .. created_at,
+}
+local common_header = table.concat(header_lines, "\n")
+
+local body = aip.text.trim_end(string_value(issue.body))
+if body == "" then
+    body = "_No description provided._"
+end
+
+local description_lines = {
+    common_header,
+    "",
+    "---",
+    "**Description:**",
+    "",
+    body,
+}
+
+local comments = value_or(issue.comments, {})
+if type(comments) == "table" and #comments > 0 then
+    for _, comment in ipairs(comments) do
+        local c_author = "unknown"
+        if type(comment.author) == "table" then
+            c_author = aip.text.trim(string_value(comment.author.login))
+        else
+            c_author = aip.text.trim(string_value(comment.author))
+        end
+
+        if c_author == "" then
+            c_author = "unknown"
+        end
+
+        local c_created_at = aip.text.trim(string_value(comment.createdAt))
+        local c_body = aip.text.trim_end(string_value(comment.body))
+        if c_body == "" then
+            c_body = "_No comment body._"
+        end
+
+        table.insert(description_lines, "")
+        table.insert(description_lines, "---")
+
+        local comment_title = "**Comment from " .. c_author
+        if c_created_at ~= "" then
+            comment_title = comment_title .. " at " .. c_created_at
+        end
+        comment_title = comment_title .. " **"
+
+        table.insert(description_lines, comment_title)
+        table.insert(description_lines, "")
+        table.insert(description_lines, c_body)
+    end
+end
+
+local description_content = table.concat(description_lines, "\n") .. "\n"
+
+aip.file.save(description_file_path, description_content, {single_trailing_newline = true})
+
+return {
+    issue_id = issue_id,
+    description_path = description_file_path
+}
+```
+
+# Output
+
+```lua
+if type(data) == "table" and data.issue_id then
+    print("Successfully saved Issue #" .. data.issue_id .. "\n- " .. data.description_path)
+end
+
+return data
+```
+
+# After All
+
+```lua
+local lines = {}
+
+for _, out in ipairs(outputs) do
+    if type(out) == "table" and out.issue_id then
+        table.insert(lines, "Issue " .. out.issue_id)
+        table.insert(lines, "- " .. out.description_path)
+    end
+end
+
+if #lines > 0 then
+    aip.run.pin("issues-fetched", {
+        label = "Issues fetched",
+        content = table.concat(lines, "\n")
+    })
+end
+```

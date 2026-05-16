@@ -120,6 +120,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::bedrock::[<BedrockSigv4 Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::OpenRouter => {
+				type A = crate::adapter::adapters::open_router::[<OpenRouter Adapter>];
+				$body
+			}
 		}
 	};
 }

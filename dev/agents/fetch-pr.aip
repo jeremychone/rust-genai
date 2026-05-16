@@ -118,7 +118,7 @@ if diff_res.error or diff_res.exit ~= 0 then
 end
 
 local title_slug = table.concat(words, "-")
-local data_dir = aip.path.join("_workbench", {wb_name, "data"})
+local data_dir = aip.path.join(".workbench", {wb_name, "data"})
 local patch_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-patch-" .. title_slug .. ".md")
 local description_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-description-" .. title_slug .. ".md")
 

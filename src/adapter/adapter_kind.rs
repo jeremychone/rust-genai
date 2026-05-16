@@ -8,6 +8,7 @@ use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
 use crate::adapter::adapters::ollama::OllamaAdapter;
 use crate::adapter::adapters::ollama_cloud::OllamaCloudAdapter;
 use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
+use crate::adapter::adapters::open_router::OpenRouterAdapter;
 use crate::adapter::adapters::opencode_go::OpenCodeGoAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
@@ -95,6 +96,10 @@ pub enum AdapterKind {
 	/// Requires the `bedrock-sigv4` Cargo feature.
 	#[cfg(feature = "bedrock-sigv4")]
 	BedrockSigv4,
+	/// OpenRouter — OpenAI-compatible gateway for many providers (OpenAI, Anthropic, Google, etc.).
+	/// Namespace: `open_router::openai/gpt-4.1`, `open_router::anthropic/claude-sonnet-4-5`.
+	/// Uses `OPEN_ROUTER_API_KEY`.
+	OpenRouter,
 }
 
 /// Serialization/Parse implementations
@@ -128,6 +133,7 @@ impl AdapterKind {
 			AdapterKind::BedrockApi => "BedrockApi",
 			#[cfg(feature = "bedrock-sigv4")]
 			AdapterKind::BedrockSigv4 => "BedrockSigv4",
+			AdapterKind::OpenRouter => "OpenRouter",
 		}
 	}
 
@@ -160,6 +166,7 @@ impl AdapterKind {
 			AdapterKind::BedrockApi => "bedrock_api",
 			#[cfg(feature = "bedrock-sigv4")]
 			AdapterKind::BedrockSigv4 => "bedrock_sigv4",
+			AdapterKind::OpenRouter => "open_router",
 		}
 	}
 
@@ -191,6 +198,7 @@ impl AdapterKind {
 			"bedrock_api" => Some(AdapterKind::BedrockApi),
 			#[cfg(feature = "bedrock-sigv4")]
 			"bedrock_sigv4" => Some(AdapterKind::BedrockSigv4),
+			"open_router" => Some(AdapterKind::OpenRouter),
 			_ => None,
 		}
 	}
@@ -227,6 +235,7 @@ impl AdapterKind {
 			AdapterKind::BedrockApi => BedrockApiAdapter::DEFAULT_API_KEY_ENV_NAME,
 			#[cfg(feature = "bedrock-sigv4")]
 			AdapterKind::BedrockSigv4 => BedrockSigv4Adapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::OpenRouter => OpenRouterAdapter::DEFAULT_API_KEY_ENV_NAME,
 		}
 	}
 }

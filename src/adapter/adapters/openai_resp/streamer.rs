@@ -35,9 +35,18 @@ enum RespStreamEvent {
 	#[serde(rename = "response.output_item.added")]
 	OutputItemAdded { output_index: usize, item: Value },
 
+	#[serde(rename = "response.output_item.done")]
+	OutputItemDone {
+		#[serde(default)]
+		_output_index: usize,
+		item: Value,
+	},
+
 	#[serde(rename = "response.content_part.added")]
 	ContentPartAdded {
+		#[serde(default)]
 		_output_index: usize,
+		#[serde(default)]
 		_content_index: usize,
 		#[serde(default)]
 		_part: Value,
@@ -159,6 +168,27 @@ impl futures::Stream for OpenAIRespStreamer {
 							continue;
 						}
 
+						RespStreamEvent::OutputItemDone { item, .. } => {
+							// Capture encrypted reasoning blobs from `type: "reasoning"`
+							// items as they finalise. Some backends (tasfn-class proxies)
+							// don't include `response.output` in the terminal
+							// `response.completed` event — they emit reasoning items only
+							// via this stream of `output_item.done` events. Reading them
+							// here keeps the prefix cache round-trip working regardless
+							// of whether the backend echoes `output` at the end.
+							if self.options.capture_reasoning_content
+								&& item.x_get_str("type").ok() == Some("reasoning")
+								&& let Ok(encrypted) = item.x_get_str("encrypted_content")
+								&& !encrypted.is_empty()
+							{
+								self.captured_data
+									.thought_signatures
+									.get_or_insert_with(Vec::new)
+									.push(encrypted.to_string());
+							}
+							continue;
+						}
+
 						RespStreamEvent::ContentPartAdded { .. } => {
 							// We can ignore this as deltas will follow
 							continue;
@@ -226,13 +256,41 @@ impl futures::Stream for OpenAIRespStreamer {
 								tool_calls.push(tc);
 							}
 
+							// Fallback: if no tool calls were captured incrementally
+							// (e.g., the server sent only response.completed without
+							// preceding OutputItemAdded / FunctionCallArgumentsDelta
+							// events), extract them from the response.output payload.
+							if tool_calls.is_empty() {
+								for item in &response.output {
+									if item.x_get_str("type").ok() == Some("function_call") {
+										let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
+										let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
+										let args_str = item.x_get_str("arguments").unwrap_or_default();
+										let fn_arguments: Value = serde_json::from_str(args_str)
+											.unwrap_or_else(|_| Value::String(args_str.to_string()));
+
+										tool_calls.push(ToolCall {
+											call_id,
+											fn_name,
+											fn_arguments,
+											thought_signatures: None,
+										});
+									}
+								}
+							}
+
 							if self.options.capture_tool_calls && !tool_calls.is_empty() {
 								self.captured_data.tool_calls = Some(tool_calls.clone());
 							}
 
 							// Extract encrypted reasoning content from output items
 							// (OpenAI equivalent of Gemini thought signatures).
-							if self.options.capture_reasoning_content {
+							// Only used as a fallback — `output_item.done` is the
+							// primary source. Some backends don't echo `output` in
+							// `response.completed` (it comes back empty), but for
+							// backends that do, this picks up anything missed.
+							if self.options.capture_reasoning_content && self.captured_data.thought_signatures.is_none()
+							{
 								let mut thought_sigs: Vec<String> = Vec::new();
 								for item in &response.output {
 									if item.x_get_str("type").ok() == Some("reasoning")
