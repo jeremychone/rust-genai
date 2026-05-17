@@ -1,11 +1,13 @@
 # genai, Native-Protocol Multi-AI Provider Library for Rust
 
-`genai = "0.6.0-beta.20"`
-_Recommendation (v0.6.0.beta, readday, robust, and 0.6.0 coming soon)_
+Provides a single, ergonomic Rust API for native-protocol multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
 Currently natively supports over **25 providers**: `OpenAI`, `OpenAI Responses`, `Anthropic`, `Gemini`, `xAI`, `Ollama`, `Ollama Cloud`, `OpenCode Go`, `Groq`, `DeepSeek`, `Cohere`, `Together`, `Fireworks`, `Nebius`, `Mimo`, `Zai` (Zhipu AI), `BigModel`, `Aliyun`, `Baidu`, `Moonshot`, `Google Vertex`, `GitHub Copilot` (GitHub Models API), `AIHubMix`, `AWS Bedrock`, `OpenRouter`.
 
 Also supports a custom Endpoint and Auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
+
+**NOTE:** Use `genai = "0.6.0-beta.20"` or later for improved robustness, even compared to `0.5.x`, along with many more providers, fixes, performance improvements, and API enhancements. `v0.6.0` is coming soon.
+
 
 <div align="center">
 
@@ -15,9 +17,6 @@ Also supports a custom Endpoint and Auth with `ServiceTargetResolver` (see [exam
 
 </div>
 
-Provides a single, ergonomic Rust API for native-protocol multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
-
-**NOTE:** Big update with **v0.5.0**: New adapters (BigModel, MIMO), Gemini Thinking support, Anthropic Reasoning Effort, and a more robust internal streaming engine.
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
