@@ -24,9 +24,23 @@ This guide highlights the `genai` API changes needed when moving from the 0.5.x 
 
 - **Bound Adapter Clients**: `ClientBuilder::with_adapter_kind(adapter_kind)` and `ClientConfig::with_adapter_kind(adapter_kind)` can bind a client to a single adapter. Bare model names route through that adapter. Explicit mismatched namespaces or mismatched `ModelIden` values return `AdapterKindMismatch`.
 
+- **ModelSpec Model Resolution**: Model inputs can be represented with `ModelSpec`, which supports plain model names, explicit `ModelIden` values, and complete `ServiceTarget` values.
+
+- **Complete Service Targets**: `ModelSpec::Target(ServiceTarget)` lets callers provide endpoint, auth, and model identity directly. This bypasses model mapping and auth resolution, then still passes through the service target resolver.
+
 - **Chat Extra Body**: `ChatOptions::with_extra_body(serde_json::Value)` adds a low-level provider-specific body extension point. OpenAI-compatible chat payloads merge this value into Chat Completions and Responses request bodies.
 
 - **Tool Choice**: `ChatOptions::with_tool_choice(...)` adds provider-neutral tool selection support, mapped to Gemini, OpenAI Chat Completions, OpenAI Responses, and Anthropic payloads.
+
+- **Built-In Tools and WebSearch**: Typed built-in tool support was added through `ToolName`, `ToolConfig`, `WebSearch`, and related tool configuration types. WebSearch is supported for Anthropic, OpenAI, and Gemini.
+
+- **Reasoning Content and Stop Reason**: Chat responses can expose provider stop reasons, and reasoning output is represented with `ContentPart::ReasoningContent`.
+
+- **OpenAI Responses Stateful Sessions**: OpenAI Responses supports `previous_response_id`, request `store`, and returned `response_id` for stateful session flows.
+
+- **Prompt Cache Control**: Chat-level `CacheControl` adds prompt cache support, including OpenAI `prompt_cache_key` and prompt cache retention.
+
+- **Reasoning Effort Variants**: `ReasoningEffort::Max` was added for Anthropic, and `ReasoningEffort::XHigh` was added for OpenAI.
 
 - **Gemini Schema and Tool Compatibility**: Gemini schema conversion now normalizes provider-incompatible JSON Schema features, including converting `const` to single-value `enum`, preserving and sanitizing `additionalProperties`, and stripping JSON Schema-only keywords rejected by Vertex.
 
@@ -96,6 +110,31 @@ Behavior notes:
 - Namespaced model names that target another adapter return `AdapterKindMismatch`.
 - `ModelSpec::Iden` values that target another adapter return `AdapterKindMismatch`.
 - Fully resolved `ModelSpec::Target` values are unchanged.
+
+### ModelSpec and ServiceTarget
+
+`ModelSpec` provides explicit control over model resolution:
+
+- `ModelSpec::Name`, the default string-based model path.
+- `ModelSpec::Iden`, an explicit adapter and model identity.
+- `ModelSpec::Target`, a complete endpoint, auth, and model target.
+
+```rust
+use genai::adapter::AdapterKind;
+use genai::chat::ChatRequest;
+use genai::resolver::{AuthData, Endpoint};
+use genai::{Client, ModelIden, ModelSpec, ServiceTarget};
+
+let target = ServiceTarget {
+	endpoint: Endpoint::from_static("https://custom.example/v1/"),
+	auth: AuthData::from_env("CUSTOM_API_KEY"),
+	model: ModelIden::new(AdapterKind::OpenAI, "custom-model"),
+};
+
+let response = Client::default()
+	.exec_chat(ModelSpec::from_target(target), ChatRequest::from_user("Hello"), None)
+	.await?;
+```
 
 ### Chat extra_body
 

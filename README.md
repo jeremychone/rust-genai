@@ -58,7 +58,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
-## v0.6.x - (2026-05-16...)
+## v0.6.x - (coming soon, available as `v0.6.0-beta.21`)
 
 - **What's new**:
     - **New Adapters**:
@@ -73,7 +73,19 @@ For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/ada
         - `aihubmix`
         - `ollama_cloud` (Ollama Cloud)
     - **Expanded Provider Support**: Comprehensive coverage of major AI ecosystems.
-    - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20).
+    - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20), including `ContentPart::ReasoningContent` and provider stop reasons.
+    - **ProviderConfig for model listing**: `Client::all_model_names(adapter_kind, provider_config)` now accepts endpoint and auth overrides, including remote Ollama hosts and custom OpenAI-compatible model listing.
+    - **Bound adapter clients**: `ClientBuilder::with_adapter_kind(...)` and `ClientConfig::with_adapter_kind(...)` bind a client to a single provider adapter, useful for proxies, gateways, Azure-style deployment names, and OpenAI-compatible providers with non-standard model names.
+    - **ModelSpec and ServiceTarget**: Model arguments can be represented as a model name, explicit `ModelIden`, or complete `ServiceTarget`, enabling custom endpoint, auth, and model identity without relying on model-name inference.
+    - **OpenAI Responses stateful sessions**: OpenAI Responses supports session continuity with `previous_response_id`, request `store`, and returned `response_id`.
+    - **Chat extra body**: `ChatOptions::with_extra_body(...)` provides a low-level request body extension point for provider-specific fields in OpenAI-compatible chat payloads.
+    - **Tool choice**: `ChatOptions::with_tool_choice(...)` adds provider-neutral tool selection hints for automatic, disabled, required, or specific tool calls.
+    - **Built-in tools and WebSearch**: Added typed built-in tool support, including `ToolName`, `ToolConfig`, `WebSearch`, and provider mappings for Anthropic, OpenAI, and Gemini.
+    - **Prompt cache controls**: Chat-level `CacheControl` support adds provider-specific prompt caching options, including OpenAI `prompt_cache_key` and cache retention.
+    - **Reasoning effort additions**: Added `ReasoningEffort::Max` for Anthropic and `ReasoningEffort::XHigh` for OpenAI.
+    - **Gemini schema compatibility**: Gemini and Vertex Gemini structured output and tool schemas now normalize common JSON Schema shapes, including `const`, nullable schema patterns, `additionalProperties`, and JSON Schema-only keywords rejected by Vertex.
+    - **Ollama and Ollama Cloud**: Now Ollama native API protocol
+    - **Perf Improvements**: HTTP requests use performance optimizations such as gzip, `TCP_NODELAY`, and HTTP/2 tuning.
     - Numerous fixes, optimizations, and API enhancements.
 
 ## v0.5.x - (2026-01-09 onwards)
@@ -289,18 +301,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **(2)**: **Gemini** tokens
 	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
 
-## Notes on Possible Direction
-
-- Will add more data to ChatResponse and ChatStream, especially usage metadata.
-- Add vision/image support to chat messages and responses.
-- Add function calling support to chat messages and responses.
-- Add `embed` and `embed_batch`.
-- Add the AWS Bedrock variants (e.g., Mistral and Anthropic). Most of the work will be on the "interesting" token signature scheme. To avoid bringing in large SDKs, this might be a lower-priority feature.
-- Add the Google Vertex AI variants.
-- May add the Azure OpenAI variant (not sure yet).
 
 ## Links
 
 - crates.io: [crates.io/crates/genai](https://crates.io/crates/genai)
 - GitHub: [github.com/jeremychone/rust-genai](https://github.com/jeremychone/rust-genai)
-- Sponsored by [BriteSnow](https://britesnow.com) (Jeremy Chone's consulting company)
