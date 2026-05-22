@@ -13,12 +13,82 @@ aip run dev/agents/fetch-pr.aip -i "my-workbench:212"
 aip run dev/agents/fetch-pr.aip -i "new-workbenchs:214,215,216" -i "my-other:212"
 ```
 
+JSON-relaxed input is also supported:
+
+```sh
+aip run dev/agents/fetch-pr.aip -i "{ wb: 'my-workbench', prs: [212, 213], output: 'desc' }"
+aip run dev/agents/fetch-pr.aip -i "{ wb: 'my-workbench', from_pr: 212, status: 'open', output: 'patch' }"
+```
+
+Shape:
+
+```typescript
+{
+	wb: string, // workbench name
+	prs?: number | number[], // comma-separated prs.
+	from_pr?: number, // will download from this pr, included
+	status?: "close" | "open", // default both
+	output?: "desc" | "patch", // default both
+}
+```
+
 # Before All
 
 ```lua
-local new_inputs = {}
+local function normalize_pr_id(value, field_name)
+    local text = aip.text.trim(tostring(value_or(value, "")))
+    local number_value = tonumber(text)
+    if not number_value or number_value < 1 or number_value ~= math.floor(number_value) then
+        error("Invalid " .. field_name .. ". Expected a positive PR number (got: " .. tostring(value) .. ")")
+    end
 
-for _, input_str in ipairs(inputs) do
+    return tostring(math.floor(number_value))
+end
+
+local function normalize_output(value)
+    local output = aip.text.trim(string.lower(tostring(value_or(value, ""))))
+    if output == "" or output == "both" or output == "all" then
+        return true, true
+    end
+
+    if output == "desc" or output == "description" then
+        return true, false
+    end
+
+    if output == "patch" or output == "diff" then
+        return false, true
+    end
+
+    error("Invalid output. Expected 'desc' or 'patch' (got: " .. tostring(value) .. ")")
+end
+
+local function normalize_status(value)
+    local status = aip.text.trim(string.lower(tostring(value_or(value, ""))))
+    if status == "" or status == "both" or status == "all" then
+        return "all"
+    end
+
+    if status == "open" then
+        return "open"
+    end
+
+    if status == "close" or status == "closed" then
+        return "closed"
+    end
+
+    error("Invalid status. Expected 'close' or 'open' (got: " .. tostring(value) .. ")")
+end
+
+local function add_pr_input(new_inputs, wb_name, pr_id, output_desc, output_patch)
+    table.insert(new_inputs, {
+        name = wb_name,
+        pr = pr_id,
+        output_desc = output_desc,
+        output_patch = output_patch,
+    })
+end
+
+local function add_classic_inputs(new_inputs, input_str)
     local wb_name, pr_list_str = aip.text.split_first(input_str, ":")
     if not wb_name or not pr_list_str then
         error("Invalid input format. Expected 'WORKBENCH_NAME:PR_ID1,PR_ID2,...' (got: " .. tostring(input_str) .. ")")
@@ -31,10 +101,113 @@ for _, input_str in ipairs(inputs) do
         local part, next_rem = aip.text.split_first(remainder, ",")
         local pr_id = aip.text.trim(part or remainder)
         if pr_id ~= "" then
-            table.insert(new_inputs, {name = wb_name, pr = pr_id})
+            add_pr_input(new_inputs, wb_name, normalize_pr_id(pr_id, "pr"), true, true)
         end
         remainder = next_rem
         if not part then break end
+    end
+end
+
+local function fetch_prs_from(from_pr, status)
+    local pr_res = aip.cmd.exec("gh", {"pr", "list", "--state", status, "--limit", "1000", "--json", "number"})
+    if pr_res.error or pr_res.exit ~= 0 then
+        error("Failed to list PRs with gh: " .. (pr_res.stderr or pr_res.error or "unknown error"))
+    end
+
+    local prs = aip.json.parse(pr_res.stdout or "")
+    if not prs or prs.error then
+        error("Failed to parse PR list JSON: " .. (prs and prs.error or "empty response"))
+    end
+
+    local from_pr_num = tonumber(from_pr)
+    local pr_ids = {}
+    if type(prs) == "table" then
+        for _, pr in ipairs(prs) do
+            local pr_number = nil
+            if type(pr) == "table" then
+                pr_number = tonumber(pr.number)
+            else
+                pr_number = tonumber(pr)
+            end
+
+            if pr_number and pr_number >= from_pr_num then
+                table.insert(pr_ids, tostring(math.floor(pr_number)))
+            end
+        end
+    end
+
+    table.sort(pr_ids, function(a, b)
+        return tonumber(a) < tonumber(b)
+    end)
+
+    return pr_ids
+end
+
+local function add_json_inputs(new_inputs, input_str)
+    local cfg = aip.json.parse(input_str)
+    if not cfg or cfg.error then
+        error("Invalid JSON-relaxed PR input: " .. (cfg and cfg.error or "empty response"))
+    end
+
+    if type(cfg) ~= "table" then
+        error("Invalid JSON-relaxed PR input. Expected an object.")
+    end
+
+    local wb_name = aip.text.trim(tostring(value_or(cfg.wb, "")))
+    if wb_name == "" then
+        error("Invalid JSON-relaxed PR input. Missing 'wb'.")
+    end
+
+    local output_desc, output_patch = normalize_output(cfg.output)
+    local status = normalize_status(cfg.status)
+    local pr_ids = {}
+    local seen_pr_ids = {}
+
+    local function add_pr_id(value)
+        local pr_id = normalize_pr_id(value, "pr")
+        if not seen_pr_ids[pr_id] then
+            table.insert(pr_ids, pr_id)
+            seen_pr_ids[pr_id] = true
+        end
+    end
+
+    if cfg.prs ~= nil then
+        if type(cfg.prs) == "table" then
+            for _, pr_id in ipairs(cfg.prs) do
+                add_pr_id(pr_id)
+            end
+        else
+            add_pr_id(cfg.prs)
+        end
+    end
+
+    if cfg.from_pr ~= nil then
+        local from_pr = normalize_pr_id(cfg.from_pr, "from_pr")
+        for _, pr_id in ipairs(fetch_prs_from(from_pr, status)) do
+            if not seen_pr_ids[pr_id] then
+                table.insert(pr_ids, pr_id)
+                seen_pr_ids[pr_id] = true
+            end
+        end
+    end
+
+    if #pr_ids == 0 then
+        error("Invalid JSON-relaxed PR input. Expected 'prs' or 'from_pr'.")
+    end
+
+    for _, pr_id in ipairs(pr_ids) do
+        add_pr_input(new_inputs, wb_name, pr_id, output_desc, output_patch)
+    end
+end
+
+local new_inputs = {}
+
+for _, input_str in ipairs(inputs) do
+    local input_text = aip.text.trim(tostring(input_str))
+    if string.sub(input_text, 1, 1) == "{" and string.sub(input_text, -1) == "}" then
+        add_json_inputs(new_inputs, input_text)
+    else
+        add_classic_inputs(new_inputs, input_str)
     end
 end
 
@@ -46,6 +219,8 @@ return aip.flow.before_all_response({inputs = new_inputs})
 ```lua
 local pr_id = input.pr
 local wb_name = input.name
+local output_desc = input.output_desc ~= false
+local output_patch = input.output_patch ~= false
 
 aip.task.pin("workbench", {
     label = "Workbench",
@@ -139,15 +314,10 @@ while #words < 3 do
     table.insert(words, "pr")
 end
 
-local diff_res = aip.cmd.exec("gh", {"pr", "diff", pr_id})
-if diff_res.error or diff_res.exit ~= 0 then
-    error("Failed to fetch PR " .. pr_id .. " diff with gh: " .. (diff_res.stderr or diff_res.error or "unknown error"))
-end
-
 local title_slug = table.concat(words, "-")
 local data_dir = aip.path.join(".workbench", {wb_name, "data"})
-local patch_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-patch-" .. title_slug .. ".md")
-local description_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-description-" .. title_slug .. ".md")
+local patch_file_path = nil
+local description_file_path = nil
 
 aip.file.ensure_dir(data_dir)
 
@@ -166,67 +336,86 @@ local header_lines = {
 }
 local common_header = table.concat(header_lines, "\n")
 
-local patch_content = common_header .. "\n\n" .. aip.text.trim_end(diff_res.stdout or "") .. "\n"
-
-local body = aip.text.trim_end(string_value(pr.body))
-if body == "" then
-    body = "_No description provided._"
-end
-
-local description_lines = {
-    common_header,
-    "",
-    "---",
-    "**Description:**",
-    "",
-    body,
-}
-
-local comments = value_or(pr.comments, {})
-if type(comments) == "table" and #comments > 0 then
-    for _, comment in ipairs(comments) do
-        local c_author = "unknown"
-        if type(comment.author) == "table" then
-            c_author = aip.text.trim(string_value(comment.author.login))
-        else
-            c_author = aip.text.trim(string_value(comment.author))
-        end
-
-        if c_author == "" then
-            c_author = "unknown"
-        end
-
-        local c_created_at = aip.text.trim(string_value(comment.createdAt))
-        local c_body = aip.text.trim_end(string_value(comment.body))
-        if c_body == "" then
-            c_body = "_No comment body._"
-        end
-
-        table.insert(description_lines, "")
-        table.insert(description_lines, "---")
-
-        local comment_title = "**Comment from " .. c_author
-        if c_created_at ~= "" then
-            comment_title = comment_title .. " at " .. c_created_at
-        end
-        comment_title = comment_title .. " **"
-
-        table.insert(description_lines, comment_title)
-        table.insert(description_lines, "")
-        table.insert(description_lines, c_body)
+if output_patch then
+    local diff_res = aip.cmd.exec("gh", {"pr", "diff", pr_id})
+    if diff_res.error or diff_res.exit ~= 0 then
+        error("Failed to fetch PR " .. pr_id .. " diff with gh: " .. (diff_res.stderr or diff_res.error or "unknown error"))
     end
+
+    patch_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-patch-" .. title_slug .. ".md")
+    local patch_content = common_header .. "\n\n" .. aip.text.trim_end(diff_res.stdout or "") .. "\n"
+    aip.file.save(patch_file_path, patch_content, {single_trailing_newline = true})
 end
 
-local description_content = table.concat(description_lines, "\n") .. "\n"
+if output_desc then
+    description_file_path = aip.path.join(data_dir, "pr-" .. pr_id .. "-description-" .. title_slug .. ".md")
 
-aip.file.save(patch_file_path, patch_content, {single_trailing_newline = true})
-aip.file.save(description_file_path, description_content, {single_trailing_newline = true})
+    local body = aip.text.trim_end(string_value(pr.body))
+    if body == "" then
+        body = "_No description provided._"
+    end
 
-return {
+    local description_lines = {
+        common_header,
+        "",
+        "---",
+        "**Description:**",
+        "",
+        body,
+    }
+
+    local comments = value_or(pr.comments, {})
+    if type(comments) == "table" and #comments > 0 then
+        for _, comment in ipairs(comments) do
+            local c_author = "unknown"
+            if type(comment.author) == "table" then
+                c_author = aip.text.trim(string_value(comment.author.login))
+            else
+                c_author = aip.text.trim(string_value(comment.author))
+            end
+
+            if c_author == "" then
+                c_author = "unknown"
+            end
+
+            local c_created_at = aip.text.trim(string_value(comment.createdAt))
+            local c_body = aip.text.trim_end(string_value(comment.body))
+            if c_body == "" then
+                c_body = "_No comment body._"
+            end
+
+            table.insert(description_lines, "")
+            table.insert(description_lines, "---")
+
+            local comment_title = "**Comment from " .. c_author
+            if c_created_at ~= "" then
+                comment_title = comment_title .. " at " .. c_created_at
+            end
+            comment_title = comment_title .. " **"
+
+            table.insert(description_lines, comment_title)
+            table.insert(description_lines, "")
+            table.insert(description_lines, c_body)
+        end
+    end
+
+    local description_content = table.concat(description_lines, "\n") .. "\n"
+    aip.file.save(description_file_path, description_content, {single_trailing_newline = true})
+end
+
+local result = {
     pr_id = pr_id,
-    patch_path = patch_file_path,
-    description_path = description_file_path
 }
+
+if patch_file_path then
+    result.patch_path = patch_file_path
+end
+
+if description_file_path then
+    result.description_path = description_file_path
+end
+
+return result
 ```
 
 # Output
@@ -235,7 +424,15 @@ return {
 -- Repository is inferred from Cargo.toml context.
 
 if type(data) == "table" and data.pr_id then
-    print("Successfully saved PR #" .. data.pr_id .. "\n- " .. data.patch_path .. "\n- " .. data.description_path)
+    local saved_lines = {}
+    if data.patch_path then
+        table.insert(saved_lines, "- " .. data.patch_path)
+    end
+    if data.description_path then
+        table.insert(saved_lines, "- " .. data.description_path)
+    end
+
+    print("Successfully saved PR #" .. data.pr_id .. "\n" .. table.concat(saved_lines, "\n"))
 end
 
 return data
@@ -249,8 +446,12 @@ local lines = {}
 for _, out in ipairs(outputs) do
     if type(out) == "table" and out.pr_id then
         table.insert(lines, "PR " .. out.pr_id)
-        table.insert(lines, "- " .. out.description_path)
-        table.insert(lines, "- " .. out.patch_path)
+        if out.description_path then
+            table.insert(lines, "- " .. out.description_path)
+        end
+        if out.patch_path then
+            table.insert(lines, "- " .. out.patch_path)
+        end
     end
 end
 
