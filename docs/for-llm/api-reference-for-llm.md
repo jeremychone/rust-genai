@@ -31,11 +31,11 @@ genai (crate root / lib.rs)
 - **ServiceTarget**: Fully resolved call target: `ModelIden` + `Endpoint` + `AuthData`.
 - **ProviderConfig**: Provider-level endpoint/auth overrides for adapter-wide operations such as model listing.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
-- **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Aihubmix`, `Mimo`, `Moonshot`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Baidu`, `Cohere`, `Ollama`, `OllamaCloud`, `OpenCodeGo`, `Vertex`, `GithubCopilot`, `BedrockApi`, `BedrockSigv4`, `OpenRouter`.
-  - `GithubCopilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
-  - `OllamaCloud` is the hosted Ollama Cloud service (`ollama.com`). Uses the same native Ollama protocol as the local `Ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via `ollama_cloud::model_name` namespace (e.g., `ollama_cloud::gemma3:4b`).
-  - `Vertex` is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
-- `OpenCodeGo` is a curated open coding model proxy with dual-protocol routing via the `opencode_go::` namespace. Uses `OPENCODE_GO_API_KEY`.
+- **AdapterKind**: Supported providers: `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
+  - `github_copilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
+  - `ollama_cloud` is the hosted Ollama Cloud service (`ollama.com`). Uses the same native Ollama protocol as the local `ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via `ollama_cloud::model_name` namespace (e.g., `ollama_cloud::gemma3:4b`).
+  - `vertex` is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
+- `opencode_go` is a curated open coding model proxy with dual-protocol routing via the `opencode_go::` namespace. Uses `OPENCODE_GO_API_KEY`.
 
 ## Client & Configuration
 
@@ -546,7 +546,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Aihubmix`, `Mimo`, `Moonshot`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Baidu`, `Cohere`, `Ollama`, `OllamaCloud`, `OpenCodeGo`, `Vertex`, `GithubCopilot`, `BedrockApi`, `BedrockSigv4`, `OpenRouter`.
+Variants: `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
 
   - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `aihubmix::`, `mimo::`, `moonshot::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `baidu::`, `cohere::`, `ollama::`, `ollama_cloud::`, `opencode_go::`, `vertex::`, `openai_resp::`, `github_copilot::`, `bedrock_api::`, `bedrock_sigv4::`, `open_router::`)
 

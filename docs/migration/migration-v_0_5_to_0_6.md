@@ -5,15 +5,16 @@ This guide highlights the `genai` API changes needed when moving from the 0.5.x 
 ## API Changes
 
 - **New Adapters Added**:
-  - AWS Bedrock (`BedrockApi` and `BedrockSigv4` adapters).
-  - OpenRouter (`OpenRouter` adapter).
-  - Google Vertex (`Vertex` adapter with Gemini and Anthropic support).
-  - GitHub Copilot (`GithubCopilot` adapter for GitHub Models API).
-  - OpenCode Go (`OpenCodeGo` adapter).
-  - Baidu (`Baidu` adapter).
-  - Aliyun (`Aliyun` adapter).
-  - Moonshot AI (`Moonshot` adapter).
-  - AIHubMix (`Aihubmix` adapter).
+  - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters).
+  - OpenRouter (`open_router` adapter).
+  - Google Vertex (`vertex` adapter with Gemini and Anthropic support).
+  - GitHub Copilot (`github_copilot` adapter for GitHub Models API).
+  - OpenCode Go (`opencode_go` adapter).
+  - Baidu (`baidu` adapter).
+  - Aliyun (`aliyun` adapter).
+  - Moonshot AI (`moonshot` adapter).
+  - AIHubMix (`aihubmix` adapter).
+  - Ollama Cloud (`ollama_cloud` adapter).
 
 - **Groq Namespace Requirement**: Groq models must now be addressed via namespaced models (e.g. `groq::llama-3.1-8b-instant`).
 

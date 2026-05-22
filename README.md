@@ -2,7 +2,7 @@
 
 Provides a single, ergonomic Rust API for native-protocol multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-Currently natively supports over **25 providers**: `OpenAI`, `OpenAI Responses`, `Anthropic`, `Gemini`, `xAI`, `Ollama`, `Ollama Cloud`, `OpenCode Go`, `Groq`, `DeepSeek`, `Cohere`, `Together`, `Fireworks`, `Nebius`, `Mimo`, `Zai` (Zhipu AI), `BigModel`, `Aliyun`, `Baidu`, `Moonshot`, `Google Vertex`, `GitHub Copilot` (GitHub Models API), `AIHubMix`, `AWS Bedrock`, `OpenRouter`.
+Currently natively supports over **25 providers**: `openai`, `openai_resp`, `anthropic`, `gemini`, `xai`, `ollama`, `ollama_cloud`, `opencode_go`, `groq`, `deepseek`, `cohere`, `together`, `fireworks`, `nebius`, `mimo`, `zai` (Zhipu AI), `bigmodel`, `aliyun`, `baidu`, `moonshot`, `vertex`, `github_copilot` (GitHub Models API), `aihubmix`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
 
 Also supports a custom Endpoint and Auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
@@ -62,15 +62,16 @@ For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/ada
 
 - **What's new**:
     - **New Adapters**:
-        - AWS Bedrock (`BedrockApi` and `BedrockSigv4` adapters)
-        - `OpenRouter` 
-        - `Vertex`(with Gemini and Anthropic support)
-        - `GithubCopilot`, 
-        - `OpenCodeGo`
-        - `Baidu`
-        - `Aliyun`
-        - `Moonshot`
-        - `Aihubmix`
+        - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
+        - `open_router`
+        - `vertex` (with Gemini and Anthropic support)
+        - `github_copilot` (GitHub Models API)
+        - `opencode_go`
+        - `baidu`
+        - `aliyun`
+        - `moonshot`
+        - `aihubmix`
+        - `ollama_cloud` (Ollama Cloud)
     - **Expanded Provider Support**: Comprehensive coverage of major AI ecosystems.
     - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20).
     - Numerous fixes, optimizations, and API enhancements.
