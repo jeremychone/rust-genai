@@ -4,9 +4,22 @@ This guide highlights the `genai` API changes needed when moving from the 0.5.x 
 
 ## API Changes
 
-- `Client::all_model_names(adapter_kind, impl Into<ProviderConfig>)` now takes a second Provider Config (can be `None` for default). (see [Client::all_model_names](#all_model_names))
+- **New Adapters Added**:
+  - AWS Bedrock (`BedrockApi` and `BedrockSigv4` adapters).
+  - OpenRouter (`OpenRouter` adapter).
+  - Google Vertex (`Vertex` adapter with Gemini and Anthropic support).
+  - GitHub Copilot (`GithubCopilot` adapter for GitHub Models API).
+  - OpenCode Go (`OpenCodeGo` adapter).
+  - Baidu (`Baidu` adapter).
+  - Aliyun (`Aliyun` adapter).
+  - Moonshot AI (`Moonshot` adapter).
+  - AIHubMix (`Aihubmix` adapter).
 
+- **Groq Namespace Requirement**: Groq models must now be addressed via namespaced models (e.g. `groq::llama-3.1-8b-instant`).
 
+- **All Model Names API Signature**: `Client::all_model_names(adapter_kind, impl Into<ProviderConfig>)` now takes a second Provider Config parameter, which can be `None` for default behavior. (see [Client::all_model_names](#all_model_names))
+
+- **Custom Part Model Identity**: `ContentPart::CustomPart.model_iden` is now an `Option<ModelIden>`.
 
 ## Code Examples
 

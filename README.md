@@ -61,7 +61,16 @@ For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/ada
 ## v0.6.x - (2026-05-16...)
 
 - **What's new**:
-    - **New Adapters**: AWS Bedrock (API and SigV4), OpenRouter, Baidu, Moonshot, and many others.
+    - **New Adapters**:
+        - AWS Bedrock (`BedrockApi` and `BedrockSigv4` adapters)
+        - `OpenRouter` 
+        - `Vertex`(with Gemini and Anthropic support)
+        - `GithubCopilot`, 
+        - `OpenCodeGo`
+        - `Baidu`
+        - `Aliyun`
+        - `Moonshot`
+        - `Aihubmix`
     - **Expanded Provider Support**: Comprehensive coverage of major AI ecosystems.
     - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20).
     - Numerous fixes, optimizations, and API enhancements.
