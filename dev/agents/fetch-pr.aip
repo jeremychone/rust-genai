@@ -17,7 +17,7 @@ JSON-relaxed input is also supported:
 
 ```sh
 aip run dev/agents/fetch-pr.aip -i "{ wb: 'my-workbench', prs: [212, 213], output: 'desc' }"
-aip run dev/agents/fetch-pr.aip -i "{ wb: 'my-workbench', from_pr: 212, status: 'open', output: 'patch' }"
+aip run dev/agents/fetch-pr.aip -i "{ wb: 'v06_prs', from_pr: 195, status: 'close', output: 'desc' }"
 ```
 
 Shape:
@@ -211,7 +211,12 @@ for _, input_str in ipairs(inputs) do
     end
 end
 
-return aip.flow.before_all_response({inputs = new_inputs})
+return aip.flow.before_all_response({
+	inputs = new_inputs, 
+	options = {
+		input_concurrency = 8
+	}
+})
 ```
 
 # Data
