@@ -1026,7 +1026,7 @@ pub async fn common_test_list_models(adapter_kind: AdapterKind, contains: &str) 
 	let client = Client::default();
 
 	// -- Exec
-	let models = client.all_model_names(adapter_kind).await?;
+	let models = client.all_model_names(adapter_kind, None).await?;
 
 	// -- Check
 	assert_contains(&models, contains);

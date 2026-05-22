@@ -15,7 +15,7 @@ genai (crate root / lib.rs)
 ├── pub mod chat        -- ChatRequest, ChatResponse, ChatStream, ChatOptions, Tools, ...
 │   └── pub mod printer -- print_chat_stream utility
 ├── pub mod embed       -- EmbedRequest, EmbedResponse, EmbedOptions
-├── pub mod resolver    -- AuthData, AuthResolver, Endpoint, ModelMapper, ServiceTargetResolver, Headers
+├── pub mod resolver    -- AuthData, AuthResolver, Endpoint, ProviderConfig, ModelMapper, ServiceTargetResolver, Headers
 ├── pub mod webc        -- webc::Error (public), WebClient internals (crate-private)
 ├── Client, ClientBuilder, ClientConfig  (from client module, flattened)
 ├── ModelIden, ModelName                 (from common module, flattened)
@@ -29,6 +29,7 @@ genai (crate root / lib.rs)
 - **ModelIden**: `AdapterKind` + `ModelName`. Identifies which provider and model to use.
 - **ModelSpec**: Specifies a model at three resolution levels: `Name`, `Iden`, or `Target`.
 - **ServiceTarget**: Fully resolved call target: `ModelIden` + `Endpoint` + `AuthData`.
+- **ProviderConfig**: Provider-level endpoint/auth overrides for adapter-wide operations such as model listing.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
 - **AdapterKind**: Supported providers: `OpenAI`, `OpenAIResp`, `Gemini`, `Anthropic`, `Fireworks`, `Together`, `Groq`, `Aihubmix`, `Mimo`, `Moonshot`, `Nebius`, `Xai`, `DeepSeek`, `Zai`, `BigModel`, `Aliyun`, `Baidu`, `Cohere`, `Ollama`, `OllamaCloud`, `OpenCodeGo`, `Vertex`, `GithubCopilot`, `BedrockApi`, `BedrockSigv4`, `OpenRouter`.
   - `GithubCopilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
@@ -50,7 +51,7 @@ Construct via `Client::default()` or `Client::builder().build()`.
 - `embed(model, input, options)`: Convenience; wraps a single `impl Into<String>` into `EmbedRequest`.
 - `embed_batch(model, inputs, options)`: Convenience; wraps `Vec<String>` into `EmbedRequest`.
 - `resolve_service_target(model_name)`: Returns `ServiceTarget`.
-- `all_model_names(adapter_kind)`: `Result<Vec<String>>`. Static list for most adapters; Ollama queries localhost.
+- `all_model_names(adapter_kind, provider_config)`: `provider_config: impl Into<resolver::ProviderConfig>` -> `Result<Vec<String>>`. Static list for most adapters; Ollama queries configured endpoint. Use `None`, `()`, or `ProviderConfig::default()` for adapter defaults.
 - `default_model(model_name)`: `Result<ModelIden>`. Infers `AdapterKind` from model name string.
 
 ### `ClientBuilder`
@@ -126,6 +127,24 @@ Fully resolved call target.
 - `endpoint: Endpoint`
 - `auth: AuthData`
 - `model: ModelIden`
+
+### `ProviderConfig`
+
+Provider-level endpoint/auth override for adapter-wide operations such as `Client::all_model_names`.
+
+- `endpoint: Option<Endpoint>`: `None` uses the adapter default endpoint.
+- `auth: Option<AuthData>`: `None` uses the adapter default auth resolution. `Some(AuthData::None)` explicitly uses no auth.
+- `ProviderConfig::default()`: Uses adapter defaults for both endpoint and auth.
+- `ProviderConfig::from_endpoint(endpoint)`: Override endpoint only.
+- `ProviderConfig::from_auth(auth)`: Override auth only.
+- `with_endpoint(endpoint)`: Chainable endpoint override.
+- `with_auth(auth)`: Chainable auth override.
+- `From<()>`: Lightweight default value.
+- `From<Option<ProviderConfig>>`: Enables `client.all_model_names(kind, None).await?`.
+- `From<Endpoint>`: Endpoint-only override.
+- `From<AuthData>`: Auth-only override.
+- `From<(Endpoint, AuthData)>`: Override both endpoint and auth.
+- `From<(Option<Endpoint>, Option<AuthData>)>`: Partial tuple override.
 
 ## Chat Request Structure
 

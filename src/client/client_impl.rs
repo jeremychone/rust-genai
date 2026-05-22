@@ -2,7 +2,7 @@ use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::client::ModelSpec;
 use crate::embed::{EmbedOptions, EmbedOptionsSet, EmbedRequest, EmbedResponse};
-use crate::resolver::AuthData;
+use crate::resolver::{AuthData, ProviderConfig};
 use crate::{Client, Error, ModelIden, Result, ServiceTarget};
 
 /// High-level client APIs.
@@ -17,12 +17,27 @@ impl Client {
 	///
 	/// - May evolve to accept a custom endpoint.
 	///
+	/// - Accepts [`ProviderConfig`] or compatible values to override endpoint and auth.
+	///
 	/// - For most adapters, names also drive AdapterKind detection (see [`AdapterKind`]).
 	///
 	/// - Adapters should filter non-chat models until more skills are supported.
 	///   Future: `model_names(adapter_kind, Option<&[Skill]>)`.
-	pub async fn all_model_names(&self, adapter_kind: AdapterKind) -> Result<Vec<String>> {
-		let (auth, endpoint) = self.config().resolve_adapter_config(adapter_kind).await?;
+	pub async fn all_model_names(
+		&self,
+		adapter_kind: AdapterKind,
+		provider_config: impl Into<ProviderConfig>,
+	) -> Result<Vec<String>> {
+		let ProviderConfig { endpoint, auth } = provider_config.into();
+
+		let (auth, endpoint) = match (auth, endpoint) {
+			(Some(auth), Some(endpoint)) => (auth, endpoint),
+			(auth, endpoint) => {
+				let (default_auth, default_endpoint) = self.config().resolve_adapter_config(adapter_kind).await?;
+				(auth.unwrap_or(default_auth), endpoint.unwrap_or(default_endpoint))
+			}
+		};
+
 		let models = AdapterDispatcher::all_model_names(adapter_kind, endpoint, auth).await?;
 		Ok(models)
 	}
