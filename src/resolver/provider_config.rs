@@ -78,8 +78,23 @@ impl From<(Endpoint, AuthData)> for ProviderConfig {
 	}
 }
 
+impl From<(AuthData, Endpoint)> for ProviderConfig {
+	fn from((auth, endpoint): (AuthData, Endpoint)) -> Self {
+		Self {
+			endpoint: Some(endpoint),
+			auth: Some(auth),
+		}
+	}
+}
+
 impl From<(Option<Endpoint>, Option<AuthData>)> for ProviderConfig {
 	fn from((endpoint, auth): (Option<Endpoint>, Option<AuthData>)) -> Self {
+		Self { endpoint, auth }
+	}
+}
+
+impl From<(Option<AuthData>, Option<Endpoint>)> for ProviderConfig {
+	fn from((auth, endpoint): (Option<AuthData>, Option<Endpoint>)) -> Self {
 		Self { endpoint, auth }
 	}
 }
@@ -130,6 +145,29 @@ mod tests {
 	#[test]
 	fn tuple_maps_to_full_provider_config() {
 		let provider_config = ProviderConfig::from((Endpoint::from_static("http://example.com/"), AuthData::None));
+		assert_eq!(
+			provider_config.endpoint.as_ref().map(Endpoint::base_url),
+			Some("http://example.com/")
+		);
+		assert!(matches!(provider_config.auth, Some(AuthData::None)));
+	}
+
+	#[test]
+	fn reverse_tuple_maps_to_full_provider_config() {
+		let provider_config = ProviderConfig::from((AuthData::None, Endpoint::from_static("http://example.com/")));
+		assert_eq!(
+			provider_config.endpoint.as_ref().map(Endpoint::base_url),
+			Some("http://example.com/")
+		);
+		assert!(matches!(provider_config.auth, Some(AuthData::None)));
+	}
+
+	#[test]
+	fn reverse_optional_tuple_maps_to_full_provider_config() {
+		let provider_config = ProviderConfig::from((
+			Some(AuthData::None),
+			Some(Endpoint::from_static("http://example.com/")),
+		));
 		assert_eq!(
 			provider_config.endpoint.as_ref().map(Endpoint::base_url),
 			Some("http://example.com/")

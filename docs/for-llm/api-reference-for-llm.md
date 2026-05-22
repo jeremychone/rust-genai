@@ -51,7 +51,10 @@ Construct via `Client::default()` or `Client::builder().build()`.
 - `embed(model, input, options)`: Convenience; wraps a single `impl Into<String>` into `EmbedRequest`.
 - `embed_batch(model, inputs, options)`: Convenience; wraps `Vec<String>` into `EmbedRequest`.
 - `resolve_service_target(model_name)`: Returns `ServiceTarget`.
-- `all_model_names(adapter_kind, provider_config)`: `provider_config: impl Into<resolver::ProviderConfig>` -> `Result<Vec<String>>`. Static list for most adapters; Ollama queries configured endpoint. Use `None`, `()`, or `ProviderConfig::default()` for adapter defaults.
+- `all_model_names(adapter_kind, provider_config)`: `provider_config: impl Into<resolver::ProviderConfig>` -> `Result<Vec<String>>`. Static list for most adapters; Ollama queries configured endpoint. Use `None`, `()`, or `ProviderConfig::default()` for adapter defaults. Since v0.6.0, this method takes the second provider config argument so adapter-wide model listing can override endpoint and auth without using `ServiceTarget`.
+  - Defaults: `client.all_model_names(AdapterKind::Ollama, None).await?`.
+  - Endpoint override only: `client.all_model_names(AdapterKind::Ollama, Endpoint::from_static("http://remote-host:11434/")).await?`.
+  - Auth override only: `client.all_model_names(AdapterKind::OpenAI, AuthData::from_env("OPENAI_API_KEY")).await?`.
 - `default_model(model_name)`: `Result<ModelIden>`. Infers `AdapterKind` from model name string.
 
 ### `ClientBuilder`
@@ -144,7 +147,27 @@ Provider-level endpoint/auth override for adapter-wide operations such as `Clien
 - `From<Endpoint>`: Endpoint-only override.
 - `From<AuthData>`: Auth-only override.
 - `From<(Endpoint, AuthData)>`: Override both endpoint and auth.
+- From<(AuthData, Endpoint)>: Override both auth and endpoint in reverse tuple order.
 - `From<(Option<Endpoint>, Option<AuthData>)>`: Partial tuple override.
+- From<(Option<AuthData>, Option<Endpoint>)>: Partial tuple override in reverse tuple order.
+
+Examples:
+
+```rust
+use genai::adapter::AdapterKind;
+use genai::resolver::{AuthData, Endpoint, ProviderConfig};
+
+let default_models = client.all_model_names(AdapterKind::Ollama, None).await?;
+
+let remote_ollama_models = client
+	.all_model_names(
+		AdapterKind::Ollama,
+		ProviderConfig::default()
+			.with_endpoint(Endpoint::from_static("http://remote-host:11434/"))
+			.with_auth(AuthData::None),
+	)
+	.await?;
+```
 
 ## Chat Request Structure
 
