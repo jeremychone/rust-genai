@@ -17,7 +17,7 @@ JSON-relaxed input is also supported:
 
 ```sh
 aip run dev/agents/fetch-pr.aip -i "{ wb: 'my-workbench', prs: [212, 213], output: 'desc' }"
-aip run dev/agents/fetch-pr.aip -i "{ wb: 'v06_prs', from_pr: 195, status: 'close', output: 'desc' }"
+aip run dev/agents/fetch-pr.aip -i "{ wb: 'v06-providers', from_pr: 195, status: 'close', output: 'desc', labels: ['NEW-ADAPTER'] }"
 ```
 
 Shape:
@@ -29,6 +29,7 @@ Shape:
 	from_pr?: number, // will download from this pr, included
 	status?: "close" | "open", // default both
 	output?: "desc" | "patch", // default both
+	labels?: string | string[], // any of match labels
 }
 ```
 
@@ -108,8 +109,25 @@ local function add_classic_inputs(new_inputs, input_str)
     end
 end
 
-local function fetch_prs_from(from_pr, status)
-    local pr_res = aip.cmd.exec("gh", {"pr", "list", "--state", status, "--limit", "1000", "--json", "number"})
+local function match_labels(pr_labels, label_filters)
+    if not label_filters or #label_filters == 0 then
+        return true
+    end
+
+    for _, filter in ipairs(label_filters) do
+        local filter_lower = string.lower(filter)
+        for _, pr_label in ipairs(pr_labels) do
+            if string.lower(pr_label) == filter_lower then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+local function fetch_prs_from(from_pr, status, label_filters)
+    local pr_res = aip.cmd.exec("gh", {"pr", "list", "--state", status, "--limit", "1000", "--json", "number,labels"})
     if pr_res.error or pr_res.exit ~= 0 then
         error("Failed to list PRs with gh: " .. (pr_res.stderr or pr_res.error or "unknown error"))
     end
@@ -119,19 +137,36 @@ local function fetch_prs_from(from_pr, status)
         error("Failed to parse PR list JSON: " .. (prs and prs.error or "empty response"))
     end
 
-    local from_pr_num = tonumber(from_pr)
+    local from_pr_num = tonumber(from_pr) or 1
     local pr_ids = {}
     if type(prs) == "table" then
         for _, pr in ipairs(prs) do
             local pr_number = nil
+            local pr_labels = {}
             if type(pr) == "table" then
                 pr_number = tonumber(pr.number)
+                local labels = value_or(pr.labels, {})
+                if type(labels) == "table" then
+                    for _, label in ipairs(labels) do
+                        local label_name = ""
+                        if type(label) == "table" then
+                            label_name = aip.text.trim(tostring(value_or(label.name, "")))
+                        else
+                            label_name = aip.text.trim(tostring(value_or(label, "")))
+                        end
+                        if label_name ~= "" then
+                            table.insert(pr_labels, label_name)
+                        end
+                    end
+                end
             else
                 pr_number = tonumber(pr)
             end
 
             if pr_number and pr_number >= from_pr_num then
-                table.insert(pr_ids, tostring(math.floor(pr_number)))
+                if not label_filters or match_labels(pr_labels, label_filters) then
+                    table.insert(pr_ids, tostring(math.floor(pr_number)))
+                end
             end
         end
     end
@@ -144,6 +179,29 @@ local function fetch_prs_from(from_pr, status)
 end
 
 local function add_json_inputs(new_inputs, input_str)
+    local function normalize_labels(value)
+        if value == nil then
+            return nil
+        end
+
+        local labels = {}
+        if type(value) == "table" then
+            for _, val in ipairs(value) do
+                local label = aip.text.trim(tostring(val))
+                if label ~= "" then
+                    table.insert(labels, label)
+                end
+            end
+        else
+            local label = aip.text.trim(tostring(value))
+            if label ~= "" then
+                table.insert(labels, label)
+            end
+        end
+
+        return labels
+    end
+
     local cfg = aip.json.parse(input_str)
     if not cfg or cfg.error then
         error("Invalid JSON-relaxed PR input: " .. (cfg and cfg.error or "empty response"))
@@ -160,6 +218,7 @@ local function add_json_inputs(new_inputs, input_str)
 
     local output_desc, output_patch = normalize_output(cfg.output)
     local status = normalize_status(cfg.status)
+    local label_filters = normalize_labels(cfg.labels)
     local pr_ids = {}
     local seen_pr_ids = {}
 
@@ -183,7 +242,14 @@ local function add_json_inputs(new_inputs, input_str)
 
     if cfg.from_pr ~= nil then
         local from_pr = normalize_pr_id(cfg.from_pr, "from_pr")
-        for _, pr_id in ipairs(fetch_prs_from(from_pr, status)) do
+        for _, pr_id in ipairs(fetch_prs_from(from_pr, status, label_filters)) do
+            if not seen_pr_ids[pr_id] then
+                table.insert(pr_ids, pr_id)
+                seen_pr_ids[pr_id] = true
+            end
+        end
+    elseif label_filters ~= nil then
+        for _, pr_id in ipairs(fetch_prs_from(nil, status, label_filters)) do
             if not seen_pr_ids[pr_id] then
                 table.insert(pr_ids, pr_id)
                 seen_pr_ids[pr_id] = true
@@ -191,8 +257,12 @@ local function add_json_inputs(new_inputs, input_str)
         end
     end
 
+    if cfg.prs == nil and cfg.from_pr == nil and label_filters == nil then
+        error("Invalid JSON-relaxed PR input. Expected 'prs', 'from_pr', or 'labels'.")
+    end
+
     if #pr_ids == 0 then
-        error("Invalid JSON-relaxed PR input. Expected 'prs' or 'from_pr'.")
+        print("No PRs found matching the specified filters.")
     end
 
     for _, pr_id in ipairs(pr_ids) do
@@ -396,7 +466,7 @@ if output_desc then
             if c_created_at ~= "" then
                 comment_title = comment_title .. " at " .. c_created_at
             end
-            comment_title = comment_title .. " **"
+            comment_title = comment_title .. "**"
 
             table.insert(description_lines, comment_title)
             table.insert(description_lines, "")
