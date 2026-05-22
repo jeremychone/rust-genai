@@ -31,6 +31,7 @@ genai (crate root / lib.rs)
 - **ServiceTarget**: Fully resolved call target: `ModelIden` + `Endpoint` + `AuthData`.
 - **ProviderConfig**: Provider-level endpoint/auth overrides for adapter-wide operations such as model listing.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
+- **Bound Adapter**: Optional `Client`/`ClientBuilder` adapter constraint. When set, bare model names route through the bound adapter instead of heuristic inference. Explicit mismatched namespaces or mismatched `ModelIden` values return `AdapterKindMismatch`.
 - **AdapterKind**: Supported providers: `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
   - `github_copilot` is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `ollama_cloud` is the hosted Ollama Cloud service (`ollama.com`). Uses the same native Ollama protocol as the local `ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via `ollama_cloud::model_name` namespace (e.g., `ollama_cloud::gemma3:4b`).
@@ -45,6 +46,7 @@ Construct via `Client::default()` or `Client::builder().build()`.
 
 - `Client::default()`: Standard client.
 - `Client::builder()`: Returns `ClientBuilder`.
+- `adapter_kind()`: Returns `Option<AdapterKind>` when this client is bound to a single adapter.
 - `exec_chat(model, chat_req, options)`: `model: impl Into<ModelSpec>`, `chat_req: ChatRequest`, `options: Option<&ChatOptions>` -> `Result<ChatResponse>`.
 - `exec_chat_stream(model, chat_req, options)`: Same signature pattern -> `Result<ChatStreamResponse>`.
 - `exec_embed(model, embed_req, options)`: `model: impl Into<ModelSpec>`, `embed_req: EmbedRequest`, `options: Option<&EmbedOptions>` -> `Result<EmbedResponse>`.
@@ -62,6 +64,7 @@ Construct via `Client::default()` or `Client::builder().build()`.
 - `with_auth_resolver(resolver)` / `with_auth_resolver_fn(f)`: Set sync/async auth lookup.
 - `with_service_target_resolver(resolver)` / `with_service_target_resolver_fn(f)`: Full control over URL/Headers/Auth per call.
 - `with_model_mapper(mapper)` / `with_model_mapper_fn(f)`: Map model names before execution.
+- `with_adapter_kind(adapter_kind)`: Bind the client to one adapter. Bare model names route through this adapter. Namespaced models or `ModelIden` values for a different adapter return `AdapterKindMismatch`.
 - `with_chat_options(options)`: Set client-level default chat options.
 - `with_web_config(web_config)`: Configure `reqwest` (timeouts, proxies, default headers).
 - `with_reqwest(reqwest_client)`: Use a custom `reqwest::Client` directly.
@@ -75,10 +78,11 @@ Configuration container. Used internally by `Client`; can also be constructed di
 - `with_auth_resolver(resolver)`: Sets the `AuthResolver`.
 - `with_model_mapper(mapper)`: Sets the `ModelMapper`.
 - `with_service_target_resolver(resolver)`: Sets the `ServiceTargetResolver`.
+- `with_adapter_kind(adapter_kind)`: Sets the optional bound adapter for this client config.
 - `with_chat_options(options)`: Sets default `ChatOptions`.
 - `with_embed_options(options)`: Sets default `EmbedOptions`.
 - `with_web_config(web_config)`: Sets `WebConfig`.
-- Getters: `auth_resolver()`, `service_target_resolver()`, `model_mapper()`, `chat_options()`, `embed_options()`, `web_config()`.
+- Getters: `auth_resolver()`, `service_target_resolver()`, `model_mapper()`, `adapter_kind()`, `chat_options()`, `embed_options()`, `web_config()`.
 
 ### `WebConfig`
 
@@ -282,6 +286,7 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `temperature`, `max_tokens`, `top_p`.
 - `stop_sequences`: `Vec<String>`.
 - `response_format`: `ChatResponseFormat::JsonMode` or `JsonSpec(name, schema)`.
+- `tool_choice`: Provider-neutral `ToolChoice` hint for how tool calls should be handled.
 - `reasoning_effort`: `ReasoningEffort` enum.
 - `verbosity`: `Verbosity` enum (e.g., for GPT-5).
 - `normalize_reasoning_content`: Extract `<think>` blocks into response field.
@@ -292,7 +297,8 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `prompt_cache_key`: OpenAI prompt cache key.
 - `cache_control`: `CacheControl` request-level cache preference.
 - `extra_headers`: `Headers` added to the request.
-- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)`, `with_cache_control(cache_control)`, `with_extra_headers(headers)`.
+- `extra_body`: `serde_json::Value` merged into supported provider request bodies as a low-level escape hatch for provider-specific fields. Currently used by OpenAI-compatible chat payloads, including Chat Completions and Responses.
+- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_tool_choice(choice)`, `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)`, `with_cache_control(cache_control)`, `with_extra_headers(headers)`, `with_extra_body(value)`.
 - Deprecated: `with_json_mode(bool)` in favor of `with_response_format(ChatResponseFormat::JsonMode)`.
 
 ### `ChatResponseFormat`
@@ -305,6 +311,7 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `name: String`: Spec name (OpenAI: only `-` and `_` allowed).
 - `description: Option<String>`: Human-readable description.
 - `schema: serde_json::Value`: Simplified JSON schema.
+  - Gemini and Vertex Gemini schema conversion normalizes common JSON Schema shapes for provider compatibility, including converting `const` to a single-value `enum`, preserving and sanitizing `additionalProperties`, and stripping JSON Schema-only keywords rejected by Vertex.
 - `JsonSpec::new(name, schema)`: Constructor.
 - `with_description(desc)`: Chainable setter.
 
@@ -385,6 +392,15 @@ OpenAI service tier preference for flex processing.
 - `with_description(desc)`, `with_schema(parameters)`, `with_strict(bool)`, `with_config(config)`: Chainable setters.
 - `size()`: Approximate in-memory size.
 - `config`: Optional provider-specific config.
+- Gemini and Vertex Gemini tool schema conversion applies the same compatibility normalization used for structured JSON schemas.
+
+### `ToolChoice`
+
+Provider-neutral tool selection hint for chat requests. Set on `ChatOptions` with `with_tool_choice(choice)`.
+
+- Maps to Gemini, OpenAI Chat Completions, OpenAI Responses, and Anthropic request payloads.
+- Provider support and exact behavior can differ by adapter and model.
+- Useful for requesting automatic tool use, disabling tool use, requiring tool use, or selecting a specific tool when supported by the provider.
 
 ### `ToolName`
 
@@ -575,6 +591,12 @@ Variants: `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together
 
   - Namespace matches adapter lowercase name (e.g., `openai::`, `gemini::`, `anthropic::`, `fireworks::`, `together::`, `groq::`, `aihubmix::`, `mimo::`, `moonshot::`, `nebius::`, `xai::`, `deepseek::`, `zai::`, `bigmodel::`, `aliyun::`, `baidu::`, `cohere::`, `ollama::`, `ollama_cloud::`, `opencode_go::`, `vertex::`, `openai_resp::`, `github_copilot::`, `bedrock_api::`, `bedrock_sigv4::`, `open_router::`)
   - Special: `coding::` namespace maps to `Zai` adapter.
+- **Bound Adapter Clients**:
+  - `ClientBuilder::with_adapter_kind(adapter_kind)` and `ClientConfig::with_adapter_kind(adapter_kind)` bind a client to one adapter.
+  - Bare `ModelSpec::Name` values route through the bound adapter without using model-name inference.
+  - Namespaced `ModelSpec::Name` values must match the bound adapter, otherwise `AdapterKindMismatch` is returned.
+  - `ModelSpec::Iden` values must match the bound adapter, otherwise `AdapterKindMismatch` is returned.
+  - `ModelSpec::Target` is already fully resolved and is not changed by bound-adapter routing.
 - **Namespace-only or recommended namespace providers**:
   - `groq::model_name` is required for direct Groq targeting in v0.6.0-beta.
   - `vertex::model_name` targets Google Vertex AI Model Garden.
@@ -609,6 +631,7 @@ Variants: `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together
   - `HttpError { status, canonical_reason, body }`: HTTP error.
   - `Resolver { model_iden, resolver_error }`: Resolver error wrapper.
   - `AdapterNotSupported { adapter_kind, feature }`: Feature not supported by adapter.
+  - `AdapterKindMismatch { bound, requested, model }`: A client bound to one adapter received a namespaced model or `ModelIden` targeting another adapter.
   - `Internal(String)`: Internal error.
   - `JsonValueExt(JsonValueExtError)`: From `value_ext`.
   - `SerdeJson(serde_json::Error)`: From `serde_json`.
