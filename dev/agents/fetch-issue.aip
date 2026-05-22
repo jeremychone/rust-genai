@@ -52,7 +52,7 @@ aip.task.pin("workbench", {
     content = wb_name
 })
 
-local issue_res = aip.cmd.exec("gh", {"issue", "view", issue_id, "--json", "title,url,body,comments,author,createdAt"})
+local issue_res = aip.cmd.exec("gh", {"issue", "view", issue_id, "--json", "title,url,body,comments,author,createdAt,labels"})
 if issue_res.error or issue_res.exit ~= 0 then
     error("Failed to fetch Issue " .. issue_id .. " details with gh: " .. (issue_res.stderr or issue_res.error or "unknown error"))
 end
@@ -92,6 +92,28 @@ end
 
 local created_at = aip.text.trim(string_value(issue.createdAt))
 
+local label_names = {}
+local labels = value_or(issue.labels, {})
+if type(labels) == "table" then
+    for _, label in ipairs(labels) do
+        local label_name = ""
+        if type(label) == "table" then
+            label_name = aip.text.trim(string_value(label.name))
+        else
+            label_name = aip.text.trim(string_value(label))
+        end
+
+        if label_name ~= "" then
+            table.insert(label_names, label_name)
+        end
+    end
+end
+
+local labels_text = "_none_"
+if #label_names > 0 then
+    labels_text = table.concat(label_names, ", ")
+end
+
 local words = {}
 for word in string.gmatch(string.lower(title), "%w+") do
     table.insert(words, word)
@@ -112,6 +134,7 @@ aip.file.ensure_dir(data_dir)
 
 local header_lines = {
     "# Issue " .. issue_id .. " - " .. title,
+    "labels: " .. labels_text,
     "url: " .. url,
     "author: " .. author,
     "time: " .. created_at,
