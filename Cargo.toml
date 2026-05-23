@@ -61,7 +61,7 @@ aws-sigv4 = { version = "1", optional = true }
 simple-fs = "0.12"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 serial_test = "3.2"
-base64 = "0.22.0"  # Check for the latest version
+base64 = "0.22.0"
 bitflags = "2.8"
 gcp_auth = "0.12"
 # -- Yakbak (HTTP record/replay for integration tests)

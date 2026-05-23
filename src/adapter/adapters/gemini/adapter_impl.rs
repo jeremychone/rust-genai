@@ -339,8 +339,7 @@ impl GeminiAdapter {
 				let fn_name: String = fc.x_get("name").unwrap_or_default();
 				// Gemini omits call_id; synthesize a unique one to avoid
 				// collisions when the same tool is called multiple times.
-				let call_id: String = fc.x_get("id")
-                    .unwrap_or(format!("call#{}#{}", fn_name, tool_call_counter));
+				let call_id: String = fc.x_get("id").unwrap_or(format!("call#{}#{}", fn_name, tool_call_counter));
 				tool_call_counter += 1;
 				content.push(GeminiChatContent::ToolCall(ToolCall {
 					call_id,

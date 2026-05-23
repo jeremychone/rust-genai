@@ -17,7 +17,7 @@ Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examp
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
-## v0.6.x Released !!! (2026-05-23)
+## v0.6.x Released 🎉 (2026-05-23)
 
 Here is what's new:
 

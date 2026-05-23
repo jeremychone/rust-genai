@@ -164,10 +164,8 @@ mod tests {
 
 	#[test]
 	fn reverse_optional_tuple_maps_to_full_provider_config() {
-		let provider_config = ProviderConfig::from((
-			Some(AuthData::None),
-			Some(Endpoint::from_static("http://example.com/")),
-		));
+		let provider_config =
+			ProviderConfig::from((Some(AuthData::None), Some(Endpoint::from_static("http://example.com/"))));
 		assert_eq!(
 			provider_config.endpoint.as_ref().map(Endpoint::base_url),
 			Some("http://example.com/")
