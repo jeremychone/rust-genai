@@ -60,6 +60,8 @@ For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/ada
 
 ## v0.6.x - (coming soon, available as `v0.6.0-beta.21`)
 
+See [v0.5.x to v0.6.x migration](docs/migration/migration-v_0_5_to_0_6.md)
+
 - **What's new**:
     - **New Adapters**:
         - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
