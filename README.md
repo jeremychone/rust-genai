@@ -16,7 +16,7 @@
 
 Over 200+ LLM models, 25+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp` (OpenAI Responses API), `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `deepseek`, `cohere`, `together`, `fireworks`, `nebius`, `mimo`, `zai` (Zhipu AI), `bigmodel`, `aliyun`, `baidu`, `moonshot`, (GitHub Models API), `aihubmix`, `open_router`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `deepseek`, `cohere`, `together`, `fireworks`, `nebius`, `mimo`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot`, `aihubmix`, `open_router`, `xai`
 
 Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)) to support any other providers.
 
@@ -24,7 +24,7 @@ Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examp
 
 ## v0.6.x Released 🎉 (2026-05-23)
 
-Here is what's new:
+Here’s what’s new:
 
 - **New Adapters**:
     - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
@@ -61,13 +61,13 @@ See [BIG-THANKS](BIG-THANKS.md) for contributors
 ## Key Features
 
 - Multi-AI provider/model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
-- DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
 - Image analysis (for OpenAI, Gemini Flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom auth/API key (see [examples/c02-auth.rs](examples/c02-auth.rs))
 - Model aliases (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
 - Custom endpoint, auth, and model identifier (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
+- And much more
 
-[Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [Usage](#usage)
+[Examples](#examples) | [Thanks](BIG-THANKS.md) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [Usage](#usage)
 
 
 ## Model to Adapter Resolution
@@ -232,7 +232,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - [genai introduction (v0.1.0)](https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
 
-- **genai live coding, code design, & best practices**
+- **genai live coding, code design, and best practices**
     - [Adding **Gemini** Structured Output (vid-0060)](https://www.youtube.com/watch?v=GdFsqLJ1_pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
     - [Adding **OpenAI** Structured Output (vid-0059)](https://www.youtube.com/watch?v=FpoNbQMhAH8&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
     - [Splitting the JSON value extension trait into its own public crate, value-ext](https://www.youtube.com/watch?v=OS5KOz9y7Cg&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj) [value-ext](https://crates.io/crates/value-ext)
@@ -249,7 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - Prioritizes ergonomics and commonality, while depth is secondary. (If you require a complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); both are excellent and easy to use.)
 
-- This library focuses on text chat APIs, with vision and function calling support being expanded.
+- This library focuses on text chat, vision, and function calling APIs. (If you require a complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); both are excellent and easy to use.)
 
 ## ChatOptions
 
@@ -267,7 +267,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | Property                    | OpenAI Compatibles (1)      | Anthropic `usage.`      | Gemini `usageMetadata.`    | Cohere `meta.tokens.` |
 |-----------------------------|-----------------------------|-------------------------|----------------------------|-----------------------|
 | `prompt_tokens`             | `prompt_tokens`             | `input_tokens` (added)  | `promptTokenCount` (2)     | `input_tokens`        |
-| `completion_tokens`         | `completion_tokens`         | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
+| `completion_tokens`         | `completion_tokens`       | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
 | `total_tokens`              | `total_tokens`              | (computed)              | `totalTokenCount` (2)      | (computed)            |
 | `prompt_tokens_details`     | `prompt_tokens_details`     | `cached/cache_creation` | N/A for now                | N/A for now           |
 | `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
@@ -279,13 +279,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider, or `None`
 
 - **(2)**: **Gemini** tokens
-	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
+	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it’s not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
 
 ## Usage examples
 
 - [AIPack](https://aipack.ai) - Check out [AIPack](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://news.aipack.ai/p/procoder-v052-demo-workbench) for a simple example of how I use AI PACK/genai for production coding.
 
-- [zcoder](https://zcoder.run) - I am also in the process of building [zcoder](https://zcoder.run), which will be a parallel-first coding harness. 
+- [zcoder](https://zcoder.run) - I am also in the process of building [zcoder](https://zcoder.run), which will be a parallel-first coding harness.
 
 > Note: Feel free to send me a short description and a link to your application or library that uses genai. I'm happy to add it.
 
