@@ -20,6 +20,27 @@ Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `ollam
 
 Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)) to support any other providers.
 
+
+```rust
+
+// Can talk to any models / providers
+let client = Client::default();
+
+let question = "Why is the sky red?";
+
+let chat_req = ChatRequest::new(vec![
+	// -- Messages (de/activate to see the differences)
+	ChatMessage::system("Answer in one sentence"),
+	ChatMessage::user(question),
+]);
+
+// Model names can even have reasoning effort suffix (here -high, will be set and removed when sent to provider)
+let chat_res = client.exec_chat("gpt-5.4-mini-high", chat_req, None).await?;
+	
+println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
+	
+```
+
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
 ## v0.6.x Released 🎉 (2026-05-23)
