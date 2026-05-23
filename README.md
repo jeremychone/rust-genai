@@ -2,7 +2,9 @@
 
 **A Native-Protocol Multi-AI Provider Library for Rust**
 
-`genai = "0.6"`
+```toml
+genai = "0.6"
+```
 
 <div align="center">
 
@@ -29,12 +31,11 @@ let client = Client::default();
 let question = "Why is the sky red?";
 
 let chat_req = ChatRequest::new(vec![
-	// -- Messages (de/activate to see the differences)
 	ChatMessage::system("Answer in one sentence"),
 	ChatMessage::user(question),
 ]);
 
-// Model names can even have reasoning effort suffix (here -high, will be set and removed when sent to provider)
+// Model names can even have a reasoning effort suffix, such as "-high", which will be set, and then removed from name when sent to the provider.
 let chat_res = client.exec_chat("gpt-5.4-mini-high", chat_req, None).await?;
 	
 println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
@@ -43,7 +44,9 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
-## v0.6.x Released 🎉 (2026-05-23)
+## v0.6.x Released 🎉 
+
+_v0.6.0 release date: 2026-05-23_
 
 Here’s what’s new:
 

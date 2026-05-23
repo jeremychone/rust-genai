@@ -4,7 +4,7 @@ Comprehensive, dry reference for the `genai` Rust library.
 All public types, methods, and module structure are documented below.
 
 ```toml
-genai = "0.6.0-beta.20"
+genai = "0.6"
 ```
 
 ## Crate Structure

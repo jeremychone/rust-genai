@@ -25,6 +25,7 @@
   - `+` provider - add OpenCode Go adapter with dual-protocol routing (OpenAI for 12 models, Anthropic for 2 MiniMax models)
   - `+` provider - add Aliyun adapter, namespace only
 - Other additions & enhancements:
+  - `!` zai - now use `zai_coding` for the plan based (not `coding` anymore)
   - `^` gemini - use provider-returned `call_id` for tool calls (PR #232)
   - `+` anthropic - add JSON schema support
   - `^` perf - enable HTTP optimizations, gzip, `TCP_NODELAY`, and HTTP/2 tuning
