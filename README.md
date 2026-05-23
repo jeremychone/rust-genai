@@ -4,7 +4,7 @@ Provides a single, ergonomic Rust API for native-protocol multi-AI provider acce
 
 Currently natively supports over **25 providers**: `openai`, `openai_resp`, `anthropic`, `gemini`, `xai`, `ollama`, `ollama_cloud`, `opencode_go`, `groq`, `deepseek`, `cohere`, `together`, `fireworks`, `nebius`, `mimo`, `zai` (Zhipu AI), `bigmodel`, `aliyun`, `baidu`, `moonshot`, `vertex`, `github_copilot` (GitHub Models API), `aihubmix`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
 
-Also supports a custom Endpoint and Auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
+Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
 **NOTE:** Use `genai = "0.6.0-beta.21"` or later for improved robustness, even compared to `0.5.x`, along with many more providers, fixes, performance improvements, and API enhancements. `v0.6.0` is coming soon.
 
@@ -20,9 +20,57 @@ Also supports a custom Endpoint and Auth with `ServiceTargetResolver` (see [exam
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
+## v0.6.x Released !!! (2026-05-23)
+
+Here is what's new:
+
+- **New Adapters**:
+    - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
+    - `open_router`
+    - `vertex` (with Gemini and Anthropic support)
+    - `github_copilot` (GitHub Models API)
+    - `opencode_go`
+    - `baidu`
+    - `aliyun`
+    - `moonshot`
+    - `aihubmix`
+    - `ollama_cloud` (Ollama Cloud)
+- **Reasoning effort additions**: Added `ReasoningEffort::Max` for Anthropic and `ReasoningEffort::XHigh` for OpenAI.
+- **ProviderConfig for model listing**: `Client::all_model_names(adapter_kind, provider_config)` now accepts endpoint and auth overrides, including remote Ollama hosts and custom OpenAI-compatible model listing.
+- **Ollama and Ollama Cloud**: Now use the native Ollama API protocol.
+- **Gemini schema compatibility**: Gemini and Vertex Gemini structured output and tool schemas now normalize common JSON Schema shapes, including `const`, nullable schema patterns, `additionalProperties`, and JSON Schema-only keywords rejected by Vertex.
+- **Bound adapter clients**: `ClientBuilder::with_adapter_kind(...)` and `ClientConfig::with_adapter_kind(...)` bind a client to a single provider adapter, which is useful for proxies, gateways, Azure-style deployment names, and OpenAI-compatible providers with nonstandard model names.
+- **ModelSpec and ServiceTarget**: Model arguments can be represented as a model name, explicit `ModelIden`, or complete `ServiceTarget`, enabling custom endpoints, auth, and model identity without relying on model-name inference.
+- **OpenAI Responses stateful sessions**: OpenAI Responses supports session continuity with `previous_response_id`, request `store`, and returned `response_id`.
+- **Chat extra body**: `ChatOptions::with_extra_body(...)` provides a low-level request body extension point for provider-specific fields in OpenAI-compatible chat payloads.
+- **Tool choice**: `ChatOptions::with_tool_choice(...)` adds provider-neutral tool selection hints for automatic, disabled, required, or specific tool calls.
+- **Built-in tools and WebSearch**: Added typed built-in tool support, including `ToolName`, `ToolConfig`, `WebSearch`, and provider mappings for Anthropic, OpenAI, and Gemini.
+- **Prompt cache controls**: Chat-level `CacheControl` support adds provider-specific prompt caching options, including OpenAI `prompt_cache_key` and cache retention.
+- **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20), including `ContentPart::ReasoningContent` and provider stop reasons.
+- **Perf Improvements**: HTTP requests use performance optimizations such as gzip, `TCP_NODELAY`, and HTTP/2 tuning.
+- Numerous fixes, optimizations, and API enhancements.
+
+See [v0.5.x to v0.6.x migration](docs/migration/migration-v_0_5_to_0_6.md)
+
+See [CHANGELOG](CHANGELOG.md)
+
+See [BIG-THANKS](BIG-THANKS.md) for contributors
+
+## Key Features
+
+- Multi-AI provider/model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
+- Image analysis (for OpenAI, Gemini Flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
+- Custom auth/API key (see [examples/c02-auth.rs](examples/c02-auth.rs))
+- Model aliases (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
+- Custom endpoint, auth, and model identifier (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
+
+[Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [Usage](#usage)
+
+
 ## Model to Adapter Resolution
 
-By default, the library resolves the `AdapterKind` (AI Provider) based on the model name prefix:
+By default, the library resolves the `AdapterKind` (AI provider) based on the model name prefix:
 
 - **OpenAI**: `gpt-*` (most), `o1-*`, `o3-*`, `o4-*`, `chatgpt-*`, `codex-*`
 - **OpenAI Responses**: `gpt-5-*`, `gpt-*` (containing `codex` or `pro`)
@@ -44,85 +92,20 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 
 - `groq::llama-3.1-8b-instant` (Forces **Groq** adapter)
 - `together::meta-llama/Llama-3-8b-chat-hf` (Forces **Together** adapter)
-- `ollama_cloud::gemma3:4b` (Forces **OllamaCloud** adapter)
-- `github_copilot::openai/gpt-4.1-mini` (Forces **GithubCopilot** adapter)
+- `ollama_cloud::gemma3:4b` (Forces **Ollama Cloud** adapter)
+- `github_copilot::openai/gpt-4.1-mini` (Forces **GitHub Copilot** adapter)
 - `nebius::Qwen/Qwen3-235B-A22B` (Forces **Nebius** adapter)
 - `aliyun::qwen-plus` (Forces **Aliyun** adapter)
 - `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
 - `moonshot::moonshot-v1-8k` (Forces **Moonshot** adapter)
 - `baidu::ernie-4.0` (Forces **Baidu** adapter)
 - `coding::glm-4.6` (Special namespace for **Zai** coding subscription)
-- `opencode_go::minimax-m2.5` (Forces **OpenCodeGo** adapter)
+- `opencode_go::minimax-m2.5` (Forces **OpenCode Go** adapter)
 - `bedrock_api::anthropic.claude-v2` (Forces **AWS Bedrock** adapter)
 - `open_router::google/gemini-2.0-flash-001` (Forces **OpenRouter** adapter)
+- `fireworks::glm-5p1` (for fireworks.ai)
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
-
-## v0.6.x - (coming soon, available as `v0.6.0-beta.21`)
-
-See [v0.5.x to v0.6.x migration](docs/migration/migration-v_0_5_to_0_6.md)
-
-- **What's new**:
-    - **New Adapters**:
-        - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
-        - `open_router`
-        - `vertex` (with Gemini and Anthropic support)
-        - `github_copilot` (GitHub Models API)
-        - `opencode_go`
-        - `baidu`
-        - `aliyun`
-        - `moonshot`
-        - `aihubmix`
-        - `ollama_cloud` (Ollama Cloud)
-    - **Reasoning effort additions**: Added `ReasoningEffort::Max` for Anthropic and `ReasoningEffort::XHigh` for OpenAI.
-    - **ProviderConfig for model listing**: `Client::all_model_names(adapter_kind, provider_config)` now accepts endpoint and auth overrides, including remote Ollama hosts and custom OpenAI-compatible model listing.
-    - **Ollama and Ollama Cloud**: Now Ollama native API protocol
-    - **Gemini schema compatibility**: Gemini and Vertex Gemini structured output and tool schemas now normalize common JSON Schema shapes, including `const`, nullable schema patterns, `additionalProperties`, and JSON Schema-only keywords rejected by Vertex.
-    - **Bound adapter clients**: `ClientBuilder::with_adapter_kind(...)` and `ClientConfig::with_adapter_kind(...)` bind a client to a single provider adapter, useful for proxies, gateways, Azure-style deployment names, and OpenAI-compatible providers with non-standard model names.
-    - **ModelSpec and ServiceTarget**: Model arguments can be represented as a model name, explicit `ModelIden`, or complete `ServiceTarget`, enabling custom endpoint, auth, and model identity without relying on model-name inference.
-    - **OpenAI Responses stateful sessions**: OpenAI Responses supports session continuity with `previous_response_id`, request `store`, and returned `response_id`.
-    - **Chat extra body**: `ChatOptions::with_extra_body(...)` provides a low-level request body extension point for provider-specific fields in OpenAI-compatible chat payloads.
-    - **Tool choice**: `ChatOptions::with_tool_choice(...)` adds provider-neutral tool selection hints for automatic, disabled, required, or specific tool calls.
-    - **Built-in tools and WebSearch**: Added typed built-in tool support, including `ToolName`, `ToolConfig`, `WebSearch`, and provider mappings for Anthropic, OpenAI, and Gemini.
-    - **Prompt cache controls**: Chat-level `CacheControl` support adds provider-specific prompt caching options, including OpenAI `prompt_cache_key` and cache retention.
-    - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20), including `ContentPart::ReasoningContent` and provider stop reasons.
-    - **Perf Improvements**: HTTP requests use performance optimizations such as gzip, `TCP_NODELAY`, and HTTP/2 tuning.
-    - Numerous fixes, optimizations, and API enhancements.
-
-## v0.5.x - (2026-01-09 onwards)
-
-- **What's new**:
-    - **New Adapters**: BigModel.cn and the MIMO model adapter (thanks to [Akagi201](https://github.com/Akagi201)).
-    - **zai: updated namespace strategy**, using `zai::` for default and `zai-coding::` for subscriptions (same adapter).
-    - **Gemini Thinking & Thought**: Full support for Gemini Thought signatures (thanks to [Himmelschmidt](https://github.com/Himmelschmidt)) and thinking levels.
-    - **Reasoning Effort Control**: Support for `ReasoningEffort` for Anthropic (Claude 3.7/4.5) and Gemini (Thinking levels), including `ReasoningEffort::None`.
-    - **Content & Binary Improvements**: Enhanced binary/PDF API and size tracking.
-    - **Internal Stream Refactor**: Switched to a unified `EventSourceStream` and `WebStream` for better reliability and performance across all providers.
-    - **Dependency Upgrade**: Now using `reqwest 0.13`.
-- **Core Features**:
-    - Normalized and ergonomic Chat API across all major providers.
-    - Native protocol support for Gemini and Anthropic protocols (Reasoning/Thinking controls).
-    - PDF, image, and embedding support.
-    - Custom authentication, endpoint, and header overrides.
-
-See [CHANGELOG](CHANGELOG.md)
-
-## Usage examples
-
-- Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://news.aipack.ai/p/procoder-v052-demo-workbench) for a simple example of how I use AI PACK/genai for production coding.
-
-> Note: Feel free to send me a short description and a link to your application or library that uses genai.
-
-## Key Features
-
-- Multi-AI Provider/Model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
-- DeepSeekR1 support, with `reasoning_content` (and stream support), plus DeepSeek Groq and Ollama support (and `reasoning_content` normalization)
-- Image Analysis (for OpenAI, Gemini flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
-- Custom Auth/API Key (see [examples/c02-auth.rs](examples/c02-auth.rs))
-- Model aliases (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
-- Custom endpoint, auth, and model identifier (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
-
-[Examples](#examples) | [Thanks](#thanks) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [Usage](#usage)
 
 ## Examples
 
@@ -135,7 +118,7 @@ use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
 
-const MODEL_OPENAI: &str = "gpt-4o-mini"; // o1-mini, gpt-4o-mini
+const MODEL_OPENAI: &str = "gpt-5.4-mini"; // o1-mini, gpt-4o-mini
 const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
 // or namespaced with simple name "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
 const MODEL_FIREWORKS: &str = "accounts/fireworks/models/qwen3-30b-a3b";
@@ -156,7 +139,7 @@ const MODEL_ALIYUN: &str = "aliyun::qwen-plus";
 const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
 const MODEL_OPEN_ROUTER: &str = "open_router::google/gemini-2.0-flash-001";
 
-// NOTE: These are the default environment keys for each AI Adapter Type.
+// NOTE: These are the default environment keys for each AI adapter type.
 //       They can be customized; see `examples/c02-auth.rs`.
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- De/activate models/providers
@@ -180,15 +163,15 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_OPEN_ROUTER, "OPEN_ROUTER_API_KEY"),
 ];
 
-// NOTE: Model to AdapterKind (AI Provider) type mapping rule
+// NOTE: Model to AdapterKind (AI provider) type mapping rule
 //  - starts_with "gpt"      -> OpenAI (or OpenAI Responses for gpt-5/codex/pro)
 //  - starts_with "claude"   -> Anthropic
 //  - starts_with "command"  -> Cohere
 //  - starts_with "gemini"   -> Gemini
-//  - model in Groq models   -> Groq
-//  - starts_with "glm"      -> ZAI
+//  - model in Groq models    -> Groq
+//  - starts_with "glm"       -> ZAI
 //  - starts_with "ollama_cloud::" -> OllamaCloud
-//  - For anything else      -> Ollama
+//  - For anything else       -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`
 
@@ -238,10 +221,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - [examples/c00-readme.rs](examples/c00-readme.rs) - Quick overview code with multiple providers and streaming.
 - [examples/c01-conv.rs](examples/c01-conv.rs) - Shows how to build a conversation flow.
-- [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data (i.e., for api_key) per adapter kind.
+- [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data, such as `api_key`, per adapter kind.
 - [examples/c03-mapper.rs](examples/c03-mapper.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
-- [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level (for all requests) and at the per-request level.
-- [examples/c05-model-names.rs](examples/c05-model-names.rs) - Shows how to get model names per AdapterKind.
+- [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level, for all requests, and at the per-request level.
+- [examples/c05-model-names.rs](examples/c05-model-names.rs) - Shows how to get model names per `AdapterKind`.
 - [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs) - For custom auth, endpoint, and model.
 - [examples/c07-image.rs](examples/c07-image.rs) - Image analysis support
 
@@ -256,7 +239,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **genai live coding, code design, & best practices**
     - [Adding **Gemini** Structured Output (vid-0060)](https://www.youtube.com/watch?v=GdFsqLJ1_pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
     - [Adding **OpenAI** Structured Output (vid-0059)](https://www.youtube.com/watch?v=FpoNbQMhAH8&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
-    - [Splitting the json value extension trait to its own public crate value-ext](https://www.youtube.com/watch?v=OS5KOz9y7Cg&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj) [value-ext](https://crates.io/crates/value-ext)
+    - [Splitting the JSON value extension trait into its own public crate, value-ext](https://www.youtube.com/watch?v=OS5KOz9y7Cg&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj) [value-ext](https://crates.io/crates/value-ext)
     - [(part 1/3) Module, Error, constructors/builders](https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
     - [(part 2/3) Extension Traits, Project Files, Versioning](https://www.youtube.com/watch?v=LRfDAZfo00o&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
     - [(part 3/3) When to Async? Project Files, Versioning strategy](https://www.youtube.com/watch?v=93SS3VGsKx4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q)
@@ -301,6 +284,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - **(2)**: **Gemini** tokens
 	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
+
+## Usage examples
+
+- [AIPACK](https://aipack.ai) - Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://news.aipack.ai/p/procoder-v052-demo-workbench) for a simple example of how I use AI PACK/genai for production coding.
+
+- [zcoder](https://zcoder.run) - I am also in the process of building [zcoder](https://zcoder.run), which will be a parallel-first coding harness. You can find some live coding video of this on my [Jeremy Chone]()
+
+> Note: Feel free to send me a short description and a link to your application or library that uses genai. I'm happy to add it.
 
 
 ## Links
