@@ -21,9 +21,16 @@
   - `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
   - `>` AuthData - add `None` variant
 - New Providers:
-  - `+` provider - add Google Vertex adapter with Gemini and Anthropic support
-  - `+` provider - add OpenCode Go adapter with dual-protocol routing (OpenAI for 12 models, Anthropic for 2 MiniMax models)
-  - `+` provider - add Aliyun adapter, namespace only
+    - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
+    - `open_router`
+    - `vertex` (with Gemini and Anthropic support)
+    - `github_copilot` (GitHub Models API)
+    - `opencode_go`
+    - `baidu`
+    - `aliyun`
+    - `moonshot`
+    - `aihubmix`
+    - `ollama_cloud` (Ollama Cloud)
 - Other additions & enhancements:
   - `!` zai - now use `zai_coding` for the plan based (not `coding` anymore)
   - `^` gemini - use provider-returned `call_id` for tool calls (PR #232)
