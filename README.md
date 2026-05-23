@@ -6,7 +6,7 @@ Currently natively supports over **25 providers**: `openai`, `openai_resp`, `ant
 
 Also supports a custom Endpoint and Auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
 
-**NOTE:** Use `genai = "0.6.0-beta.20"` or later for improved robustness, even compared to `0.5.x`, along with many more providers, fixes, performance improvements, and API enhancements. `v0.6.0` is coming soon.
+**NOTE:** Use `genai = "0.6.0-beta.21"` or later for improved robustness, even compared to `0.5.x`, along with many more providers, fixes, performance improvements, and API enhancements. `v0.6.0` is coming soon.
 
 
 <div align="center">

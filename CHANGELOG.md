@@ -1,52 +1,57 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
 
-## v0.6.0-beta WIP - [v0.6.0-alpha](https://github.com/jeremychone/rust-genai/compare/v0.5.3...HEAD)
+## 2026-05-22 - [v0.6.0-beta.21](https://github.com/jeremychone/rust-genai/compare/v0.5.3...v0.6.0-beta.21)
 
-
-- `!` API CHANGE - `ContentPart::CustomPart.model_iden` is now `Option`
-- `!` API CHANGE - `all_model_names()` - now live (with AuthResolver support)
-- `!` openai_resp - gate `reasoning.encrypted_content` on `capture_reasoning_content`
-- `!` openai_resp - make `reasoning.summary` opt-in for `capture_reasoning_content`
-- `!` gemini - make `thinkingConfig/includeThoughts` opt-in for `capture_reasoning_content`
-- `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
-- `+` provider - add Google Vertex adapter with Gemini and Anthropic support
-- `+` provider - add OpenCode Go adapter with dual-protocol routing (OpenAI for 12 models, Anthropic for 2 MiniMax models)
-- `+` anthropic - add JSON schema support
-- `+` API NEW - New `ModelSpec` to define custom endpoint, model, .. 
-- `+` API NEW - add openai resp stateful sessions — `previous_response_id`, `store`, `response_id` (PR #168)
-- `+` API NEW - Add `ContentPart::ReasoningContent` support
-- `+` API NEW - expose provider `stop_reason` in chat responses
-- `+` API NEW - add typed and normalized built-in tools, `ToolName`, `ToolConfig`, `WebSearch`, and related tool support
-- `+` API NEW - WebSearch builtin tool spport for Anthropic, OpenAI, Gemini
-- `+` tests - add yakbak Gemini streaming replay test
-- `+` tests - add yakbak HTTP record/replay integration test infrastructure
-- `+` provider - add Aliyun adapter, namespace only
-- `^` API NEW - chat-level prompt cache `CacheControl` with openai prompt_cache_key Support
-- `^` perf - enable HTTP optimizations, gzip, `TCP_NODELAY`, and HTTP/2 tuning
-- `^` API NEW - Add support for `ReasoningEffort::Max` (Anthropic) and `ReasoningEffort::XHigh` (OpenAI) 
-- `^` ollama - implement native API support (BIG)
-- `^` openai - route GPT-5 models through the OpenAI Responses API
-- `^` openai - now support prompt_cache_key in `ChatOptions` (and `prompt_cache_retention` via `CacheControl`)
-- `^` openai - add request-level prompt cache support and use `instructions` for Responses API system prompts
-- `^` anthropic - add support for adaptive thinking
-- `^` doc - sync llm api reference, spec rules, and tool spec
-- `^` anthropic - emit incremental `ToolCallChunk` events during streaming
-- `-` openai_resp - fix buffering of incomplete UTF-8 sequences across stream chunks
-- `-` openai - capture inline usage from `finish_reason` stream chunks
-- `-` anthropic - guard against null `tool_call` arguments in request serialization
-- `-` anthropic - implement missing prompt caching fixes, cache token capture and normalization, TTL support, and per-part cache control support
-- `-` gemini - support parallel tool calls in streaming adapter
-- `-` openai - fix streamer to emit delta content from `finish_reason` message
-- `-` gemini - fix JSON schema compatibility and usage-only stream tail handling
-- `-` openai - surface SSE error payloads in streaming
-- `-` openai - fix recursive issue on tool handling
-- `-` gemini - fix tool serialization to use `functionDeclarations` camelCase
-- `>` ModelName - add `Static` and `Shared` inner support
-- `>` adapter - update `Adapter` trait with `DEFAULT_API_KEY_ENV_NAME` and update implementations
-- `>` AuthData - add `None` variant
-- `>` openai - relayout adapter implementation and shared code
-- `>` examples - rename examples
+- API changes:
+  - `+` API NEW - `all_model_names(adapter_kind, provider_config)` - added `ProviderConfig` for model listing (endpoint/auth overrides)
+  - `!` API CHANGE - `all_model_names()` - now live (with AuthResolver support)
+  - `+` API NEW - New `ModelSpec` to define custom endpoint, model, ..
+  - `+` API NEW - add openai resp stateful sessions — `previous_response_id`, `store`, `response_id` (PR #168)
+  - `+` API NEW - Add `ContentPart::ReasoningContent` support
+  - `+` API NEW - expose provider `stop_reason` in chat responses
+  - `+` API NEW - add typed and normalized built-in tools, `ToolName`, `ToolConfig`, `WebSearch`, and related tool support
+  - `+` API NEW - WebSearch builtin tool spport for Anthropic, OpenAI, Gemini
+  - `^` API NEW - chat-level prompt cache `CacheControl` with openai prompt_cache_key Support
+  - `^` API NEW - Add support for `ReasoningEffort::Max` (Anthropic) and `ReasoningEffort::XHigh` (OpenAI)
+  - `^` openai - now support prompt_cache_key in `ChatOptions` (and `prompt_cache_retention` via `CacheControl`)
+  - `!` openai_resp - gate `reasoning.encrypted_content` on `capture_reasoning_content`
+  - `!` openai_resp - make `reasoning.summary` opt-in for `capture_reasoning_content`
+  - `!` gemini - make `thinkingConfig/includeThoughts` opt-in for `capture_reasoning_content`
+  - `!` groq - providers must be addressed via namespaced model (`groq::_model_name`)
+  - `>` AuthData - add `None` variant
+- New Providers:
+  - `+` provider - add Google Vertex adapter with Gemini and Anthropic support
+  - `+` provider - add OpenCode Go adapter with dual-protocol routing (OpenAI for 12 models, Anthropic for 2 MiniMax models)
+  - `+` provider - add Aliyun adapter, namespace only
+- Other additions & enhancements:
+  - `^` gemini - use provider-returned `call_id` for tool calls (PR #232)
+  - `+` anthropic - add JSON schema support
+  - `^` perf - enable HTTP optimizations, gzip, `TCP_NODELAY`, and HTTP/2 tuning
+  - `^` ollama - implement native API support (BIG)
+  - `^` openai - route GPT-5 models through the OpenAI Responses API
+  - `^` openai - add request-level prompt cache support and use `instructions` for Responses API system prompts
+  - `^` anthropic - add support for adaptive thinking
+  - `^` anthropic - emit incremental `ToolCallChunk` events during streaming
+- Others:
+  - `^` docs - comprehensive update of LLM API reference, README, and migration guide for v0.6.0
+  - `^` doc - sync llm api reference, spec rules, and tool spec
+  - `+` tests - add yakbak Gemini streaming replay test
+  - `+` tests - add yakbak HTTP record/replay integration test infrastructure
+  - `>` ModelName - add `Static` and `Shared` inner support
+  - `>` adapter - update `Adapter` trait with `DEFAULT_API_KEY_ENV_NAME` and update implementations
+  - `>` openai - relayout adapter implementation and shared code
+  - `>` examples - rename examples
+  - `-` openai_resp - fix buffering of incomplete UTF-8 sequences across stream chunks
+  - `-` openai - capture inline usage from `finish_reason` stream chunks
+  - `-` anthropic - guard against null `tool_call` arguments in request serialization
+  - `-` anthropic - implement missing prompt caching fixes, cache token capture and normalization, TTL support, and per-part cache control support
+  - `-` gemini - support parallel tool calls in streaming adapter
+  - `-` openai - fix streamer to emit delta content from `finish_reason` message
+  - `-` gemini - fix JSON schema compatibility and usage-only stream tail handling
+  - `-` openai - surface SSE error payloads in streaming
+  - `-` openai - fix recursive issue on tool handling
+  - `-` gemini - fix tool serialization to use `functionDeclarations` camelCase
 
 ## 2026-01-31 - [v0.5.3](https://github.com/jeremychone/rust-genai/compare/v0.5.2...v0.5.3)
 
