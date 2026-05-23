@@ -74,9 +74,10 @@ See [v0.5.x to v0.6.x migration](docs/migration/migration-v_0_5_to_0_6.md)
         - `moonshot`
         - `aihubmix`
         - `ollama_cloud` (Ollama Cloud)
-    - **Expanded Provider Support**: Comprehensive coverage of major AI ecosystems.
-    - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20), including `ContentPart::ReasoningContent` and provider stop reasons.
+    - **Reasoning effort additions**: Added `ReasoningEffort::Max` for Anthropic and `ReasoningEffort::XHigh` for OpenAI.
     - **ProviderConfig for model listing**: `Client::all_model_names(adapter_kind, provider_config)` now accepts endpoint and auth overrides, including remote Ollama hosts and custom OpenAI-compatible model listing.
+    - **Ollama and Ollama Cloud**: Now Ollama native API protocol
+    - **Gemini schema compatibility**: Gemini and Vertex Gemini structured output and tool schemas now normalize common JSON Schema shapes, including `const`, nullable schema patterns, `additionalProperties`, and JSON Schema-only keywords rejected by Vertex.
     - **Bound adapter clients**: `ClientBuilder::with_adapter_kind(...)` and `ClientConfig::with_adapter_kind(...)` bind a client to a single provider adapter, useful for proxies, gateways, Azure-style deployment names, and OpenAI-compatible providers with non-standard model names.
     - **ModelSpec and ServiceTarget**: Model arguments can be represented as a model name, explicit `ModelIden`, or complete `ServiceTarget`, enabling custom endpoint, auth, and model identity without relying on model-name inference.
     - **OpenAI Responses stateful sessions**: OpenAI Responses supports session continuity with `previous_response_id`, request `store`, and returned `response_id`.
@@ -84,9 +85,7 @@ See [v0.5.x to v0.6.x migration](docs/migration/migration-v_0_5_to_0_6.md)
     - **Tool choice**: `ChatOptions::with_tool_choice(...)` adds provider-neutral tool selection hints for automatic, disabled, required, or specific tool calls.
     - **Built-in tools and WebSearch**: Added typed built-in tool support, including `ToolName`, `ToolConfig`, `WebSearch`, and provider mappings for Anthropic, OpenAI, and Gemini.
     - **Prompt cache controls**: Chat-level `CacheControl` support adds provider-specific prompt caching options, including OpenAI `prompt_cache_key` and cache retention.
-    - **Reasoning effort additions**: Added `ReasoningEffort::Max` for Anthropic and `ReasoningEffort::XHigh` for OpenAI.
-    - **Gemini schema compatibility**: Gemini and Vertex Gemini structured output and tool schemas now normalize common JSON Schema shapes, including `const`, nullable schema patterns, `additionalProperties`, and JSON Schema-only keywords rejected by Vertex.
-    - **Ollama and Ollama Cloud**: Now Ollama native API protocol
+    - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20), including `ContentPart::ReasoningContent` and provider stop reasons.
     - **Perf Improvements**: HTTP requests use performance optimizations such as gzip, `TCP_NODELAY`, and HTTP/2 tuning.
     - Numerous fixes, optimizations, and API enhancements.
 
@@ -110,7 +109,7 @@ See [CHANGELOG](CHANGELOG.md)
 
 ## Usage examples
 
-- Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://www.youtube.com/watch?v=zL1BzPVM8-Y&list=PL7r-PXl6ZPcB2zN0XHsYIDaD5yW8I40AE) for a simple example of how I use AI PACK/genai for production coding.
+- Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://news.aipack.ai/p/procoder-v052-demo-workbench) for a simple example of how I use AI PACK/genai for production coding.
 
 > Note: Feel free to send me a short description and a link to your application or library that uses genai.
 
