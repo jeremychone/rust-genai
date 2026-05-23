@@ -1,6 +1,9 @@
-## genai
+# genai
+
+**A Native-Protocol Multi-AI Provider Library for Rust**
 
 `genai = "0.6"`
+
 <div align="center">
 
 <a href="https://crates.io/crates/genai"><img src="https://img.shields.io/crates/v/genai.svg" /></a>
@@ -8,8 +11,6 @@
 <a href="https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj"><img alt="Static Badge" src="https://img.shields.io/badge/YouTube_genai_Intro-Video?style=flat&logo=youtube&color=%23ff0000"></a>
 
 </div>
-
-## Native-Protocol Multi-AI Provider Library for Rust
 
 `genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
@@ -120,26 +121,20 @@ use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
 use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
 
-const MODEL_OPENAI: &str = "gpt-5.4-mini"; // o1-mini, gpt-4o-mini
-const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
-// or namespaced with simple name "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
-const MODEL_FIREWORKS: &str = "accounts/fireworks/models/qwen3-30b-a3b";
+const MODEL_OPENAI: &str = "gpt-5.4-mini";
+const MODEL_ANTHROPIC: &str = "claude-haiku-4-5";
+const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-20b";
 const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
-const MODEL_GEMINI: &str = "gemini-2.0-flash";
-const MODEL_GROQ: &str = "groq::llama-3.1-8b-instant";
-const MODEL_OLLAMA: &str = "gemma:2b"; // sh: `ollama pull gemma:2b`
+const MODEL_GEMINI: &str = "gemini-3-flash-preview";
+const MODEL_GROQ: &str = "groq::openai/gpt-oss-20b";
+const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:2b`
 const MODEL_OLLAMA_CLOUD: &str = "ollama_cloud::gemma3:4b";
 const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
-const MODEL_COHERE: &str = "command-r7b-12-2024";
-const MODEL_MOONSHOT: &str = "moonshot::moonshot-v1-8k";
-const MODEL_BAIDU: &str = "baidu::ernie-4.0";
-const MODEL_BIGMODEL: &str = "bigmodel::glm-4-plus";
-const MODEL_ALIYUN: &str = "aliyun::qwen-plus";
+const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
 // or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
 const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
-const MODEL_OPEN_ROUTER: &str = "open_router::google/gemini-2.0-flash-001";
 
 // NOTE: These are the default environment keys for each AI adapter type.
 //       They can be customized; see `examples/c02-auth.rs`.
@@ -156,7 +151,6 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_OLLAMA, ""),
 	(MODEL_OLLAMA_CLOUD, "OLLAMA_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
-	(MODEL_COHERE, "COHERE_API_KEY"),
 	(MODEL_MOONSHOT, "MOONSHOT_API_KEY"),
 	(MODEL_BAIDU, "BAIDU_API_KEY"),
 	(MODEL_BIGMODEL, "BIGMODEL_API_KEY"),

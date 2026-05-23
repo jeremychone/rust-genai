@@ -5,12 +5,11 @@ use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
 use genai::chat::{ChatMessage, ChatRequest};
 use tracing_subscriber::EnvFilter;
 
-const MODEL_OPENAI: &str = "gpt-5.4-mini"; //
-const MODEL_ANTHROPIC: &str = "claude-3-haiku-20240307";
-// or namespaced with simple anme "fireworks::qwen3-30b-a3b", or "fireworks::accounts/fireworks/models/qwen3-30b-a3b"
+const MODEL_OPENAI: &str = "gpt-5.4-mini";
+const MODEL_ANTHROPIC: &str = "claude-haiku-4-5";
 const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-20b";
 const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
-const MODEL_GEMINI: &str = "gemini-2.0-flash";
+const MODEL_GEMINI: &str = "gemini-3-flash-preview";
 const MODEL_GROQ: &str = "groq::openai/gpt-oss-20b";
 const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:2b`
 const MODEL_OLLAMA_CLOUD: &str = "ollama_cloud::gemma3:4b";
@@ -18,7 +17,6 @@ const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
-const MODEL_COHERE: &str = "command-r7b-12-2024";
 // or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
 const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
 
@@ -38,7 +36,6 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
 	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
-	(MODEL_COHERE, "COHERE_API_KEY"),
 	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
 ];
 
