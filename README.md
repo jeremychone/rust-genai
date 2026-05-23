@@ -1,11 +1,6 @@
-# genai, Native-Protocol Multi-AI Provider Library for Rust
+## genai
 
-Provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
-
-Currently natively supports over **25 providers**: `openai`, `openai_resp`, `anthropic`, `gemini`, `xai`, `ollama`, `ollama_cloud`, `opencode_go`, `groq`, `deepseek`, `cohere`, `together`, `fireworks`, `nebius`, `mimo`, `zai` (Zhipu AI), `bigmodel`, `aliyun`, `baidu`, `moonshot`, `vertex`, `github_copilot` (GitHub Models API), `aihubmix`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
-
-Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
-
+`genai = "0.6"`
 <div align="center">
 
 <a href="https://crates.io/crates/genai"><img src="https://img.shields.io/crates/v/genai.svg" /></a>
@@ -14,6 +9,15 @@ Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examp
 
 </div>
 
+## Native-Protocol Multi-AI Provider Library for Rust
+
+`genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
+
+Over 200+ LLM models, 25+ LLM providers out of the box, including **Ollama** for local execution.
+
+Out-of-the-box providers: `openai`, `openai_resp` (OpenAI Responses API), `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `deepseek`, `cohere`, `together`, `fireworks`, `nebius`, `mimo`, `zai` (Zhipu AI), `bigmodel`, `aliyun`, `baidu`, `moonshot`, (GitHub Models API), `aihubmix`, `open_router`, `xai`
+
+Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)) to support any other providers.
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
@@ -47,7 +51,7 @@ Here is what's new:
 - **Perf Improvements**: HTTP requests use performance optimizations such as gzip, `TCP_NODELAY`, and HTTP/2 tuning.
 - Numerous fixes, optimizations, and API enhancements.
 
-See [v0.5.x to v0.6.x migration](docs/migration/migration-v_0_5_to_0_6.md)
+See [v0.5.x to v0.6.x migration](docs/migration/migration_v_0_5_to_0_6.md)
 
 See [CHANGELOG](CHANGELOG.md)
 
@@ -219,7 +223,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - [examples/c00-readme.rs](examples/c00-readme.rs) - Quick overview code with multiple providers and streaming.
 - [examples/c01-conv.rs](examples/c01-conv.rs) - Shows how to build a conversation flow.
-- [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to provide auth data, such as `api_key`, per adapter kind.
+- [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to supply auth data, such as `api_key`, per adapter kind.
 - [examples/c03-mapper.rs](examples/c03-mapper.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
 - [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level, for all requests, and at the per-request level.
 - [examples/c05-model-names.rs](examples/c05-model-names.rs) - Shows how to get model names per `AdapterKind`.
@@ -247,7 +251,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Focuses on standardizing chat completion APIs across major AI providers while preserving provider-specific strengths.
 
 - Native implementation without per-service SDK dependencies.
-    - Reason: genai uses each provider's native protocol when available, so features such as reasoning controls, thinking budgets, streaming metadata, and multimodal inputs can be represented more completely. When a provider primarily exposes an OpenAI-compatible API, genai uses that compatibility layer instead. Managing these protocol differences at the adapter layer is simpler and more cumulative than dealing with multiple SDKs.
+    - Reason: genai uses each provider's native protocol when available, so features such as reasoning controls, thinking budgets, streaming metadata, and multimodal inputs can be represented more completely. When a provider primarily exposes an OpenAI-compatible API, genai uses that compatibility layer instead. Managing these protocol differences at the adapter layer is simpler and more scalable than dealing with multiple SDKs.
 
 - Prioritizes ergonomics and commonality, while depth is secondary. (If you require a complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); both are excellent and easy to use.)
 
@@ -276,21 +280,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - **(1)** - **OpenAI-compatible** notes
 	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, AIHubMix
-	- For **Groq**, the property `x_groq.usage.`
+	- For **Groq**, the property is `x_groq.usage.`
 	- At this point, **Ollama** does not emit input/output tokens when streaming due to a limitation in the Ollama OpenAI compatibility layer. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
-	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider (or None)
+	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider, or `None`
 
 - **(2)**: **Gemini** tokens
 	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it's not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
 
 ## Usage examples
 
-- [AIPACK](https://aipack.ai) - Check out [AIPACK](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://news.aipack.ai/p/procoder-v052-demo-workbench) for a simple example of how I use AI PACK/genai for production coding.
+- [AIPack](https://aipack.ai) - Check out [AIPack](https://aipack.ai), which wraps this **genai** library into an agentic runtime to run, build, and share AI Agent Packs. See [`pro@coder`](https://news.aipack.ai/p/procoder-v052-demo-workbench) for a simple example of how I use AI PACK/genai for production coding.
 
-- [zcoder](https://zcoder.run) - I am also in the process of building [zcoder](https://zcoder.run), which will be a parallel-first coding harness. You can find some live coding video of this on my [Jeremy Chone]()
+- [zcoder](https://zcoder.run) - I am also in the process of building [zcoder](https://zcoder.run), which will be a parallel-first coding harness. 
 
 > Note: Feel free to send me a short description and a link to your application or library that uses genai. I'm happy to add it.
-
 
 ## Links
 
