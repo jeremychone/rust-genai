@@ -12,9 +12,9 @@
 //! - Models: `glm-4.6`, `glm-4.5`, etc.
 //! - Usage: Standard API calls billed per token
 //!
-//! ### Coding Plan (Subscription-based only with the `zai-coding::` namepace)  
+//! ### Coding Plan (Subscription-based only with the `zai_coding::` namepace)  
 //! - Endpoint: `<https://api.z.ai/api/coding/paas/v4/>`
-//! - Models: `zai-coding::glm-4.6`, `zai-coding::glm-4.5`, etc.
+//! - Models: `zai_coding::glm-4.6`, `zai_coding::glm-4.5`, etc.
 //! - Usage: Fixed monthly subscription for coding tasks
 //!
 //! ## For example
@@ -31,7 +31,7 @@
 //! let response = client.exec_chat("zai::glm-4.6", chat_request, None).await?;
 //!
 //! // Use coding plan
-//! let response = client.exec_chat("zai-coding::glm-4.6", chat_request, None).await?;
+//! let response = client.exec_chat("zai_coding::glm-4.6", chat_request, None).await?;
 //! ```
 //!
 //! See `examples/c07-zai-dual-endpoints.rs` for a complete working example.

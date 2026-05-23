@@ -7,7 +7,7 @@ use crate::webc::WebResponse;
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
-pub const ZAI_CODING_NAMESPACE: &str = "zai-coding";
+pub const ZAI_CODING_NAMESPACE: &str = "zai_coding";
 
 /// Helper structure to hold ZAI model parsing information
 struct ZaiModelEndpoint {
@@ -19,7 +19,7 @@ impl ZaiModelEndpoint {
 	fn from_model(model: &ModelIden) -> Self {
 		let (namespace, _) = model.model_name.namespace_and_name();
 
-		// Check if namespace is "zai" to route to coding endpoint
+		// Check if namespace is "zai_coding" to route to coding endpoint
 		let endpoint = match namespace {
 			Some(ZAI_CODING_NAMESPACE) => Endpoint::from_static("https://api.z.ai/api/coding/paas/v4/"),
 			_ => ZaiAdapter::default_endpoint(),
@@ -32,10 +32,10 @@ impl ZaiModelEndpoint {
 /// The ZAI API is mostly compatible with the OpenAI API.
 ///
 /// NOTE: This adapter will automatically route to the coding endpoint
-///       when the model name starts with "zai::".
+///       when the model name starts with "zai_coding::".
 ///
 /// For example, `glm-4.6` uses the regular API endpoint,
-/// while `zai::glm-4.6` uses the coding plan endpoint.
+/// while `zai_coding::glm-4.6` uses the coding plan endpoint.
 ///
 pub struct ZaiAdapter;
 

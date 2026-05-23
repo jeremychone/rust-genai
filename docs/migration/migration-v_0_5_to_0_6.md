@@ -1,4 +1,4 @@
-# Migration Guide: v0.5.x to v0.6.0-beta.x
+# Migration Guide: v0.5.x to v0.6.0
 
 This guide highlights the `genai` API changes needed when moving from the 0.5.x line to the 0.6.0 beta line.
 
@@ -17,6 +17,8 @@ This guide highlights the `genai` API changes needed when moving from the 0.5.x 
   - Ollama Cloud (`ollama_cloud` adapter).
 
 - **Groq Namespace Requirement**: Groq models must now be addressed via namespaced models (e.g. `groq::llama-3.1-8b-instant`).
+
+- **ZAI Coding Plan namespace**: Now, it's `zai_coding` (`coding` was way to generic)
 
 - **All Model Names API Signature**: `Client::all_model_names(adapter_kind, impl Into<ProviderConfig>)` now takes a second Provider Config parameter, which can be `None` for default behavior. (see [Client::all_model_names](#all_model_names))
 

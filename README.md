@@ -1,13 +1,10 @@
 # genai, Native-Protocol Multi-AI Provider Library for Rust
 
-Provides a single, ergonomic Rust API for native-protocol multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
+Provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
 Currently natively supports over **25 providers**: `openai`, `openai_resp`, `anthropic`, `gemini`, `xai`, `ollama`, `ollama_cloud`, `opencode_go`, `groq`, `deepseek`, `cohere`, `together`, `fireworks`, `nebius`, `mimo`, `zai` (Zhipu AI), `bigmodel`, `aliyun`, `baidu`, `moonshot`, `vertex`, `github_copilot` (GitHub Models API), `aihubmix`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
 
 Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)).
-
-**NOTE:** Use `genai = "0.6.0-beta.21"` or later for improved robustness, even compared to `0.5.x`, along with many more providers, fixes, performance improvements, and API enhancements. `v0.6.0` is coming soon.
-
 
 <div align="center">
 
@@ -90,20 +87,21 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 
 You can force a specific adapter by using the `adapter_kind::model_name` syntax. This is the recommended way for many providers and for disambiguating OpenAI-compatible services.
 
-- `groq::llama-3.1-8b-instant` (Forces **Groq** adapter)
+- `groq::openai/gpt-oss-20b` (Forces **Groq** adapter)
 - `together::meta-llama/Llama-3-8b-chat-hf` (Forces **Together** adapter)
+- `fireworks::glm-5p1` (for fireworks.ai)
 - `ollama_cloud::gemma3:4b` (Forces **Ollama Cloud** adapter)
-- `github_copilot::openai/gpt-4.1-mini` (Forces **GitHub Copilot** adapter)
+- `github_copilot::openai/gpt-5.4-mini` (Forces **GitHub Copilot** adapter)
 - `nebius::Qwen/Qwen3-235B-A22B` (Forces **Nebius** adapter)
 - `aliyun::qwen-plus` (Forces **Aliyun** adapter)
 - `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
 - `moonshot::moonshot-v1-8k` (Forces **Moonshot** adapter)
 - `baidu::ernie-4.0` (Forces **Baidu** adapter)
-- `coding::glm-4.6` (Special namespace for **Zai** coding subscription)
+- `zai_coding::glm-4.6` (Special namespace for **Zai** coding subscription)
+- `zai_coding::glm-4.6` (Special namespace for **Zai** coding subscription)
 - `opencode_go::minimax-m2.5` (Forces **OpenCode Go** adapter)
 - `bedrock_api::anthropic.claude-v2` (Forces **AWS Bedrock** adapter)
 - `open_router::google/gemini-2.0-flash-001` (Forces **OpenRouter** adapter)
-- `fireworks::glm-5p1` (for fireworks.ai)
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 

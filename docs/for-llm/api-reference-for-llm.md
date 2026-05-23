@@ -652,7 +652,7 @@ Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `f
 - **Namespacing**: `namespace::model_name` (updated in v0.6.0, for example, `open_router::openai/gpt-4.1`, `together::meta-llama/...`, `nebius::Qwen/...`).
 
   - Namespace matches adapter lowercase name (updated in v0.6.0 to support `open_router::`, `bedrock_api::`, `bedrock_sigv4::`, `vertex::`, `github_copilot::`, `opencode_go::`, `baidu::`, `aliyun::`, `moonshot::`, `aihubmix::`, and `ollama_cloud::`).
-  - Special: `coding::` namespace maps to `Zai` adapter.
+  - Special: `zai_coding::` namespace maps to `Zai` adapter for subscription endpoint.
 - **Bound Adapter Clients**:
   - Since v0.6.0, `ClientBuilder::with_adapter_kind(adapter_kind)` and `ClientConfig::with_adapter_kind(adapter_kind)` bind a client to one adapter.
   - Bare `ModelSpec::Name` values route through the bound adapter without using model-name inference.

@@ -2,13 +2,11 @@ use crate::adapter::adapters::aihubmix::AihubmixAdapter;
 use crate::adapter::adapters::baidu::BAIDU_CODING_ANTHROPIC_NAMESPACE;
 use crate::adapter::adapters::baidu::BAIDU_CODING_OPENAI_NAMESPACE;
 use crate::adapter::adapters::bedrock::BedrockApiAdapter;
-#[cfg(feature = "bedrock-sigv4")]
-use crate::adapter::adapters::bedrock::BedrockSigv4Adapter;
 use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
 use crate::adapter::adapters::ollama::OllamaAdapter;
 use crate::adapter::adapters::ollama_cloud::OllamaCloudAdapter;
-use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
 use crate::adapter::adapters::open_router::OpenRouterAdapter;
+use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
 use crate::adapter::adapters::opencode_go::OpenCodeGoAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
 use crate::adapter::adapters::zai::ZaiAdapter;
@@ -31,6 +29,9 @@ use crate::adapter::{Adapter as _, zai};
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "bedrock-sigv4")]
+use crate::adapter::adapters::bedrock::BedrockSigv4Adapter;
 
 /// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
 ///
@@ -260,7 +261,7 @@ impl AdapterKind {
 	/// Other Some adapters have to have model name namespaced to be used,
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
-	/// - e.g., for ZAI coding plan with `coding::glm-4.6`
+	/// - e.g., for ZAI coding plan with `zai_coding::glm-4.6`
 	/// - e.g., for vertex with `vertex::gemini-2.5-flash` or `vertex::claude-sonnet-4-6`
 	///
 	/// And all adapters can be force namspaced as well.
