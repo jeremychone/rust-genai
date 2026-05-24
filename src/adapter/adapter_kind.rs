@@ -4,6 +4,7 @@ use crate::adapter::adapters::baidu::BAIDU_CODING_OPENAI_NAMESPACE;
 use crate::adapter::zai;
 use crate::{ModelName, Result};
 
+// Read the macro definition before editing this part.
 define_adapter_kinds![
 	/// For OpenAI Chat Completions and also can be used for OpenAI compatible APIs
 	/// NOTE: This adapter share some behavior that other adapters can use while still providing some variant
@@ -177,4 +178,3 @@ impl AdapterKind {
 }
 
 // endregion: --- Support
-pub(crate) use dispatch_adapter;
