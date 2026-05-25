@@ -599,6 +599,7 @@ impl OpenAIRespAdapter {
 			schema,
 			strict,
 			config,
+			..
 		} = tool;
 
 		let name = match name {

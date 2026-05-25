@@ -827,6 +827,7 @@ impl AnthropicAdapter {
 			description,
 			schema,
 			config,
+			cache_control,
 			..
 		} = tool;
 
@@ -874,6 +875,10 @@ impl AnthropicAdapter {
 				// TODO: need to handle error
 				let _ = tool_value.x_insert("description", description);
 			}
+		}
+
+		if let Some(cc) = cache_control {
+			let _ = tool_value.x_insert("cache_control", cache_control_to_json(&cc));
 		}
 
 		Ok(tool_value)
