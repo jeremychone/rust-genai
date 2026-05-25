@@ -1,7 +1,12 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
 
-## 2026-05-22 - [v0.6.0-beta.21](https://github.com/jeremychone/rust-genai/compare/v0.5.3...v0.6.0-beta.21)
+## 2026-05-24 - [v0.6.1](https://github.com/jeremychone/rust-genai/compare/v0.6.0...v0.6.1)
+
+- `^` openai shared adapter - remove OpenAI only guard on reasoning suffix
+  - now all openai compatible adapters get the reasoning suffix resolved
+
+## 2026-05-22 - [v0.6.0](https://github.com/jeremychone/rust-genai/compare/v0.5.3...v0.6.0)
 
 - API changes:
   - `+` API NEW - `all_model_names(adapter_kind, provider_config)` - added `ProviderConfig` for model listing (endpoint/auth overrides)
