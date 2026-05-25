@@ -80,7 +80,6 @@ impl OpenAIAdapter {
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
-		let adapter_kind = model.adapter_kind;
 
 		// -- url
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
@@ -93,18 +92,15 @@ impl OpenAIAdapter {
 
 		// -- compute reasoning_effort and eventual trimmed model_name
 		// For now, just for openai AdapterKind
-		let (reasoning_effort, model_name): (Option<ReasoningEffort>, &str) =
-			if matches!(adapter_kind, AdapterKind::OpenAI) {
-				let (reasoning_effort, model_name) = options_set
-					.reasoning_effort()
-					.cloned()
-					.map(|v| (Some(v), model_name))
-					.unwrap_or_else(|| ReasoningEffort::from_model_name(model_name));
+		let (reasoning_effort, model_name): (Option<ReasoningEffort>, &str) = {
+			let (reasoning_effort, model_name) = options_set
+				.reasoning_effort()
+				.cloned()
+				.map(|v| (Some(v), model_name))
+				.unwrap_or_else(|| ReasoningEffort::from_model_name(model_name));
 
-				(reasoning_effort, model_name)
-			} else {
-				(None, model_name)
-			};
+			(reasoning_effort, model_name)
+		};
 
 		// -- Build the basic payload
 
