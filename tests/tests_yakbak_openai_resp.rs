@@ -343,3 +343,67 @@ async fn test_yakbak_openai_resp_reasoning_stream_completed_empty() -> TestResul
 
 	Ok(())
 }
+
+#[tokio::test]
+async fn test_yakbak_openai_resp_tools_completed_no_output_field() -> TestResult<()> {
+	// Regression for `RespResponse` deserialization in `resp_response.rs`.
+	//
+	// Some Responses-API-shaped backends omit the `output` field from the
+	// terminal `response.completed` event entirely (not `output: []`,
+	// absent). Without `#[serde(default)]` on `RespResponse::output`,
+	// serde fails the whole event with "missing field `output`", the
+	// streamer skips it as malformed, and the stream closes via the
+	// EOF fallback — which never finalises the per-`output_index` tool
+	// calls accumulated in `in_progress_tool_calls`. Result:
+	// `captured_tool_calls` comes back `None` even though every
+	// `response.function_call_arguments.delta` arrived intact.
+	//
+	// This cassette was recorded against a real backend where the issue
+	// reproduces; the `response.completed` event has no `output` key.
+	let (client, _server) = replay_client("openai_resp", "tools_completed_no_output_field").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("You are a helpful assistant. Use tools when needed."),
+		ChatMessage::user("What is the temperature in C and weather, in Paris, France"),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city":    { "type": "string" },
+			"country": { "type": "string" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"]
+	})));
+
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream("openai_resp::gpt-5.4", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let tool_calls = extract
+		.stream_end
+		.captured_tool_calls()
+		.ok_or("Tool call accumulated from delta events should survive a response.completed with no `output` field")?;
+	assert_eq!(tool_calls.len(), 1, "Expected exactly one tool call");
+
+	let tc = &tool_calls[0];
+	assert_eq!(tc.fn_name, "get_weather");
+	assert_eq!(
+		tc.fn_arguments,
+		json!({"city": "Paris", "country": "France", "unit": "C"})
+	);
+	assert!(!tc.call_id.is_empty());
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(usage.prompt_tokens, Some(82));
+	assert_eq!(usage.completion_tokens, Some(26));
+	assert_eq!(usage.total_tokens, Some(108));
+
+	Ok(())
+}
