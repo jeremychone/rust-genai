@@ -21,7 +21,8 @@ fn insert_openai_reasoning_effort(payload: &mut Value, effort: &ReasoningEffort)
 		ReasoningEffort::Low => "low",
 		ReasoningEffort::Medium => "medium",
 		ReasoningEffort::High => "high",
-		ReasoningEffort::XHigh | ReasoningEffort::Max => "xhigh",
+		ReasoningEffort::XHigh => "xhigh",
+		ReasoningEffort::Max => "max",
 		ReasoningEffort::Minimal => "minimal",
 		ReasoningEffort::Budget(_) => return Ok(()),
 	};
