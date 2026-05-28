@@ -1,5 +1,10 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
+## 2026-05-27 - [v0.6.1](https://github.com/jeremychone/rust-genai/compare/v0.6.1...v0.6.2)
+
+- `-` fix - openai_resp: tolerate response.completed events without `output` field (PR #236)
+- `^` adapter/openai - Fix ReasoningEffort::Max mapping to 'max' keyword
+
 
 ## 2026-05-24 - [v0.6.1](https://github.com/jeremychone/rust-genai/compare/v0.6.0...v0.6.1)
 
