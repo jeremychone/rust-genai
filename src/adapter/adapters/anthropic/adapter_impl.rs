@@ -23,12 +23,12 @@ const REASONING_LOW: u32 = 1024;
 const REASONING_MEDIUM: u32 = 8000;
 const REASONING_HIGH: u32 = 24000;
 
-// NOTE: For now, those are opt-ins, but should become opt-out when well supported.
-// see: effort doc: https://platform.claude.com/docs/en/build-with-claude/effort
+// NOTE: These are opt-ins for now and can become defaults once support is broader.
+// See effort doc: https://platform.claude.com/docs/en/build-with-claude/effort
 const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5"];
 const SUPPORT_REASONING_MAX_MODELS: &[&str] = &["claude-opus-4-6"];
-// see:adaptive thinking: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
-const SUPPORT_ADAPTTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6"];
+// See adaptive thinking doc: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
+const SUPPORT_ADAPTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6"];
 
 fn has_model(model_prefixes: &[&str], model_name: &str) -> bool {
 	model_prefixes.iter().any(|prefix| model_name.contains(prefix))
@@ -57,6 +57,18 @@ fn is_opus_4_7_or_higher(model_name: &str) -> bool {
 	}
 }
 
+fn supports_anthropic_effort(model_name: &str) -> bool {
+	has_model(SUPPORT_EFFORT_MODELS, model_name) || is_opus_4_7_or_higher(model_name)
+}
+
+fn supports_anthropic_reasoning_max(model_name: &str) -> bool {
+	has_model(SUPPORT_REASONING_MAX_MODELS, model_name) || is_opus_4_7_or_higher(model_name)
+}
+
+fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
+	has_model(SUPPORT_ADAPTIVE_THINK_MODELS, model_name) || is_opus_4_7_or_higher(model_name)
+}
+
 fn anthropic_tool_choice(tool_choice: Option<&ToolChoice>) -> Option<Value> {
 	match tool_choice? {
 		ToolChoice::Auto => Some(json!({"type": "auto"})),
@@ -76,12 +88,12 @@ fn insert_anthropic_reasoning(
 	effort: &ReasoningEffort,
 ) -> Result<()> {
 	let mut budget: Option<u32> = None;
-	let support_effort = has_model(SUPPORT_EFFORT_MODELS, model_name);
-	let support_reasoning_max = has_model(SUPPORT_REASONING_MAX_MODELS, model_name);
-	let support_adaptive = has_model(SUPPORT_ADAPTTIVE_THINK_MODELS, model_name);
+	let support_effort = supports_anthropic_effort(model_name);
+	let support_reasoning_max = supports_anthropic_reasoning_max(model_name);
+	let support_adaptive = supports_anthropic_adaptive_thinking(model_name);
 	let support_xhigh = is_opus_4_7_or_higher(model_name);
 
-	// if support effort, we default with effor
+	// Models that support effort use it as the primary reasoning control.
 	if support_effort {
 		let effort = match effort {
 			ReasoningEffort::Minimal => "low",
@@ -93,22 +105,21 @@ fn insert_anthropic_reasoning(
 			ReasoningEffort::Max if support_xhigh => "max",
 			ReasoningEffort::XHigh => "high",
 			ReasoningEffort::Max => "high",
-			// we capture for later
+			// Preserve explicit budget tokens for the adaptive thinking payload below.
 			ReasoningEffort::Budget(val) => {
-				budget = Some(*val); // not very elegant
+				budget = Some(*val);
 				""
 			}
 			ReasoningEffort::None => "",
 		};
 
-		// if we have an effort, write into the shared output_config map
+		// Emit the effort into the shared output_config map when present.
 		if !effort.is_empty() {
 			output_config.insert("effort".to_string(), json!(effort));
 		}
 	}
 
-	// -- if support adaptive, we add it (with the eventual budget tokens)
-	// if not (but support effort), it should be fined without the thinking object.
+	// Adaptive-thinking models use a `thinking` object, optionally with budget tokens.
 	if support_adaptive {
 		let thinking = match budget {
 			Some(budget) => json!({
@@ -119,11 +130,11 @@ fn insert_anthropic_reasoning(
 				"type": "adaptive"}),
 		};
 
-		// if support adaptive, we set the thinking type to "adaptive" and let the model decide how to use the budget (if any)
+		// Let the model choose adaptive thinking behavior, honoring an explicit budget when set.
 		payload.x_insert("thinking", thinking)?;
 	}
 
-	// -- If it does not support effort, fall back on the legacy with with budget
+	// Older models still use the legacy `thinking.enabled + budget_tokens` shape.
 	if !support_effort {
 		let thinking_budget = match effort {
 			ReasoningEffort::None => None,
@@ -1010,6 +1021,31 @@ mod tests {
 			Some("json_schema"),
 			"format.type must be present in output_config"
 		);
+	}
+
+	#[test]
+	fn test_opus_4_7_uses_adaptive_thinking() {
+		let chat_options = ChatOptions {
+			reasoning_effort: Some(ReasoningEffort::Medium),
+			..Default::default()
+		};
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-opus-4-7"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["thinking"], json!({"type": "adaptive"}));
+		assert_eq!(web_req.payload["output_config"]["effort"], json!("medium"));
 	}
 
 	#[test]
