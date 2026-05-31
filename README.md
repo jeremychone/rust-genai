@@ -325,7 +325,7 @@ TLS is selectable via cargo features. The default works out of the box and is ri
 | Static OpenSSL | `genai = { default-features = false }` + your own `reqwest = { features = ["native-tls-vendored"] }` |
 | Custom root CA / mTLS / fully custom client | build your own `reqwest::Client` and inject it via `with_reqwest(...)` |
 
-`rustls-tls` and `native-tls` are mutually exclusive. When selecting `native-tls`, set `default-features = false` (as shown above) — otherwise both backends compile and reqwest silently uses native-tls.
+`rustls-tls` and `native-tls` are mutually exclusive. When selecting `native-tls`, set `default-features = false` (as shown above) — otherwise both backends compile and the build fails with a `compile_error!` telling you to do so.
 
 `rustls-tls` reads the OS trust store via `rustls-platform-verifier`, so enterprise/custom CAs work without `native-tls`, and it needs no system OpenSSL. Note the default `aws-lc-rs` provider builds `aws-lc-sys` (a C/assembly crate); for a leaner static-musl or cross build, drop it with `default-features = false` and use the `ring` provider as in the table above.
 

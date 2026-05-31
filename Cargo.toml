@@ -21,9 +21,9 @@ default = ["rustls-tls"]
 # Recommended: no system OpenSSL, works on musl/static, honors enterprise CAs.
 rustls-tls = ["reqwest/rustls"]
 # System TLS: OpenSSL (Linux) / SChannel (Windows) / Secure Transport (macOS).
-# NOTE: rustls-tls and native-tls are mutually exclusive at the reqwest level. When
-# selecting native-tls, set `default-features = false` — otherwise reqwest compiles
-# both backends and silently uses native-tls as the active one.
+# NOTE: rustls-tls and native-tls are mutually exclusive. When selecting native-tls,
+# set `default-features = false` — otherwise both backends compile and the build fails
+# with a `compile_error!` (see src/lib.rs) telling you to do so.
 native-tls = ["reqwest/native-tls"]
 #
 # BYO crypto provider (FIPS/ring), static OpenSSL, custom root CAs, or mTLS: not a genai
