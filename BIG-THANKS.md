@@ -4,7 +4,15 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
-## v0.6.0 (upcoming)
+## v0.6.0..0.6.x
+
+- [ropoctl](https://github.com/ropoctl)
+  - [#237](https://github.com/jeremychone/rust-genai/pull/237) anthropic adaptive thinking for Opus 4.7+
+  - [#236](https://github.com/jeremychone/rust-genai/pull/236) openai_resp tolerate response.completed without output field
+- [coaoac](https://github.com/coaoac)
+  - [#239](https://github.com/jeremychone/rust-genai/pull/239) selectable reqwest TLS backends with rustls default
+
+## v0.6.0
 
 - [ropoctl](https://github.com/ropoctl)
   - [#227](https://github.com/jeremychone/rust-genai/pull/227) OpenAI Responses encrypted reasoning round-trip
