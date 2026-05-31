@@ -1,14 +1,15 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## Unreleased
+## 0.6.4-WIP (unreleased)
 
-- `!` build - reqwest TLS is now selectable via cargo features: `rustls-tls` (default; rustls + aws-lc-rs + OS trust store) and `native-tls`. reqwest switches to `default-features = false` with all previously-implicit features pinned explicitly; the default (`rustls-tls`) uses the same crypto backend as before, so HTTPS keeps working out of the box. BYO crypto provider / custom CA / mTLS via `ClientBuilder::with_reqwest`. Enabling both backends at once fails fast with a `compile_error!` instead of silently picking one.
+- `^` build - reqwest TLS is now selectable via cargo features: `rustls-tls` (default; rustls + aws-lc-rs + OS trust store) and `native-tls`. 
+  - reqwest switches to `default-features = false` with all previously-implicit features pinned explicitly; the default (`rustls-tls`) uses the same crypto backend as before, so HTTPS keeps working out of the box. BYO crypto provider / custom CA / mTLS via `ClientBuilder::with_reqwest`. Enabling both backends at once fails fast with a `compile_error!` instead of silently picking one.
 
-## 2026-05-29 - [v0.6.1](https://github.com/jeremychone/rust-genai/compare/v0.6.2...v0.6.3)
+## 2026-05-29 - [v0.6.3](https://github.com/jeremychone/rust-genai/compare/v0.6.2...v0.6.3)
 
 - `^` use adaptive thinking for opus 4.7 (and above)
 
-## 2026-05-27 - [v0.6.1](https://github.com/jeremychone/rust-genai/compare/v0.6.1...v0.6.2)
+## 2026-05-27 - [v0.6.2](https://github.com/jeremychone/rust-genai/compare/v0.6.1...v0.6.2)
 
 - `-` fix - openai_resp: tolerate response.completed events without `output` field (PR #236)
 - `^` adapter/openai - Fix ReasoningEffort::Max mapping to 'max' keyword
