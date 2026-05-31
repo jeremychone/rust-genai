@@ -133,8 +133,11 @@ impl MessageOptions {
 /// - This is the unified cache policy abstraction used at both chat-request and message level.
 /// - Anthropic applies cache_control at the content-part level; genai exposes it at the
 ///   ChatMessage level and maps it appropriately.
-/// - OpenAI currently uses request-level mappings for a subset of variants and ignores
-///   unsupported message-level cache control.
+/// - OpenAI uses request-level mappings (`prompt_cache_retention` / `prompt_cache_key`) for a
+///   subset of variants and ignores unsupported message-level cache control.
+/// - Anthropic applies request-level cache_control by auto-marking the static (tools+system)
+///   prefix when no explicit message/tool breakpoint is set; otherwise it defers to the
+///   explicit breakpoints. Tools can be marked individually via `Tool::with_cache_control`.
 /// - Different providers support different variants and scopes.
 ///
 /// ## TTL Ordering Constraint (Anthropic)
@@ -163,6 +166,9 @@ pub enum CacheControl {
 	/// Note: Costs 2x base input token price vs 1.25x for 5m.
 	Ephemeral1h,
 	/// Extended 24-hour TTL cache.
+	///
+	/// Note: Anthropic's max ephemeral TTL is 1h, so this is clamped to `1h` there. On
+	/// providers with native 24h retention (e.g. OpenAI `prompt_cache_retention`), it maps to 24h.
 	Ephemeral24h,
 }
 

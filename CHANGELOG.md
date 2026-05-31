@@ -1,5 +1,9 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
+## Unreleased
+
+- `+` anthropic - prompt caching on tools via `Tool::with_cache_control`, and request-level `ChatOptions::with_cache_control` now auto-applies a cache breakpoint to the static (tools+system) prefix (was previously ignored). `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
+
 ## 2026-06-06 [v0.6.5](https://github.com/jeremychone/rust-genai/compare/v0.6.4...v0.6.5)
 
 - `-` fix: capture OpenAI stream usage tail (PR #242)

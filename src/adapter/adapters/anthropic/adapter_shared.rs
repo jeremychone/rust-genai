@@ -12,7 +12,6 @@ use crate::webc::WebResponse;
 use crate::{Headers, ModelIden};
 use serde_json::{Map, Value, json};
 use std::sync::OnceLock;
-use tracing::info;
 use tracing::warn;
 use value_ext::JsonValueExt;
 
@@ -107,7 +106,8 @@ impl AnthropicAdapter {
 	/// Takes the GenAI ChatMessages and constructs the System string and JSON Messages for Anthropic.
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
 	pub(in crate::adapter::adapters) fn into_anthropic_request_parts(
-		chat_req: ChatRequest,
+		mut chat_req: ChatRequest,
+		request_cache_control: Option<CacheControl>,
 	) -> Result<AnthropicRequestParts> {
 		let mut messages: Vec<Value> = Vec::new();
 		// (content, cache_control)
@@ -122,9 +122,17 @@ impl AnthropicAdapter {
 			systems.push((system, None));
 		}
 
+		// Track explicit message-level breakpoints so request-level cache_control can defer to them.
+		let mut has_msg_cache = false;
+
 		// -- Process the messages
 		for msg in chat_req.messages {
 			let cache_control = msg.options.and_then(|o| o.cache_control);
+			// Any explicit message cache_control (incl. System-role, part of the static prefix)
+			// counts as a breakpoint; request-level placement (below) defers to it.
+			if cache_control.is_some() {
+				has_msg_cache = true;
+			}
 
 			// Check TTL ordering constraint
 			if let Some(ref cc) = cache_control {
@@ -135,8 +143,8 @@ impl AnthropicAdapter {
 					CacheControl::Ephemeral1h | CacheControl::Ephemeral24h => {
 						if seen_5m_cache {
 							warn!(
-								"Anthropic cache TTL ordering violation: Ephemeral1h appears after Ephemeral/Ephemeral5m. \
-								1-hour cache entries must appear before 5-minute cache entries. \
+								"Anthropic cache TTL ordering violation: a longer-TTL entry (Ephemeral1h/Ephemeral24h) appears after Ephemeral/Ephemeral5m. \
+								Longer-TTL cache entries must appear before shorter (5-minute) entries. \
 								See: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching#mixing-different-ttls"
 							);
 						}
@@ -310,6 +318,24 @@ impl AnthropicAdapter {
 			}
 		}
 
+		// -- Request-level cache control (Approach B): with no explicit breakpoint, auto-mark the
+		// static prefix — the last system block (caches tools+system), else the last tool; no-op otherwise.
+		if let Some(req_cc) = request_cache_control {
+			let has_tool_cache = chat_req
+				.tools
+				.as_ref()
+				.map(|tools| tools.iter().any(|t| t.cache_control.is_some()))
+				.unwrap_or(false);
+
+			if !has_msg_cache && !has_tool_cache {
+				if let Some(last_system) = systems.last_mut() {
+					last_system.1 = Some(req_cc);
+				} else if let Some(last_tool) = chat_req.tools.as_mut().and_then(|tools| tools.last_mut()) {
+					last_tool.cache_control = Some(req_cc);
+				}
+			}
+		}
+
 		// -- Create the Anthropic system
 		// NOTE: Anthropic does not have a "role": "system", just a single optional system property
 		let system = if !systems.is_empty() {
@@ -382,7 +408,7 @@ impl AnthropicAdapter {
 			system,
 			messages,
 			tools,
-		} = Self::into_anthropic_request_parts(chat_req)?;
+		} = Self::into_anthropic_request_parts(chat_req, options_set.cache_control().cloned())?;
 
 		// -- Extract Model Name and Reasoning
 		let (_, raw_model_name) = model.model_name.namespace_and_name();
@@ -442,12 +468,6 @@ impl AnthropicAdapter {
 
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
 			insert_anthropic_reasoning(&mut payload, &mut output_config, model_name, &computed_reasoning_effort)?;
-		}
-
-		if let Some(cache_control) = options_set.cache_control() {
-			info!(
-				"Anthropic request-level cache_control '{cache_control:?}' is currently ignored. Use message-level cache_control instead."
-			);
 		}
 
 		// -- Add supported ChatOptions
@@ -615,6 +635,7 @@ impl AnthropicAdapter {
 			description,
 			schema,
 			config,
+			cache_control,
 			..
 		} = tool;
 
@@ -662,6 +683,10 @@ impl AnthropicAdapter {
 				// TODO: need to handle error
 				let _ = tool_value.x_insert("description", description);
 			}
+		}
+
+		if let Some(cc) = cache_control {
+			let _ = tool_value.x_insert("cache_control", cache_control_to_json(&cc));
 		}
 
 		Ok(tool_value)
@@ -828,6 +853,7 @@ fn cache_control_to_json(cache_control: &CacheControl) -> Value {
 		CacheControl::Ephemeral1h => {
 			json!({"type": "ephemeral", "ttl": "1h"})
 		}
+		// Anthropic's max ephemeral TTL is 1h, so 24h clamps to 1h (see CacheControl::Ephemeral24h docs).
 		CacheControl::Ephemeral24h => {
 			json!({"type": "ephemeral", "ttl": "1h"})
 		}
@@ -913,7 +939,7 @@ mod tests {
 	use super::*;
 	use crate::ServiceTarget;
 	use crate::adapter::{Adapter, ServiceType};
-	use crate::chat::{ChatOptions, ChatRequest, JsonSpec, Tool, ToolChoice};
+	use crate::chat::{ChatMessage, ChatOptions, ChatRequest, JsonSpec, Tool, ToolChoice};
 	use crate::resolver::AuthData;
 
 	/// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
@@ -1000,6 +1026,164 @@ mod tests {
 			.expect("to_web_request_data should succeed");
 
 		assert_eq!(web_req.payload["tool_choice"], json!({"type": "any"}));
+	}
+
+	/// A `cache_control` set on a `Tool` must be serialized onto that tool in the
+	/// Anthropic `tools` payload, so the tool-definition prefix can be prompt-cached.
+	#[test]
+	fn test_tool_cache_control_serialized_on_anthropic_payload() {
+		// -- Setup & Fixtures
+		let ephemeral_tool = Tool::new("get_weather")
+			.with_description("Get the current weather for a location")
+			.with_schema(json!({"type": "object", "properties": {}}))
+			.with_cache_control(CacheControl::Ephemeral);
+		let one_hour_tool = Tool::new("get_time")
+			.with_description("Get the current time for a location")
+			.with_schema(json!({"type": "object", "properties": {}}))
+			.with_cache_control(CacheControl::Ephemeral1h);
+		let plain_tool = Tool::new("get_news")
+			.with_description("Get the latest news")
+			.with_schema(json!({"type": "object", "properties": {}}));
+
+		let chat_req = ChatRequest::from_user("hello").with_tools([ephemeral_tool, one_hour_tool, plain_tool]);
+
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+		};
+		let options_set = ChatOptionsSet::default();
+
+		// -- Exec
+		let web_req = AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
+			.expect("to_web_request_data should succeed");
+
+		// -- Check
+		let tools = web_req
+			.payload
+			.get("tools")
+			.and_then(|t| t.as_array())
+			.expect("tools array must be present");
+		assert_eq!(tools.len(), 3, "all three tools must be present");
+		assert_eq!(
+			tools[0].get("cache_control"),
+			Some(&json!({"type": "ephemeral"})),
+			"Ephemeral must serialize without a ttl"
+		);
+		assert_eq!(
+			tools[1].get("cache_control"),
+			Some(&json!({"type": "ephemeral", "ttl": "1h"})),
+			"Ephemeral1h must serialize with ttl '1h'"
+		);
+		assert_eq!(
+			tools[2].get("cache_control"),
+			None,
+			"a tool without cache_control must not emit the field"
+		);
+	}
+
+	/// Request-level cache_control with no explicit breakpoint must auto-mark the last
+	/// system block (caching the tools+system prefix) on Anthropic.
+	#[test]
+	fn test_request_level_cache_control_auto_breakpoint_on_system() {
+		let chat_req = ChatRequest::from_user("hello").with_system("a long, stable system prompt");
+		let chat_options = ChatOptions::default().with_cache_control(CacheControl::Ephemeral);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
+			.expect("to_web_request_data should succeed");
+
+		let system = web_req.payload.get("system").expect("system must be present");
+		let parts = system
+			.as_array()
+			.expect("system must be a multi-part array when cache_control is applied");
+		let last = parts.last().expect("system must have at least one part");
+		assert_eq!(
+			last.get("cache_control"),
+			Some(&json!({"type": "ephemeral"})),
+			"request-level cache_control must auto-apply to the last system block"
+		);
+	}
+
+	/// With no system but tools present, request-level cache_control falls back to the last tool.
+	#[test]
+	fn test_request_level_cache_control_falls_back_to_last_tool_when_no_system() {
+		let tool_a = Tool::new("a").with_schema(json!({"type": "object", "properties": {}}));
+		let tool_b = Tool::new("b").with_schema(json!({"type": "object", "properties": {}}));
+		let chat_req = ChatRequest::from_user("hello").with_tools([tool_a, tool_b]);
+		let chat_options = ChatOptions::default().with_cache_control(CacheControl::Ephemeral);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
+			.expect("to_web_request_data should succeed");
+
+		let tools = web_req.payload.get("tools").and_then(|t| t.as_array()).expect("tools array");
+		assert_eq!(tools.len(), 2);
+		assert_eq!(tools[0].get("cache_control"), None, "non-last tool must not be marked");
+		assert_eq!(
+			tools[1].get("cache_control"),
+			Some(&json!({"type": "ephemeral"})),
+			"request-level cache_control must fall back to the last tool"
+		);
+		assert!(web_req.payload.get("system").is_none(), "no system should be present");
+	}
+
+	/// With neither system nor tools, request-level cache_control is a no-op.
+	#[test]
+	fn test_request_level_cache_control_noop_without_static_prefix() {
+		let chat_req = ChatRequest::from_user("hello");
+		let chat_options = ChatOptions::default().with_cache_control(CacheControl::Ephemeral);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
+			.expect("to_web_request_data should succeed");
+
+		assert!(web_req.payload.get("system").is_none(), "no system");
+		assert!(web_req.payload.get("tools").is_none(), "no tools");
+		let messages = web_req.payload.get("messages").and_then(|m| m.as_array()).expect("messages");
+		assert!(
+			messages[0]["content"].is_string(),
+			"user content must be a plain string with no cache_control breakpoint"
+		);
+	}
+
+	/// When an explicit message-level breakpoint exists, request-level cache_control must
+	/// NOT auto-apply to the system prefix (defer to the explicit breakpoint).
+	#[test]
+	fn test_request_level_cache_control_deferred_when_explicit_present() {
+		let user_msg = ChatMessage::user("hello").with_options(CacheControl::Ephemeral);
+		let chat_req = ChatRequest::new(vec![user_msg]).with_system("a long, stable system prompt");
+		let chat_options = ChatOptions::default().with_cache_control(CacheControl::Ephemeral1h);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
+			.expect("to_web_request_data should succeed");
+
+		let system = web_req.payload.get("system").expect("system present");
+		assert!(
+			system.is_string(),
+			"system must remain a plain string (request-level deferred to the explicit message breakpoint)"
+		);
 	}
 
 	#[test]

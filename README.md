@@ -82,7 +82,7 @@ Here’s what’s new:
 - **Chat extra body**: `ChatOptions::with_extra_body(...)` provides a low-level request body extension point for provider-specific fields in OpenAI-compatible chat payloads.
 - **Tool choice**: `ChatOptions::with_tool_choice(...)` adds provider-neutral tool selection hints for automatic, disabled, required, or specific tool calls.
 - **Built-in tools and WebSearch**: Added typed built-in tool support, including `ToolName`, `ToolConfig`, `WebSearch`, and provider mappings for Anthropic, OpenAI, and Gemini.
-- **Prompt cache controls**: Chat-level `CacheControl` support adds provider-specific prompt caching options, including OpenAI `prompt_cache_key` and cache retention.
+- **Prompt cache controls**: Chat-level `CacheControl` support adds provider-specific prompt caching options, including OpenAI `prompt_cache_key` and cache retention. On Anthropic, `Tool::with_cache_control` marks individual tools, and request-level `ChatOptions::with_cache_control` auto-applies a breakpoint to the static (tools+system) prefix.
 - **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20), including `ContentPart::ReasoningContent` and provider stop reasons.
 - **Perf Improvements**: HTTP requests use performance optimizations such as gzip, `TCP_NODELAY`, and HTTP/2 tuning.
 - Numerous fixes, optimizations, and API enhancements.
