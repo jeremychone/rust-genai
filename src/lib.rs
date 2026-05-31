@@ -22,3 +22,18 @@ pub mod resolver;
 pub mod webc;
 
 // endregion: --- Modules
+
+// region:    --- TLS Backend Guard
+
+// TLS backends are mutually exclusive (forwarded to reqwest; see Cargo.toml / README).
+// Enabling `native-tls` without `default-features = false` leaves `rustls-tls` on from
+// the default set; turn that silent mis-selection into a clear compile-time error.
+// The "neither feature" case is intentionally allowed — it is the supported
+// bring-your-own-client path (`with_reqwest`).
+#[cfg(all(feature = "rustls-tls", feature = "native-tls"))]
+compile_error!(
+	"genai: `rustls-tls` and `native-tls` are mutually exclusive. \
+	 To use native-tls, set `default-features = false` and enable `native-tls`."
+);
+
+// endregion: --- TLS Backend Guard

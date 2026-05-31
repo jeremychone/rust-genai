@@ -313,6 +313,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 > Note: Feel free to send me a short description and a link to your application or library that uses genai. I'm happy to add it.
 
+## TLS Backends
+
+TLS is selectable via cargo features. The default works out of the box and is right for almost everyone.
+
+| You want… | Use |
+|---|---|
+| A backend that just works (default) | nothing — `rustls-tls` (rustls + aws-lc-rs + OS trust store) |
+| System trust policy / OpenSSL or SChannel | `genai = { default-features = false, features = ["native-tls"] }` |
+| ring / FIPS / no `aws-lc-sys` (lean musl & cross builds) | `genai = { default-features = false }`, add your own `reqwest = { features = ["rustls-no-provider"] }` + a provider (e.g. `rustls` with `ring`), and call `CryptoProvider::install_default()` at startup |
+| Static OpenSSL | `genai = { default-features = false }` + your own `reqwest = { features = ["native-tls-vendored"] }` |
+| Custom root CA / mTLS / fully custom client | build your own `reqwest::Client` and inject it via `with_reqwest(...)` |
+
+`rustls-tls` and `native-tls` are mutually exclusive. When selecting `native-tls`, set `default-features = false` (as shown above) — otherwise both backends compile and the build fails with a `compile_error!` telling you to do so.
+
+`rustls-tls` reads the OS trust store via `rustls-platform-verifier`, so enterprise/custom CAs work without `native-tls`, and it needs no system OpenSSL. Note the default `aws-lc-rs` provider builds `aws-lc-sys` (a C/assembly crate); for a leaner static-musl or cross build, drop it with `default-features = false` and use the `ring` provider as in the table above.
+
+For full control, build a `reqwest::Client` yourself and inject it:
+
+```rust
+let reqwest_client = reqwest::Client::builder()
+    // .add_root_certificate(...), client identity for mTLS, custom CryptoProvider, etc.
+    .build()?;
+
+let client = genai::Client::builder()
+    .with_reqwest(reqwest_client)
+    .build();
+```
+
+If you set `default-features = false` on `genai` without enabling a TLS feature, add `reqwest` with a TLS feature directly to your own `Cargo.toml` (or use the `rustls-no-provider` path and install a `CryptoProvider`) — otherwise HTTPS requests fail at runtime.
+
 ## Links
 
 - crates.io: [crates.io/crates/genai](https://crates.io/crates/genai)

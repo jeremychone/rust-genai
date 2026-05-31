@@ -14,7 +14,21 @@ unsafe_code = "forbid"
 # missing_docs = "warn"
 
 [features]
-default = []
+default = ["rustls-tls"]
+
+# -- TLS backend (forwarded to reqwest). Pick ONE; `rustls-tls` is the default.
+# rustls + aws-lc-rs provider + OS trust store (rustls-platform-verifier).
+# Recommended: no system OpenSSL, works on musl/static, honors enterprise CAs.
+rustls-tls = ["reqwest/rustls"]
+# System TLS: OpenSSL (Linux) / SChannel (Windows) / Secure Transport (macOS).
+# NOTE: rustls-tls and native-tls are mutually exclusive. When selecting native-tls,
+# set `default-features = false` — otherwise both backends compile and the build fails
+# with a `compile_error!` (see src/lib.rs) telling you to do so.
+native-tls = ["reqwest/native-tls"]
+#
+# BYO crypto provider (FIPS/ring), static OpenSSL, custom root CAs, or mTLS: not a genai
+# feature — build your own `reqwest::Client` and inject it via `Client::builder().with_reqwest(...)`.
+
 # AWS Bedrock Converse adapter using SigV4 signing + the full AWS credential chain.
 # Pulls in aws-config (env → profile → SSO → IMDS → AssumeRole) and aws-sigv4 (request signing).
 # Heavy: aws-config transitively adds aws-smithy-*, hyper, tower, h2.
@@ -39,7 +53,7 @@ serde = { version = "1", features = ["derive", "rc"] } # Opted to rc for Arc<T> 
 serde_json = "1"
 serde_with = "3"
 # -- Web
-reqwest = {version = "0.13",  features = ["json", "stream", "gzip"]}
+reqwest = { version = "0.13", default-features = false, features = ["json", "stream", "gzip", "charset", "http2", "system-proxy"] }
 eventsource-stream = "0.2"
 bytes = "1.6"
 # -- File
