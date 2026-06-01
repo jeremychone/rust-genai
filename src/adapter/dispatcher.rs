@@ -1,6 +1,5 @@
 use crate::ModelIden;
-use crate::adapter::dispatcher_macros::dispatch_adapter;
-use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
+use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData, dispatch_adapter};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};

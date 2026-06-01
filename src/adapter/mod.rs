@@ -11,9 +11,9 @@
 
 mod adapter_kind;
 mod adapter_types;
+mod adapter_macros;
 mod adapters;
 mod dispatcher;
-mod dispatcher_macros;
 
 // -- Flatten (private, crate, public)
 use adapters::*;
