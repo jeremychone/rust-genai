@@ -1,9 +1,11 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## 0.6.4-WIP (unreleased)
+## 2026-06-01 [v0.6.4](https://github.com/jeremychone/rust-genai/compare/v0.6.3...v0.6.4)
 
+- `+` NEW PROVIDER: MiniMax ([https://platform.minimax.io/](platform.minimax.io/)) with `MiniMax` or `minimax` prefixes, or `minimax::` namespace.
 - `^` build - reqwest TLS is now selectable via cargo features: `rustls-tls` (default; rustls + aws-lc-rs + OS trust store) and `native-tls`. 
   - reqwest switches to `default-features = false` with all previously-implicit features pinned explicitly; the default (`rustls-tls`) uses the same crypto backend as before, so HTTPS keeps working out of the box. BYO crypto provider / custom CA / mTLS via `ClientBuilder::with_reqwest`. Enabling both backends at once fails fast with a `compile_error!` instead of silently picking one.
+- `>` Refactored `Antrophic` adapter with `antropic_shared.rs` (internal)
 
 ## 2026-05-29 - [v0.6.3](https://github.com/jeremychone/rust-genai/compare/v0.6.2...v0.6.3)
 
