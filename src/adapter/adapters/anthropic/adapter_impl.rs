@@ -259,126 +259,7 @@ impl Adapter for AnthropicAdapter {
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { endpoint, auth, model } = target;
-
-		// -- api_key
-		let api_key = get_api_key(auth, &model)?;
-
-		// -- url
-		let url = Self::get_service_url(&model, service_type, endpoint)?;
-
-		// -- headers
-		let headers = Headers::from(vec![
-			("x-api-key".to_string(), api_key),
-			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
-		]);
-
-		// -- Parts
-		let AnthropicRequestParts {
-			system,
-			messages,
-			tools,
-		} = Self::into_anthropic_request_parts(chat_req)?;
-
-		// -- Extract Model Name and Reasoning
-		let (_, raw_model_name) = model.model_name.namespace_and_name();
-
-		// -- Reasoning Budget
-		let (model_name, computed_reasoning_effort) = match (raw_model_name, options_set.reasoning_effort()) {
-			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
-			(model, None) => {
-				// let model_name: &str = &model.model_name;
-				if let Some((prefix, last)) = raw_model_name.rsplit_once('-') {
-					let reasoning = match last {
-						"zero" => None,
-						"None" => Some(ReasoningEffort::Low),
-						"minimal" => Some(ReasoningEffort::Low),
-						"low" => Some(ReasoningEffort::Low),
-						"medium" => Some(ReasoningEffort::Medium),
-						"high" => Some(ReasoningEffort::High),
-						"xhigh" => Some(ReasoningEffort::XHigh),
-						"max" => Some(ReasoningEffort::Max),
-						_ => None,
-					};
-					// create the model name if there was a `-..` reasoning suffix
-					let model = if reasoning.is_some() { prefix } else { model };
-
-					(model, reasoning)
-				} else {
-					(model, None)
-				}
-			}
-			// If reasoning effort, turn the low, medium, budget ones into Budget
-			(model, Some(effort)) => (model, Some(effort.clone())),
-		};
-
-		// -- Build the basic payload
-		let stream = matches!(service_type, ServiceType::ChatStream);
-		let mut payload = json!({
-			"model": model_name.to_string(),
-			"messages": messages,
-			"stream": stream
-		});
-
-		if let Some(system) = system {
-			payload.x_insert("system", system)?;
-		}
-
-		if let Some(tools) = tools {
-			payload.x_insert("/tools", tools)?;
-		}
-		if let Some(tool_choice) = anthropic_tool_choice(options_set.tool_choice()) {
-			payload.x_insert("tool_choice", tool_choice)?;
-		}
-
-		// -- Set the reasoning effort
-		// Both reasoning effort and structured-output format write into `output_config`.
-		// Build a shared map so both contributions end up in the same object.
-		let mut output_config: Map<String, Value> = Map::new();
-
-		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			insert_anthropic_reasoning(&mut payload, &mut output_config, model_name, &computed_reasoning_effort)?;
-		}
-
-		if let Some(cache_control) = options_set.cache_control() {
-			info!(
-				"Anthropic request-level cache_control '{cache_control:?}' is currently ignored. Use message-level cache_control instead."
-			);
-		}
-
-		// -- Add supported ChatOptions
-		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
-			// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-outputs
-			// Note: Anthropic's json_schema format does not use a schema name; JsonSpec.name is intentionally omitted.
-			output_config.insert(
-				"format".to_string(),
-				json!({
-					"type": "json_schema",
-					"schema": st_json.schema_with_additional_properties_false(),
-				}),
-			);
-		}
-
-		// Insert output_config once, merging effort + format into a single object.
-		if !output_config.is_empty() {
-			payload.x_insert("output_config", Value::Object(output_config))?;
-		}
-
-		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("temperature", temperature)?;
-		}
-
-		if !options_set.stop_sequences().is_empty() {
-			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
-		}
-
-		let max_tokens = Self::resolve_max_tokens(model_name, &options_set);
-		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
-
-		if let Some(top_p) = options_set.top_p() {
-			payload.x_insert("top_p", top_p)?;
-		}
-
-		Ok(WebRequestData { url, headers, payload })
+		Self::build_web_request_data(endpoint, auth, model, service_type, chat_req, options_set)
 	}
 
 	fn to_chat_response(
@@ -386,80 +267,7 @@ impl Adapter for AnthropicAdapter {
 		web_response: WebResponse,
 		_options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<ChatResponse> {
-		let WebResponse { mut body, .. } = web_response;
-
-		// -- Capture the provider_model_iden
-		// TODO: Need to be implemented (if available), for now, just clone model_iden
-		let provider_model_name: Option<String> = body.x_remove("model").ok();
-		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
-
-		// -- Capture the usage
-		let usage = body.x_take::<Value>("usage");
-
-		let usage = usage.map(Self::into_usage).unwrap_or_default();
-		let stop_reason = body
-			.x_take::<Option<String>>("stop_reason")
-			.ok()
-			.flatten()
-			.map(StopReason::from);
-
-		// -- Capture the content
-		let mut content: MessageContent = MessageContent::default();
-
-		// NOTE: Here we are going to concatenate all of the Anthropic text content items into one
-		//       genai MessageContent::Text. This is more in line with the OpenAI API style,
-		//       but loses the fact that they were originally separate items.
-		let json_content_items: Vec<Value> = body.x_take("content")?;
-
-		let mut reasoning_content: Vec<String> = Vec::new();
-
-		for mut item in json_content_items {
-			let typ: String = item.x_take("type")?;
-			match typ.as_ref() {
-				"text" => {
-					let part = ContentPart::from_text(item.x_take::<String>("text")?);
-					content.push(part);
-				}
-				"thinking" => reasoning_content.push(item.x_take("thinking")?),
-				"tool_use" => {
-					let call_id = item.x_take::<String>("id")?;
-					let fn_name = item.x_take::<String>("name")?;
-					// if not found, will be Value::Null
-					let fn_arguments = item.x_take::<Value>("input").unwrap_or_default();
-					let tool_call = ToolCall {
-						call_id,
-						fn_name,
-						fn_arguments,
-						thought_signatures: None,
-					};
-
-					let part = ContentPart::ToolCall(tool_call);
-					content.push(part);
-				}
-				other_typ => {
-					// insert it back
-					item.x_insert("type", other_typ)?;
-					content.push(ContentPart::from_custom(item, Some(model_iden.clone())))
-				}
-			}
-		}
-
-		let reasoning_content = if !reasoning_content.is_empty() {
-			Some(reasoning_content.join("\n"))
-		} else {
-			None
-		};
-
-		Ok(ChatResponse {
-			content,
-			reasoning_content,
-			model_iden,
-			provider_model_iden,
-			stop_reason,
-			usage,
-			captured_raw_body: None, // Set by the client exec_chat
-			response_id: None,
-		})
+		Self::build_chat_response(model_iden, web_response)
 	}
 
 	fn to_chat_stream(
@@ -818,6 +626,215 @@ impl AnthropicAdapter {
 			system,
 			messages,
 			tools,
+		})
+	}
+
+	pub(in crate::adapter) fn build_web_request_data(
+		endpoint: Endpoint,
+		auth: AuthData,
+		model: ModelIden,
+		service_type: ServiceType,
+		chat_req: ChatRequest,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<WebRequestData> {
+		// -- api_key
+		let api_key = get_api_key(auth, &model)?;
+
+		// -- url
+		let url = Self::get_service_url(&model, service_type, endpoint)?;
+
+		// -- headers
+		let headers = Headers::from(vec![
+			("x-api-key".to_string(), api_key),
+			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
+		]);
+
+		// -- Parts
+		let AnthropicRequestParts {
+			system,
+			messages,
+			tools,
+		} = Self::into_anthropic_request_parts(chat_req)?;
+
+		// -- Extract Model Name and Reasoning
+		let (_, raw_model_name) = model.model_name.namespace_and_name();
+
+		// -- Reasoning Budget
+		let (model_name, computed_reasoning_effort) = match (raw_model_name, options_set.reasoning_effort()) {
+			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
+			(model, None) => {
+				// let model_name: &str = &model.model_name;
+				if let Some((prefix, last)) = raw_model_name.rsplit_once('-') {
+					let reasoning = match last {
+						"zero" => None,
+						"None" => Some(ReasoningEffort::Low),
+						"minimal" => Some(ReasoningEffort::Low),
+						"low" => Some(ReasoningEffort::Low),
+						"medium" => Some(ReasoningEffort::Medium),
+						"high" => Some(ReasoningEffort::High),
+						"xhigh" => Some(ReasoningEffort::XHigh),
+						"max" => Some(ReasoningEffort::Max),
+						_ => None,
+					};
+					// create the model name if there was a `-..` reasoning suffix
+					let model = if reasoning.is_some() { prefix } else { model };
+
+					(model, reasoning)
+				} else {
+					(model, None)
+				}
+			}
+			// If reasoning effort, turn the low, medium, budget ones into Budget
+			(model, Some(effort)) => (model, Some(effort.clone())),
+		};
+
+		// -- Build the basic payload
+		let stream = matches!(service_type, ServiceType::ChatStream);
+		let mut payload = json!({
+			"model": model_name.to_string(),
+			"messages": messages,
+			"stream": stream
+		});
+
+		if let Some(system) = system {
+			payload.x_insert("system", system)?;
+		}
+
+		if let Some(tools) = tools {
+			payload.x_insert("/tools", tools)?;
+		}
+		if let Some(tool_choice) = anthropic_tool_choice(options_set.tool_choice()) {
+			payload.x_insert("tool_choice", tool_choice)?;
+		}
+
+		// -- Set the reasoning effort
+		// Both reasoning effort and structured-output format write into `output_config`.
+		// Build a shared map so both contributions end up in the same object.
+		let mut output_config: Map<String, Value> = Map::new();
+
+		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
+			insert_anthropic_reasoning(&mut payload, &mut output_config, model_name, &computed_reasoning_effort)?;
+		}
+
+		if let Some(cache_control) = options_set.cache_control() {
+			info!(
+				"Anthropic request-level cache_control '{cache_control:?}' is currently ignored. Use message-level cache_control instead."
+			);
+		}
+
+		// -- Add supported ChatOptions
+		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
+			// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-outputs
+			// Note: Anthropic's json_schema format does not use a schema name; JsonSpec.name is intentionally omitted.
+			output_config.insert(
+				"format".to_string(),
+				json!({
+					"type": "json_schema",
+					"schema": st_json.schema_with_additional_properties_false(),
+				}),
+			);
+		}
+
+		// Insert output_config once, merging effort + format into a single object.
+		if !output_config.is_empty() {
+			payload.x_insert("output_config", Value::Object(output_config))?;
+		}
+
+		if let Some(temperature) = options_set.temperature() {
+			payload.x_insert("temperature", temperature)?;
+		}
+
+		if !options_set.stop_sequences().is_empty() {
+			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
+		}
+
+		let max_tokens = Self::resolve_max_tokens(model_name, &options_set);
+		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
+
+		if let Some(top_p) = options_set.top_p() {
+			payload.x_insert("top_p", top_p)?;
+		}
+
+		Ok(WebRequestData { url, headers, payload })
+	}
+
+	pub(in crate::adapter) fn build_chat_response(
+		model_iden: ModelIden,
+		web_response: WebResponse,
+	) -> Result<ChatResponse> {
+		let WebResponse { mut body, .. } = web_response;
+
+		// -- Capture the provider_model_iden
+		// TODO: Need to be implemented (if available), for now, just clone model_iden
+		let provider_model_name: Option<String> = body.x_remove("model").ok();
+		let provider_model_iden = model_iden.from_optional_name(provider_model_name);
+
+		// -- Capture the usage
+		let usage = body.x_take::<Value>("usage");
+
+		let usage = usage.map(Self::into_usage).unwrap_or_default();
+		let stop_reason = body
+			.x_take::<Option<String>>("stop_reason")
+			.ok()
+			.flatten()
+			.map(StopReason::from);
+
+		// -- Capture the content
+		let mut content: MessageContent = MessageContent::default();
+
+		// NOTE: Here we are going to concatenate all of the Anthropic text content items into one
+		//       genai MessageContent::Text. This is more in line with the OpenAI API style,
+		//       but loses the fact that they were originally separate items.
+		let json_content_items: Vec<Value> = body.x_take("content")?;
+
+		let mut reasoning_content: Vec<String> = Vec::new();
+
+		for mut item in json_content_items {
+			let typ: String = item.x_take("type")?;
+			match typ.as_ref() {
+				"text" => {
+					let part = ContentPart::from_text(item.x_take::<String>("text")?);
+					content.push(part);
+				}
+				"thinking" => reasoning_content.push(item.x_take("thinking")?),
+				"tool_use" => {
+					let call_id = item.x_take::<String>("id")?;
+					let fn_name = item.x_take::<String>("name")?;
+					// if not found, will be Value::Null
+					let fn_arguments = item.x_take::<Value>("input").unwrap_or_default();
+					let tool_call = ToolCall {
+						call_id,
+						fn_name,
+						fn_arguments,
+						thought_signatures: None,
+					};
+
+					let part = ContentPart::ToolCall(tool_call);
+					content.push(part);
+				}
+				other_typ => {
+					// insert it back
+					item.x_insert("type", other_typ)?;
+					content.push(ContentPart::from_custom(item, Some(model_iden.clone())))
+				}
+			}
+		}
+
+		let reasoning_content = if !reasoning_content.is_empty() {
+			Some(reasoning_content.join("\n"))
+		} else {
+			None
+		};
+
+		Ok(ChatResponse {
+			content,
+			reasoning_content,
+			model_iden,
+			provider_model_iden,
+			stop_reason,
+			usage,
+			captured_raw_body: None, // Set by the client exec_chat
+			response_id: None,
 		})
 	}
 
