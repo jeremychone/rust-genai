@@ -17,7 +17,7 @@ impl Adapter for MinimaxAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
 	fn default_endpoint() -> Endpoint {
-		const BASE_URL: &str = "https://api.minimax.io/anthropic/";
+		const BASE_URL: &str = "https://api.minimax.io/anthropic/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
 
@@ -82,7 +82,7 @@ impl Adapter for MinimaxAdapter {
 		_options_set: EmbedOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		Err(crate::Error::AdapterNotSupported {
-			adapter_kind: AdapterKind::Minimax,
+			adapter_kind: AdapterKind::MiniMax,
 			feature: "embeddings".to_string(),
 		})
 	}
@@ -93,7 +93,7 @@ impl Adapter for MinimaxAdapter {
 		_options_set: EmbedOptionsSet<'_, '_>,
 	) -> Result<EmbedResponse> {
 		Err(crate::Error::AdapterNotSupported {
-			adapter_kind: AdapterKind::Minimax,
+			adapter_kind: AdapterKind::MiniMax,
 			feature: "embeddings".to_string(),
 		})
 	}

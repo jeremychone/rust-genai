@@ -103,7 +103,7 @@ pub enum AdapterKind {
 	/// Uses `OPEN_ROUTER_API_KEY`.
 	OpenRouter,
 	/// For MiniMax (Anthropic-compatible protocol)
-	Minimax,
+	MiniMax,
 }
 
 /// Serialization/Parse implementations
@@ -138,7 +138,7 @@ impl AdapterKind {
 			#[cfg(feature = "bedrock-sigv4")]
 			AdapterKind::BedrockSigv4 => "BedrockSigv4",
 			AdapterKind::OpenRouter => "OpenRouter",
-			AdapterKind::Minimax => "Minimax",
+			AdapterKind::MiniMax => "Minimax",
 		}
 	}
 
@@ -172,7 +172,7 @@ impl AdapterKind {
 			#[cfg(feature = "bedrock-sigv4")]
 			AdapterKind::BedrockSigv4 => "bedrock_sigv4",
 			AdapterKind::OpenRouter => "open_router",
-			AdapterKind::Minimax => "minimax",
+			AdapterKind::MiniMax => "minimax",
 		}
 	}
 
@@ -205,7 +205,7 @@ impl AdapterKind {
 			#[cfg(feature = "bedrock-sigv4")]
 			"bedrock_sigv4" => Some(AdapterKind::BedrockSigv4),
 			"open_router" => Some(AdapterKind::OpenRouter),
-			"minimax" => Some(AdapterKind::Minimax),
+			"minimax" => Some(AdapterKind::MiniMax),
 			_ => None,
 		}
 	}
@@ -243,7 +243,7 @@ impl AdapterKind {
 			#[cfg(feature = "bedrock-sigv4")]
 			AdapterKind::BedrockSigv4 => BedrockSigv4Adapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::OpenRouter => OpenRouterAdapter::DEFAULT_API_KEY_ENV_NAME,
-			AdapterKind::Minimax => MinimaxAdapter::DEFAULT_API_KEY_ENV_NAME,
+			AdapterKind::MiniMax => MinimaxAdapter::DEFAULT_API_KEY_ENV_NAME,
 		}
 	}
 }
@@ -319,8 +319,8 @@ impl AdapterKind {
 			Ok(Self::DeepSeek)
 		} else if model.starts_with("moonshot-") {
 			Ok(Self::Moonshot)
-		} else if model.starts_with("minimax-") {
-			Ok(Self::Minimax)
+		} else if model.starts_with("MiniMax-") || model.starts_with("minimax-") {
+			Ok(Self::MiniMax)
 		}
 		// For now, fallback to Ollama
 		else {
