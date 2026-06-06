@@ -1,5 +1,9 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
+## 2026-06-06 [v0.6.5](https://github.com/jeremychone/rust-genai/compare/v0.6.4...v0.6.5)
+
+- `-` fix: capture OpenAI stream usage tail (PR #242)
+
 ## 2026-06-01 [v0.6.4](https://github.com/jeremychone/rust-genai/compare/v0.6.3...v0.6.4)
 
 - `+` NEW PROVIDER: MiniMax ([https://platform.minimax.io/](platform.minimax.io/)) with `MiniMax` or `minimax` prefixes, or `minimax::` namespace.

@@ -11,6 +11,8 @@ _If I forgot your PR, feel free to submit a PR_
   - [#236](https://github.com/jeremychone/rust-genai/pull/236) openai_resp tolerate response.completed without output field
 - [coaoac](https://github.com/coaoac)
   - [#239](https://github.com/jeremychone/rust-genai/pull/239) selectable reqwest TLS backends with rustls default
+- [kawayiYokam](https://github.com/kawayiYokami)
+  - [#242](https://github.com/jeremychone/rust-genai/pull/242) fix: capture OpenAI stream usage tail
 
 ## v0.6.0
 
