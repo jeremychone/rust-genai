@@ -43,6 +43,16 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
+## v0.7.0-beta.x on going 
+
+- Same quality as v0.6.x, with some new/updated features
+- **NEW: Custom Adapter** – Use `genai_n::model_name` to target a custom OpenAI-compatible endpoint.
+  - Configure the endpoint with the environment variable `GENAI_{n}_ENDPOINT` and the API key with `GENAI_{n}_API_KEY`.
+  - The adapter uses the OpenAI protocol internally (for now, might be configurable in the future)
+  - Example: `genai_1::my-model-7b` with `GENAI_1_ENDPOINT=https://my-host/v1/` and `GENAI_1_API_KEY=sk-...`.
+
+(see [genai releases](https://crates.io/crates/genai/versions))
+
 ## v0.6.x Released 🎉 
 
 New provider since v0.6.0: `minimax`
@@ -132,6 +142,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `opencode_go::minimax-m2.5` (Forces **OpenCode Go** adapter)
 - `bedrock_api::anthropic.claude-v2` (Forces **AWS Bedrock** adapter)
 - `open_router::google/gemini-2.0-flash-001` (Forces **OpenRouter** adapter)
+- `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
