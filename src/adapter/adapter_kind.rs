@@ -41,67 +41,93 @@ pub enum AdapterKind {
 	/// For OpenAI Chat Completions and also can be used for OpenAI compatible APIs
 	/// NOTE: This adapter share some behavior that other adapters can use while still providing some variant
 	OpenAI,
+
 	/// For OpenAI Responses API
 	OpenAIResp,
+
 	/// Gemini adapter supports gemini native protocol. e.g., support thinking budget.
 	Gemini,
+
 	/// Anthopric native protocol as well
 	Anthropic,
+
 	/// For fireworks.ai, mostly OpenAI.
 	Fireworks,
+
 	/// Together AI (Mostly uses OpenAI-compatible protocol)
 	Together,
+
 	/// Reuse some of the OpenAI adapter behavior, customize some (e.g., normalize thinking budget)
 	Groq,
+
 	/// For AIHubMix (Mostly use OpenAI)
 	Aihubmix,
+
 	/// For Mimo (Mostly use OpenAI)
 	Mimo,
+
 	/// For Moonshot AI (Mostly use OpenAI)
 	Moonshot,
+
 	/// For Nebius (Mostly use OpenAI)
 	Nebius,
+
 	/// For xAI (Mostly use OpenAI)
 	Xai,
+
 	/// For DeepSeek (Mostly use OpenAI)
 	DeepSeek,
+
 	/// For ZAI (Mostly use OpenAI)
 	Zai,
+
 	/// For big model (only accessible via namespace bigmodel::)
 	BigModel,
+
 	/// For aliyun (Mostly use OpenAI)
 	Aliyun,
+
 	/// For baidu (Mostly use OpenAI)
 	Baidu,
+
 	/// Cohere today use it's own native protocol but might move to OpenAI Adapter
 	Cohere,
+
 	/// OpenAI shared behavior + some custom. (currently, localhost only, can be customize with ServerTargetResolver).
 	Ollama,
+
 	/// For Ollama Cloud (ollama.com) - uses native Ollama protocol with Bearer auth
 	OllamaCloud,
+
 	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
 	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
 	Vertex,
+
 	/// GitHub Models inference API (multi-publisher gateway for OpenAI, Anthropic, and Google models).
 	/// Uses namespace routing: `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, `github_copilot::google/gemini-2.5-pro`
 	GithubCopilot,
+
 	/// OpenCode Go proxy (OpenAI-compatible adapter for the OpenCode ecosystem).
 	/// Namespace: `opencode_go::model-name` — route any model via the OpenCode Go gateway.
 	OpenCodeGo,
+
 	/// AWS Bedrock Converse API, authenticated with a simple Bearer token from
 	/// `BEDROCK_API_KEY`. Always available — no extra Cargo feature or dependencies required.
 	/// Namespace: `bedrock_api::anthropic.claude-sonnet-4-5-20250929-v1:0`.
 	BedrockApi,
+
 	/// AWS Bedrock Converse API, authenticated via SigV4 + the AWS credential chain
 	/// (env, profile, SSO, IMDS, AssumeRole).
 	/// Namespace: `bedrock_sigv4::anthropic.claude-sonnet-4-5-20250929-v1:0`.
 	/// Requires the `bedrock-sigv4` Cargo feature.
 	#[cfg(feature = "bedrock-sigv4")]
 	BedrockSigv4,
+
 	/// OpenRouter — OpenAI-compatible gateway for many providers (OpenAI, Anthropic, Google, etc.).
 	/// Namespace: `open_router::openai/gpt-4.1`, `open_router::anthropic/claude-sonnet-4-5`.
 	/// Uses `OPEN_ROUTER_API_KEY`.
 	OpenRouter,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 }
