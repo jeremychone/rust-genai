@@ -2,7 +2,7 @@ use crate::adapter::AdapterKind;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::adapter::openai::OpenAIAdapter;
-use crate::chat::{ChatOptionsSet, StopReason, ToolCall};
+use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
@@ -18,32 +18,55 @@ fn take_stream_error(message_data: &mut Value, model_iden: &ModelIden) -> Option
 	})
 }
 
-fn take_finish_reason_usage(
-	message_data: &mut Value,
-	adapter_kind: AdapterKind,
-	capture_usage: bool,
-) -> Option<crate::chat::Usage> {
+fn take_finish_reason_usage(message_data: &mut Value, adapter_kind: AdapterKind, capture_usage: bool) -> Option<Usage> {
 	if !capture_usage {
 		return None;
 	}
 
-	match adapter_kind {
-		AdapterKind::Groq => Some(
-			message_data
-				.x_take("/x_groq/usage")
-				.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
-				.unwrap_or_default(),
-		),
-		AdapterKind::DeepSeek | AdapterKind::Zai | AdapterKind::Fireworks | AdapterKind::Together => Some(
-			message_data
-				.x_take("usage")
-				.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
-				.unwrap_or_default(),
-		),
-		_ => message_data
-			.x_take("usage")
-			.ok()
-			.map(|v| OpenAIAdapter::into_usage(adapter_kind, v)),
+	let path = match adapter_kind {
+		AdapterKind::Groq => "/x_groq/usage",
+		_ => "usage",
+	};
+
+	take_usage(message_data, path, adapter_kind)
+}
+
+fn take_usage(message_data: &mut Value, path: &str, adapter_kind: AdapterKind) -> Option<Usage> {
+	message_data
+		.x_take::<Value>(path)
+		.ok()
+		.and_then(|value| into_non_empty_usage(adapter_kind, value))
+}
+
+fn into_non_empty_usage(adapter_kind: AdapterKind, usage_value: Value) -> Option<Usage> {
+	let usage = OpenAIAdapter::into_usage(adapter_kind, usage_value);
+	usage_has_token_counts(&usage).then_some(usage)
+}
+
+fn usage_has_token_counts(usage: &Usage) -> bool {
+	usage.prompt_tokens.is_some()
+		|| usage.completion_tokens.is_some()
+		|| usage.total_tokens.is_some()
+		|| usage.prompt_tokens_details.is_some()
+		|| usage.completion_tokens_details.is_some()
+}
+
+fn capture_usage_tail(
+	captured_usage: &mut Option<Usage>,
+	message_data: &mut Value,
+	adapter_kind: AdapterKind,
+	capture_usage: bool,
+) {
+	if !capture_usage || matches!(adapter_kind, AdapterKind::Groq) {
+		return;
+	}
+
+	if captured_usage.as_ref().is_some_and(usage_has_token_counts) {
+		return;
+	}
+
+	if let Some(usage) = take_usage(message_data, "usage", adapter_kind) {
+		*captured_usage = Some(usage);
 	}
 }
 
@@ -358,19 +381,14 @@ impl futures::Stream for OpenAIStreamer {
 					}
 					// -- Usage message
 					else {
-						// If it's not Groq, xAI, DeepSeek the usage is captured at the end when choices are empty or null
-						if !matches!(adapter_kind, AdapterKind::Groq)
-							&& !matches!(adapter_kind, AdapterKind::DeepSeek)
-							&& self.captured_data.usage.is_none() // this might be redundant
-							&& self.options.capture_usage
-						{
-							// permissive for now
-							let usage = message_data
-								.x_take("usage")
-								.map(|v| OpenAIAdapter::into_usage(adapter_kind, v))
-								.unwrap_or_default();
-							self.captured_data.usage = Some(usage);
-						}
+						// OpenAI-compatible streams can send a final `choices: []` chunk with usage.
+						let capture_usage = self.options.capture_usage;
+						capture_usage_tail(
+							&mut self.captured_data.usage,
+							&mut message_data,
+							adapter_kind,
+							capture_usage,
+						);
 					}
 				}
 				Some(Err(err)) => {
@@ -443,6 +461,37 @@ mod tests {
 		assert_eq!(usage.completion_tokens, Some(3));
 		assert_eq!(usage.total_tokens, Some(14));
 		assert!(message_data.get("usage").is_some_and(Value::is_null));
+	}
+
+	#[test]
+	fn test_take_finish_reason_usage_ignores_null_deepseek_usage() {
+		let mut message_data = serde_json::json!({
+			"usage": null
+		});
+
+		let usage = take_finish_reason_usage(&mut message_data, AdapterKind::DeepSeek, true);
+
+		assert!(usage.is_none());
+		assert!(message_data.get("usage").is_some_and(Value::is_null));
+	}
+
+	#[test]
+	fn test_capture_usage_tail_replaces_empty_deepseek_usage() {
+		let mut captured_usage = Some(Usage::default());
+		let mut message_data = serde_json::json!({
+			"usage": {
+				"prompt_tokens": 259,
+				"completion_tokens": 16,
+				"total_tokens": 275
+			}
+		});
+
+		capture_usage_tail(&mut captured_usage, &mut message_data, AdapterKind::DeepSeek, true);
+
+		let usage = captured_usage.expect("tail usage should be captured");
+		assert_eq!(usage.prompt_tokens, Some(259));
+		assert_eq!(usage.completion_tokens, Some(16));
+		assert_eq!(usage.total_tokens, Some(275));
 	}
 
 	#[test]
