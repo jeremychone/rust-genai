@@ -17,11 +17,11 @@ pub struct AdapterDispatcher;
 
 impl AdapterDispatcher {
 	pub fn default_endpoint(kind: AdapterKind) -> Endpoint {
-		dispatch_adapter!(kind, A::default_endpoint())
+		dispatch_adapter!(kind, A::default_endpoint(kind))
 	}
 
 	pub fn default_auth(kind: AdapterKind) -> AuthData {
-		dispatch_adapter!(kind, A::default_auth())
+		dispatch_adapter!(kind, A::default_auth(kind))
 	}
 
 	pub async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {

@@ -7,6 +7,7 @@ pub(super) mod baidu;
 pub(super) mod bedrock;
 pub(super) mod bigmodel;
 pub(super) mod cohere;
+pub(super) mod custom;
 pub(super) mod deepseek;
 pub(super) mod fireworks;
 pub(super) mod gemini;

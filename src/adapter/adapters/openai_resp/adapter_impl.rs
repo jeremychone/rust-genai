@@ -37,14 +37,14 @@ impl OpenAIRespAdapter {
 impl Adapter for OpenAIRespAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		match Self::DEFAULT_API_KEY_ENV_NAME {
 			Some(env_name) => AuthData::from_env(env_name),
 			None => AuthData::None,
 		}
 	}
 
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://api.openai.com/v1/";
 		Endpoint::from_static(BASE_URL)
 	}
@@ -680,7 +680,7 @@ mod tests {
 		let target = ServiceTarget {
 			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
 			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
 		};
 
 		let web_req = OpenAIRespAdapter::to_web_request_data(
@@ -702,7 +702,7 @@ mod tests {
 		let target = ServiceTarget {
 			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
 			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
 		};
 		let chat_req = ChatRequest::from_user("weather").with_tools(vec![Tool::new("get_weather")]);
 

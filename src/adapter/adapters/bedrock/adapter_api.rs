@@ -34,11 +34,11 @@ impl BedrockApiAdapter {
 impl Adapter for BedrockApiAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		Endpoint::from_owned(Self::endpoint_for_region(&Self::resolve_region()))
 	}
 
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 

@@ -23,12 +23,12 @@ pub struct OllamaAdapter;
 impl Adapter for OllamaAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = None;
 
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "http://localhost:11434/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		match Self::DEFAULT_API_KEY_ENV_NAME {
 			Some(env_name) => AuthData::from_env(env_name),
 			None => AuthData::from_single("ollama"),

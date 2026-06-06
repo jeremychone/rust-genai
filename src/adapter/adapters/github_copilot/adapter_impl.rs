@@ -23,14 +23,14 @@ impl GithubCopilotAdapter {
 impl Adapter for GithubCopilotAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		match Self::DEFAULT_API_KEY_ENV_NAME {
 			Some(env_name) => AuthData::from_env(env_name),
 			None => AuthData::None,
 		}
 	}
 
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://models.github.ai/inference/";
 		Endpoint::from_static(BASE_URL)
 	}
@@ -103,7 +103,7 @@ mod tests {
 
 	fn test_target() -> ServiceTarget {
 		ServiceTarget {
-			endpoint: GithubCopilotAdapter::default_endpoint(),
+			endpoint: GithubCopilotAdapter::default_endpoint(AdapterKind::GithubCopilot),
 			auth: AuthData::from_single("test-key"),
 			model: ModelIden::new(AdapterKind::GithubCopilot, "openai/gpt-4.1-mini"),
 		}

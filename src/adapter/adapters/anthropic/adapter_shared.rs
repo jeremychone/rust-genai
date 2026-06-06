@@ -932,7 +932,7 @@ mod tests {
 
 		let model_iden = ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6");
 		let target = ServiceTarget {
-			endpoint: AnthropicAdapter::default_endpoint(),
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
 			auth: AuthData::from_single("test-key"),
 			model: model_iden,
 		};
@@ -968,7 +968,7 @@ mod tests {
 		};
 		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
 		let target = ServiceTarget {
-			endpoint: AnthropicAdapter::default_endpoint(),
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
 			auth: AuthData::from_single("test-key"),
 			model: ModelIden::new(AdapterKind::Anthropic, "claude-opus-4-7"),
 		};
@@ -990,7 +990,7 @@ mod tests {
 		let chat_options = ChatOptions::default().with_tool_choice(ToolChoice::Required);
 		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
 		let target = ServiceTarget {
-			endpoint: AnthropicAdapter::default_endpoint(),
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
 			auth: AuthData::from_single("test-key"),
 			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6"),
 		};

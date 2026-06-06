@@ -9,24 +9,52 @@ use reqwest::RequestBuilder;
 
 /// The OpenRouter API is compatible with the OpenAI API.
 /// NOTE: This adapter is activated for namespaced model names (e.g., `open_router::openai/gpt-4.1`)
-pub struct OpenRouterAdapter;
+pub struct CustomAdapter;
 
-impl OpenRouterAdapter {
-	pub const API_KEY_DEFAULT_ENV_NAME: &str = "OPEN_ROUTER_API_KEY";
+// TODO FOR LLM
+// Implement CustomAdapter::get_endpoint(n: u16) -> Option<Endpoint>
+// Implement CustomAdapter::get_auth(n: u16) -> Option<AuthData>
+
+impl CustomAdapter {
+	/// Returns the endpoint for a custom adapter number `n` from the environment variable `GENAI_{n}_ENDPOINT`.
+	pub fn get_endpoint(n: u16) -> Option<Endpoint> {
+		let env_name = format!("GENAI_{}_ENDPOINT", n);
+
+		// making sure it ends with `/` as expected by the adapters
+		let mut endpoint = std::env::var(&env_name).ok()?;
+		if !endpoint.ends_with("/") {
+			endpoint.push('/');
+		}
+
+		Some(Endpoint::from_owned(endpoint))
+	}
+
+	/// Returns the auth for a custom adapter number `n` from the environment variable `GENAI_{n}_API_KEY`.
+	/// Returns `None` if the environment variable is not set.
+	pub fn get_auth(n: u16) -> Option<AuthData> {
+		let env_name = format!("GENAI_{}_API_KEY", n);
+		std::env::var(&env_name).ok().map(|_| AuthData::from_env(env_name))
+	}
 }
 
-impl Adapter for OpenRouterAdapter {
-	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
+impl Adapter for CustomAdapter {
+	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = None;
 
 	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
-		const BASE_URL: &str = "https://openrouter.ai/api/v1/";
-		Endpoint::from_static(BASE_URL)
+		// returns empty, cannot determine at this stage
+		if let AdapterKind::Custom(n) = _kind {
+			Self::get_endpoint(n).unwrap_or_else(|| Endpoint::from_static(""))
+		} else {
+			Endpoint::from_static("")
+		}
 	}
 
 	fn default_auth(_kind: AdapterKind) -> AuthData {
-		match Self::DEFAULT_API_KEY_ENV_NAME {
-			Some(env_name) => AuthData::from_env(env_name),
-			None => AuthData::None,
+		// returns empty, cannot determine at this stage
+		if let AdapterKind::Custom(n) = _kind {
+			Self::get_auth(n).unwrap_or(AuthData::None)
+		} else {
+			AuthData::None
 		}
 	}
 

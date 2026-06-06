@@ -130,6 +130,14 @@ pub enum AdapterKind {
 
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
+
+	/// Those are the Custom Adapter triggered by the `genai_` prefix namespaced
+	/// e.g. `genai_1::gemma-4-26b-a4b-it-4bit` this will resolve endpoint, ... from env
+	/// `GENAI_1_ENDPOINT`: required, e.g. `https://127.0.0.1:8989/v1`
+	/// `GENAI_1_API_KEY`: optional, e.g. `https://127.0.0.1:8989/v1`
+	/// For now, default to the "OpenAI" protocol, but will be able to set later.
+	#[display("genai_{_0}")]
+	Custom(u16),
 }
 
 /// Serialization/Parse implementations
@@ -165,6 +173,8 @@ impl AdapterKind {
 			AdapterKind::BedrockSigv4 => "BedrockSigv4",
 			AdapterKind::OpenRouter => "OpenRouter",
 			AdapterKind::MiniMax => "Minimax",
+
+			AdapterKind::Custom(_) => "Genai",
 		}
 	}
 
@@ -199,6 +209,8 @@ impl AdapterKind {
 			AdapterKind::BedrockSigv4 => "bedrock_sigv4",
 			AdapterKind::OpenRouter => "open_router",
 			AdapterKind::MiniMax => "minimax",
+
+			AdapterKind::Custom(_) => "Genai",
 		}
 	}
 
@@ -232,14 +244,23 @@ impl AdapterKind {
 			"bedrock_sigv4" => Some(AdapterKind::BedrockSigv4),
 			"open_router" => Some(AdapterKind::OpenRouter),
 			"minimax" => Some(AdapterKind::MiniMax),
-			_ => None,
+			name => {
+				if name.starts_with("genai_") {
+					name
+						.strip_prefix("genai_")
+						.and_then(|n| n.parse::<u16>().ok())
+						.map(AdapterKind::Custom)
+				} else {
+					None
+				}
+			}
 		}
 	}
 }
 
 /// Utilities
 impl AdapterKind {
-	/// Get the default key environment variable name for the adapter kind.
+	/// Get the default key environment variable name for the adapter kind (when statick)
 	pub fn default_key_env_name(&self) -> Option<&'static str> {
 		match self {
 			AdapterKind::OpenAI => OpenAIAdapter::DEFAULT_API_KEY_ENV_NAME,
@@ -270,6 +291,8 @@ impl AdapterKind {
 			AdapterKind::BedrockSigv4 => BedrockSigv4Adapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::OpenRouter => OpenRouterAdapter::DEFAULT_API_KEY_ENV_NAME,
 			AdapterKind::MiniMax => MinimaxAdapter::DEFAULT_API_KEY_ENV_NAME,
+
+			AdapterKind::Custom(_n) => None,
 		}
 	}
 }

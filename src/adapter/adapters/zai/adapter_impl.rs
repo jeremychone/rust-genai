@@ -22,7 +22,7 @@ impl ZaiModelEndpoint {
 		// Check if namespace is "zai_coding" to route to coding endpoint
 		let endpoint = match namespace {
 			Some(ZAI_CODING_NAMESPACE) => Endpoint::from_static("https://api.z.ai/api/coding/paas/v4/"),
-			_ => ZaiAdapter::default_endpoint(),
+			_ => ZaiAdapter::default_endpoint(AdapterKind::Zai),
 		};
 
 		Self { endpoint }
@@ -74,12 +74,12 @@ impl ZaiAdapter {
 impl Adapter for ZaiAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://api.z.ai/api/paas/v4/";
 		Endpoint::from_static(BASE_URL)
 	}
 
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		match Self::DEFAULT_API_KEY_ENV_NAME {
 			Some(env_name) => AuthData::from_env(env_name),
 			None => AuthData::None,

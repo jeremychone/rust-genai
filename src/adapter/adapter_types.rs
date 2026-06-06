@@ -11,9 +11,9 @@ use serde_json::Value;
 pub trait Adapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str>;
 
-	fn default_auth() -> AuthData;
+	fn default_auth(kind: AdapterKind) -> AuthData;
 
-	fn default_endpoint() -> Endpoint;
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint;
 
 	// NOTE: Adapter is a crate trait, so it is acceptable to use async fn here.
 	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>>;

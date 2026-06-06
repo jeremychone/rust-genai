@@ -30,12 +30,12 @@ impl BedrockSigv4Adapter {
 impl Adapter for BedrockSigv4Adapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = None;
 
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		let region = Self::resolve_region();
 		Endpoint::from_owned(Self::endpoint_for_region(&region))
 	}
 
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		// Credentials come from the AWS default chain at request time.
 		AuthData::None
 	}

@@ -22,7 +22,7 @@ pub struct BaiduAdapter;
 /// Namespace for Baidu coding plan models using OpenAI protocol
 pub const BAIDU_CODING_OPENAI_NAMESPACE: &str = "baidu-coding-openai";
 
-/// Namespace for Baidu coding plan models using Anthropic protocol  
+/// Namespace for Baidu coding plan models using Anthropic protocol
 pub const BAIDU_CODING_ANTHROPIC_NAMESPACE: &str = "baidu-coding-anthropic";
 
 /// Helper structure to hold Baidu model parsing information
@@ -52,7 +52,10 @@ impl BaiduModelEndpoint {
 				Endpoint::from_static("https://qianfan.baidubce.com/anthropic/coding/"),
 				BaiduProtocol::Anthropic,
 			),
-			_ => (BaiduAdapter::default_endpoint(), BaiduProtocol::OpenAI),
+			_ => (
+				BaiduAdapter::default_endpoint(AdapterKind::Baidu),
+				BaiduProtocol::OpenAI,
+			),
 		};
 
 		Self { endpoint, protocol }
@@ -201,13 +204,13 @@ impl Adapter for BaiduAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
 	/// Returns the default endpoint for Baidu Qianfan API
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://qianfan.baidubce.com/v2/";
 		Endpoint::from_static(BASE_URL)
 	}
 
 	/// Returns authentication data with API key from environment variable
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		match Self::DEFAULT_API_KEY_ENV_NAME {
 			Some(env_name) => AuthData::from_env(env_name),
 			None => AuthData::None,

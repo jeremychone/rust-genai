@@ -44,14 +44,14 @@ impl OpenCodeGoModelKind {
 impl Adapter for OpenCodeGoAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
-	fn default_auth() -> AuthData {
+	fn default_auth(_kind: AdapterKind) -> AuthData {
 		match Self::DEFAULT_API_KEY_ENV_NAME {
 			Some(env_name) => AuthData::from_env(env_name),
 			None => AuthData::None,
 		}
 	}
 
-	fn default_endpoint() -> Endpoint {
+	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		Endpoint::from_static("https://opencode.ai/zen/go/v1/")
 	}
 
@@ -205,7 +205,7 @@ mod tests {
 
 	fn test_target(model_name: &str) -> ServiceTarget {
 		ServiceTarget {
-			endpoint: OpenCodeGoAdapter::default_endpoint(),
+			endpoint: OpenCodeGoAdapter::default_endpoint(AdapterKind::OpenCodeGo),
 			auth: AuthData::from_single("test-key"),
 			model: ModelIden::new(AdapterKind::OpenCodeGo, model_name),
 		}

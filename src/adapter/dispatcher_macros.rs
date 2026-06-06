@@ -128,6 +128,11 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::open_router::[<OpenRouter Adapter>];
 				$body
 			}
+
+			crate::adapter::AdapterKind::Custom(_) => {
+				type A = crate::adapter::adapters::custom::[<Custom Adapter>];
+				$body
+			}
 		}
 	};
 }
