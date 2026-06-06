@@ -2,7 +2,7 @@
 //! API Documentation: <https://platform.openai.com/docs/api-reference/embeddings>
 
 use crate::adapter::adapters::support::get_api_key;
-use crate::adapter::{Adapter, ServiceType, WebRequestData};
+use crate::adapter::{Adapter, ServiceType, WebRequestData, adapters};
 use crate::chat::Usage;
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse, Embedding};
 use crate::webc::WebResponse;
@@ -99,7 +99,7 @@ pub fn to_embed_request_data(
 	})?;
 
 	// Get the service URL
-	let url = <crate::adapter::openai::OpenAIAdapter as Adapter>::get_service_url(
+	let url = <adapters::openai::OpenAIAdapter as Adapter>::get_service_url(
 		&model,
 		ServiceType::Embed,
 		service_target.endpoint,

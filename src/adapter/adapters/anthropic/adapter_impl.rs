@@ -1,5 +1,5 @@
+use super::AnthropicStreamer;
 use crate::ModelIden;
-use crate::adapter::anthropic::AnthropicStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};

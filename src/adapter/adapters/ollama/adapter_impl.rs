@@ -1,9 +1,8 @@
 //! API DOC: <https://github.com/ollama/ollama/blob/main/docs/api.md>
 
-use super::adapter_shared::OllamaRequestParts;
+use super::{OllamaRequestParts, OllamaStreamer};
 use crate::Headers;
 use crate::Result;
-use crate::adapter::ollama::OllamaStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse, MessageContent, StopReason, ToolCall,

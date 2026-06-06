@@ -167,11 +167,8 @@ pub fn to_embed_request_data(
 	};
 
 	// Get the service URL and modify it for batch requests
-	let mut url = <crate::adapter::gemini::GeminiAdapter as Adapter>::get_service_url(
-		&model,
-		ServiceType::Embed,
-		service_target.endpoint,
-	)?;
+	let mut url =
+		<super::GeminiAdapter as Adapter>::get_service_url(&model, ServiceType::Embed, service_target.endpoint)?;
 
 	// For batch requests, change :embedContent to :batchEmbedContents
 	if is_batch {

@@ -1,4 +1,4 @@
-use crate::adapter::openai_resp::resp_types::RespUsage;
+use super::RespUsage;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde_as, skip_serializing_none};

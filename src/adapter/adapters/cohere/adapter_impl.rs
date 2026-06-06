@@ -1,5 +1,5 @@
+use crate::adapter::adapters::cohere::CohereStreamer;
 use crate::adapter::adapters::support::get_api_key;
-use crate::adapter::cohere::CohereStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, StopReason,

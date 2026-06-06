@@ -1,8 +1,8 @@
 //! This is support implementation of the Ollama Adapter which can also be called by other Ollama Adapter Variants
 
+use super::OllamaAdapter;
 use crate::Headers;
 use crate::adapter::AdapterKind;
-use crate::adapter::ollama::OllamaAdapter;
 use crate::chat::{Binary, BinarySource, ChatRequest, ContentPart, Tool, ToolName, Usage};
 use crate::resolver::Endpoint;
 use crate::{Error, Result};

@@ -1,7 +1,6 @@
+use super::{OpenAIRespStreamer, RespResponse};
+use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::support::get_api_key;
-use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::openai_resp::OpenAIRespStreamer;
-use crate::adapter::openai_resp::resp_types::RespResponse;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,

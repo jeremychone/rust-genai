@@ -1,6 +1,6 @@
+use crate::adapter::adapters::anthropic::{AnthropicAdapter, AnthropicRequestParts};
+use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::support::get_api_key;
-use crate::adapter::anthropic::{AnthropicAdapter, AnthropicRequestParts};
-use crate::adapter::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};

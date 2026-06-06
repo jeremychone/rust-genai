@@ -1,5 +1,5 @@
+use crate::adapter::adapters::cohere::CohereAdapter;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
-use crate::adapter::cohere::CohereAdapter;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, StopReason};
 use crate::webc::WebStream;

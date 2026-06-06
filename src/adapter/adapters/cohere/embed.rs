@@ -137,7 +137,7 @@ pub fn to_embed_request_data(
 	})?;
 
 	// Get the service URL
-	let url = <crate::adapter::cohere::CohereAdapter as Adapter>::get_service_url(
+	let url = <crate::adapter::adapters::cohere::CohereAdapter as Adapter>::get_service_url(
 		&model,
 		ServiceType::Embed,
 		service_target.endpoint,

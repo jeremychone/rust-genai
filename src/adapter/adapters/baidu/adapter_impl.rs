@@ -1,7 +1,7 @@
 // region:    --- BaiduAdapter
 
-use crate::adapter::anthropic::AnthropicAdapter;
-use crate::adapter::openai::OpenAIAdapter;
+use crate::adapter::adapters::anthropic::AnthropicAdapter;
+use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};

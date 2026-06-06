@@ -16,7 +16,7 @@ mod dispatcher;
 mod dispatcher_macros;
 
 // -- Flatten (private, crate, public)
-use adapters::*;
+// use adapters::*;
 
 pub(crate) use adapter_types::*;
 pub(crate) use dispatcher::*;

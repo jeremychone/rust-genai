@@ -1,6 +1,6 @@
+use super::AnthropicAdapter;
 use crate::Result;
 use crate::adapter::adapters::support::get_api_key;
-use crate::adapter::anthropic::AnthropicAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,

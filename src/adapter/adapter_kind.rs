@@ -1,32 +1,33 @@
+use crate::adapter::Adapter as _;
 use crate::adapter::adapters::aihubmix::AihubmixAdapter;
+use crate::adapter::adapters::aliyun::AliyunAdapter;
+use crate::adapter::adapters::anthropic::AnthropicAdapter;
 use crate::adapter::adapters::baidu::BAIDU_CODING_ANTHROPIC_NAMESPACE;
 use crate::adapter::adapters::baidu::BAIDU_CODING_OPENAI_NAMESPACE;
+use crate::adapter::adapters::baidu::BaiduAdapter;
 use crate::adapter::adapters::bedrock::BedrockApiAdapter;
+use crate::adapter::adapters::bigmodel::BigModelAdapter;
+use crate::adapter::adapters::cohere::CohereAdapter;
+use crate::adapter::adapters::deepseek::DeepSeekAdapter;
+use crate::adapter::adapters::fireworks::FireworksAdapter;
+use crate::adapter::adapters::gemini::GeminiAdapter;
 use crate::adapter::adapters::github_copilot::GithubCopilotAdapter;
+use crate::adapter::adapters::groq::GroqAdapter;
+use crate::adapter::adapters::mimo::MimoAdapter;
 use crate::adapter::adapters::minimax::MinimaxAdapter;
+use crate::adapter::adapters::moonshot::MoonshotAdapter;
+use crate::adapter::adapters::nebius::NebiusAdapter;
 use crate::adapter::adapters::ollama::OllamaAdapter;
 use crate::adapter::adapters::ollama_cloud::OllamaCloudAdapter;
 use crate::adapter::adapters::open_router::OpenRouterAdapter;
+use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::openai_resp::OpenAIRespAdapter;
 use crate::adapter::adapters::opencode_go::OpenCodeGoAdapter;
 use crate::adapter::adapters::together::TogetherAdapter;
+use crate::adapter::adapters::vertex::VertexAdapter;
+use crate::adapter::adapters::xai::XaiAdapter;
+use crate::adapter::adapters::zai;
 use crate::adapter::adapters::zai::ZaiAdapter;
-use crate::adapter::aliyun::AliyunAdapter;
-use crate::adapter::anthropic::AnthropicAdapter;
-use crate::adapter::baidu::BaiduAdapter;
-use crate::adapter::bigmodel::BigModelAdapter;
-use crate::adapter::cohere::CohereAdapter;
-use crate::adapter::deepseek::DeepSeekAdapter;
-use crate::adapter::fireworks::FireworksAdapter;
-use crate::adapter::gemini::GeminiAdapter;
-use crate::adapter::groq::GroqAdapter;
-use crate::adapter::mimo::MimoAdapter;
-use crate::adapter::moonshot::MoonshotAdapter;
-use crate::adapter::nebius::NebiusAdapter;
-use crate::adapter::openai::OpenAIAdapter;
-use crate::adapter::vertex::VertexAdapter;
-use crate::adapter::xai::XaiAdapter;
-use crate::adapter::{Adapter as _, zai};
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -133,8 +134,8 @@ pub enum AdapterKind {
 
 	/// Those are the Custom Adapter triggered by the `genai_` prefix namespaced
 	/// e.g. `genai_1::gemma-4-26b-a4b-it-4bit` this will resolve endpoint, ... from env
-	/// `GENAI_1_ENDPOINT`: required, e.g. `https://127.0.0.1:8989/v1`
-	/// `GENAI_1_API_KEY`: optional, e.g. `https://127.0.0.1:8989/v1`
+	/// `GENAI_1_ENDPOINT`: required, e.g. `https://127.0.0.1:8000/v1`
+	/// `GENAI_1_API_KEY`: optional, e.g. `welcome`
 	/// For now, default to the "OpenAI" protocol, but will be able to set later.
 	#[display("genai_{_0}")]
 	Custom(u16),
@@ -246,8 +247,7 @@ impl AdapterKind {
 			"minimax" => Some(AdapterKind::MiniMax),
 			name => {
 				if name.starts_with("genai_") {
-					name
-						.strip_prefix("genai_")
+					name.strip_prefix("genai_")
 						.and_then(|n| n.parse::<u16>().ok())
 						.map(AdapterKind::Custom)
 				} else {

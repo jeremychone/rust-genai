@@ -1,6 +1,6 @@
+use crate::adapter::adapters::anthropic::{AnthropicAdapter, AnthropicRequestParts};
+use crate::adapter::adapters::gemini::GeminiAdapter;
 use crate::adapter::adapters::support::get_api_key;
-use crate::adapter::anthropic::{AnthropicAdapter, AnthropicRequestParts};
-use crate::adapter::gemini::GeminiAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};

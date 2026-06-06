@@ -1,4 +1,4 @@
-use crate::adapter::anthropic::{AnthropicAdapter, AnthropicStreamer};
+use crate::adapter::adapters::anthropic::{AnthropicAdapter, AnthropicStreamer};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};

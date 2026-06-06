@@ -20,7 +20,7 @@ macro_rules! dispatch_adapter {
 	($kind:expr, $body:expr) => {
 		match $kind {
 			crate::adapter::AdapterKind::OpenAI => {
-				type A = crate::adapter::openai::[<OpenAI Adapter>];
+				type A = crate::adapter::adapters::openai::[<OpenAI Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::OpenAIResp => {
@@ -28,15 +28,15 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::Gemini => {
-				type A = crate::adapter::gemini::[<Gemini Adapter>];
+				type A = crate::adapter::adapters::gemini::[<Gemini Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Anthropic => {
-				type A = crate::adapter::anthropic::[<Anthropic Adapter>];
+				type A = crate::adapter::adapters::anthropic::[<Anthropic Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Fireworks => {
-				type A = crate::adapter::fireworks::[<Fireworks Adapter>];
+				type A = crate::adapter::adapters::fireworks::[<Fireworks Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Together => {
@@ -44,7 +44,7 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::Groq => {
-				type A = crate::adapter::groq::[<Groq Adapter>];
+				type A = crate::adapter::adapters::groq::[<Groq Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Aihubmix => {
@@ -52,11 +52,11 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::Moonshot => {
-				type A = crate::adapter::moonshot::[<Moonshot Adapter>];
+				type A = crate::adapter::adapters::moonshot::[<Moonshot Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Mimo => {
-				type A = crate::adapter::mimo::[<Mimo Adapter>];
+				type A = crate::adapter::adapters::mimo::[<Mimo Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::MiniMax => {
@@ -64,15 +64,15 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::Nebius => {
-				type A = crate::adapter::nebius::[<Nebius Adapter>];
+				type A = crate::adapter::adapters::nebius::[<Nebius Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Xai => {
-				type A = crate::adapter::xai::[<Xai Adapter>];
+				type A = crate::adapter::adapters::xai::[<Xai Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::DeepSeek => {
-				type A = crate::adapter::deepseek::[<DeepSeek Adapter>];
+				type A = crate::adapter::adapters::deepseek::[<DeepSeek Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Zai => {
@@ -80,19 +80,19 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::BigModel => {
-				type A = crate::adapter::bigmodel::[<BigModel Adapter>];
+				type A = crate::adapter::adapters::bigmodel::[<BigModel Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Aliyun => {
-				type A = crate::adapter::aliyun::[<Aliyun Adapter>];
+				type A = crate::adapter::adapters::aliyun::[<Aliyun Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Baidu => {
-				type A = crate::adapter::baidu::[<Baidu Adapter>];
+				type A = crate::adapter::adapters::baidu::[<Baidu Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Cohere => {
-				type A = crate::adapter::cohere::[<Cohere Adapter>];
+				type A = crate::adapter::adapters::cohere::[<Cohere Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Ollama => {
@@ -104,7 +104,7 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::Vertex => {
-				type A = crate::adapter::vertex::[<Vertex Adapter>];
+				type A = crate::adapter::adapters::vertex::[<Vertex Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::GithubCopilot => {

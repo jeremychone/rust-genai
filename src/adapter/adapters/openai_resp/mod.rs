@@ -8,6 +8,8 @@ mod adapter_impl;
 mod resp_types;
 mod streamer;
 
+use resp_types::*;
+
 pub use adapter_impl::*;
 pub use streamer::*;
 
