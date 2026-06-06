@@ -675,6 +675,35 @@ Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `f
 - **Ollama Fallback**: Unrecognized non-namespaced names default to `Ollama` adapter (localhost:11434).
 - **Reasoning Normalization**: Automatic extraction for DeepSeek/Ollama `<think>` blocks when `normalize_reasoning_content` is enabled.
 
+### Custom Adapter
+
+The `genai_{n}::` namespace (e.g., `genai_1::my-model`) provides a built-in mechanism to add custom OpenAI-compatible
+(and later, other protocol) endpoints without writing an adapter. Since v0.7.0-beta.
+
+- **Endpoint**: Required base URL set via `GENAI_{n}_ENDPOINT`. Must include the path (e.g., `https://my-api.example.com/v1/`).
+  If the URL does not end with `/`, one is appended automatically.
+- **Auth**: Optional API key set via `GENAI_{n}_API_KEY`. If omitted, no authentication header is sent (useful for local unauthenticated endpoints).
+- **Default protocol**: Currently defaults to the **OpenAI** Chat Completions protocol. The built-in custom adapter delegates
+  to the OpenAI adapter, so the target service must be OpenAI-compatible.
+
+Example:
+
+```rust
+use genai::Client;
+
+let client = Client::default();
+// Set environment variables:
+//   GENAI_1_ENDPOINT=https://my-api.example.com/v1/
+//   GENAI_1_API_KEY=sk-...
+let chat_res = client.exec_chat("genai_1::some-model", chat_req, None).await?;
+```
+
+- **Number range**: The `n` in `genai_{n}` is a `u16` (0..65535). Multiple custom endpoints can be defined by using different numbers.
+- **Advanced configuration**: For non-OpenAI protocols, custom resolvers, or fine-grained control, consider implementing a
+  custom adapter or using the [`ServiceTargetResolver`](#servicetargetresolver) directly.
+
+
+
 ## Error Handling
 
 - `genai::Error`: Main error enum. Variants:
