@@ -138,7 +138,7 @@ pub enum AdapterKind {
 	/// `GENAI_1_API_KEY`: optional, e.g. `welcome`
 	/// For now, default to the "OpenAI" protocol, but will be able to set later.
 	#[display("genai_{_0}")]
-	Custom(u16),
+	Custom(u8),
 }
 
 /// Serialization/Parse implementations
@@ -248,7 +248,7 @@ impl AdapterKind {
 			name => {
 				if name.starts_with("genai_") {
 					name.strip_prefix("genai_")
-						.and_then(|n| n.parse::<u16>().ok())
+						.and_then(|n| n.parse::<u8>().ok())
 						.map(AdapterKind::Custom)
 				} else {
 					None

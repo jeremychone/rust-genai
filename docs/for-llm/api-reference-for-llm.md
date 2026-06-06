@@ -698,11 +698,9 @@ let client = Client::default();
 let chat_res = client.exec_chat("genai_1::some-model", chat_req, None).await?;
 ```
 
-- **Number range**: The `n` in `genai_{n}` is a `u16` (0..65535). Multiple custom endpoints can be defined by using different numbers.
+- **Number range**: The `n` in `genai_{n}` is a `u8` (0..255). Multiple custom endpoints can be defined by using different numbers.
 - **Advanced configuration**: For non-OpenAI protocols, custom resolvers, or fine-grained control, consider implementing a
   custom adapter or using the [`ServiceTargetResolver`](#servicetargetresolver) directly.
-
-
 
 ## Error Handling
 

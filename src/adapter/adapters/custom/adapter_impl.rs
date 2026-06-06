@@ -17,7 +17,7 @@ pub struct CustomAdapter;
 
 impl CustomAdapter {
 	/// Returns the endpoint for a custom adapter number `n` from the environment variable `GENAI_{n}_ENDPOINT`.
-	pub fn get_endpoint(n: u16) -> Option<Endpoint> {
+	pub fn get_endpoint(n: u8) -> Option<Endpoint> {
 		let env_name = format!("GENAI_{}_ENDPOINT", n);
 
 		// making sure it ends with `/` as expected by the adapters
@@ -31,7 +31,7 @@ impl CustomAdapter {
 
 	/// Returns the auth for a custom adapter number `n` from the environment variable `GENAI_{n}_API_KEY`.
 	/// Returns `None` if the environment variable is not set.
-	pub fn get_auth(n: u16) -> Option<AuthData> {
+	pub fn get_auth(n: u8) -> Option<AuthData> {
 		let env_name = format!("GENAI_{}_API_KEY", n);
 		std::env::var(&env_name).ok().map(|_| AuthData::from_env(env_name))
 	}
