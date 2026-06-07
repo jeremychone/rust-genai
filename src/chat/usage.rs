@@ -12,7 +12,7 @@ use serde_with::{serde_as, skip_serializing_none};
 ///   `completion_tokens_details.reasoning_tokens = thoughts_token_count`.
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Usage {
 	/// Total input tokens (formerly `input_tokens`).
 	pub prompt_tokens: Option<i32>,
@@ -43,7 +43,7 @@ impl Usage {
 /// Breakdown of cache creation tokens by TTL.
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CacheCreationDetails {
 	/// Tokens written to 5-minute ephemeral cache.
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
@@ -62,7 +62,7 @@ impl CacheCreationDetails {
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PromptTokensDetails {
 	/// Anthropic: `cache_creation_input_tokens`.
 	/// Tokens used to build the cache (not yet cached). These may incur a small surcharge; subsequent requests benefit via `cached_tokens`.
@@ -90,7 +90,7 @@ impl PromptTokensDetails {
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompletionTokensDetails {
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
 	pub accepted_prediction_tokens: Option<i32>,
