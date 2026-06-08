@@ -1,4 +1,5 @@
 use super::{ToolConfig, ToolName};
+use crate::chat::CacheControl;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -47,6 +48,11 @@ pub struct Tool {
 	///
 	/// Useful with embedded provider tools (e.g., Google Search for Gemini).
 	pub config: Option<ToolConfig>,
+
+	/// Optional cache control hint for prompt caching.
+	/// Anthropic: set on the last tool to cache the entire tool list prefix.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub cache_control: Option<CacheControl>,
 }
 
 /// Computed accessors
@@ -90,6 +96,7 @@ impl Tool {
 			schema: None,
 			strict: None,
 			config: None,
+			cache_control: None,
 		}
 	}
 
@@ -124,6 +131,13 @@ impl Tool {
 	/// Set provider-specific configuration (if any). Returns self for chaining.
 	pub fn with_config(mut self, config: impl Into<ToolConfig>) -> Self {
 		self.config = Some(config.into());
+		self
+	}
+
+	/// Set cache control for prompt caching. Returns self for chaining.
+	/// On Anthropic, set this on the last tool to cache the entire tool list prefix.
+	pub fn with_cache_control(mut self, cache_control: impl Into<CacheControl>) -> Self {
+		self.cache_control = Some(cache_control.into());
 		self
 	}
 }

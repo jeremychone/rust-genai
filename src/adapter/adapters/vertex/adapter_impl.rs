@@ -246,7 +246,7 @@ impl VertexAdapter {
 			system,
 			messages,
 			tools,
-		} = AnthropicAdapter::into_anthropic_request_parts(chat_req)?;
+		} = AnthropicAdapter::into_anthropic_request_parts(chat_req, options_set.cache_control().cloned())?;
 
 		// Vertex Anthropic: model is in URL, not body; anthropic_version goes in body
 		let stream = matches!(service_type, ServiceType::ChatStream);
