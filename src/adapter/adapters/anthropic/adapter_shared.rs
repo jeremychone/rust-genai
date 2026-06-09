@@ -29,6 +29,7 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 // fall back
 pub(in crate::adapter::adapters) const MAX_TOKENS_64K: u32 = 64000; // claude-opus-4-5 claude-sonnet... (4 and above), claude-haiku..., claude-3-7-sonnet,
 // custom
+pub(in crate::adapter::adapters) const MAX_TOKENS_128K: u32 = 128000; // claude-opus-4-8 fable mythos
 pub(in crate::adapter::adapters) const MAX_TOKENS_32K: u32 = 32000; // claude-opus-4
 pub(in crate::adapter::adapters) const MAX_TOKENS_8K: u32 = 8192; // claude-3-5-sonnet, claude-3-5-haiku
 pub(in crate::adapter::adapters) const MAX_TOKENS_4K: u32 = 4096; // claude-3-opus, claude-3-haiku
@@ -40,7 +41,10 @@ impl AnthropicAdapter {
 	pub(in crate::adapter::adapters) fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
 		options_set.max_tokens().unwrap_or_else(|| {
 			// most likely models used, so put first. Also a little wider with `claude-sonnet` (since name from version 4)
-			if model_name.contains("claude-sonnet")
+			if is_fable_or_mythos(model_name) {
+				// TODO: Opus 4.8 should be here as well
+				MAX_TOKENS_128K
+			} else if model_name.contains("claude-sonnet")
 				|| model_name.contains("claude-haiku")
 				|| model_name.contains("claude-3-7-sonnet")
 				|| model_name.contains("claude-opus-4-5")
@@ -701,20 +705,13 @@ pub(in crate::adapter) struct AnthropicRequestParts {
 
 // region:    --- Reasoning Support
 
-const REASONING_LOW: u32 = 1024;
-const REASONING_MEDIUM: u32 = 8000;
-const REASONING_HIGH: u32 = 24000;
-
-// NOTE: These are opt-ins for now and can become defaults once support is broader.
-// See effort doc: https://platform.claude.com/docs/en/build-with-claude/effort
-const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5"];
-const SUPPORT_REASONING_MAX_MODELS: &[&str] = &["claude-opus-4-6"];
-// See adaptive thinking doc: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
-const SUPPORT_ADAPTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6"];
-
 fn has_model(model_prefixes: &[&str], model_name: &str) -> bool {
 	model_prefixes.iter().any(|prefix| model_name.contains(prefix))
 }
+
+const REASONING_LOW: u32 = 1024;
+const REASONING_MEDIUM: u32 = 8000;
+const REASONING_HIGH: u32 = 24000;
 
 fn insert_anthropic_reasoning(
 	payload: &mut Value,
@@ -793,16 +790,29 @@ fn insert_anthropic_reasoning(
 	Ok(())
 }
 
+// NOTE: Adaptiive are opt-ins for now and can become defaults once support is broader.
+// See adaptive thinking doc: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
+
 fn supports_anthropic_effort(model_name: &str) -> bool {
-	has_model(SUPPORT_EFFORT_MODELS, model_name) || is_opus_4_7_or_higher(model_name)
+	const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5"];
+
+	has_model(SUPPORT_EFFORT_MODELS, model_name) || is_fable_or_mythos(model_name) || is_opus_4_7_or_higher(model_name)
 }
 
 fn supports_anthropic_reasoning_max(model_name: &str) -> bool {
-	has_model(SUPPORT_REASONING_MAX_MODELS, model_name) || is_opus_4_7_or_higher(model_name)
+	const SUPPORT_REASONING_MAX_MODELS: &[&str] = &["claude-opus-4-6"];
+
+	has_model(SUPPORT_REASONING_MAX_MODELS, model_name)
+		|| is_fable_or_mythos(model_name)
+		|| is_opus_4_7_or_higher(model_name)
 }
 
 fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
-	has_model(SUPPORT_ADAPTIVE_THINK_MODELS, model_name) || is_opus_4_7_or_higher(model_name)
+	const SUPPORT_ADAPTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6"];
+
+	has_model(SUPPORT_ADAPTIVE_THINK_MODELS, model_name)
+		|| is_fable_or_mythos(model_name)
+		|| is_opus_4_7_or_higher(model_name)
 }
 
 // endregion: --- Reasoning Support
@@ -830,6 +840,10 @@ fn is_opus_4_7_or_higher(model_name: &str) -> bool {
 		(Some(major), Some(minor)) => (major, minor) >= (4, 7),
 		_ => false,
 	}
+}
+
+fn is_fable_or_mythos(model_name: &str) -> bool {
+	model_name.contains("fable") || model_name.contains("mythos")
 }
 
 // endregion: --- Model Name Support
