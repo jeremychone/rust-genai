@@ -21,6 +21,10 @@ pub mod embed;
 pub mod resolver;
 pub mod webc;
 
+// -- OpenTelemetry GenAI instrumentation (feature `otel`, off by default)
+#[cfg(feature = "otel")]
+pub mod otel;
+
 // endregion: --- Modules
 
 // region:    --- TLS Backend Guard
