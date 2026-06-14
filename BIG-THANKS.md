@@ -4,6 +4,13 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
+## v0.7.0-beta.x
+
+ - [holovskyi](https://github.com/holovskyi) 
+  - #245 fix(anthropic): propagate mid-stream error events
+- [Alb-O](https://github.com/Alb-O)
+  - #243 derive PartialEq/Eq for Usage and nested structs
+
 ## v0.6.0..0.6.x
 
 - [ropoctl](https://github.com/ropoctl)
