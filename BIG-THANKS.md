@@ -6,10 +6,10 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.0-beta.x
 
- - [holovskyi](https://github.com/holovskyi) 
-  - #245 fix(anthropic): propagate mid-stream error events
+- [holovskyi](https://github.com/holovskyi) 
+  - [#245](https://github.com/jeremychone/rust-genai/pull/245) fix(anthropic): propagate mid-stream error events
 - [Alb-O](https://github.com/Alb-O)
-  - #243 derive PartialEq/Eq for Usage and nested structs
+  - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 
 ## v0.6.0..0.6.x
 
