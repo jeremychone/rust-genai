@@ -6,6 +6,8 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.0-beta.x
 
+- [coaoac](https://github.com/coaoac)
+  - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
 - [holovskyi](https://github.com/holovskyi) 
   - [#245](https://github.com/jeremychone/rust-genai/pull/245) fix(anthropic): propagate mid-stream error events
 - [Alb-O](https://github.com/Alb-O)
