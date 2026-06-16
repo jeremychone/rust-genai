@@ -10,11 +10,30 @@ type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>
 /// A stream of chat events produced by a streaming chat request.
 pub struct ChatStream {
 	inter_stream: InterStreamType,
+
+	/// OTel span state for the streaming operation (feature `otel`).
+	/// Set by `Client::exec_chat_stream` so the span covers the full stream
+	/// lifetime and records time-to-first-chunk and the captured end attributes.
+	#[cfg(feature = "otel")]
+	otel: Option<OtelStreamState>,
+}
+
+/// Per-stream OTel state: the operation span, the issuance instant (for
+/// time-to-first-chunk), and whether the first chunk was already recorded.
+#[cfg(feature = "otel")]
+struct OtelStreamState {
+	span: tracing::Span,
+	start: std::time::Instant,
+	first_chunk_recorded: bool,
 }
 
 impl ChatStream {
 	pub(crate) fn new(inter_stream: InterStreamType) -> Self {
-		ChatStream { inter_stream }
+		ChatStream {
+			inter_stream,
+			#[cfg(feature = "otel")]
+			otel: None,
+		}
 	}
 
 	pub(crate) fn from_inter_stream<T>(inter_stream: T) -> Self
@@ -23,6 +42,18 @@ impl ChatStream {
 	{
 		let boxed_stream: InterStreamType = Box::pin(inter_stream);
 		ChatStream::new(boxed_stream)
+	}
+
+	/// Attaches the OTel operation span, starting the time-to-first-chunk clock.
+	/// The span stays open until the stream is fully consumed or dropped.
+	#[cfg(feature = "otel")]
+	pub(crate) fn with_otel_span(mut self, span: tracing::Span) -> Self {
+		self.otel = Some(OtelStreamState {
+			span,
+			start: std::time::Instant::now(),
+			first_chunk_recorded: false,
+		});
+		self
 	}
 }
 
@@ -50,9 +81,35 @@ impl Stream for ChatStream {
 					}
 					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 				};
+
+				// -- OTel: record time-to-first-chunk on the first content chunk, and the
+				//          captured usage/finish/content on the end event.
+				#[cfg(feature = "otel")]
+				if let Some(otel) = this.otel.as_mut() {
+					match &chat_event {
+						ChatStreamEvent::Chunk(_) | ChatStreamEvent::ReasoningChunk(_) => {
+							if !otel.first_chunk_recorded {
+								otel.first_chunk_recorded = true;
+								let seconds = otel.start.elapsed().as_secs_f64();
+								crate::otel::span::record_time_to_first_chunk(&otel.span, seconds);
+							}
+						}
+						ChatStreamEvent::End(stream_end) => {
+							crate::otel::span::record_stream_end(&otel.span, stream_end);
+						}
+						_ => {}
+					}
+				}
+
 				Poll::Ready(Some(Ok(chat_event)))
 			}
-			Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
+			Poll::Ready(Some(Err(e))) => {
+				#[cfg(feature = "otel")]
+				if let Some(otel) = this.otel.as_ref() {
+					crate::otel::span::record_error(&otel.span, &e);
+				}
+				Poll::Ready(Some(Err(e)))
+			}
 			Poll::Ready(None) => Poll::Ready(None),
 			Poll::Pending => Poll::Pending,
 		}

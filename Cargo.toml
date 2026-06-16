@@ -41,6 +41,15 @@ bedrock-sigv4 = [
 	"dep:aws-sigv4",
 ]
 
+# OpenTelemetry GenAI instrumentation (OFF by default).
+# Emits `gen_ai.*` tracing spans following the OpenTelemetry GenAI semantic
+# conventions (see docs/otel.md). This is a pure tracing-bridge: it only uses
+# the `tracing` crate (already a dependency) and adds no extra dependencies.
+# Bring your own OpenTelemetry pipeline in the application (e.g. wire
+# `tracing-opentelemetry` onto a `tracing-subscriber` registry) to export the
+# spans; genai records to whatever `tracing` subscriber is installed.
+otel = []
+
 [dependencies]
 # -- Tracing
 tracing = { version = "0.1", features = ["default"] }
@@ -70,6 +79,11 @@ regex = "1"
 aws-config = { version = "1", optional = true }
 aws-credential-types = { version = "1", optional = true }
 aws-sigv4 = { version = "1", optional = true }
+
+# The OTel example references `genai::otel`, so it only builds with the feature on.
+[[example]]
+name = "c12-otel"
+required-features = ["otel"]
 
 [dev-dependencies]
 simple-fs = "0.12"
