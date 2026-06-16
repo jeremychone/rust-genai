@@ -640,6 +640,7 @@ impl AnthropicAdapter {
 			schema,
 			config,
 			cache_control,
+			eager_input_streaming,
 			..
 		} = tool;
 
@@ -686,6 +687,10 @@ impl AnthropicAdapter {
 			if let Some(description) = description {
 				// TODO: need to handle error
 				let _ = tool_value.x_insert("description", description);
+			}
+			// Anthropic fine-grained tool streaming (GA): opt-in per tool.
+			if eager_input_streaming == Some(true) {
+				let _ = tool_value.x_insert("eager_input_streaming", true);
 			}
 		}
 
@@ -997,6 +1002,36 @@ mod tests {
 			output_config.get("format").and_then(|f| f.get("type")).and_then(|v| v.as_str()),
 			Some("json_schema"),
 			"format.type must be present in output_config"
+		);
+	}
+
+	#[test]
+	fn test_tool_eager_input_streaming_serializes() {
+		// with_eager_input_streaming(true) → the tool carries `eager_input_streaming: true`
+		// (Anthropic fine-grained tool streaming, GA — opt-in per tool).
+		let tool = Tool::new("manage_calendar")
+			.with_schema(json!({"type": "object", "properties": {}}))
+			.with_eager_input_streaming(true);
+		let req = ChatRequest::from_user("hi").with_tools(vec![tool]);
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			req,
+			ChatOptionsSet::default().with_chat_options(None),
+		)
+		.expect("to_web_request_data should succeed");
+
+		let tools = web_req.payload.get("tools").and_then(|t| t.as_array()).expect("tools array");
+		assert_eq!(
+			tools[0].get("eager_input_streaming").and_then(|v| v.as_bool()),
+			Some(true),
+			"eager_input_streaming must serialize onto the tool"
 		);
 	}
 
