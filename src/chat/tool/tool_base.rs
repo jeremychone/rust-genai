@@ -53,6 +53,12 @@ pub struct Tool {
 	/// Anthropic: set on the last tool to cache the entire tool list prefix.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub cache_control: Option<CacheControl>,
+
+	/// Anthropic fine-grained tool streaming (GA): when `true`, sets
+	/// `eager_input_streaming` on the tool so the provider streams tool-call
+	/// input without server-side JSON buffering (token-granular `input_json_delta`).
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub eager_input_streaming: Option<bool>,
 }
 
 /// Computed accessors
@@ -97,6 +103,7 @@ impl Tool {
 			strict: None,
 			config: None,
 			cache_control: None,
+			eager_input_streaming: None,
 		}
 	}
 
@@ -138,6 +145,14 @@ impl Tool {
 	/// On Anthropic, set this on the last tool to cache the entire tool list prefix.
 	pub fn with_cache_control(mut self, cache_control: impl Into<CacheControl>) -> Self {
 		self.cache_control = Some(cache_control.into());
+		self
+	}
+
+	/// Enable Anthropic fine-grained tool streaming (`eager_input_streaming`).
+	/// The provider streams tool-call input without buffering the full JSON —
+	/// useful for rendering tool arguments progressively as they arrive.
+	pub fn with_eager_input_streaming(mut self, eager: bool) -> Self {
+		self.eager_input_streaming = Some(eager);
 		self
 	}
 }
