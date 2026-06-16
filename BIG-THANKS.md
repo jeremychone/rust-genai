@@ -6,6 +6,8 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.0-beta.x
 
+- [anagrius](https://github.com/anagrius)
+  - [#244](https://github.com/jeremychone/rust-genai/pull/244) feat(otel): optional OpenTelemetry GenAI instrumentation (feature `otel`)
 - [coaoac](https://github.com/coaoac)
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
 - [holovskyi](https://github.com/holovskyi) 
