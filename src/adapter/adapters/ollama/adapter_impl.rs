@@ -9,7 +9,7 @@ use crate::chat::{
 };
 use crate::embed::{EmbedResponse, Embedding};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Value, json};
@@ -34,8 +34,8 @@ impl Adapter for OllamaAdapter {
 		}
 	}
 
-	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
-		Self::list_model_names(adapter_kind, endpoint, Headers::default()).await
+	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, _auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+		Self::list_model_names(adapter_kind, endpoint, Headers::default(), web_client).await
 	}
 
 	fn get_service_url(_model_iden: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {

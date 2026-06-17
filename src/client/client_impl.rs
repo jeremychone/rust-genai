@@ -38,7 +38,7 @@ impl Client {
 			}
 		};
 
-		let models = AdapterDispatcher::all_model_names(adapter_kind, endpoint, auth).await?;
+		let models = AdapterDispatcher::all_model_names(adapter_kind, endpoint, auth, self.web_client()).await?;
 		Ok(models)
 	}
 

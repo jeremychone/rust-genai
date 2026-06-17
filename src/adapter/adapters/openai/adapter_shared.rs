@@ -8,6 +8,7 @@ use crate::chat::{
 	ReasoningEffort, ToolChoice, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
+use crate::webc::WebClient;
 use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use serde_json::{Value, json};
@@ -455,6 +456,7 @@ impl OpenAIAdapter {
 		kind: AdapterKind,
 		endpoint: Endpoint,
 		auth: AuthData,
+		web_client: &WebClient,
 	) -> Result<Vec<String>> {
 		// -- url
 		let base_url = endpoint.base_url();
@@ -467,8 +469,7 @@ impl OpenAIAdapter {
 			.unwrap_or_default();
 
 		// -- Exec request
-		let web_c = crate::webc::WebClient::default();
-		let mut res = web_c.do_get(&url, &headers).await.map_err(|webc_error| Error::WebAdapterCall {
+		let mut res = web_client.do_get(&url, &headers).await.map_err(|webc_error| Error::WebAdapterCall {
 			adapter_kind: kind,
 			webc_error,
 		})?;

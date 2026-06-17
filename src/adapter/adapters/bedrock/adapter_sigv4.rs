@@ -9,7 +9,7 @@ use crate::adapter::adapters::bedrock::streamer::BedrockStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{Error, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -40,7 +40,7 @@ impl Adapter for BedrockSigv4Adapter {
 		AuthData::None
 	}
 
-	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData, _web_client: &WebClient) -> Result<Vec<String>> {
 		Ok(crate::adapter::adapters::bedrock::shared::curated_model_names())
 	}
 
