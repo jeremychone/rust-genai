@@ -144,6 +144,7 @@ pub enum AdapterKind {
 /// Serialization/Parse implementations
 impl AdapterKind {
 	/// Serialize to a static str
+	/// NOTE: Must match case of variant (genai)
 	pub fn as_str(&self) -> &'static str {
 		match self {
 			AdapterKind::OpenAI => "OpenAI",
@@ -153,11 +154,11 @@ impl AdapterKind {
 			AdapterKind::Fireworks => "Fireworks",
 			AdapterKind::Together => "Together",
 			AdapterKind::Groq => "Groq",
-			AdapterKind::Aihubmix => "AIHubMix",
+			AdapterKind::Aihubmix => "Aihubmix",
 			AdapterKind::Mimo => "Mimo",
 			AdapterKind::Moonshot => "Moonshot",
 			AdapterKind::Nebius => "Nebius",
-			AdapterKind::Xai => "xAi",
+			AdapterKind::Xai => "Xai",
 			AdapterKind::DeepSeek => "DeepSeek",
 			AdapterKind::Zai => "Zai",
 			AdapterKind::BigModel => "BigModel",
@@ -173,9 +174,9 @@ impl AdapterKind {
 			#[cfg(feature = "bedrock-sigv4")]
 			AdapterKind::BedrockSigv4 => "BedrockSigv4",
 			AdapterKind::OpenRouter => "OpenRouter",
-			AdapterKind::MiniMax => "Minimax",
+			AdapterKind::MiniMax => "MiniMax",
 
-			AdapterKind::Custom(_) => "Genai",
+			AdapterKind::Custom(_) => "Custom",
 		}
 	}
 
@@ -211,7 +212,7 @@ impl AdapterKind {
 			AdapterKind::OpenRouter => "open_router",
 			AdapterKind::MiniMax => "minimax",
 
-			AdapterKind::Custom(_) => "Genai",
+			AdapterKind::Custom(_) => "custom",
 		}
 	}
 
@@ -246,6 +247,8 @@ impl AdapterKind {
 			"open_router" => Some(AdapterKind::OpenRouter),
 			"minimax" => Some(AdapterKind::MiniMax),
 			name => {
+				// Note for now the `genai_` prefix is the way to match to the Custom adapter
+				//      This way, namespace, `genai_` ... maps better to the environment variable `GENAI_1_API_KEY`
 				if name.starts_with("genai_") {
 					name.strip_prefix("genai_")
 						.and_then(|n| n.parse::<u8>().ok())
