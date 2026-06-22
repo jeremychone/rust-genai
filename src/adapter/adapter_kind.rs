@@ -123,12 +123,12 @@ adapter_kind_str_maps! {
 	Gemini        => "Gemini",        "gemini",         adapters::gemini::GeminiAdapter;
 	Anthropic     => "Anthropic",     "anthropic",      adapters::anthropic::AnthropicAdapter;
 	Fireworks     => "Fireworks",     "fireworks",      adapters::fireworks::FireworksAdapter;
-	Together      => "Together",      "together",       adapters::together::TogetherAdapter;
+	Together      => "Together",      "together",       adapters::all_adapters::TogetherAdapter;
 	Groq          => "Groq",          "groq",           adapters::groq::GroqAdapter;
 	Aihubmix      => "Aihubmix",      "aihubmix",       adapters::aihubmix::AihubmixAdapter;
-	Mimo          => "Mimo",          "mimo",           adapters::mimo::MimoAdapter;
+	Mimo          => "Mimo",          "mimo",           adapters::all_adapters::MimoAdapter;
 	Moonshot      => "Moonshot",      "moonshot",       adapters::moonshot::MoonshotAdapter;
-	Nebius        => "Nebius",        "nebius",         adapters::nebius::NebiusAdapter;
+	Nebius        => "Nebius",        "nebius",         adapters::all_adapters::NebiusAdapter;
 	Xai           => "Xai",           "xai",            adapters::xai::XaiAdapter;
 	DeepSeek      => "DeepSeek",      "deepseek",       adapters::deepseek::DeepSeekAdapter;
 	Zai           => "Zai",           "zai",            adapters::zai::ZaiAdapter;
@@ -143,7 +143,7 @@ adapter_kind_str_maps! {
 	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::opencode_go::OpenCodeGoAdapter;
 	BedrockApi    => "BedrockApi",    "bedrock_api",    adapters::bedrock::BedrockApiAdapter;
 	OpenRouter    => "OpenRouter",    "open_router",    adapters::open_router::OpenRouterAdapter;
-	MiniMax       => "MiniMax",       "minimax",        adapters::minimax::MinimaxAdapter;
+	MiniMax       => "MiniMax",       "minimax",        adapters::all_adapters::MinimaxAdapter;
 }
 
 // endregion: --- str & default_key_env_name impl (via macro)

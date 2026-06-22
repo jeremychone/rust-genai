@@ -40,7 +40,7 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::Together => {
-				type A = crate::adapter::adapters::together::[<Together Adapter>];
+				type A = crate::adapter::adapters::all_adapters::[<Together Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Groq => {
@@ -56,15 +56,15 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::Mimo => {
-				type A = crate::adapter::adapters::mimo::[<Mimo Adapter>];
+				type A = crate::adapter::adapters::all_adapters::[<Mimo Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::MiniMax => {
-				type A = crate::adapter::adapters::minimax::[<Minimax Adapter>];
+				type A = crate::adapter::adapters::all_adapters::[<Minimax Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Nebius => {
-				type A = crate::adapter::adapters::nebius::[<Nebius Adapter>];
+				type A = crate::adapter::adapters::all_adapters::[<Nebius Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Xai => {
