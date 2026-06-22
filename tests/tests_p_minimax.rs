@@ -130,9 +130,9 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 // region:    --- List
 
 // NOTE: 2026-06-01 - Does not seem to be supported
-// // #[tokio::test]
-// async fn test_list_models() -> TestResult<()> {
-// 	common_tests::common_test_list_models(AdapterKind::MiniMax, "MiniMax-M3").await
-// }
+#[tokio::test]
+async fn test_list_models() -> TestResult<()> {
+	common_tests::common_test_list_models(genai::adapter::AdapterKind::MiniMax, "MiniMax-M3").await
+}
 
 // endregion: --- List

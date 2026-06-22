@@ -17,28 +17,30 @@ pub use super::ollama::OllamaAdapter;
 pub use super::openai::OpenAIAdapter;
 pub use super::openai_resp::OpenAIRespAdapter;
 
-// -- Specific Adapters
+// -- Cloud Infra providers
 pub use super::bedrock::BedrockApiAdapter;
 #[cfg(feature = "bedrock-sigv4")]
 pub use super::bedrock::BedrockSigv4Adapter;
-pub use super::bigmodel::BigModelAdapter;
-pub use super::custom::CustomAdapter;
-pub use super::fireworks::FireworksAdapter;
-pub use super::ollama_cloud::OllamaCloudAdapter;
 pub use super::vertex::VertexAdapter;
-// has 2 protocol providers
+
+// -- Has custom max token
+pub use super::fireworks::FireworksAdapter;
+
+// -- Ollama prototocl
+pub use super::ollama_cloud::OllamaCloudAdapter;
+
+// -- Has 2 protocol providers
 pub use super::baidu::BaiduAdapter;
-pub use super::opencode_go::OpenCodeGoAdapter;
-// Has unit tests
+
+// -- Has unit tests
 pub use super::github_copilot::GithubCopilotAdapter;
-// Has namespace based endpoint routing
+pub use super::opencode_go::OpenCodeGoAdapter;
+
+// -- Has namespace based endpoint routing
 pub use super::zai::ZaiAdapter;
 
-// -- To review (might be able to be Pass-through)
-pub use super::aliyun::AliyunAdapter;
-pub use super::groq::GroqAdapter;
-pub use super::open_router::OpenRouterAdapter;
-pub use super::xai::XaiAdapter;
+// -- Custom (the genai_n:: special adapter)
+pub use super::custom::CustomAdapter;
 
 // endregion: --- Custom adapters
 
@@ -54,6 +56,31 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- Aliyun
+pub struct AliyunAdapter;
+impl_pass_through_adapter!(
+	name: AliyunAdapter,
+	kind: AdapterKind::Aliyun,
+	key_env: Some("ALIYUN_API_KEY"),
+	endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/",
+	delegate: OpenAIAdapter,
+);
+
+// -- BigModel
+/// BigModel adapter.
+///
+/// API Documentation: <https://bigmodel.cn/dev/api>
+/// Model Names:       <https://bigmodel.cn/dev/howuse/model>
+/// Pricing:           <https://bigmodel.cn/pricing>
+pub struct BigModelAdapter;
+impl_pass_through_adapter!(
+	name: BigModelAdapter,
+	kind: AdapterKind::BigModel,
+	key_env: Some("BIGMODEL_API_KEY"),
+	endpoint: "https://open.bigmodel.cn/api/paas/v4/",
+	delegate: OpenAIAdapter,
+);
+
 // -- DeepSeek
 pub struct DeepSeekAdapter;
 impl_pass_through_adapter!(
@@ -64,7 +91,18 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
-// -- MiniMax (AnthropicAdapter, and fix/empty model names for now)
+// -- Groq
+pub struct GroqAdapter;
+impl_pass_through_adapter!(
+	name: GroqAdapter,
+	kind: AdapterKind::Groq,
+	key_env: Some("GROQ_API_KEY"),
+	endpoint: "https://api.groq.com/openai/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
+// -- MiniMax (AnthropicAdapter)
 pub struct MinimaxAdapter;
 impl_pass_through_adapter!(
 	name: MinimaxAdapter,
@@ -72,9 +110,6 @@ impl_pass_through_adapter!(
 	key_env: Some("MINIMAX_API_KEY"),
 	endpoint: "https://api.minimax.io/anthropic/v1/",
 	delegate: AnthropicAdapter,
-	all_model_names: |_kind, _endpoint, _auth, _web_client| {
-		Ok(vec![])
-	},
 	unsupported: [embeddings],
 );
 
@@ -108,6 +143,16 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- OpenRouter
+pub struct OpenRouterAdapter;
+impl_pass_through_adapter!(
+	name: OpenRouterAdapter,
+	kind: AdapterKind::OpenRouter,
+	key_env: Some("OPEN_ROUTER_API_KEY"),
+	endpoint: "https://openrouter.ai/api/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(
@@ -115,6 +160,16 @@ impl_pass_through_adapter!(
 	kind: AdapterKind::Together,
 	key_env: Some("TOGETHER_API_KEY"),
 	endpoint: "https://api.together.xyz/v1/",
+	delegate: OpenAIAdapter,
+);
+
+// -- XaiAdapter
+pub struct XaiAdapter;
+impl_pass_through_adapter!(
+	name: XaiAdapter,
+	kind: AdapterKind::Xai,
+	key_env: Some("XAI_API_KEY"),
+	endpoint: "https://api.x.ai/v1/",
 	delegate: OpenAIAdapter,
 );
 
