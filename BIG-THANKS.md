@@ -14,6 +14,8 @@ _If I forgot your PR, feel free to submit a PR_
   - [#245](https://github.com/jeremychone/rust-genai/pull/245) fix(anthropic): propagate mid-stream error events
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
+- [lambdabetaeta](https://github.com/lambdabetaeta)
+  - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
 
 ## v0.6.0..0.6.x
 
