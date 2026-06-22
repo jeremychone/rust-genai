@@ -1,5 +1,5 @@
+use super::macros::dispatch_adapter;
 use crate::ModelIden;
-use crate::adapter::dispatcher_macros::dispatch_adapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
@@ -24,7 +24,12 @@ impl AdapterDispatcher {
 		dispatch_adapter!(kind, A::default_auth(kind))
 	}
 
-	pub async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+	pub async fn all_model_names(
+		kind: AdapterKind,
+		endpoint: Endpoint,
+		auth: AuthData,
+		web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		dispatch_adapter!(kind, A::all_model_names(kind, endpoint, auth, web_client).await)
 	}
 
