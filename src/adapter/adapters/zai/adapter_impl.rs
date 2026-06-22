@@ -39,33 +39,6 @@ impl ZaiModelEndpoint {
 ///
 pub struct ZaiAdapter;
 
-// pub(in crate::adapter) const MODELS: &[&str] = &[
-// 	"glm-4-plus",
-// 	"glm-4.6",
-// 	"glm-4.5",
-// 	"glm-4.5v",
-// 	"glm-4.5-x",
-// 	"glm-4.5-air",
-// 	"glm-4.5-airx",
-// 	"glm-4-32b-0414-128k",
-// 	"glm-4.5-flash",
-// 	"glm-4-air-250414",
-// 	"glm-4-flashx-250414",
-// 	"glm-4-flash-250414",
-// 	"glm-4-air",
-// 	"glm-4-airx",
-// 	"glm-4-long",
-// 	"glm-4-flash",
-// 	"glm-4v-plus-0111",
-// 	"glm-4v-flash",
-// 	"glm-z1-air",
-// 	"glm-z1-airx",
-// 	"glm-z1-flash",
-// 	"glm-z1-flashx",
-// 	"glm-4.1v-thinking-flash",
-// 	"glm-4.1v-thinking-flashx",
-// ];
-
 impl ZaiAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "ZAI_API_KEY";
 }
@@ -86,7 +59,12 @@ impl Adapter for ZaiAdapter {
 		}
 	}
 
-	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+	async fn all_model_names(
+		kind: AdapterKind,
+		endpoint: Endpoint,
+		auth: AuthData,
+		web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth, web_client).await
 	}
 

@@ -4,8 +4,6 @@
 //! implementations) or pass-through (macro-generated delegating adapters). It
 //! serves as the single entry point for the rest of the crate.
 
-#![allow(unused_imports)]
-
 use crate::adapter::AdapterKind;
 use crate::impl_pass_through_adapter;
 
@@ -23,14 +21,41 @@ pub use super::openai_resp::OpenAIRespAdapter;
 pub use super::bedrock::BedrockApiAdapter;
 #[cfg(feature = "bedrock-sigv4")]
 pub use super::bedrock::BedrockSigv4Adapter;
+pub use super::bigmodel::BigModelAdapter;
+pub use super::custom::CustomAdapter;
 pub use super::fireworks::FireworksAdapter;
+pub use super::ollama_cloud::OllamaCloudAdapter;
 pub use super::vertex::VertexAdapter;
+// has 2 protocol providers
+pub use super::baidu::BaiduAdapter;
+pub use super::opencode_go::OpenCodeGoAdapter;
+// Has unit tests
+pub use super::github_copilot::GithubCopilotAdapter;
+// Has namespace based endpoint routing
+pub use super::zai::ZaiAdapter;
+
+// -- To review (might be able to be Pass-through)
+pub use super::aliyun::AliyunAdapter;
+pub use super::groq::GroqAdapter;
+pub use super::open_router::OpenRouterAdapter;
+pub use super::xai::XaiAdapter;
 
 // endregion: --- Custom adapters
 
 // region:    --- Pass-through adapters (with macros)
 
-// -- MiniMax
+// -- DeepSeek
+pub struct DeepSeekAdapter;
+impl_pass_through_adapter!(
+	name: DeepSeekAdapter,
+	kind: AdapterKind::DeepSeek,
+	key_env: Some("DEEPSEEK_API_KEY"),
+	endpoint: "https://api.deepseek.com/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
+// -- MiniMax (AnthropicAdapter, and fix/empty model names for now)
 pub struct MinimaxAdapter;
 impl_pass_through_adapter!(
 	name: MinimaxAdapter,
@@ -51,6 +76,26 @@ impl_pass_through_adapter!(
 	kind: AdapterKind::Mimo,
 	key_env: Some("MIMO_API_KEY"),
 	endpoint: "https://api.mimo.com/openai/v1/",
+	delegate: OpenAIAdapter,
+);
+
+// -- Moonshot
+pub struct MoonshotAdapter;
+impl_pass_through_adapter!(
+	name: MoonshotAdapter,
+	kind: AdapterKind::Moonshot,
+	key_env: Some("MOONSHOT_API_KEY"),
+	endpoint: "https://api.moonshot.cn/v1/",
+	delegate: OpenAIAdapter,
+);
+
+// -- Aihubmix
+pub struct AihubmixAdapter;
+impl_pass_through_adapter!(
+	name: AihubmixAdapter,
+	kind: AdapterKind::Aihubmix,
+	key_env: Some("AIHUBMIX_API_KEY"),
+	endpoint: "https://aihubmix.com/v1/",
 	delegate: OpenAIAdapter,
 );
 
@@ -75,22 +120,3 @@ impl_pass_through_adapter!(
 );
 
 // endregion: --- Pass-through adapters (with macros)
-
-// region:    --- Pass-through adapters (still manual)
-
-pub use super::aihubmix::AihubmixAdapter;
-pub use super::aliyun::AliyunAdapter;
-pub use super::baidu::BaiduAdapter;
-pub use super::bigmodel::BigModelAdapter;
-pub use super::custom::CustomAdapter;
-pub use super::deepseek::DeepSeekAdapter;
-pub use super::github_copilot::GithubCopilotAdapter;
-pub use super::groq::GroqAdapter;
-pub use super::moonshot::MoonshotAdapter;
-pub use super::ollama_cloud::OllamaCloudAdapter;
-pub use super::open_router::OpenRouterAdapter;
-pub use super::opencode_go::OpenCodeGoAdapter;
-pub use super::xai::XaiAdapter;
-pub use super::zai::ZaiAdapter;
-
-// endregion: --- Pass-through adapters

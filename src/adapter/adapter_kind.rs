@@ -118,31 +118,31 @@ pub enum AdapterKind {
 
 // The single source of truth for the string maps: one row per variant.
 adapter_kind_str_maps! {
-	OpenAI        => "OpenAI",        "openai",         adapters::openai::OpenAIAdapter;
-	OpenAIResp    => "OpenAIResp",    "openai_resp",    adapters::openai_resp::OpenAIRespAdapter;
-	Gemini        => "Gemini",        "gemini",         adapters::gemini::GeminiAdapter;
-	Anthropic     => "Anthropic",     "anthropic",      adapters::anthropic::AnthropicAdapter;
-	Fireworks     => "Fireworks",     "fireworks",      adapters::fireworks::FireworksAdapter;
+	OpenAI        => "OpenAI",        "openai",         adapters::all_adapters::OpenAIAdapter;
+	OpenAIResp    => "OpenAIResp",    "openai_resp",    adapters::all_adapters::OpenAIRespAdapter;
+	Gemini        => "Gemini",        "gemini",         adapters::all_adapters::GeminiAdapter;
+	Anthropic     => "Anthropic",     "anthropic",      adapters::all_adapters::AnthropicAdapter;
+	Fireworks     => "Fireworks",     "fireworks",      adapters::all_adapters::FireworksAdapter;
 	Together      => "Together",      "together",       adapters::all_adapters::TogetherAdapter;
-	Groq          => "Groq",          "groq",           adapters::groq::GroqAdapter;
-	Aihubmix      => "Aihubmix",      "aihubmix",       adapters::aihubmix::AihubmixAdapter;
+	Groq          => "Groq",          "groq",           adapters::all_adapters::GroqAdapter;
+	Aihubmix      => "Aihubmix",      "aihubmix",       adapters::all_adapters::AihubmixAdapter;
 	Mimo          => "Mimo",          "mimo",           adapters::all_adapters::MimoAdapter;
-	Moonshot      => "Moonshot",      "moonshot",       adapters::moonshot::MoonshotAdapter;
+	Moonshot      => "Moonshot",      "moonshot",       adapters::all_adapters::MoonshotAdapter;
 	Nebius        => "Nebius",        "nebius",         adapters::all_adapters::NebiusAdapter;
-	Xai           => "Xai",           "xai",            adapters::xai::XaiAdapter;
-	DeepSeek      => "DeepSeek",      "deepseek",       adapters::deepseek::DeepSeekAdapter;
-	Zai           => "Zai",           "zai",            adapters::zai::ZaiAdapter;
-	BigModel      => "BigModel",      "bigmodel",       adapters::bigmodel::BigModelAdapter;
-	Aliyun        => "Aliyun",        "aliyun",         adapters::aliyun::AliyunAdapter;
-	Baidu         => "Baidu",         "baidu",          adapters::baidu::BaiduAdapter;
-	Cohere        => "Cohere",        "cohere",         adapters::cohere::CohereAdapter;
-	Ollama        => "Ollama",        "ollama",         adapters::ollama::OllamaAdapter;
-	OllamaCloud   => "OllamaCloud",   "ollama_cloud",   adapters::ollama_cloud::OllamaCloudAdapter;
-	Vertex        => "Vertex",        "vertex",         adapters::vertex::VertexAdapter;
-	GithubCopilot => "GithubCopilot", "github_copilot", adapters::github_copilot::GithubCopilotAdapter;
-	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::opencode_go::OpenCodeGoAdapter;
-	BedrockApi    => "BedrockApi",    "bedrock_api",    adapters::bedrock::BedrockApiAdapter;
-	OpenRouter    => "OpenRouter",    "open_router",    adapters::open_router::OpenRouterAdapter;
+	Xai           => "Xai",           "xai",            adapters::all_adapters::XaiAdapter;
+	DeepSeek      => "DeepSeek",      "deepseek",       adapters::all_adapters::DeepSeekAdapter;
+	Zai           => "Zai",           "zai",            adapters::all_adapters::ZaiAdapter;
+	BigModel      => "BigModel",      "bigmodel",       adapters::all_adapters::BigModelAdapter;
+	Aliyun        => "Aliyun",        "aliyun",         adapters::all_adapters::AliyunAdapter;
+	Baidu         => "Baidu",         "baidu",          adapters::all_adapters::BaiduAdapter;
+	Cohere        => "Cohere",        "cohere",         adapters::all_adapters::CohereAdapter;
+	Ollama        => "Ollama",        "ollama",         adapters::all_adapters::OllamaAdapter;
+	OllamaCloud   => "OllamaCloud",   "ollama_cloud",   adapters::all_adapters::OllamaCloudAdapter;
+	Vertex        => "Vertex",        "vertex",         adapters::all_adapters::VertexAdapter;
+	GithubCopilot => "GithubCopilot", "github_copilot", adapters::all_adapters::GithubCopilotAdapter;
+	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::all_adapters::OpenCodeGoAdapter;
+	BedrockApi    => "BedrockApi",    "bedrock_api",    adapters::all_adapters::BedrockApiAdapter;
+	OpenRouter    => "OpenRouter",    "open_router",    adapters::all_adapters::OpenRouterAdapter;
 	MiniMax       => "MiniMax",       "minimax",        adapters::all_adapters::MinimaxAdapter;
 }
 

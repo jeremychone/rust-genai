@@ -40,7 +40,12 @@ impl Adapter for FireworksAdapter {
 		}
 	}
 
-	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+	async fn all_model_names(
+		kind: AdapterKind,
+		endpoint: Endpoint,
+		auth: AuthData,
+		web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth, web_client).await
 	}
 
@@ -73,7 +78,7 @@ impl Adapter for FireworksAdapter {
 		let custom = ToWebRequestCustom {
 			default_max_tokens: match service_type {
 				ServiceType::ChatStream => Some(256_000),
-				_ => Some(5_000),
+				_ => Some(5_000), // TODO: needs to fix that. Not practical at 5k. Could be 128K or even 256k now.
 			},
 		};
 
