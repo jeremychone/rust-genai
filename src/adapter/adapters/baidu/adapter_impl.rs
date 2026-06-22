@@ -5,7 +5,7 @@ use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -218,7 +218,7 @@ impl Adapter for BaiduAdapter {
 	}
 
 	/// Returns all supported model names for Baidu
-	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData, _web_client: &WebClient) -> Result<Vec<String>> {
 		// For coding endpoints, we might want to return coding-specific models
 		// For now, return all models
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())

@@ -6,7 +6,7 @@ use crate::chat::{
 	Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::{WebResponse, WebStream};
+use crate::webc::{WebClient, WebResponse, WebStream};
 use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
@@ -44,7 +44,7 @@ impl Adapter for CohereAdapter {
 	}
 
 	/// Note: For now, it returns the common ones (see above)
-	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData, _web_client: &WebClient) -> Result<Vec<String>> {
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())
 	}
 

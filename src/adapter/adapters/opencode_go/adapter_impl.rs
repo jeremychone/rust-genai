@@ -5,7 +5,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::json;
@@ -55,8 +55,8 @@ impl Adapter for OpenCodeGoAdapter {
 		Endpoint::from_static("https://opencode.ai/zen/go/v1/")
 	}
 
-	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
-		OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth).await
+	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+		OpenAIAdapter::list_model_names_for_end_target(kind, endpoint, auth, web_client).await
 	}
 
 	fn get_service_url(model: &ModelIden, _service_type: ServiceType, endpoint: Endpoint) -> Result<String> {

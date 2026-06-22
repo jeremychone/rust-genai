@@ -8,7 +8,7 @@ use crate::chat::{
 	ToolCall, ToolChoice, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{Headers, ModelIden};
 use serde_json::{Map, Value, json};
 use std::sync::OnceLock;
@@ -594,6 +594,7 @@ impl AnthropicAdapter {
 		kind: AdapterKind,
 		endpoint: Endpoint,
 		auth: AuthData,
+		web_client: &WebClient,
 	) -> Result<Vec<String>> {
 		// -- url
 		let base_url = endpoint.base_url();
@@ -611,8 +612,7 @@ impl AnthropicAdapter {
 			.unwrap_or_default();
 
 		// -- Exec request
-		let web_c = crate::webc::WebClient::default();
-		let mut res = web_c
+		let mut res = web_client
 			.do_get(&url, &headers)
 			.await
 			.map_err(|webc_error| crate::Error::WebAdapterCall {

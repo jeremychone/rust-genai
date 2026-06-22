@@ -3,7 +3,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::{EventSourceStream, WebResponse};
+use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -28,10 +28,10 @@ impl Adapter for MinimaxAdapter {
 		}
 	}
 
-	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
+	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
 		// NOTE: Minimax uses the same Anthropic protocol endpoint for listing models.
 		// For now, we return an empty list. This can be extended later.
-		let _ = (kind, endpoint, auth);
+		let _ = (kind, endpoint, auth, web_client);
 		Ok(vec![])
 	}
 

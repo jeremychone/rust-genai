@@ -3,7 +3,7 @@ use crate::ModelIden;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::{EventSourceStream, WebResponse};
+use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -28,8 +28,8 @@ impl Adapter for AnthropicAdapter {
 		}
 	}
 
-	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
-		Self::list_model_names_for_end_target(kind, endpoint, auth).await
+	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+		Self::list_model_names_for_end_target(kind, endpoint, auth, web_client).await
 	}
 
 	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {

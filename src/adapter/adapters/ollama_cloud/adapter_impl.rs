@@ -6,7 +6,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::json;
@@ -30,10 +30,10 @@ impl Adapter for OllamaCloudAdapter {
 		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
-	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, auth: AuthData) -> Result<Vec<String>> {
+	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
 		let api_key = get_api_key(auth, &ModelIden::new(adapter_kind, ""))?;
 		let headers = Headers::from(vec![("Authorization", format!("Bearer {api_key}"))]);
-		OllamaAdapter::list_model_names(adapter_kind, endpoint, headers).await
+		OllamaAdapter::list_model_names(adapter_kind, endpoint, headers, web_client).await
 	}
 
 	fn get_service_url(model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {

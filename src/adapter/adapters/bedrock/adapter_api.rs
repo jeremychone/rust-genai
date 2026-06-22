@@ -11,7 +11,7 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
-use crate::webc::WebResponse;
+use crate::webc::{WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 
@@ -42,7 +42,7 @@ impl Adapter for BedrockApiAdapter {
 		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
-	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData) -> Result<Vec<String>> {
+	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData, _web_client: &WebClient) -> Result<Vec<String>> {
 		Ok(crate::adapter::adapters::bedrock::shared::curated_model_names())
 	}
 
