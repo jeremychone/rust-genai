@@ -126,9 +126,9 @@ impl_pass_through_adapter!(
 );
 
 // -- MiniMax (AnthropicAdapter)
-pub struct MinimaxAdapter;
+pub struct MiniMaxAdapter;
 impl_pass_through_adapter!(
-	name: MinimaxAdapter,
+	name: MiniMaxAdapter,
 	kind: AdapterKind::MiniMax,
 	key_env: Some("MINIMAX_API_KEY"),
 	endpoint: "https://api.minimax.io/anthropic/v1/",

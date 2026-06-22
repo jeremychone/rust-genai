@@ -64,7 +64,7 @@ macro_rules! dispatch_adapter {
 				$body
 			}
 			crate::adapter::AdapterKind::MiniMax => {
-				type A = crate::adapter::adapters::all_adapters::[<Minimax Adapter>];
+				type A = crate::adapter::adapters::all_adapters::[<MiniMax Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Nebius => {

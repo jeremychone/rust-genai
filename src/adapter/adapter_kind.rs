@@ -147,7 +147,7 @@ adapter_kind_str_maps! {
 	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::all_adapters::OpenCodeGoAdapter;
 	BedrockApi    => "BedrockApi",    "bedrock_api",    adapters::all_adapters::BedrockApiAdapter;
 	OpenRouter    => "OpenRouter",    "open_router",    adapters::all_adapters::OpenRouterAdapter;
-	MiniMax       => "MiniMax",       "minimax",        adapters::all_adapters::MinimaxAdapter;
+	MiniMax       => "MiniMax",       "minimax",        adapters::all_adapters::MiniMaxAdapter;
 }
 
 // endregion: --- str & default_key_env_name impl (via macro)
