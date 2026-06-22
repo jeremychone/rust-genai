@@ -102,6 +102,29 @@ impl_pass_through_adapter!(
 	unsupported: [embeddings],
 );
 
+// -- Kimi (Moonshot.ai)
+// API Doc: https://platform.kimi.ai/docs/api/overview
+// TODO: need to support thinking with extra_body
+pub struct KimiAdapter;
+impl_pass_through_adapter!(
+	name: KimiAdapter,
+	kind: AdapterKind::Kimi,
+	key_env: Some("KIMI_API_KEY"),
+	endpoint: "https://api.moonshot.ai/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
+// -- Moonshot (Moonshot.cn)
+pub struct MoonshotAdapter;
+impl_pass_through_adapter!(
+	name: MoonshotAdapter,
+	kind: AdapterKind::Moonshot,
+	key_env: Some("MOONSHOT_API_KEY"),
+	endpoint: "https://api.moonshot.cn/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- MiniMax (AnthropicAdapter)
 pub struct MinimaxAdapter;
 impl_pass_through_adapter!(
@@ -120,16 +143,6 @@ impl_pass_through_adapter!(
 	kind: AdapterKind::Mimo,
 	key_env: Some("MIMO_API_KEY"),
 	endpoint: "https://api.mimo.com/openai/v1/",
-	delegate: OpenAIAdapter,
-);
-
-// -- Moonshot
-pub struct MoonshotAdapter;
-impl_pass_through_adapter!(
-	name: MoonshotAdapter,
-	kind: AdapterKind::Moonshot,
-	key_env: Some("MOONSHOT_API_KEY"),
-	endpoint: "https://api.moonshot.cn/v1/",
 	delegate: OpenAIAdapter,
 );
 

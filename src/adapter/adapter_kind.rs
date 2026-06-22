@@ -37,6 +37,9 @@ pub enum AdapterKind {
 	/// For AIHubMix (Mostly use OpenAI)
 	Aihubmix,
 
+	/// For kimi
+	Kimi,
+
 	/// For Mimo (Mostly use OpenAI)
 	Mimo,
 
@@ -126,6 +129,7 @@ adapter_kind_str_maps! {
 	Together      => "Together",      "together",       adapters::all_adapters::TogetherAdapter;
 	Groq          => "Groq",          "groq",           adapters::all_adapters::GroqAdapter;
 	Aihubmix      => "Aihubmix",      "aihubmix",       adapters::all_adapters::AihubmixAdapter;
+	Kimi          => "Kimi",          "kimi",           adapters::all_adapters::KimiAdapter;
 	Mimo          => "Mimo",          "mimo",           adapters::all_adapters::MimoAdapter;
 	Moonshot      => "Moonshot",      "moonshot",       adapters::all_adapters::MoonshotAdapter;
 	Nebius        => "Nebius",        "nebius",         adapters::all_adapters::NebiusAdapter;
@@ -207,6 +211,8 @@ impl AdapterKind {
 			Ok(Self::Anthropic)
 		} else if model.contains("fireworks") {
 			Ok(Self::Fireworks)
+		} else if model.starts_with("kimi-") {
+			Ok(Self::Kimi)
 		} else if model.starts_with("mimo-") {
 			Ok(Self::Mimo)
 		} else if model.starts_with("command") || model.starts_with("embed-") {
