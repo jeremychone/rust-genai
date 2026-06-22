@@ -44,6 +44,16 @@ pub use super::xai::XaiAdapter;
 
 // region:    --- Pass-through adapters (with macros)
 
+// -- Aihubmix
+pub struct AihubmixAdapter;
+impl_pass_through_adapter!(
+	name: AihubmixAdapter,
+	kind: AdapterKind::Aihubmix,
+	key_env: Some("AIHUBMIX_API_KEY"),
+	endpoint: "https://aihubmix.com/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- DeepSeek
 pub struct DeepSeekAdapter;
 impl_pass_through_adapter!(
@@ -52,7 +62,6 @@ impl_pass_through_adapter!(
 	key_env: Some("DEEPSEEK_API_KEY"),
 	endpoint: "https://api.deepseek.com/v1/",
 	delegate: OpenAIAdapter,
-	unsupported: [embeddings],
 );
 
 // -- MiniMax (AnthropicAdapter, and fix/empty model names for now)
@@ -86,16 +95,6 @@ impl_pass_through_adapter!(
 	kind: AdapterKind::Moonshot,
 	key_env: Some("MOONSHOT_API_KEY"),
 	endpoint: "https://api.moonshot.cn/v1/",
-	delegate: OpenAIAdapter,
-);
-
-// -- Aihubmix
-pub struct AihubmixAdapter;
-impl_pass_through_adapter!(
-	name: AihubmixAdapter,
-	kind: AdapterKind::Aihubmix,
-	key_env: Some("AIHUBMIX_API_KEY"),
-	endpoint: "https://aihubmix.com/v1/",
 	delegate: OpenAIAdapter,
 );
 
