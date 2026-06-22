@@ -17,7 +17,7 @@ genai = "0.6"
 
 Over 200+ LLM models, 25+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot`, `aihubmix`, `open_router`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `xai`
 
 Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)) to support any other providers.
 
@@ -115,7 +115,8 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **Gemini**: `gemini-*`
 - **xAI**: `grok-*`
 - **DeepSeek**: `deepseek-*`
-- **Moonshot**: `moonshot-*`
+- **Moonshot**: `moonshot-*` (moonshot.ai)
+- **Kimi**: `kimi*` (moonshot.ai)
 - **Zai**: `glm-*`
 - **Cohere**: `command-*`, `embed-*`
 - **Mimo**: `mimo-*`
@@ -137,7 +138,6 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
 - `moonshot::moonshot-v1-8k` (Forces **Moonshot** adapter)
 - `baidu::ernie-4.0` (Forces **Baidu** adapter)
-- `zai_coding::glm-4.6` (Special namespace for **Zai** coding subscription)
 - `zai_coding::glm-4.6` (Special namespace for **Zai** coding subscription)
 - `opencode_go::minimax-m2.5` (Forces **OpenCode Go** adapter)
 - `bedrock_api::anthropic.claude-v2` (Forces **AWS Bedrock** adapter)
