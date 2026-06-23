@@ -21,12 +21,8 @@ use reqwest::RequestBuilder;
 /// However, if the model name has a `/`, then it is assumed to be one recognized by the fireworks.ai service.
 pub struct FireworksAdapter;
 
-impl FireworksAdapter {
-	pub const API_KEY_DEFAULT_ENV_NAME: &str = "FIREWORKS_API_KEY";
-}
-
 impl Adapter for FireworksAdapter {
-	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
+	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some("FIREWORKS_API_KEY");
 
 	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
 		const BASE_URL: &str = "https://api.fireworks.ai/inference/v1/";
