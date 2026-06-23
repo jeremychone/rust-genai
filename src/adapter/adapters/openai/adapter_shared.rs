@@ -469,10 +469,13 @@ impl OpenAIAdapter {
 			.unwrap_or_default();
 
 		// -- Exec request
-		let mut res = web_client.do_get(&url, &headers).await.map_err(|webc_error| Error::WebAdapterCall {
-			adapter_kind: kind,
-			webc_error,
-		})?;
+		let mut res = web_client
+			.do_get(&url, &headers)
+			.await
+			.map_err(|webc_error| Error::WebAdapterCall {
+				adapter_kind: kind,
+				webc_error,
+			})?;
 
 		// -- Format result
 		let mut models: Vec<String> = Vec::new();
