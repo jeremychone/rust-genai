@@ -39,6 +39,9 @@ pub use super::opencode_go::OpenCodeGoAdapter;
 // -- Has namespace based endpoint routing
 pub use super::zai::ZaiAdapter;
 
+// -- Omlx (OpenAI protocol with reasoning template extension)
+pub use super::omlx::OmlxAdapter;
+
 // -- Custom (the genai_n:: special adapter)
 pub use super::custom::CustomAdapter;
 

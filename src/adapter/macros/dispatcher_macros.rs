@@ -107,6 +107,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<OllamaCloud Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Omlx => {
+				type A = crate::adapter::adapters::all_adapters::[<Omlx Adapter>];
+				$body
+			}
 			crate::adapter::AdapterKind::Vertex => {
 				type A = crate::adapter::adapters::all_adapters::[<Vertex Adapter>];
 				$body

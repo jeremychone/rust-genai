@@ -76,6 +76,9 @@ pub enum AdapterKind {
 	/// For Ollama Cloud (ollama.com) - uses native Ollama protocol with Bearer auth
 	OllamaCloud,
 
+	/// Omlx adapter - OpenAI-compatible with reasoning model chat_template_kwargs injection
+	Omlx,
+
 	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
 	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
 	Vertex,
@@ -142,6 +145,7 @@ adapter_kind_str_maps! {
 	Cohere        => "Cohere",        "cohere",         adapters::all_adapters::CohereAdapter;
 	Ollama        => "Ollama",        "ollama",         adapters::all_adapters::OllamaAdapter;
 	OllamaCloud   => "OllamaCloud",   "ollama_cloud",   adapters::all_adapters::OllamaCloudAdapter;
+	Omlx          => "Omlx",          "omlx",           adapters::all_adapters::OmlxAdapter;
 	Vertex        => "Vertex",        "vertex",         adapters::all_adapters::VertexAdapter;
 	GithubCopilot => "GithubCopilot", "github_copilot", adapters::all_adapters::GithubCopilotAdapter;
 	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::all_adapters::OpenCodeGoAdapter;
@@ -227,6 +231,8 @@ impl AdapterKind {
 			Ok(Self::Moonshot)
 		} else if model.starts_with("MiniMax-") || model.starts_with("minimax-") {
 			Ok(Self::MiniMax)
+		} else if model.starts_with("omlx-") {
+			Ok(Self::Omlx)
 		}
 		// For now, fallback to Ollama
 		else {

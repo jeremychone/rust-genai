@@ -12,6 +12,7 @@ pub(super) mod gemini;
 pub(super) mod github_copilot;
 pub(super) mod ollama;
 pub(super) mod ollama_cloud;
+pub(super) mod omlx;
 pub(super) mod openai;
 pub(super) mod openai_resp;
 pub(super) mod opencode_go;
