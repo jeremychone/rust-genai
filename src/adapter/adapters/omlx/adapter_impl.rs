@@ -8,6 +8,7 @@ use crate::webc::{WebClient, WebResponse};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::json;
+use value_ext::JsonValueExt;
 
 pub struct OmlxAdapter;
 
@@ -52,16 +53,17 @@ impl Adapter for OmlxAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		// Extract reasoning effort keyword before consuming options_set
-		let effort_keyword = options_set.reasoning_effort().and_then(|e| e.as_keyword());
-
 		let mut web_req_data =
 			OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, options_set, None)?;
 
-		if let Some(keyword) = effort_keyword {
+		// -- Set the omlx specific reasoning block
+		// NOTE: Not 100% sure this is honored by the omlx
+		let reasoning_effort = web_req_data.payload.x_get_str("reasoning_effort").map(|r| r.to_string()).ok();
+
+		if let Some(reasoning_effort) = reasoning_effort {
 			web_req_data.payload["chat_template_kwargs"] = json!({
 				"enable_thinking": true,
-				"reasoning_effort": keyword,
+				"reasoning_effort": reasoning_effort,
 				"preserve_thinking": false,
 			});
 		}
