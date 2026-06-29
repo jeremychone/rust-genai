@@ -13,7 +13,7 @@ use genai::resolver::AuthData;
 
 // -- Model constants
 // export OMLX_API_KEY="welcome"
-// export OMLX_ENDPOINT="http://127.0.0.1:8080/v1"
+// export OMLX_ENDPOINT=http://127.0.0.1:8000/v1/
 // NOTE: Update these to actual Omlx model names before running tests.
 //       The adapter can use either namespaced form (`omlx::model`) or direct prefix (`omlx-model`).
 const MODEL: &str = "omlx::Qwen3.6-35B-A3B-8bit";
