@@ -4,15 +4,15 @@ use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-const MODEL: &str = "glm-4-plus";
-const MODEL_NS: &str = "zai::glm-4-plus";
-const MODEL_V: &str = "glm-4v-flash"; // Visual language model does not support function calling
+const MODEL: &str = "glm-4.5";
+const MODEL_LATEST: &str = "glm-5.2";
+const MODEL_NS: &str = "zai::glm-4.5";
 
 // region:    --- Chat
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL, None).await
+	common_tests::common_test_chat_simple_ok(MODEL_LATEST, None).await
 }
 
 #[tokio::test]
@@ -41,12 +41,14 @@ async fn test_chat_temperature_ok() -> TestResult<()> {
 	common_tests::common_test_chat_temperature_ok(MODEL).await
 }
 
-/// NOTE - Disabled for now, as the model currently includes the stop sequences as the last sequences in the generation as of 2025-07-08.
+// NOTE - Disabled for now, as the model currently includes the stop sequences as the last sequences in the generation as of 2025-07-08.
 // #[tokio::test]
 // async fn test_chat_stop_sequences_ok() -> TestResult<()> {
 // 	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
 // }
+
 // endregion: --- Chat
+
 // region:    --- Chat Implicit Cache
 /// NOTE - Disable for now, not supported by Zhipu as of 2025-07-08
 // #[tokio::test]
@@ -77,15 +79,17 @@ async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 
 // region:    --- Binary Tests
 
-#[tokio::test]
-async fn test_chat_binary_image_url_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_url_ok(MODEL).await
-}
+// NOTE 2026-06-29 - Those models do not support image
 
-#[tokio::test]
-async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_b64_ok(MODEL_V).await
-}
+// #[tokio::test]
+// async fn test_chat_binary_image_url_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_image_url_ok(MODEL_LATEST).await
+// }
+
+// #[tokio::test]
+// async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_image_b64_ok(MODEL).await
+// }
 
 // endregion: --- Binary Tests
 
@@ -115,7 +119,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Zai, "glm-4-plus").await
+	common_tests::common_test_list_models(AdapterKind::Zai, "glm-5.2").await
 }
 
 // endregion: --- List
