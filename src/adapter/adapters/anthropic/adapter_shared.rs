@@ -728,7 +728,7 @@ fn insert_anthropic_reasoning(
 	let support_effort = supports_anthropic_effort(model_name);
 	let support_reasoning_max = supports_anthropic_reasoning_max(model_name);
 	let support_adaptive = supports_anthropic_adaptive_thinking(model_name);
-	let support_xhigh = is_opus_4_7_or_higher(model_name);
+	let support_xhigh = is_opus_4_7_or_higher(model_name) || model_name.contains("claude-sonnet-5");
 
 	// Models that support effort use it as the primary reasoning control.
 	if support_effort {
@@ -799,13 +799,13 @@ fn insert_anthropic_reasoning(
 // See adaptive thinking doc: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
 
 fn supports_anthropic_effort(model_name: &str) -> bool {
-	const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5"];
+	const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5", "claude-sonnet-5"];
 
 	has_model(SUPPORT_EFFORT_MODELS, model_name) || is_fable_or_mythos(model_name) || is_opus_4_7_or_higher(model_name)
 }
 
 fn supports_anthropic_reasoning_max(model_name: &str) -> bool {
-	const SUPPORT_REASONING_MAX_MODELS: &[&str] = &["claude-opus-4-6"];
+	const SUPPORT_REASONING_MAX_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-5"];
 
 	has_model(SUPPORT_REASONING_MAX_MODELS, model_name)
 		|| is_fable_or_mythos(model_name)
@@ -813,7 +813,7 @@ fn supports_anthropic_reasoning_max(model_name: &str) -> bool {
 }
 
 fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
-	const SUPPORT_ADAPTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6"];
+	const SUPPORT_ADAPTIVE_THINK_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-sonnet-5"];
 
 	has_model(SUPPORT_ADAPTIVE_THINK_MODELS, model_name)
 		|| is_fable_or_mythos(model_name)
@@ -1058,6 +1058,28 @@ mod tests {
 
 		assert_eq!(web_req.payload["thinking"], json!({"type": "adaptive"}));
 		assert_eq!(web_req.payload["output_config"]["effort"], json!("medium"));
+	}
+
+	#[test]
+	fn test_sonnet_5_uses_adaptive_thinking() {
+		let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["thinking"], json!({"type": "adaptive"}));
+		assert_eq!(web_req.payload["output_config"]["effort"], json!("high"));
 	}
 
 	#[test]
