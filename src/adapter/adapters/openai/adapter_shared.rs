@@ -78,7 +78,7 @@ impl OpenAIAdapter {
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
-		custom: Option<ToWebRequestCustom>,
+		custom: Option<ToWebRequestDataOptions>,
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
@@ -87,8 +87,15 @@ impl OpenAIAdapter {
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
 
 		// -- api_key / headers
-		let api_key = get_api_key(auth, &model)?;
-		let headers = Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")));
+		// NOTE: useful for local providers
+		let allow_anonymous = matches!(auth, AuthData::None) && custom.as_ref().is_some_and(|c| c.allow_no_api_key);
+
+		let headers = if !allow_anonymous {
+			let api_key = get_api_key(auth, &model)?;
+			Headers::from(("Authorization".to_string(), format!("Bearer {api_key}")))
+		} else {
+			Headers::default()
+		};
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
 
@@ -463,6 +470,9 @@ impl OpenAIAdapter {
 		let url = format!("{base_url}models");
 
 		// -- auth / headers
+		// NOTE: In this case, we accept it if the API key is not defined, and let the provider complain.
+		//       This is compared to web request data that requires it before the request, except if the options say otherwise.
+		//       Will need to align at some point.
 		let api_key = auth.single_key_value().ok();
 		let headers = api_key
 			.map(|api_key| Headers::from(("Authorization".to_string(), format!("Bearer {api_key}"))))
@@ -496,8 +506,10 @@ impl OpenAIAdapter {
 
 /// Custom OpenAI structure for Adapters to use to customize
 /// the default [`OpenAIAdapter::util_to_web_request_data`]
-pub struct ToWebRequestCustom {
+#[derive(Default)]
+pub struct ToWebRequestDataOptions {
 	pub default_max_tokens: Option<u32>,
+	pub allow_no_api_key: bool,
 }
 
 // region:    --- Support

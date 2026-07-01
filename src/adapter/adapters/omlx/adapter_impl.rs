@@ -1,5 +1,5 @@
 use crate::ModelIden;
-use crate::adapter::adapters::openai::OpenAIAdapter;
+use crate::adapter::adapters::openai::{OpenAIAdapter, ToWebRequestDataOptions};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
@@ -53,8 +53,14 @@ impl Adapter for OmlxAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
+		// for omlx, we allow no api keys
+		let options = ToWebRequestDataOptions {
+			allow_no_api_key: true,
+			..Default::default()
+		};
+
 		let mut web_req_data =
-			OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, options_set, None)?;
+			OpenAIAdapter::util_to_web_request_data(target, service_type, chat_req, options_set, Some(options))?;
 
 		// -- Set the omlx specific reasoning block
 		// NOTE: Not 100% sure this is honored by the omlx
