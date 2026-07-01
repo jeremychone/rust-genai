@@ -16,7 +16,7 @@ impl Adapter for OmlxAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some("OMLX_API_KEY");
 
 	fn default_endpoint(_kind: AdapterKind) -> Endpoint {
-		const DEFAULT_URL: &str = "http://127.0.0.1:8000/v1";
+		const DEFAULT_URL: &str = "http://127.0.0.1:8000/v1/";
 		let url = std::env::var("OMLX_ENDPOINT").unwrap_or_else(|_| DEFAULT_URL.to_string());
 		Endpoint::from_owned(url)
 	}
