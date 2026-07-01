@@ -728,7 +728,7 @@ fn insert_anthropic_reasoning(
 	let support_effort = supports_anthropic_effort(model_name);
 	let support_reasoning_max = supports_anthropic_reasoning_max(model_name);
 	let support_adaptive = supports_anthropic_adaptive_thinking(model_name);
-	let support_xhigh = is_opus_4_7_or_higher(model_name) || model_name.contains("claude-sonnet-5");
+	let support_xhigh = supports_anthropic_reasoning_xhigh(model_name);
 
 	// Models that support effort use it as the primary reasoning control.
 	if support_effort {
@@ -799,7 +799,8 @@ fn insert_anthropic_reasoning(
 // See adaptive thinking doc: https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking
 
 fn supports_anthropic_effort(model_name: &str) -> bool {
-	const SUPPORT_EFFORT_MODELS: &[&str] = &["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5", "claude-sonnet-5"];
+	const SUPPORT_EFFORT_MODELS: &[&str] =
+		&["claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5", "claude-sonnet-5"];
 
 	has_model(SUPPORT_EFFORT_MODELS, model_name) || is_fable_or_mythos(model_name) || is_opus_4_7_or_higher(model_name)
 }
@@ -810,6 +811,10 @@ fn supports_anthropic_reasoning_max(model_name: &str) -> bool {
 	has_model(SUPPORT_REASONING_MAX_MODELS, model_name)
 		|| is_fable_or_mythos(model_name)
 		|| is_opus_4_7_or_higher(model_name)
+}
+
+fn supports_anthropic_reasoning_xhigh(model_name: &str) -> bool {
+	is_opus_4_7_or_higher(model_name) || model_name.contains("claude-sonnet-5")
 }
 
 fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
