@@ -76,7 +76,12 @@ impl Adapter for VertexAdapter {
 		}
 	}
 
-	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData, _web_client: &WebClient) -> Result<Vec<String>> {
+	async fn all_model_names(
+		_kind: AdapterKind,
+		_endpoint: Endpoint,
+		_auth: AuthData,
+		_web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		Ok(vec![
 			"gemini-2.5-pro".to_string(),
 			"gemini-2.5-flash".to_string(),

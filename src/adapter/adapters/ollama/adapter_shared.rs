@@ -21,10 +21,13 @@ impl OllamaAdapter {
 		let base_url = endpoint.base_url();
 		let url = format!("{base_url}api/tags");
 
-		let mut res = web_client.do_get(&url, &headers).await.map_err(|webc_error| Error::WebAdapterCall {
-			adapter_kind,
-			webc_error,
-		})?;
+		let mut res = web_client
+			.do_get(&url, &headers)
+			.await
+			.map_err(|webc_error| Error::WebAdapterCall {
+				adapter_kind,
+				webc_error,
+			})?;
 
 		let mut models: Vec<String> = Vec::new();
 

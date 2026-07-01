@@ -81,7 +81,12 @@ impl Adapter for GeminiAdapter {
 		}
 	}
 
-	async fn all_model_names(kind: AdapterKind, endpoint: Endpoint, auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+	async fn all_model_names(
+		kind: AdapterKind,
+		endpoint: Endpoint,
+		auth: AuthData,
+		web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		// -- url
 		let base_url = endpoint.base_url();
 		let url = format!("{base_url}models");
@@ -93,10 +98,13 @@ impl Adapter for GeminiAdapter {
 			.unwrap_or_default();
 
 		// -- Exec request
-		let mut res = web_client.do_get(&url, &headers).await.map_err(|webc_error| Error::WebAdapterCall {
-			adapter_kind: kind,
-			webc_error,
-		})?;
+		let mut res = web_client
+			.do_get(&url, &headers)
+			.await
+			.map_err(|webc_error| Error::WebAdapterCall {
+				adapter_kind: kind,
+				webc_error,
+			})?;
 
 		// -- Format result
 		let mut models: Vec<String> = Vec::new();

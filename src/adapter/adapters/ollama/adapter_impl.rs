@@ -34,7 +34,12 @@ impl Adapter for OllamaAdapter {
 		}
 	}
 
-	async fn all_model_names(adapter_kind: AdapterKind, endpoint: Endpoint, _auth: AuthData, web_client: &WebClient) -> Result<Vec<String>> {
+	async fn all_model_names(
+		adapter_kind: AdapterKind,
+		endpoint: Endpoint,
+		_auth: AuthData,
+		web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		Self::list_model_names(adapter_kind, endpoint, Headers::default(), web_client).await
 	}
 

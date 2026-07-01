@@ -218,7 +218,12 @@ impl Adapter for BaiduAdapter {
 	}
 
 	/// Returns all supported model names for Baidu
-	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData, _web_client: &WebClient) -> Result<Vec<String>> {
+	async fn all_model_names(
+		_kind: AdapterKind,
+		_endpoint: Endpoint,
+		_auth: AuthData,
+		_web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		// For coding endpoints, we might want to return coding-specific models
 		// For now, return all models
 		Ok(MODELS.iter().map(|s| s.to_string()).collect())

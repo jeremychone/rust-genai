@@ -42,7 +42,12 @@ impl Adapter for BedrockApiAdapter {
 		AuthData::from_env(Self::API_KEY_DEFAULT_ENV_NAME)
 	}
 
-	async fn all_model_names(_kind: AdapterKind, _endpoint: Endpoint, _auth: AuthData, _web_client: &WebClient) -> Result<Vec<String>> {
+	async fn all_model_names(
+		_kind: AdapterKind,
+		_endpoint: Endpoint,
+		_auth: AuthData,
+		_web_client: &WebClient,
+	) -> Result<Vec<String>> {
 		Ok(crate::adapter::adapters::bedrock::shared::curated_model_names())
 	}
 
