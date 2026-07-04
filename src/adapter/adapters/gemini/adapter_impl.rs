@@ -27,7 +27,7 @@ pub(in crate::adapter) const REASONING_HIGH: u32 = 24000;
 fn insert_gemini_thinking_budget_value(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
 	// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
 	let budget = match effort {
-		ReasoningEffort::None => None,
+		ReasoningEffort::Zero => None,
 		ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
 		ReasoningEffort::Medium => Some(REASONING_MEDIUM),
 		ReasoningEffort::High | ReasoningEffort::Max | ReasoningEffort::XHigh => Some(REASONING_HIGH),
@@ -399,7 +399,7 @@ impl GeminiAdapter {
 					let reasoning = match last {
 						// 'zero' is a gemini special
 						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
-						"none" => Some(ReasoningEffort::None),
+						"none" => Some(ReasoningEffort::Zero),
 						"low" | "minimal" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
 						"high" => Some(ReasoningEffort::High),
@@ -433,7 +433,7 @@ impl GeminiAdapter {
 			let models = ["gemini-3", "gemma-4"];
 			if models.iter().any(|m| provider_model_name.contains(m)) {
 				let thinking_level = match computed_reasoning_effort {
-					ReasoningEffort::None => None,
+					ReasoningEffort::Zero => None,
 					ReasoningEffort::Budget(_) => None,
 					ReasoningEffort::Minimal => Some("MINIMAL"),
 					ReasoningEffort::Low => Some("LOW"),
