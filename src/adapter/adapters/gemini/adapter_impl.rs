@@ -396,10 +396,8 @@ impl GeminiAdapter {
 			(model, None) => {
 				if let Some((prefix, last)) = model_name.rsplit_once('-') {
 					let reasoning = match last {
-                // 'zero' is canonical
-                "zero" => Some(ReasoningEffort::Zero),
-                // 'none' is backward-compat alias
-                "none" => Some(ReasoningEffort::Zero),
+						// 'zero' is canonical ('none' for backward compatibility)
+						"none" | "zero" => Some(ReasoningEffort::Budget(0)),
 						"low" | "minimal" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
 						"high" => Some(ReasoningEffort::High),

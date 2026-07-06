@@ -16,7 +16,7 @@
   - Model-name suffix parsing: `from_model_name()` now uses a whitelist to protect known model names (e.g., `deepseek-r1-zero`) from suffix stripping.
   - Bedrock: mechanical rename, behavior unchanged.
   - OpenAI: mechanical rename, behavior unchanged (keyword mapping to provider-specific values is preserved).
-  - Gemini: `Zero` omits `thinkingConfig` entirely (does **not** set `thinkingBudget: 0`); models with thinking on by default (e.g., Gemini 2.5 Pro/Flash) will still think. The `-zero` model-name suffix maps to `ReasoningEffort::Zero`.
+  - Gemini: `Zero` set budget to `0` (might be rejected by provider on some models)
 - `^` anthropic - support `extra_body` ChatOptions field (merge extra request body fields) ([#255](https://github.com/jeremychone/rust-genai/pull/255))
 
 ## 2026-06-06 [v0.6.5](https://github.com/jeremychone/rust-genai/compare/v0.6.4...v0.6.5)
