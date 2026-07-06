@@ -2,7 +2,8 @@
 
 ## v0.7.0-beta.x (see [genai versions](https://crates.io/crates/genai/versions))
 
-- `+` NEW Provider/Adapter - `AdapterKind::Kimi` (activated on `kimi::` namespace, or `kimi` model prefix) (moonshot.ai)
+`^` gemini - forward JSON Schema raw via responseJsonSchema / parametersJsonSchema (PR #257)
+`+` NEW Provider/Adapter - `AdapterKind::Kimi` (activated on `kimi::` namespace, or `kimi` model prefix) (moonshot.ai)
 - `+` otel - optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature (off by default; pure `tracing` bridge, no extra dependencies). 
   - Auto-instruments `exec_chat` / `exec_chat_stream` / `exec_embed` as `gen_ai.*` spans (operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`). Prompt/response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent/workflow/tool spans and the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 - `+` anthropic - prompt caching on tools via `Tool::with_cache_control`, and request-level `ChatOptions::with_cache_control` now auto-applies a cache breakpoint to the static (tools+system) prefix (was previously ignored). `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.

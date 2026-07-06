@@ -21,6 +21,7 @@ _If I forgot your PR, feel free to submit a PR_
 - [ropoctl](https://github.com/ropoctl)
   - [#254](https://github.com/jeremychone/rust-genai/pull/254) anthropic: pass custom content parts through
   - [#255](https://github.com/jeremychone/rust-genai/pull/255) anthropic: merge extra request body fields
+  - [#257](https://github.com/jeremychone/rust-genai/pull/257) feat(gemini): forward JSON Schema raw via responseJsonSchema / parametersJsonSchema
 
 ## v0.6.0..0.6.x
 
