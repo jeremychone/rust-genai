@@ -240,10 +240,10 @@ pub enum ReasoningEffort {
 	/// Explicitly request no reasoning.
 	///
 	/// Note: Distinct from leaving `ChatOptions::reasoning_effort` unset (`Option::None`),
-	/// which means "no preference, don't touch anything". The keyword remains `none`
-	/// (e.g., the `-none` model-name suffix). Adapters map this to the provider's explicit
-	/// opt-out where one exists (e.g., Anthropic models that think by default) and
-	/// otherwise omit the reasoning configuration.
+	/// which means "no preference, don't touch anything". The keyword is `zero` (the
+	/// `-none` and `-zero` model-name suffixes both map to this variant). Adapters map
+	/// this to the provider's explicit opt-out where one exists (e.g., Anthropic models
+	/// that think by default) and otherwise omit the reasoning configuration.
 	#[serde(alias = "None")]
 	Zero,
 	Low,
@@ -292,6 +292,7 @@ impl ReasoningEffort {
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
 			"none" => Some(ReasoningEffort::Zero),
+			"zero" => Some(ReasoningEffort::Zero),
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
@@ -306,8 +307,10 @@ impl ReasoningEffort {
 	/// If `model_name` ends with `-reasoning_effort`, returns the parsed verbosity and the trimmed name.
 	///
 	/// Returns `(reasosing_effort?, trimmed_model_name)`.
+	/// The `-zero` suffix is excluded to protect model names like `deepseek-r1-zero`.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		if let Some((prefix, last)) = model_name.rsplit_once('-')
+			&& last != "zero"
 			&& let Some(effort) = ReasoningEffort::from_keyword(last)
 		{
 			return (Some(effort), prefix);
