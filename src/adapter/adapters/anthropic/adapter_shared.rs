@@ -237,8 +237,7 @@ impl AnthropicAdapter {
 								}
 								ContentPart::ThoughtSignature(_) => {}
 								ContentPart::ReasoningContent(_) => {}
-								// Custom are ignored for this logic
-								ContentPart::Custom(_) => {}
+								ContentPart::Custom(custom_part) => values.push(custom_part.data),
 							}
 						}
 						let values = apply_cache_control_to_parts(cache_control.as_ref(), values);
@@ -281,8 +280,7 @@ impl AnthropicAdapter {
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) => {}
 							ContentPart::ReasoningContent(_) => {}
-							// Custom are ignored for this logic
-							ContentPart::Custom(_) => {}
+							ContentPart::Custom(custom_part) => values.push(custom_part.data),
 						}
 					}
 
@@ -306,12 +304,16 @@ impl AnthropicAdapter {
 				ChatRole::Tool => {
 					let mut values: Vec<Value> = Vec::new();
 					for part in msg.content {
-						if let ContentPart::ToolResponse(tool_response) = part {
-							values.push(json!({
-								"type": "tool_result",
-								"content": tool_response.content,
-								"tool_use_id": tool_response.call_id,
-							}));
+						match part {
+							ContentPart::ToolResponse(tool_response) => {
+								values.push(json!({
+									"type": "tool_result",
+									"content": tool_response.content,
+									"tool_use_id": tool_response.call_id,
+								}));
+							}
+							ContentPart::Custom(custom_part) => values.push(custom_part.data),
+							_ => {}
 						}
 					}
 					if !values.is_empty() {
