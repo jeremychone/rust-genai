@@ -475,9 +475,11 @@ impl GeminiAdapter {
 		// -- Response Format
 		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
 			payload.x_insert("/generationConfig/responseMimeType", "application/json")?;
-			let mut schema = st_json.schema.clone();
-			super::openapi_schema::to_openapi_schema(&mut schema);
-			payload.x_insert("/generationConfig/responseJsonSchema", schema)?;
+			// Send the JSON Schema as-is to `responseJsonSchema`, Gemini's JSON
+			// Schema-native structured-output field (Gemini 2.5+). It accepts full
+			// JSON Schema — `$ref`/`$defs`, `anyOf`, `type: "null"`, etc. — so no
+			// conversion to the restricted OpenAPI `responseSchema` shape is needed.
+			payload.x_insert("/generationConfig/responseJsonSchema", st_json.schema.clone())?;
 		}
 
 		// -- Add supported ChatOptions
@@ -840,13 +842,17 @@ impl GeminiAdapter {
 		}
 		// -- otherwise, user tool
 		else {
-			let mut parameters = schema.unwrap_or(Value::Null);
-			super::openapi_schema::to_openapi_schema(&mut parameters);
-			let parameters = if parameters.is_null() { None } else { Some(parameters) };
+			let parameters = schema.and_then(|s| if s.is_null() { None } else { Some(s) });
+			// Use `parametersJsonSchema`, Gemini's JSON Schema-native function-
+			// declaration field (Gemini 2.5+), and send the schema as-is. Unlike
+			// the restricted `parameters` (OpenAPI Schema) field — which rejects
+			// `$ref` with `Unknown name "$ref"` — `parametersJsonSchema` accepts
+			// full JSON Schema, so no `$ref` inlining / OpenAPI conversion is
+			// needed.
 			Ok(GeminiTool::User(json!({
 				"name": name_str,
 				"description": description,
-				"parameters": parameters,
+				"parametersJsonSchema": parameters,
 			})))
 		}
 	}
@@ -955,7 +961,7 @@ fn infer_gemini_synthetic_call_fn_name(call_id: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::chat::{ChatMessage, ChatOptions};
+	use crate::chat::{ChatMessage, ChatOptions, JsonSpec};
 
 	#[test]
 	fn merge_consecutive_tool_responses() {
@@ -1160,5 +1166,61 @@ mod tests {
 			Ok(_) => panic!("missing candidates should still be rejected"),
 		};
 		assert!(matches!(err, Error::ChatResponse { .. }));
+	}
+
+	#[test]
+	fn response_json_schema_is_forwarded_raw() {
+		// A pydantic/schemars-style schema with `$defs` + `$ref`. Gemini's
+		// `responseJsonSchema` field accepts full JSON Schema, so the adapter must
+		// forward it unchanged — no `$ref` inlining / OpenAPI conversion.
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let schema = json!({
+			"type": "object",
+			"properties": { "person": { "$ref": "#/$defs/Person" } },
+			"required": ["person"],
+			"$defs": {
+				"Person": { "type": "object", "properties": { "name": { "type": "string" } }, "required": ["name"] }
+			}
+		});
+		let options = ChatOptions::default().with_response_format(JsonSpec::new("person", schema.clone()));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let chat_req = ChatRequest::from_user("Return a person.");
+
+		let (payload, _) =
+			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
+				.unwrap();
+
+		assert_eq!(payload["generationConfig"]["responseMimeType"], "application/json");
+		// Forwarded byte-for-byte: `$defs`/`$ref` preserved, not inlined.
+		assert_eq!(payload["generationConfig"]["responseJsonSchema"], schema);
+	}
+
+	#[test]
+	fn tool_parameters_use_parameters_json_schema_raw() {
+		// Tool schemas go to `parametersJsonSchema` (JSON Schema-native), not the
+		// restricted `parameters` field (which rejects `$ref`). Forwarded unchanged.
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let schema = json!({
+			"type": "object",
+			"properties": { "loc": { "$ref": "#/$defs/Loc" } },
+			"required": ["loc"],
+			"$defs": {
+				"Loc": { "type": "object", "properties": { "city": { "type": "string" } }, "required": ["city"] }
+			}
+		});
+		let chat_req =
+			ChatRequest::from_user("Use the tool.").with_tools(vec![Tool::new("record").with_schema(schema.clone())]);
+		let options_set = ChatOptionsSet::default();
+
+		let (payload, _) =
+			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
+				.unwrap();
+
+		let decl = &payload["tools"][0]["functionDeclarations"][0];
+		assert_eq!(decl["parametersJsonSchema"], schema);
+		assert!(
+			decl.get("parameters").is_none(),
+			"must not use the restricted `parameters` field"
+		);
 	}
 }
