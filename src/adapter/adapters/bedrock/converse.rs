@@ -229,7 +229,7 @@ fn publisher_additional_fields(publisher: BedrockPublisher, effort: &ReasoningEf
 	match publisher {
 		BedrockPublisher::Anthropic => {
 			let budget = match effort {
-				ReasoningEffort::None => return None,
+				ReasoningEffort::Zero => return None,
 				ReasoningEffort::Budget(n) => *n,
 				ReasoningEffort::Minimal | ReasoningEffort::Low => 1024,
 				ReasoningEffort::Medium => 8000,
@@ -246,7 +246,7 @@ fn publisher_additional_fields(publisher: BedrockPublisher, effort: &ReasoningEf
 			// Nova surfaces reasoning via inferenceConfig.reasoningConfig today; when a user explicitly sets
 			// ReasoningEffort, opt in.
 			match effort {
-				ReasoningEffort::None => None,
+				ReasoningEffort::Zero => None,
 				_ => Some(json!({
 					"inferenceConfig": { "reasoningConfig": { "type": "enabled" } }
 				})),

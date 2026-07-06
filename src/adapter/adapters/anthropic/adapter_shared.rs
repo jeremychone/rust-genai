@@ -419,13 +419,12 @@ impl AnthropicAdapter {
 
 		// -- Reasoning Budget
 		let (model_name, computed_reasoning_effort) = match (raw_model_name, options_set.reasoning_effort()) {
-			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero)
+			// No explicity reasoning_effor, try to infer from model name suffix (supports -zero and -none)
 			(model, None) => {
 				// let model_name: &str = &model.model_name;
 				if let Some((prefix, last)) = raw_model_name.rsplit_once('-') {
 					let reasoning = match last {
-						"zero" => None,
-						"None" => Some(ReasoningEffort::Low),
+						"zero" | "none" => Some(ReasoningEffort::Zero),
 						"minimal" => Some(ReasoningEffort::Low),
 						"low" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
@@ -730,6 +729,16 @@ fn insert_anthropic_reasoning(
 	let support_adaptive = supports_anthropic_adaptive_thinking(model_name);
 	let support_xhigh = supports_anthropic_reasoning_xhigh(model_name);
 
+	// `Zero` means "no reasoning": emit no `output_config.effort` and no adaptive/legacy
+	// thinking payload. Models where thinking is on by default need an explicit opt-out;
+	// for all others, omitting the `thinking` field already means "off".
+	if matches!(effort, ReasoningEffort::Zero) {
+		if anthropic_thinking_on_by_default(model_name) {
+			payload.x_insert("thinking", json!({"type": "disabled"}))?;
+		}
+		return Ok(());
+	}
+
 	// Models that support effort use it as the primary reasoning control.
 	if support_effort {
 		let effort = match effort {
@@ -747,7 +756,8 @@ fn insert_anthropic_reasoning(
 				budget = Some(*val);
 				""
 			}
-			ReasoningEffort::None => "",
+			// Handled by the early return above; kept for exhaustiveness.
+			ReasoningEffort::Zero => "",
 		};
 
 		// Emit the effort into the shared output_config map when present.
@@ -774,7 +784,7 @@ fn insert_anthropic_reasoning(
 	// Older models still use the legacy `thinking.enabled + budget_tokens` shape.
 	if !support_effort {
 		let thinking_budget = match effort {
-			ReasoningEffort::None => None,
+			ReasoningEffort::Zero => None,
 			ReasoningEffort::Budget(budget) => Some(*budget),
 			ReasoningEffort::Low | ReasoningEffort::Minimal => Some(REASONING_LOW),
 			ReasoningEffort::Medium => Some(REASONING_MEDIUM),
@@ -815,6 +825,16 @@ fn supports_anthropic_reasoning_max(model_name: &str) -> bool {
 
 fn supports_anthropic_reasoning_xhigh(model_name: &str) -> bool {
 	is_opus_4_7_or_higher(model_name) || model_name.contains("claude-sonnet-5")
+}
+
+/// Models where Anthropic enables adaptive thinking by default when the request omits the
+/// `thinking` field (currently the Claude Sonnet 5 family). These need an explicit
+/// `{"type": "disabled"}` to turn reasoning off.
+///
+/// NOTE: Fable/Mythos thinking is always-on and cannot be disabled (an explicit "disabled"
+/// is rejected), so they are intentionally not listed — for them, `Zero` omits `thinking`.
+fn anthropic_thinking_on_by_default(model_name: &str) -> bool {
+	model_name.contains("claude-sonnet-5")
 }
 
 fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
@@ -1085,6 +1105,126 @@ mod tests {
 
 		assert_eq!(web_req.payload["thinking"], json!({"type": "adaptive"}));
 		assert_eq!(web_req.payload["output_config"]["effort"], json!("high"));
+	}
+
+	/// `Zero` on a thinking-off-by-default model (Opus 4.7+) must emit no reasoning
+	/// fields at all — omitting `thinking` already means "off". See issue #251.
+	#[test]
+	fn test_opus_4_7_reasoning_zero_omits_thinking() {
+		let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-opus-4-7"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload.get("thinking"), None, "thinking must be omitted");
+		assert_eq!(
+			web_req.payload.get("output_config"),
+			None,
+			"output_config.effort must be omitted"
+		);
+	}
+
+	/// `Zero` on a thinking-on-by-default model (Sonnet 5) must send the explicit
+	/// opt-out, since omitting the field would leave adaptive thinking on. See issue #251.
+	#[test]
+	fn test_sonnet_5_reasoning_zero_disables_thinking() {
+		let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["thinking"], json!({"type": "disabled"}));
+		assert_eq!(
+			web_req.payload.get("output_config"),
+			None,
+			"output_config.effort must be omitted"
+		);
+	}
+
+	/// The `-none`/`-zero` model-name suffixes must parse to `Zero` and be stripped
+	/// from the model name sent to the API.
+	#[test]
+	fn test_reasoning_zero_model_name_suffix() {
+		for suffix in ["none", "zero"] {
+			let target = ServiceTarget {
+				endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+				auth: AuthData::from_single("test-key"),
+				model: ModelIden::new(AdapterKind::Anthropic, format!("claude-sonnet-5-{suffix}")),
+			};
+
+			let web_req = AnthropicAdapter::to_web_request_data(
+				target,
+				ServiceType::Chat,
+				ChatRequest::from_user("hello"),
+				ChatOptionsSet::default(),
+			)
+			.expect("to_web_request_data should succeed");
+
+			assert_eq!(
+				web_req.payload["model"],
+				json!("claude-sonnet-5"),
+				"suffix -{suffix} must be stripped"
+			);
+			assert_eq!(web_req.payload["thinking"], json!({"type": "disabled"}));
+		}
+	}
+
+	/// `Zero` on every other family must emit no reasoning fields: legacy models
+	/// (claude-sonnet-4-5), adaptive-but-off-by-default models (claude-opus-4-6), and
+	/// Fable/Mythos — where thinking is always-on and an explicit "disabled" is rejected,
+	/// so omission is the only valid payload (see `anthropic_thinking_on_by_default`).
+	#[test]
+	fn test_reasoning_zero_other_models_omit_thinking() {
+		for model in ["claude-sonnet-4-5", "claude-opus-4-6", "claude-fable-5"] {
+			let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+			let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+			let target = ServiceTarget {
+				endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+				auth: AuthData::from_single("test-key"),
+				model: ModelIden::new(AdapterKind::Anthropic, model),
+			};
+
+			let web_req = AnthropicAdapter::to_web_request_data(
+				target,
+				ServiceType::Chat,
+				ChatRequest::from_user("hello"),
+				options_set,
+			)
+			.expect("to_web_request_data should succeed");
+
+			assert_eq!(
+				web_req.payload.get("thinking"),
+				None,
+				"thinking must be omitted for {model}"
+			);
+			assert_eq!(
+				web_req.payload.get("output_config"),
+				None,
+				"output_config.effort must be omitted for {model}"
+			);
+		}
 	}
 
 	#[test]

@@ -18,7 +18,7 @@ use value_ext::JsonValueExt;
 
 fn insert_openai_reasoning_effort(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
 	let keyword = match effort {
-		ReasoningEffort::None => "none",
+		ReasoningEffort::Zero => "none",
 		ReasoningEffort::Low => "low",
 		ReasoningEffort::Medium => "medium",
 		ReasoningEffort::High => "high",

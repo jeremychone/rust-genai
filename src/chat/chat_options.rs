@@ -237,7 +237,15 @@ impl ChatOptions {
 /// Provider-specific hint for reasoning intensity/budget.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ReasoningEffort {
-	None,
+	/// Explicitly request no reasoning.
+	///
+	/// Note: Distinct from leaving `ChatOptions::reasoning_effort` unset (`Option::None`),
+	/// which means "no preference, don't touch anything". The keyword remains `none`
+	/// (e.g., the `-none` model-name suffix). Adapters map this to the provider's explicit
+	/// opt-out where one exists (e.g., Anthropic models that think by default) and
+	/// otherwise omit the reasoning configuration.
+	#[serde(alias = "None")]
+	Zero,
 	Low,
 	Medium,
 	High,
@@ -253,7 +261,7 @@ impl ReasoningEffort {
 	/// Returns the lowercase variant name.
 	pub fn variant_name(&self) -> &'static str {
 		match self {
-			ReasoningEffort::None => "none",
+			ReasoningEffort::Zero => "zero",
 			ReasoningEffort::Low => "low",
 			ReasoningEffort::Medium => "medium",
 			ReasoningEffort::High => "high",
@@ -268,7 +276,7 @@ impl ReasoningEffort {
 	/// Returns a keyword for non-`Budget` variants; `None` for `Budget(_)`.
 	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
-			ReasoningEffort::None => Some("none"),
+			ReasoningEffort::Zero => Some("none"),
 			ReasoningEffort::Low => Some("low"),
 			ReasoningEffort::Medium => Some("medium"),
 			ReasoningEffort::High => Some("high"),
@@ -283,7 +291,7 @@ impl ReasoningEffort {
 	/// Parses a verbosity keyword.
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
-			"none" => Some(ReasoningEffort::None),
+			"none" => Some(ReasoningEffort::Zero),
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
@@ -311,7 +319,7 @@ impl ReasoningEffort {
 impl std::fmt::Display for ReasoningEffort {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			ReasoningEffort::None => write!(f, "none"),
+			ReasoningEffort::Zero => write!(f, "none"),
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),
