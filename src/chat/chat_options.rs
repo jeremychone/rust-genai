@@ -240,8 +240,9 @@ pub enum ReasoningEffort {
 	/// Explicitly request no reasoning.
 	///
 	/// Note: Distinct from leaving `ChatOptions::reasoning_effort` unset (`Option::None`),
-	/// which means "no preference, don't touch anything". The keyword is `zero` (the
-	/// `-none` and `-zero` model-name suffixes both map to this variant). Adapters map
+	/// which means "no preference, don't touch anything". The canonical keyword is `"zero"`
+	/// (the keyword `"none"` is a backward-compatible alias). The canonical model-name suffix
+	/// is `-zero` (`-none` is also accepted as a backward-compat alias). Adapters map
 	/// this to the provider's explicit opt-out where one exists (e.g., Anthropic models
 	/// that think by default) and otherwise omit the reasoning configuration.
 	#[serde(alias = "None")]
@@ -276,7 +277,7 @@ impl ReasoningEffort {
 	/// Returns a keyword for non-`Budget` variants; `None` for `Budget(_)`.
 	pub fn as_keyword(&self) -> Option<&'static str> {
 		match self {
-			ReasoningEffort::Zero => Some("none"),
+			ReasoningEffort::Zero => Some("zero"),
 			ReasoningEffort::Low => Some("low"),
 			ReasoningEffort::Medium => Some("medium"),
 			ReasoningEffort::High => Some("high"),
@@ -291,8 +292,8 @@ impl ReasoningEffort {
 	/// Parses a verbosity keyword.
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
-			"none" => Some(ReasoningEffort::Zero),
 			"zero" => Some(ReasoningEffort::Zero),
+			"none" => Some(ReasoningEffort::Zero), // backward-compat alias
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
@@ -307,10 +308,18 @@ impl ReasoningEffort {
 	/// If `model_name` ends with `-reasoning_effort`, returns the parsed verbosity and the trimmed name.
 	///
 	/// Returns `(reasosing_effort?, trimmed_model_name)`.
-	/// The `-zero` suffix is excluded to protect model names like `deepseek-r1-zero`.
+	/// A whitelist of known real model names (e.g., `deepseek-r1-zero`) whose `-zero` suffix
+	/// must not be stripped. Other models ending in `-zero` will have the suffix recognized
+	/// as `ReasoningEffort::Zero`.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
+		// Protected model names that contain a `-zero` suffix as part of their actual name,
+		// not as a reasoning effort hint. These should not be stripped.
+		const PROTECTED_ZERO_MODELS: &[&str] = &["deepseek-r1-zero"];
+
+		if PROTECTED_ZERO_MODELS.contains(&model_name) {
+			return (None, model_name);
+		}
 		if let Some((prefix, last)) = model_name.rsplit_once('-')
-			&& last != "zero"
 			&& let Some(effort) = ReasoningEffort::from_keyword(last)
 		{
 			return (Some(effort), prefix);
@@ -322,7 +331,7 @@ impl ReasoningEffort {
 impl std::fmt::Display for ReasoningEffort {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			ReasoningEffort::Zero => write!(f, "none"),
+			ReasoningEffort::Zero => write!(f, "zero"),
 			ReasoningEffort::Low => write!(f, "low"),
 			ReasoningEffort::Medium => write!(f, "medium"),
 			ReasoningEffort::High => write!(f, "high"),
@@ -644,3 +653,94 @@ impl ChatOptionsSet<'_, '_> {
 }
 
 // endregion: --- ChatOptionsSet
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
+
+	use super::*;
+
+	// -- Keyword surface tests
+
+	#[test]
+	fn test_chat_options_reasoning_effort_as_keyword_zero() -> Result<()> {
+		// -- Setup & Fixtures
+		let effort = ReasoningEffort::Zero;
+		// -- Exec
+		let keyword = effort.as_keyword();
+		// -- Check
+		assert_eq!(keyword, Some("zero"));
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_reasoning_effort_display_zero() -> Result<()> {
+		// -- Setup & Fixtures
+		let effort = ReasoningEffort::Zero;
+		// -- Exec
+		let displayed = format!("{effort}");
+		// -- Check
+		assert_eq!(displayed, "zero");
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_reasoning_effort_from_keyword_zero() -> Result<()> {
+		// -- Exec
+		let parsed = ReasoningEffort::from_keyword("zero");
+		// -- Check
+		assert!(matches!(parsed, Some(ReasoningEffort::Zero)));
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_reasoning_effort_from_keyword_none_alias() -> Result<()> {
+		// -- Exec
+		let parsed = ReasoningEffort::from_keyword("none");
+		// -- Check
+		assert!(matches!(parsed, Some(ReasoningEffort::Zero)));
+		Ok(())
+	}
+
+	// -- Model-name suffix tests
+
+	#[test]
+	fn test_chat_options_from_model_name_protected_zero() -> Result<()> {
+		// -- Setup & Fixtures
+		let protected_name = "deepseek-r1-zero";
+		// -- Exec
+		let (effort, trimmed) = ReasoningEffort::from_model_name(protected_name);
+		// -- Check
+		assert!(effort.is_none(), "protected model should not strip suffix");
+		assert_eq!(trimmed, protected_name);
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_from_model_name_zero_suffix() -> Result<()> {
+		// -- Setup & Fixtures
+		let model_with_zero = "some-model-zero";
+		// -- Exec
+		let (effort, trimmed) = ReasoningEffort::from_model_name(model_with_zero);
+		// -- Check
+		assert!(matches!(effort, Some(ReasoningEffort::Zero)));
+		assert_eq!(trimmed, "some-model");
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_from_model_name_none_suffix_alias() -> Result<()> {
+		// -- Setup & Fixtures
+		let model_with_none = "some-model-none";
+		// -- Exec
+		let (effort, trimmed) = ReasoningEffort::from_model_name(model_with_none);
+		// -- Check
+		assert!(matches!(effort, Some(ReasoningEffort::Zero)));
+		assert_eq!(trimmed, "some-model");
+		Ok(())
+	}
+}
+
+// endregion: --- Tests

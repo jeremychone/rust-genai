@@ -7,14 +7,16 @@
   - Auto-instruments `exec_chat` / `exec_chat_stream` / `exec_embed` as `gen_ai.*` spans (operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`). Prompt/response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent/workflow/tool spans and the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 - `+` anthropic - prompt caching on tools via `Tool::with_cache_control`, and request-level `ChatOptions::with_cache_control` now auto-applies a cache breakpoint to the static (tools+system) prefix (was previously ignored). `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
 - `-` fix: r[#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
-- `!` `ReasoningEffort::None` -> `ReasoningEffort::Zero` (avoids confusion with `Option::None`); `#[serde(alias = "None")]` keeps old JSON deserializable, keywords unchanged (`as_keyword`/`Display` still emit `"none"`) (PR #253, #251)
-  - Anthropic: `Zero` now positively disables reasoning (was a no-op that still triggered adaptive thinking)
-    - Sonnet 5: sends `thinking: {"type": "disabled"}` (thinking is on by default)
-    - Other models: omits `thinking` and `output_config.effort`
-    - Fable/Mythos: omits `thinking` (always-on, cannot be explicitly disabled)
-  - Anthropic `-zero` and `-none` model suffixes both map to `Zero` and are stripped (previously `-zero` was a no-op, `-None` mapped to `Low`)
-  - Bedrock, Gemini, OpenAI: mechanical rename, behavior unchanged
-- `-` anthropic - pass custom content parts through to API (previously silently ignored) (PR #254)
+-`!` `ReasoningEffort::None` -> `ReasoningEffort::Zero` (avoids confusion with `Option::None`). `#[serde(alias = "None")]` keeps old JSON deserializable. Canonical keyword is now `"zero"` (was `"none"`), `as_keyword()`/`Display` emit `"zero"`; `from_keyword()` still accepts `"none"` as backward-compat alias. (PR #253, #251)
+  - Anthropic: `Zero` now positively disables reasoning (was a no-op that still triggered adaptive thinking).
+  - Sonnet 5: sends `thinking: {"type": "disabled"}` (thinking is on by default).
+  - Other models: omits `thinking` and `output_config.effort`.
+  - Fable/Mythos: omits `thinking` (always-on, cannot be explicitly disabled).
+  - Anthropic `-zero` model suffix is canonical, `-none` is backward-compat alias; both map to `Zero` and are stripped.
+  - Model-name suffix parsing: `from_model_name()` now uses a whitelist to protect known model names (e.g., `deepseek-r1-zero`) from suffix stripping.
+  - Bedrock: mechanical rename, behavior unchanged.
+  - OpenAI: mechanical rename, behavior unchanged (keyword mapping to provider-specific values is preserved).
+  - Gemini: `Zero` omits `thinkingConfig` entirely (does **not** set `thinkingBudget: 0`); models with thinking on by default (e.g., Gemini 2.5 Pro/Flash) will still think. The `-zero` model-name suffix maps to `ReasoningEffort::Zero`.
 - `^` anthropic - support `extra_body` ChatOptions field (merge extra request body fields) ([#255](https://github.com/jeremychone/rust-genai/pull/255))
 
 ## 2026-06-06 [v0.6.5](https://github.com/jeremychone/rust-genai/compare/v0.6.4...v0.6.5)

@@ -16,7 +16,6 @@ use value_ext::JsonValueExt;
 pub struct GeminiAdapter;
 
 // Per gemini doc (https://x.com/jeremychone/status/1916501987371438372)
-pub(in crate::adapter) const REASONING_ZERO: u32 = 0;
 pub(in crate::adapter) const REASONING_LOW: u32 = 1000;
 pub(in crate::adapter) const REASONING_MEDIUM: u32 = 8000;
 pub(in crate::adapter) const REASONING_HIGH: u32 = 24000;
@@ -397,9 +396,10 @@ impl GeminiAdapter {
 			(model, None) => {
 				if let Some((prefix, last)) = model_name.rsplit_once('-') {
 					let reasoning = match last {
-						// 'zero' is a gemini special
-						"zero" => Some(ReasoningEffort::Budget(REASONING_ZERO)),
-						"none" => Some(ReasoningEffort::Zero),
+                // 'zero' is canonical
+                "zero" => Some(ReasoningEffort::Zero),
+                // 'none' is backward-compat alias
+                "none" => Some(ReasoningEffort::Zero),
 						"low" | "minimal" => Some(ReasoningEffort::Low),
 						"medium" => Some(ReasoningEffort::Medium),
 						"high" => Some(ReasoningEffort::High),

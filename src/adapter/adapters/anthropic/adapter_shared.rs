@@ -426,6 +426,7 @@ impl AnthropicAdapter {
 				// let model_name: &str = &model.model_name;
 				if let Some((prefix, last)) = raw_model_name.rsplit_once('-') {
 					let reasoning = match last {
+                        // 'zero' is canonical; 'none' is backward-compat alias
 						"zero" | "none" => Some(ReasoningEffort::Zero),
 						"minimal" => Some(ReasoningEffort::Low),
 						"low" => Some(ReasoningEffort::Low),
