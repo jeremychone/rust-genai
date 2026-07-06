@@ -7,6 +7,15 @@
   - Auto-instruments `exec_chat` / `exec_chat_stream` / `exec_embed` as `gen_ai.*` spans (operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`). Prompt/response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent/workflow/tool spans and the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 - `+` anthropic - prompt caching on tools via `Tool::with_cache_control`, and request-level `ChatOptions::with_cache_control` now auto-applies a cache breakpoint to the static (tools+system) prefix (was previously ignored). `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
 - `-` fix: r[#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
+- `!` `ReasoningEffort::None` -> `ReasoningEffort::Zero` (avoids confusion with `Option::None`); `#[serde(alias = "None")]` keeps old JSON deserializable, keywords unchanged (`as_keyword`/`Display` still emit `"none"`) (PR #253, #251)
+  - Anthropic: `Zero` now positively disables reasoning (was a no-op that still triggered adaptive thinking)
+    - Sonnet 5: sends `thinking: {"type": "disabled"}` (thinking is on by default)
+    - Other models: omits `thinking` and `output_config.effort`
+    - Fable/Mythos: omits `thinking` (always-on, cannot be explicitly disabled)
+  - Anthropic `-zero` and `-none` model suffixes both map to `Zero` and are stripped (previously `-zero` was a no-op, `-None` mapped to `Low`)
+  - Bedrock, Gemini, OpenAI: mechanical rename, behavior unchanged
+- `-` anthropic - pass custom content parts through to API (previously silently ignored) (PR #254)
+- `^` anthropic - support `extra_body` ChatOptions field (merge extra request body fields) ([#255](https://github.com/jeremychone/rust-genai/pull/255))
 
 ## 2026-06-06 [v0.6.5](https://github.com/jeremychone/rust-genai/compare/v0.6.4...v0.6.5)
 

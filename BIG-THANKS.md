@@ -10,6 +10,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#244](https://github.com/jeremychone/rust-genai/pull/244) feat(otel): optional OpenTelemetry GenAI instrumentation (feature `otel`)
 - [coaoac](https://github.com/coaoac)
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
+  - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
 - [holovskyi](https://github.com/holovskyi) 
   - [#245](https://github.com/jeremychone/rust-genai/pull/245) fix(anthropic): propagate mid-stream error events
 - [Alb-O](https://github.com/Alb-O)
@@ -17,6 +18,9 @@ _If I forgot your PR, feel free to submit a PR_
 - [lambdabetaeta](https://github.com/lambdabetaeta)
   - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
   - [#250](https://github.com/jeremychone/rust-genai/pull/250) fix: support adaptive thinking for Claude Sonnet 5
+- [ropoctl](https://github.com/ropoctl)
+  - [#254](https://github.com/jeremychone/rust-genai/pull/254) anthropic: pass custom content parts through
+  - [#255](https://github.com/jeremychone/rust-genai/pull/255) anthropic: merge extra request body fields
 
 ## v0.6.0..0.6.x
 
