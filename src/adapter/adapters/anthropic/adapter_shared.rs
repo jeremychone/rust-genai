@@ -507,6 +507,10 @@ impl AnthropicAdapter {
 			payload.x_insert("top_p", top_p)?;
 		}
 
+		if let Some(extra_body) = options_set.extra_body() {
+			payload.x_merge(extra_body.clone())?;
+		}
+
 		Ok(WebRequestData { url, headers, payload })
 	}
 
