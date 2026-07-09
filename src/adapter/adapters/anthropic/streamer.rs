@@ -311,17 +311,36 @@ impl AnthropicStreamer {
 				*val += output_tokens;
 			}
 
-			// -- Capture cache tokens (only present in message_start)
+			// -- Capture cache tokens.
+			// Standard Anthropic reports them in `message_start` (`/message/usage`).
+			// Some Anthropic-compatible gateways (e.g. Alibaba DashScope / Qwen) instead report
+			// them in `message_delta` (`/usage`), so fall back to that location when `message_start`
+			// did not carry them.
 			// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
 			// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
-			if message_type == "message_start" {
-				let cache_creation: i32 = data.x_get("/message/usage/cache_creation_input_tokens").unwrap_or(0);
-				let cache_read: i32 = data.x_get("/message/usage/cache_read_input_tokens").unwrap_or(0);
+			let cache_base = match message_type {
+				"message_start" => Some("/message/usage"),
+				// Fall back to message_delta only if message_start did not already provide cache details.
+				"message_delta"
+					if self
+						.captured_data
+						.usage
+						.as_ref()
+						.and_then(|u| u.prompt_tokens_details.as_ref())
+						.is_none() =>
+				{
+					Some("/usage")
+				}
+				_ => None,
+			};
+
+			if let Some(base) = cache_base {
+				let cache_creation: i32 = data.x_get(&format!("{base}/cache_creation_input_tokens")).unwrap_or(0);
+				let cache_read: i32 = data.x_get(&format!("{base}/cache_read_input_tokens")).unwrap_or(0);
 
 				// Parse cache_creation breakdown if present (TTL-specific breakdown)
-				// Use x_get with JSON pointer to navigate to /message/usage/cache_creation
 				let cache_creation_details = data
-					.x_get::<Value>("/message/usage/cache_creation")
+					.x_get::<Value>(&format!("{base}/cache_creation"))
 					.ok()
 					.as_ref()
 					.and_then(parse_cache_creation_details);
@@ -329,9 +348,13 @@ impl AnthropicStreamer {
 				if cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some() {
 					let usage = self.captured_data.usage.get_or_insert(Usage::default());
 
-					// Add cache tokens to prompt_tokens (same as into_usage does)
-					if let Some(ref mut pt) = usage.prompt_tokens {
-						*pt += cache_creation + cache_read;
+					// Add cache tokens to prompt_tokens only for message_start, where Anthropic's
+					// input_tokens excludes them. For the message_delta fallback the token accounting
+					// is gateway-specific, so we only surface the breakdown to avoid double counting.
+					if message_type == "message_start" {
+						if let Some(ref mut pt) = usage.prompt_tokens {
+							*pt += cache_creation + cache_read;
+						}
 					}
 
 					// Set prompt_tokens_details (match into_usage behavior: always Some(value))
