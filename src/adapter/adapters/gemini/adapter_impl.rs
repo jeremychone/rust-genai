@@ -840,7 +840,7 @@ impl GeminiAdapter {
 		}
 		// -- otherwise, user tool
 		else {
-			let parameters = schema.and_then(|s| if s.is_null() { None } else { Some(s) });
+			let parameters = schema.filter(|s| !s.is_null());
 			// Use `parametersJsonSchema`, Gemini's JSON Schema-native function-
 			// declaration field (Gemini 2.5+), and send the schema as-is. Unlike
 			// the restricted `parameters` (OpenAPI Schema) field — which rejects

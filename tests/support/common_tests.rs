@@ -574,10 +574,7 @@ pub async fn common_test_chat_stream_cache_explicit_1h_ttl_ok(model: &str) -> Te
 
 	// -- Extract Stream content
 	let StreamExtract {
-		stream_end,
-		content,
-		reasoning_content: _,
-		..
+		stream_end, content, ..
 	} = extract_stream_end(chat_res.stream).await?;
 	let content = content.ok_or("extract_stream_end SHOULD have extracted some content")?;
 

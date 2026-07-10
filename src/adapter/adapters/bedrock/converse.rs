@@ -466,7 +466,6 @@ fn tool_to_converse_tool(tool: Tool) -> Result<Value> {
 		name,
 		description,
 		schema,
-		config: _,
 		..
 	} = tool;
 
