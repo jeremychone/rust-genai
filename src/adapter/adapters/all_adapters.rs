@@ -84,6 +84,16 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- Atlas Cloud
+pub struct AtlasCloudAdapter;
+impl_pass_through_adapter!(
+	name: AtlasCloudAdapter,
+	kind: AdapterKind::AtlasCloud,
+	key_env: Some("ATLASCLOUD_API_KEY"),
+	endpoint: "https://api.atlascloud.ai/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- DeepSeek
 pub struct DeepSeekAdapter;
 impl_pass_through_adapter!(
