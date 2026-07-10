@@ -1,5 +1,8 @@
 use super::{OpenAIRespStreamer, RespResponse};
 use crate::adapter::adapters::openai::OpenAIAdapter;
+use crate::adapter::adapters::openai::cache_policy::{
+	OpenAiPromptCacheMode, OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
+};
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
@@ -80,6 +83,13 @@ impl Adapter for OpenAIRespAdapter {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
 		let adapter_kind = model.adapter_kind;
+		let prompt_cache_policy = openai_prompt_cache_policy(
+			adapter_kind,
+			model_name,
+			&chat_req,
+			&chat_options,
+			OpenAiProtocol::Responses,
+		);
 
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
@@ -125,7 +135,7 @@ impl Adapter for OpenAIRespAdapter {
 		let OpenAIRespRequestParts {
 			input_items: messages,
 			tools,
-		} = Self::into_openai_request_parts(&model, chat_req)?;
+		} = Self::into_openai_request_parts(&model, chat_req, prompt_cache_policy.as_ref())?;
 
 		// Store: always opt-in. If not explicitly set, default is false.
 		// Privacy first: we never implicitly set store=true, even when previous_response_id is set.
@@ -144,6 +154,18 @@ impl Adapter for OpenAIRespAdapter {
 			"input": messages,
 			"stream": stream,
 		});
+
+		if let Some(policy) = prompt_cache_policy.as_ref() {
+			let mode = match policy.mode {
+				OpenAiPromptCacheMode::Implicit => "implicit",
+				OpenAiPromptCacheMode::Explicit => "explicit",
+			};
+			let mut prompt_cache_options = json!({"mode": mode});
+			if let Some(ttl) = policy.ttl {
+				prompt_cache_options.x_insert("ttl", ttl)?;
+			}
+			payload.x_insert("prompt_cache_options", prompt_cache_options)?;
+		}
 
 		// -- System prompt as instructions
 		if let Some(instructions) = &instructions {
@@ -258,7 +280,9 @@ impl Adapter for OpenAIRespAdapter {
 		if let Some(prompt_cache_key) = chat_options.prompt_cache_key() {
 			payload.x_insert("prompt_cache_key", prompt_cache_key)?;
 		}
-		if let Some(cache_control) = chat_options.cache_control() {
+		if !is_gpt_5_6_or_later(model_name)
+			&& let Some(cache_control) = chat_options.cache_control()
+		{
 			let prompt_cache_retention = match cache_control {
 				CacheControl::Memory | CacheControl::Ephemeral => Some("in_memory"),
 				CacheControl::Ephemeral24h => Some("24h"),
@@ -386,7 +410,11 @@ impl OpenAIRespAdapter {
 	/// - `genai::ChatRequest.system`, if present, is added as the first message with role 'system'.
 	/// - All messages get added with the corresponding roles (tools are not supported for now)
 	///
-	fn into_openai_request_parts(_model_iden: &ModelIden, chat_req: ChatRequest) -> Result<OpenAIRespRequestParts> {
+	fn into_openai_request_parts(
+		model_iden: &ModelIden,
+		chat_req: ChatRequest,
+		cache_policy: Option<&OpenAiPromptCachePolicy>,
+	) -> Result<OpenAIRespRequestParts> {
 		let mut input_items: Vec<Value> = Vec::new();
 
 		// -- Process the system
@@ -398,12 +426,30 @@ impl OpenAIRespAdapter {
 
 		// -- Process the messages
 		for msg in chat_req.messages {
+			let cache_controlled = cache_policy.is_some()
+				&& msg
+					.options
+					.as_ref()
+					.and_then(|options| options.cache_control.as_ref())
+					.is_some();
+
 			// Note: Will handle more types later
 			match msg.role {
 				// For now, system and tool messages go to the system
 				ChatRole::System => {
 					if let Some(content) = msg.content.into_joined_texts() {
-						input_items.push(json!({"role": "system", "content": content}))
+						if cache_controlled {
+							let mut values = vec![json!({"type": "input_text", "text": content})];
+							apply_resp_cache_breakpoint(model_iden, &mut values, "message")?;
+							input_items.push(json!({"role": "system", "content": values}));
+						} else {
+							input_items.push(json!({"role": "system", "content": content}))
+						}
+					} else if cache_controlled {
+						return Err(Error::CacheBreakpointNoEligibleContent {
+							model_iden: model_iden.clone(),
+							scope: "message",
+						});
 					}
 					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
@@ -411,7 +457,7 @@ impl OpenAIRespAdapter {
 				// User - For now support Text and Binary
 				ChatRole::User => {
 					// -- If we have only text, then, we jjust returned the joined_texts
-					if msg.content.is_text_only() {
+					if msg.content.is_text_only() && !cache_controlled {
 						// NOTE: for now, if no content, just return empty string (respect current logic)
 						let content = json!(msg.content.joined_texts().unwrap_or_else(String::new));
 						input_items.push(json! ({"role": "user", "content": content}));
@@ -477,6 +523,9 @@ impl OpenAIRespAdapter {
 								// Custom are ignored for this logic
 								ContentPart::Custom(_) => {}
 							}
+						}
+						if cache_controlled {
+							apply_resp_cache_breakpoint(model_iden, &mut values, "message")?;
 						}
 						input_items.push(json! ({"role": "user", "content": values}));
 					}
@@ -560,6 +609,13 @@ impl OpenAIRespAdapter {
 						}
 					}
 
+					if cache_controlled {
+						return Err(Error::CacheBreakpointNoEligibleContent {
+							model_iden: model_iden.clone(),
+							scope: "message",
+						});
+					}
+
 					// Make sure we handle the rest of the assistant message
 					if !item_message_content.is_empty() {
 						input_items.push(json!({
@@ -572,6 +628,13 @@ impl OpenAIRespAdapter {
 
 				// Tool Response (Function tool call output)
 				ChatRole::Tool => {
+					if cache_controlled {
+						return Err(Error::CacheBreakpointNoEligibleContent {
+							model_iden: model_iden.clone(),
+							scope: "message",
+						});
+					}
+
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
 							input_items.push(json!({
@@ -666,6 +729,23 @@ struct OpenAIRespRequestParts {
 	tools: Option<Vec<Value>>,
 }
 
+fn apply_resp_cache_breakpoint(model_iden: &ModelIden, content: &mut [Value], scope: &'static str) -> Result<()> {
+	let Some(content_block) = content.iter_mut().rev().find(|value| {
+		matches!(
+			value.get("type").and_then(Value::as_str),
+			Some("input_text" | "input_image" | "input_file")
+		)
+	}) else {
+		return Err(Error::CacheBreakpointNoEligibleContent {
+			model_iden: model_iden.clone(),
+			scope,
+		});
+	};
+
+	content_block.x_insert("prompt_cache_breakpoint", json!({"mode": "explicit"}))?;
+	Ok(())
+}
+
 // endregion: --- Support
 
 // region:    --- Tests
@@ -739,8 +819,8 @@ mod tests {
 			.append_message(ChatMessage::assistant("The weather is sunny."));
 
 		// Serialize to OpenAI Responses API format
-		let parts =
-			OpenAIRespAdapter::into_openai_request_parts(&model_iden, chat_req).expect("Should serialize successfully");
+		let parts = OpenAIRespAdapter::into_openai_request_parts(&model_iden, chat_req, None)
+			.expect("Should serialize successfully");
 
 		// Find the assistant message in input_items
 		let assistant_msg = parts
@@ -770,6 +850,125 @@ mod tests {
 			content_type, "output_text",
 			"Assistant message content should use 'output_text' type, not 'input_text'"
 		);
+	}
+
+	#[test]
+	fn test_gpt_5_6_responses_defaults_to_explicit_cache_mode() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			ChatOptionsSet::default(),
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
+		assert!(web_req.payload["prompt_cache_options"].get("ttl").is_none());
+		assert!(
+			web_req.payload["input"][0]["content"][0]
+				.get("prompt_cache_breakpoint")
+				.is_none()
+		);
+	}
+
+	#[test]
+	fn test_gpt_5_6_responses_cache_key_uses_implicit_cache_mode() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6-mini"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let chat_options = ChatOptions::default().with_prompt_cache_key("stable-key");
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "implicit");
+		assert!(
+			web_req.payload["input"][0]["content"][0]
+				.get("prompt_cache_breakpoint")
+				.is_none()
+		);
+	}
+
+	#[test]
+	fn test_gpt_5_6_responses_places_breakpoint_on_last_eligible_content_block() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let chat_req = ChatRequest::new(vec![
+			ChatMessage::user(vec![
+				ContentPart::from_text("stable text"),
+				ContentPart::from_binary_url("image/png", "https://example.com/image.png", None),
+				ContentPart::from_text("last text"),
+			])
+			.with_options(CacheControl::Ephemeral),
+		]);
+
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
+				.expect("to_web_request_data should succeed");
+
+		let blocks = web_req.payload["input"][0]["content"]
+			.as_array()
+			.expect("message content should be an array");
+		assert!(blocks[0].get("prompt_cache_breakpoint").is_none());
+		assert!(blocks[1].get("prompt_cache_breakpoint").is_none());
+		assert_eq!(blocks[2]["prompt_cache_breakpoint"]["mode"], "explicit");
+	}
+
+	#[test]
+	fn test_gpt_5_6_responses_ignores_tool_cache_control() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let chat_req = ChatRequest::from_user("hello")
+			.append_tool(Tool::new("get_weather").with_cache_control(CacheControl::Ephemeral));
+
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
+				.expect("tool cache control should be ignored");
+
+		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
+		assert!(web_req.payload["tools"][0].get("prompt_cache_breakpoint").is_none());
+	}
+
+	#[test]
+	fn test_gpt_5_5_responses_keeps_legacy_cache_retention() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.5"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let chat_options = ChatOptions::default().with_cache_control(CacheControl::Ephemeral24h);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["prompt_cache_retention"], "24h");
+		assert!(web_req.payload.get("prompt_cache_options").is_none());
 	}
 }
 

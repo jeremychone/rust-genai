@@ -136,10 +136,7 @@ mod tests {
 			Some(123)
 		);
 		assert_eq!(
-			usage
-				.prompt_tokens_details
-				.as_ref()
-				.and_then(|details| details.cached_tokens),
+			usage.prompt_tokens_details.as_ref().and_then(|details| details.cached_tokens),
 			Some(456)
 		);
 
