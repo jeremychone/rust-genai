@@ -351,10 +351,10 @@ impl AnthropicStreamer {
 					// Add cache tokens to prompt_tokens only for message_start, where Anthropic's
 					// input_tokens excludes them. For the message_delta fallback the token accounting
 					// is gateway-specific, so we only surface the breakdown to avoid double counting.
-					if message_type == "message_start" {
-						if let Some(ref mut pt) = usage.prompt_tokens {
-							*pt += cache_creation + cache_read;
-						}
+					if message_type == "message_start"
+						&& let Some(ref mut pt) = usage.prompt_tokens
+					{
+						*pt += cache_creation + cache_read;
 					}
 
 					// Set prompt_tokens_details (match into_usage behavior: always Some(value))

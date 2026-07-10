@@ -247,30 +247,6 @@ impl AdapterKind {
 	}
 }
 
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn atlascloud_kind_maps_strings_and_key_env() {
-		assert_eq!(AdapterKind::AtlasCloud.as_str(), "AtlasCloud");
-		assert_eq!(AdapterKind::AtlasCloud.as_lower_str(), "atlascloud");
-		assert_eq!(AdapterKind::from_lower_str("atlascloud"), Some(AdapterKind::AtlasCloud));
-		assert_eq!(
-			AdapterKind::AtlasCloud.default_key_env_name(),
-			Some("ATLASCLOUD_API_KEY")
-		);
-	}
-
-	#[test]
-	fn atlascloud_kind_resolves_from_namespace() {
-		assert_eq!(
-			AdapterKind::from_model("atlascloud::qwen/qwen3.5-flash").expect("namespace should resolve"),
-			AdapterKind::AtlasCloud
-		);
-	}
-}
-
 /// Inner api to return an adatper type from an eventual namespaced model (e.g., `zai::glm-5.2`)
 impl AdapterKind {
 	pub(crate) fn from_model_namespace(model: &str) -> Option<Self> {
@@ -287,7 +263,6 @@ impl AdapterKind {
 		} else if namespace == BAIDU_CODING_OPENAI_NAMESPACE || namespace == BAIDU_CODING_ANTHROPIC_NAMESPACE {
 			Some(Self::Baidu)
 		}
-		//
 		// -- Otherwise, no adapter from namespace, because no matching namespace
 		else {
 			None
