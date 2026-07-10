@@ -6,6 +6,8 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.0-beta.x
 
+- [Jackkakaya](https://github.com/Jackkakaya)
+  - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
 - [anagrius](https://github.com/anagrius)
   - [#244](https://github.com/jeremychone/rust-genai/pull/244) feat(otel): optional OpenTelemetry GenAI instrumentation (feature `otel`)
 - [coaoac](https://github.com/coaoac)
