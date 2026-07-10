@@ -108,6 +108,11 @@ pub enum AdapterKind {
 	/// Uses `OPEN_ROUTER_API_KEY`.
 	OpenRouter,
 
+	/// Atlas Cloud: OpenAI-compatible gateway for many hosted models.
+	/// Namespace: `atlascloud::qwen/qwen3.5-flash`.
+	/// Uses `ATLASCLOUD_API_KEY`.
+	AtlasCloud,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -151,6 +156,7 @@ adapter_kind_str_maps! {
 	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::all_adapters::OpenCodeGoAdapter;
 	BedrockApi    => "BedrockApi",    "bedrock_api",    adapters::all_adapters::BedrockApiAdapter;
 	OpenRouter    => "OpenRouter",    "open_router",    adapters::all_adapters::OpenRouterAdapter;
+	AtlasCloud    => "AtlasCloud",    "atlascloud",     adapters::all_adapters::AtlasCloudAdapter;
 	MiniMax       => "MiniMax",       "minimax",        adapters::all_adapters::MiniMaxAdapter;
 }
 
@@ -238,6 +244,30 @@ impl AdapterKind {
 		else {
 			Ok(Self::Ollama)
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn atlascloud_kind_maps_strings_and_key_env() {
+		assert_eq!(AdapterKind::AtlasCloud.as_str(), "AtlasCloud");
+		assert_eq!(AdapterKind::AtlasCloud.as_lower_str(), "atlascloud");
+		assert_eq!(AdapterKind::from_lower_str("atlascloud"), Some(AdapterKind::AtlasCloud));
+		assert_eq!(
+			AdapterKind::AtlasCloud.default_key_env_name(),
+			Some("ATLASCLOUD_API_KEY")
+		);
+	}
+
+	#[test]
+	fn atlascloud_kind_resolves_from_namespace() {
+		assert_eq!(
+			AdapterKind::from_model("atlascloud::qwen/qwen3.5-flash").expect("namespace should resolve"),
+			AdapterKind::AtlasCloud
+		);
 	}
 }
 

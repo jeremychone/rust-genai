@@ -17,6 +17,7 @@ const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
+const MODEL_ATLASCLOUD: &str = "atlascloud::qwen/qwen3.5-flash"; // required namespace
 // or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
 const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
 
@@ -36,6 +37,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
 	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
+	(MODEL_ATLASCLOUD, "ATLASCLOUD_API_KEY"),
 	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
 ];
 
@@ -47,6 +49,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - model in Groq models   -> Groq
 //  - starts_with "glm"      -> ZAI
 //  - starts_with "ollama_cloud::" -> OllamaCloud
+//  - starts_with "atlascloud::" -> AtlasCloud
 //  - For anything else      -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`

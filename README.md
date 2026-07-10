@@ -15,9 +15,9 @@ genai = "0.6"
 
 `genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-Over 200+ LLM models, 25+ LLM providers out of the box, including **Ollama** for local execution.
+Over 200+ LLM models, 26+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `atlascloud`, `xai`
 
 Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)) to support any other providers.
 
@@ -95,7 +95,7 @@ See [BIG-THANKS](BIG-THANKS.md) for contributors
 
 ## Key Features
 
-- Multi-AI provider/model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- Multi-AI provider/model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Atlas Cloud, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - Image analysis (for OpenAI, Gemini Flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom auth/API key (see [examples/c02-auth.rs](examples/c02-auth.rs))
 - Model aliases (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
@@ -121,6 +121,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **Cohere**: `command-*`, `embed-*`
 - **Mimo**: `mimo-*`
 - **OpenCode Go**: Namespace `opencode_go::` only
+- **Atlas Cloud**: Namespace `atlascloud::` only
 - **Fireworks**: Models containing `fireworks`
 - **Ollama**: Fallback for any other names, defaulting to local Ollama.
 
@@ -142,6 +143,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `opencode_go::minimax-m2.5` (Forces **OpenCode Go** adapter)
 - `bedrock_api::anthropic.claude-v2` (Forces **AWS Bedrock** adapter)
 - `open_router::google/gemini-2.0-flash-001` (Forces **OpenRouter** adapter)
+- `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
@@ -169,6 +171,7 @@ const MODEL_XAI: &str = "grok-3-mini";
 const MODEL_DEEPSEEK: &str = "deepseek-chat";
 const MODEL_ZAI: &str = "glm-4-plus";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
+const MODEL_ATLASCLOUD: &str = "atlascloud::qwen/qwen3.5-flash"; // required namespace
 // or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
 const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
 
@@ -191,6 +194,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_BAIDU, "BAIDU_API_KEY"),
 	(MODEL_BIGMODEL, "BIGMODEL_API_KEY"),
 	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
+	(MODEL_ATLASCLOUD, "ATLASCLOUD_API_KEY"),
 	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
 	(MODEL_OPEN_ROUTER, "OPEN_ROUTER_API_KEY"),
 ];
@@ -203,6 +207,7 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 //  - model in Groq models    -> Groq
 //  - starts_with "glm"       -> ZAI
 //  - starts_with "ollama_cloud::" -> OllamaCloud
+//  - starts_with "atlascloud::" -> AtlasCloud
 //  - For anything else       -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`
@@ -290,7 +295,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## ChatOptions
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, AIHubMix
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, AIHubMix, Atlas Cloud
 
 | Property      | OpenAI Compatibles (*1) | Anthropic                   | Gemini `generationConfig.` | Cohere        |
 |---------------|-------------------------|-----------------------------|----------------------------|---------------|
@@ -309,7 +314,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, AIHubMix
+	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, AIHubMix, Atlas Cloud
 	- For **Groq**, the property is `x_groq.usage.`
 	- At this point, **Ollama** does not emit input/output tokens when streaming due to a limitation in the Ollama OpenAI compatibility layer. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
 	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider, or `None`

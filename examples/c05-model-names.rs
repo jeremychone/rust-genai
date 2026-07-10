@@ -19,6 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		AdapterKind::Anthropic,
 		AdapterKind::Groq,
 		AdapterKind::Cohere,
+		AdapterKind::AtlasCloud,
 	];
 
 	let client = Client::default();

@@ -128,6 +128,7 @@ pub fn provider_name(adapter_kind: AdapterKind) -> &'static str {
 		AdapterKind::DeepSeek => "deepseek",
 		AdapterKind::Xai => "x_ai",
 		AdapterKind::Moonshot => "moonshot_ai",
+		AdapterKind::AtlasCloud => "atlascloud",
 		// -- Not in the spec's well-known list: fall back to the adapter's lower-case id.
 		other => other.as_lower_str(),
 	}
@@ -152,6 +153,7 @@ mod tests {
 		assert_eq!(provider_name(AdapterKind::DeepSeek), "deepseek");
 		assert_eq!(provider_name(AdapterKind::Xai), "x_ai");
 		assert_eq!(provider_name(AdapterKind::Moonshot), "moonshot_ai");
+		assert_eq!(provider_name(AdapterKind::AtlasCloud), "atlascloud");
 	}
 
 	#[test]

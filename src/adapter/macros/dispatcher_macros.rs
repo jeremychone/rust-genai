@@ -136,6 +136,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<OpenRouter Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::AtlasCloud => {
+				type A = crate::adapter::adapters::all_adapters::[<AtlasCloud Adapter>];
+				$body
+			}
 
 			crate::adapter::AdapterKind::Custom(_) => {
 				type A = crate::adapter::adapters::all_adapters::[<Custom Adapter>];
