@@ -51,6 +51,7 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
   - The adapter uses the OpenAI protocol internally (for now, might be configurable in the future)
   - Example: `genai_1::my-model-7b` with `GENAI_1_ENDPOINT=https://my-host/v1/` and `GENAI_1_API_KEY=sk-...`.
 - **OpenAI prompt-cache usage** - OpenAI `cache_write_tokens` values are normalized to `Usage.prompt_tokens_details.cache_creation_tokens`, alongside `cached_tokens`, for Chat Completions and Responses API usage payloads.
+- **OpenAI GPT-5.6+ prompt caching** - Native OpenAI Chat Completions and Responses requests use explicit mode by default, implicit mode for general cache intent, and explicit content breakpoints for supported message-level cache controls. Older OpenAI models and OpenAI-compatible adapters keep their existing behavior.
 
 (see [genai releases](https://crates.io/crates/genai/versions))
 

@@ -136,6 +136,9 @@ Cause:\n{cause}
 	#[display("Adapter '{adapter_kind}' does not support feature '{feature}'")]
 	AdapterNotSupported { adapter_kind: AdapterKind, feature: String },
 
+	#[display("Cache breakpoint requested for model '{model_iden}', but {scope} has no eligible OpenAI content block.")]
+	CacheBreakpointNoEligibleContent { model_iden: ModelIden, scope: &'static str },
+
 	#[display(
 		"Client is bound to adapter '{bound}' but model '{model}' resolved to adapter '{requested}'. \
 A Client configured with `with_adapter_kind` targets a single provider — its \
