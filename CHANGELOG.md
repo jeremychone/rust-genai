@@ -2,12 +2,13 @@
 
 ## v0.7.0-beta.x (see [genai versions](https://crates.io/crates/genai/versions))
 
-`^` gemini - forward JSON Schema raw via responseJsonSchema / parametersJsonSchema (PR #257)
-`-` fix(anthropic) - capture streaming cache tokens from `message_delta` fallback (PR #258)
-`+` NEW Provider/Adapter - `AdapterKind::Kimi` (activated on `kimi::` namespace, or `kimi` model prefix) (moonshot.ai)
+- `+` NEW Provider/Adapter - Atlas Cloud OpenAI-compatible adapter (activated on `atlascloud::` namespace, using `ATLASCLOUD_API_KEY`) (PR #259)
+- `+` NEW Provider/Adapter - `AdapterKind::Kimi` (activated on `kimi::` namespace, or `kimi` model prefix) (moonshot.ai)
 - `+` otel - optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature (off by default; pure `tracing` bridge, no extra dependencies). 
   - Auto-instruments `exec_chat` / `exec_chat_stream` / `exec_embed` as `gen_ai.*` spans (operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`). Prompt/response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent/workflow/tool spans and the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 - `+` anthropic - prompt caching on tools via `Tool::with_cache_control`, and request-level `ChatOptions::with_cache_control` now auto-applies a cache breakpoint to the static (tools+system) prefix (was previously ignored). `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
+- `^` gemini - forward JSON Schema raw via responseJsonSchema / parametersJsonSchema (PR #257)
+- `-` fix(anthropic) - capture streaming cache tokens from `message_delta` fallback (PR #258)
 - `-` fix: r[#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
 -`!` `ReasoningEffort::None` -> `ReasoningEffort::Zero` (avoids confusion with `Option::None`). `#[serde(alias = "None")]` keeps old JSON deserializable. Canonical keyword is now `"zero"` (was `"none"`), `as_keyword()`/`Display` emit `"zero"`; `from_keyword()` still accepts `"none"` as backward-compat alias. (PR #253, #251)
   - Anthropic: `Zero` now positively disables reasoning (was a no-op that still triggered adaptive thinking).

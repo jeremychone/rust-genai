@@ -6,24 +6,26 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.0-beta.x
 
-- [Jackkakaya](https://github.com/Jackkakaya)
-  - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
-- [anagrius](https://github.com/anagrius)
-  - [#244](https://github.com/jeremychone/rust-genai/pull/244) feat(otel): optional OpenTelemetry GenAI instrumentation (feature `otel`)
-- [coaoac](https://github.com/coaoac)
-  - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
-  - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
-- [holovskyi](https://github.com/holovskyi) 
-  - [#245](https://github.com/jeremychone/rust-genai/pull/245) fix(anthropic): propagate mid-stream error events
-- [Alb-O](https://github.com/Alb-O)
-  - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
-- [lambdabetaeta](https://github.com/lambdabetaeta)
-  - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
-  - [#250](https://github.com/jeremychone/rust-genai/pull/250) fix: support adaptive thinking for Claude Sonnet 5
 - [ropoctl](https://github.com/ropoctl)
   - [#254](https://github.com/jeremychone/rust-genai/pull/254) anthropic: pass custom content parts through
   - [#255](https://github.com/jeremychone/rust-genai/pull/255) anthropic: merge extra request body fields
   - [#257](https://github.com/jeremychone/rust-genai/pull/257) feat(gemini): forward JSON Schema raw via responseJsonSchema / parametersJsonSchema
+- [coaoac](https://github.com/coaoac)
+  - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
+  - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
+- [lambdabetaeta](https://github.com/lambdabetaeta)
+  - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
+  - [#250](https://github.com/jeremychone/rust-genai/pull/250) fix: support adaptive thinking for Claude Sonnet 5
+- [Alb-O](https://github.com/Alb-O)
+  - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
+- [holovskyi](https://github.com/holovskyi) 
+  - [#245](https://github.com/jeremychone/rust-genai/pull/245) fix(anthropic): propagate mid-stream error events
+- [anagrius](https://github.com/anagrius)
+  - [#244](https://github.com/jeremychone/rust-genai/pull/244) feat(otel): optional OpenTelemetry GenAI instrumentation (feature `otel`)
+- [binyangzhu000-sudo](https://github.com/binyangzhu000-sudo)
+  - [#259](https://github.com/jeremychone/rust-genai/pull/259) add Atlas Cloud OpenAI-compatible adapter
+- [Jackkakaya](https://github.com/Jackkakaya)
+  - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
 
 ## v0.6.0..0.6.x
 
