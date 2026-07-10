@@ -66,7 +66,7 @@ impl CacheCreationDetails {
 pub struct PromptTokensDetails {
 	/// Anthropic: `cache_creation_input_tokens`.
 	/// Tokens used to build the cache (not yet cached). These may incur a small surcharge; subsequent requests benefit via `cached_tokens`.
-	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	#[serde(alias = "cache_write_tokens", default, deserialize_with = "crate::support::zero_as_none")]
 	pub cache_creation_tokens: Option<i32>,
 	/// Breakdown of cache creation tokens by TTL (5m vs 1h).
 	/// Only populated when the provider returns TTL-specific breakdown.
@@ -111,3 +111,63 @@ impl CompletionTokensDetails {
 			&& self.audio_tokens.is_none()
 	}
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::Usage;
+	use serde_json::json;
+
+	#[test]
+	fn test_deserializes_openai_cache_write_tokens() -> Result<(), serde_json::Error> {
+		let usage: Usage = serde_json::from_value(json!({
+			"prompt_tokens_details": {
+				"cache_write_tokens": 123,
+				"cached_tokens": 456
+			}
+		}))?;
+
+		assert_eq!(
+			usage
+				.prompt_tokens_details
+				.as_ref()
+				.and_then(|details| details.cache_creation_tokens),
+			Some(123)
+		);
+		assert_eq!(
+			usage
+				.prompt_tokens_details
+				.as_ref()
+				.and_then(|details| details.cached_tokens),
+			Some(456)
+		);
+
+		let serialized = serde_json::to_value(&usage)?;
+		assert_eq!(serialized["prompt_tokens_details"]["cache_creation_tokens"], 123);
+		assert!(serialized["prompt_tokens_details"].get("cache_write_tokens").is_none());
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_openai_cache_write_tokens_zero_is_none() -> Result<(), serde_json::Error> {
+		let usage: Usage = serde_json::from_value(json!({
+			"prompt_tokens_details": {
+				"cache_write_tokens": 0
+			}
+		}))?;
+
+		assert!(
+			usage
+				.prompt_tokens_details
+				.as_ref()
+				.and_then(|details| details.cache_creation_tokens)
+				.is_none()
+		);
+
+		Ok(())
+	}
+}
+
+// endregion: --- Tests

@@ -47,7 +47,7 @@ impl RespUsage {
 pub struct InputTokensDetails {
 	/// Anthropic: `cache_creation_input_tokens`.
 	/// Tokens used to build the cache (not yet cached). These may incur a small surcharge; subsequent requests benefit via `cached_tokens`.
-	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	#[serde(alias = "cache_write_tokens", default, deserialize_with = "crate::support::zero_as_none")]
 	pub cache_creation_tokens: Option<i32>,
 	/// Anthropic: `cache_read_input_tokens`.
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
@@ -124,3 +124,34 @@ impl From<RespUsage> for Usage {
 }
 
 // endregion: --- Intos
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::RespUsage;
+	use crate::chat::Usage;
+	use serde_json::json;
+
+	#[test]
+	fn test_resp_usage_deserializes_openai_cache_write_tokens() -> Result<(), serde_json::Error> {
+		let usage: RespUsage = serde_json::from_value(json!({
+			"input_tokens_details": {
+				"cache_write_tokens": 77
+			}
+		}))?;
+		let normalized: Usage = usage.into();
+
+		assert_eq!(
+			normalized
+				.prompt_tokens_details
+				.as_ref()
+				.and_then(|details| details.cache_creation_tokens),
+			Some(77)
+		);
+
+		Ok(())
+	}
+}
+
+// endregion: --- Tests
