@@ -13,6 +13,7 @@
   - Set message-level cache control to use explicit mode and place one cache breakpoint on the last eligible content block. Chat Completions supports text, image, audio, file, and refusal blocks. Responses supports input text, input image, and input file blocks.
   - Otherwise, when there is no request-level cache intent, `prompt_cache_key`, message-level cache control, or tool-level cache control, the mode is set to `"explicit"` with no breakpoint. Nothing is implicitly cached.
   - Tool-level cache control is ignored by OpenAI because the supported protocols do not provide a valid tool-definition breakpoint representation. It does not change the cache mode, fail serialization, or emit an unsupported breakpoint field.
+  - Message-level cache placement is best effort. When a controlled message has no eligible content block, OpenAI omits the breakpoint and continues request serialization without failing.
   - This policy applies only to native OpenAI Chat Completions and Responses requests for GPT-5.6 and later. Older OpenAI models retain legacy cache-retention behavior, and OpenAI-compatible adapters do not receive these OpenAI-specific fields.
   - Existing normalized usage continues to expose cache reads through `cached_tokens` and cache writes through `cache_creation_tokens`.
 - `^` gemini - forward JSON Schema raw via responseJsonSchema / parametersJsonSchema (PR #257)
