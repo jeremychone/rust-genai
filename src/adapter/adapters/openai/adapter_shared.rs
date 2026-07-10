@@ -323,11 +323,6 @@ impl OpenAIAdapter {
 						} else {
 							messages.push(json!({"role": "system", "content": content}))
 						}
-					} else if cache_controlled {
-						return Err(Error::CacheBreakpointNoEligibleContent {
-							model_iden: model_iden.clone(),
-							scope: "message",
-						});
 					}
 					// TODO: Probably need to warn if it is a ToolCalls type of content
 				}
@@ -465,12 +460,6 @@ impl OpenAIAdapter {
 
 				// Tool - For now, support only tool responses
 				ChatRole::Tool => {
-					if cache_controlled {
-						return Err(Error::CacheBreakpointNoEligibleContent {
-							model_iden: model_iden.clone(),
-							scope: "message",
-						});
-					}
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
 							messages.push(json!({
@@ -584,17 +573,14 @@ struct OpenAIRequestParts {
 	tools: Option<Vec<Value>>,
 }
 
-fn apply_chat_cache_breakpoint(model_iden: &ModelIden, content: &mut [Value], scope: &'static str) -> Result<()> {
+fn apply_chat_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _scope: &'static str) -> Result<()> {
 	let Some(content_block) = content.iter_mut().rev().find(|value| {
 		matches!(
 			value.get("type").and_then(Value::as_str),
 			Some("text" | "image_url" | "input_audio" | "file" | "refusal")
 		)
 	}) else {
-		return Err(Error::CacheBreakpointNoEligibleContent {
-			model_iden: model_iden.clone(),
-			scope,
-		});
+		return Ok(());
 	};
 
 	content_block.x_insert("prompt_cache_breakpoint", json!({"mode": "explicit"}))?;
@@ -613,6 +599,34 @@ mod tests {
 
 	fn test_model() -> ModelIden {
 		ModelIden::new(AdapterKind::OpenAI, "test-model")
+	}
+
+	#[test]
+	fn test_cache_control_without_eligible_content_does_not_fail_chat_completion() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAI, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: Endpoint::from_static("https://api.openai.com/v1/"),
+		};
+		let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![ContentPart::ToolCall(ToolCall {
+			call_id: "call_1".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: None,
+		})]))
+		.with_options(CacheControl::Ephemeral);
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("hello"), assistant_msg]);
+
+		let web_req = OpenAIAdapter::util_to_web_request_data(
+			target,
+			ServiceType::Chat,
+			chat_req,
+			ChatOptionsSet::default(),
+			None,
+		)
+		.expect("unsupported breakpoint placement should be ignored");
+
+		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
 	}
 
 	#[test]
