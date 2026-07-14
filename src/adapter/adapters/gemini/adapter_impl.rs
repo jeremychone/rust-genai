@@ -423,7 +423,7 @@ impl GeminiAdapter {
 			tools,
 		} = Self::into_gemini_request_parts(model, chat_req)?;
 
-		let mut payload = json!({ "contents": contents });
+		let mut payload = json!({});
 
 		// -- Set the reasoning effort
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
@@ -462,13 +462,16 @@ impl GeminiAdapter {
 			payload.x_insert("systemInstruction", json!({ "parts": [{ "text": system }] }))?;
 		}
 
-		// -- Tools
+		// -- Tools (before contents/messages)
 		if let Some(tools) = tools {
 			payload.x_insert("tools", tools)?;
 		}
 		if let Some(tool_config) = gemini_tool_config(options_set.tool_choice()) {
 			payload.x_insert("toolConfig", tool_config)?;
 		}
+
+		// -- Contents (messages, after tools)
+		payload.x_insert("contents", contents)?;
 
 		// -- Response Format
 		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {

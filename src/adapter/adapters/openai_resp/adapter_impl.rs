@@ -151,7 +151,6 @@ impl Adapter for OpenAIRespAdapter {
 		let mut payload = json!({
 			"store": store,
 			"model": model_name,
-			"input": messages,
 			"stream": stream,
 		});
 
@@ -215,13 +214,16 @@ impl Adapter for OpenAIRespAdapter {
 			payload.x_insert("include", json!(["reasoning.encrypted_content"]))?;
 		}
 
-		// -- Tools
+		// -- Tools (before messages)
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
 		}
 		if let Some(tool_choice) = openai_resp_tool_choice(chat_options.tool_choice()) {
 			payload.x_insert("tool_choice", tool_choice)?;
 		}
+
+		// -- Messages (after tools)
+		payload.x_insert("input", messages)?;
 
 		// -- Compute response format
 		let response_format = if let Some(response_format) = chat_options.response_format() {

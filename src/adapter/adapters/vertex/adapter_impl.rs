@@ -257,7 +257,6 @@ impl VertexAdapter {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"anthropic_version": VERTEX_ANTHROPIC_VERSION,
-			"messages": messages,
 			"stream": stream,
 		});
 
@@ -265,9 +264,13 @@ impl VertexAdapter {
 			payload.x_insert("system", system)?;
 		}
 
+		// -- Tools (before messages)
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
 		}
+
+		// -- Messages (after tools)
+		payload.x_insert("messages", messages)?;
 
 		if let Some(temperature) = options_set.temperature() {
 			payload.x_insert("temperature", temperature)?;

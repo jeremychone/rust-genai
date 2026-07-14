@@ -62,15 +62,19 @@ pub(super) fn build_converse_payload(
 		tools,
 	} = into_converse_request_parts(chat_req)?;
 
-	let mut payload = json!({ "messages": messages });
+	let mut payload = json!({});
 
 	if let Some(system) = system {
 		payload.x_insert("system", system)?;
 	}
 
+	// -- Tools (before messages)
 	if let Some(tools) = tools {
 		payload.x_insert("toolConfig", json!({ "tools": tools }))?;
 	}
+
+	// -- Messages (after tools)
+	payload.x_insert("messages", messages)?;
 
 	// inferenceConfig
 	let mut inference: Map<String, Value> = Map::new();

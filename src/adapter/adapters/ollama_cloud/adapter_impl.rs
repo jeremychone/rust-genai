@@ -80,7 +80,6 @@ impl Adapter for OllamaCloudAdapter {
 
 		let mut payload = json!({
 			"model": model_name,
-			"messages": messages,
 			"stream": stream,
 		});
 
@@ -88,9 +87,13 @@ impl Adapter for OllamaCloudAdapter {
 			payload.x_insert("options", options)?;
 		}
 
+		// -- Tools (before messages)
 		if let Some(tools) = tools {
 			payload.x_insert("tools", tools)?;
 		}
+
+		// -- Messages (after tools)
+		payload.x_insert("messages", messages)?;
 
 		if let Some(format) = chat_options.response_format()
 			&& matches!(format, crate::chat::ChatResponseFormat::JsonMode)
