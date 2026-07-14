@@ -76,6 +76,8 @@ impl OpenAIAdapter {
 	}
 
 	/// Shared OpenAI to_web_request_data for various OpenAI compatible adapters
+	/// NOTE: `messages` is inserted after tool fields to improve prompt-cache utilization.
+	///        See PR 262: https://github.com/jeremychone/rust-genai/pull/262
 	pub(in crate::adapter::adapters) fn util_to_web_request_data(
 		target: ServiceTarget,
 		service_type: ServiceType,

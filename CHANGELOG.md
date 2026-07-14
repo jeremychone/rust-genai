@@ -16,6 +16,7 @@
   - Message-level cache placement is best effort. When a controlled message has no eligible content block, OpenAI omits the breakpoint and continues request serialization without failing.
   - This policy applies only to native OpenAI Chat Completions and Responses requests for GPT-5.6 and later. Older OpenAI models retain legacy cache-retention behavior, and OpenAI-compatible adapters do not receive these OpenAI-specific fields.
   - Existing normalized usage continues to expose cache reads through `cached_tokens` and cache writes through `cache_creation_tokens`.
+- `^` adapters - move messages after tools in JSON payloads for better prompt cache utilization (PR #262)
 - `^` gemini - forward JSON Schema raw via responseJsonSchema / parametersJsonSchema (PR #257)
 - `-` fix(anthropic) - capture streaming cache tokens from `message_delta` fallback (PR #258)
 - `-` fix: r[#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
