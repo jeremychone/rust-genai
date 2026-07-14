@@ -452,7 +452,6 @@ impl AnthropicAdapter {
 		let stream = matches!(service_type, ServiceType::ChatStream);
 		let mut payload = json!({
 			"model": model_name.to_string(),
-			"messages": messages,
 			"stream": stream
 		});
 
@@ -460,12 +459,16 @@ impl AnthropicAdapter {
 			payload.x_insert("system", system)?;
 		}
 
+		// -- Tools (before messages)
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
 		}
 		if let Some(tool_choice) = anthropic_tool_choice(options_set.tool_choice()) {
 			payload.x_insert("tool_choice", tool_choice)?;
 		}
+
+		// -- Messages (after tools)
+		payload.x_insert("messages", messages)?;
 
 		// -- Set the reasoning effort
 		// Both reasoning effort and structured-output format write into `output_config`.

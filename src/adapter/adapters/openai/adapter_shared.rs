@@ -127,7 +127,6 @@ impl OpenAIAdapter {
 			Self::into_openai_request_parts(&model, chat_req, prompt_cache_policy.as_ref())?;
 		let mut payload = json!({
 			"model": model_name,
-			"messages": messages,
 			"stream": stream
 		});
 
@@ -155,13 +154,16 @@ impl OpenAIAdapter {
 			payload.x_insert("verbosity", keyword)?;
 		}
 
-		// -- Tools
+		// -- Tools (before messages)
 		if let Some(tools) = tools {
 			payload.x_insert("/tools", tools)?;
 		}
 		if let Some(tool_choice) = openai_tool_choice(options_set.tool_choice()) {
 			payload.x_insert("tool_choice", tool_choice)?;
 		}
+
+		// -- Messages (after tools)
+		payload.x_insert("messages", messages)?;
 
 		// -- Add options
 		let response_format = if let Some(response_format) = options_set.response_format() {

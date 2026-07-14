@@ -89,7 +89,6 @@ impl Adapter for OllamaAdapter {
 
 		let mut payload = json!({
 			"model": model_name,
-			"messages": messages,
 			"stream": stream,
 		});
 
@@ -97,9 +96,13 @@ impl Adapter for OllamaAdapter {
 			payload.x_insert("options", options)?;
 		}
 
+		// -- Tools (before messages)
 		if let Some(tools) = tools {
 			payload.x_insert("tools", tools)?;
 		}
+
+		// -- Messages (after tools)
+		payload.x_insert("messages", messages)?;
 
 		if let Some(format) = chat_options.response_format() {
 			// Note: Ollama's API uses "format": "json" for its JSON mode, so we set that if the chat options specify json mode.
