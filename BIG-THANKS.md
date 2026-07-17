@@ -28,6 +28,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
 - [J-F-Liu](https://github.com/J-F-Liu) 
   - [#262](https://github.com/jeremychone/rust-genai/pull/262) move messages after tools in JSON payloads for better prompt cache utilization
+  - [#264](https://github.com/jeremychone/rust-genai/pull/264) add error handling for tool-call input JSON parsing in AnthropicStreamer
 
 ## v0.6.0..0.6.x
 
