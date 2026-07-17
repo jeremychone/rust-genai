@@ -180,7 +180,13 @@ impl futures::Stream for AnthropicStreamer {
 									let fn_arguments = if input.is_empty() {
 										Value::Object(Map::new())
 									} else {
-										serde_json::from_str(&input)?
+										serde_json::from_str(&input).unwrap_or_else(|e| {
+											tracing::warn!(
+												"Anthropic streamer: failed to parse tool-call input JSON ({} bytes): {e}",
+												input.len()
+											);
+											Value::String(input)
+										})
 									};
 
 									let tc = ToolCall {
