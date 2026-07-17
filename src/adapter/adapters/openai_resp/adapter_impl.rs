@@ -191,7 +191,10 @@ impl Adapter for OpenAIRespAdapter {
 		// `summary=detailed` opt-in, and every response came back with
 		// empty `reasoning_content`.
 		let capture_reasoning = chat_options.capture_reasoning_content() == Some(true);
-		let effort_keyword = reasoning_effort.and_then(|e| e.as_keyword());
+		let effort_keyword = reasoning_effort.and_then(|effort| match effort {
+			ReasoningEffort::Zero => Some("none"),
+			_ => effort.as_keyword(),
+		});
 
 		if effort_keyword.is_some() || capture_reasoning {
 			let mut reasoning_obj = json!({});

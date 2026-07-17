@@ -5,16 +5,23 @@ use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
 // This will use the OpenAIRes adapter
-const MODEL: &str = "gpt-5-codex";
+const MODEL: &str = "gpt-5.6-luna";
 // Also used for the verbosity (codex only supported medium)
-const MODEL_NS: &str = "openai_resp::gpt-5-mini";
+const MODEL_NS: &str = "openai_resp::gpt-5.6-luna";
 
 // region:    --- Provider Specific
 
 // openai specific
+// NOTE: `minimal` has been deprecated, does not work with 5.6-... family
 #[tokio::test]
 async fn test_chat_reasoning_minimal_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok("gpt-5-minimal", None).await
+}
+
+// NOTE: `none` is the new for the 5.6. (this is same as `-zero`)
+#[tokio::test]
+async fn test_chat_reasoning_none_ok() -> TestResult<()> {
+	common_tests::common_test_chat_simple_ok("gpt-5.6-none", None).await
 }
 
 // endregion: --- Provider Specific
