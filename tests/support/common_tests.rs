@@ -437,6 +437,7 @@ pub async fn common_test_chat_cache_implicit_simple_ok(model: &str) -> TestResul
 pub async fn common_test_chat_cache_explicit_user_ok(model: &str) -> TestResult<()> {
 	// -- Setup & Fixtures
 	let client = Client::default();
+
 	let big_content = get_big_content()?;
 	let chat_req = ChatRequest::new(vec![
 		// -- Messages (deactivate to see the differences)
@@ -461,8 +462,8 @@ pub async fn common_test_chat_cache_explicit_user_ok(model: &str) -> TestResult<
 		.prompt_tokens_details
 		.as_ref()
 		.ok_or("Should have prompt_tokens_details")?;
-	let cache_creation_tokens = get_option_value!(prompt_tokens_details.cache_creation_tokens);
-	let cached_tokens = get_option_value!(prompt_tokens_details.cached_tokens);
+	let cache_creation_tokens = prompt_tokens_details.cache_creation_tokens.unwrap_or_default();
+	let cached_tokens = prompt_tokens_details.cached_tokens.unwrap_or_default();
 
 	assert!(
 		cache_creation_tokens > 0 || cached_tokens > 0,

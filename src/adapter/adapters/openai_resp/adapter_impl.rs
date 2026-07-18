@@ -303,7 +303,6 @@ impl Adapter for OpenAIRespAdapter {
 		if let Some(extra_body) = chat_options.extra_body() {
 			payload.x_merge(extra_body.clone())?;
 		}
-
 		Ok(WebRequestData { url, headers, payload })
 	}
 

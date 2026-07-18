@@ -47,8 +47,8 @@ impl RespUsage {
 pub struct InputTokensDetails {
 	/// Anthropic: `cache_creation_input_tokens`.
 	/// Tokens used to build the cache (not yet cached). These may incur a small surcharge; subsequent requests benefit via `cached_tokens`.
-	#[serde(alias = "cache_write_tokens", default, deserialize_with = "crate::support::zero_as_none")]
-	pub cache_creation_tokens: Option<i32>,
+	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
+	pub cache_write_tokens: Option<i32>,
 	/// Anthropic: `cache_read_input_tokens`.
 	#[serde(default, deserialize_with = "crate::support::zero_as_none")]
 	pub cached_tokens: Option<i32>,
@@ -59,7 +59,7 @@ pub struct InputTokensDetails {
 impl InputTokensDetails {
 	/// True if all fields are `None`.
 	pub fn is_empty(&self) -> bool {
-		self.cache_creation_tokens.is_none() && self.cached_tokens.is_none() && self.audio_tokens.is_none()
+		self.cache_write_tokens.is_none() && self.cached_tokens.is_none() && self.audio_tokens.is_none()
 	}
 }
 
@@ -92,7 +92,7 @@ impl OutputTokensDetails {
 impl From<InputTokensDetails> for PromptTokensDetails {
 	fn from(value: InputTokensDetails) -> Self {
 		PromptTokensDetails {
-			cache_creation_tokens: value.cache_creation_tokens,
+			cache_creation_tokens: value.cache_write_tokens,
 			cache_creation_details: None,
 			cached_tokens: value.cached_tokens,
 			audio_tokens: value.audio_tokens,

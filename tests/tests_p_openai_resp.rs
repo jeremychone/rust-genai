@@ -77,15 +77,20 @@ async fn test_chat_json_structured_ok() -> TestResult<()> {
 
 // endregion: --- Chat
 
-// region:    --- Chat Implicit Cache
+// region:    --- Chat Cache
 
-// NOTE - It seems `gpt-5-codex` does not cache often. gpt-5.. with same adapter cache better.
 #[tokio::test]
-async fn test_chat_cache_implicit_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL_NS).await
+async fn test_chat_cache_explicit_user_ok() -> TestResult<()> {
+	common_tests::common_test_chat_cache_explicit_user_ok(MODEL).await
 }
 
-// endregion: --- Chat Implicit Cache
+// NOTE - For `gpt-5.6..`, since cache is not charged, explicit only is supported.
+// #[tokio::test]
+// async fn test_chat_cache_implicit_simple_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL_NS).await
+// }
+
+// endregion: --- Chat Cache
 
 // region:    --- Chat Stream Tests
 
