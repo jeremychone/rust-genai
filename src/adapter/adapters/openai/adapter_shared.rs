@@ -3,12 +3,12 @@
 use super::cache_policy::{
 	OpenAiPromptCacheMode, OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
 };
+use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatResponseFormat, ChatRole, ContentPart,
-	ReasoningEffort, ToolChoice, Usage,
+	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, ReasoningEffort, ToolChoice, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebClient;
@@ -94,6 +94,7 @@ impl OpenAIAdapter {
 			&options_set,
 			OpenAiProtocol::ChatCompletions,
 		);
+		let response_format_plan = response_format_plan(&options_set);
 
 		// -- url
 		let url = AdapterDispatcher::get_service_url(&model, service_type, endpoint)?;
@@ -168,24 +169,17 @@ impl OpenAIAdapter {
 		payload.x_insert("messages", messages)?;
 
 		// -- Add options
-		let response_format = if let Some(response_format) = options_set.response_format() {
-			match response_format {
-				ChatResponseFormat::JsonMode => Some(json!({"type": "json_object"})),
-				ChatResponseFormat::JsonSpec(st_json) => {
-					// "type": "json_schema", "json_schema": {...}
-					Some(json!({
-						"type": "json_schema",
-						"json_schema": {
-							"name": st_json.name.clone(),
-							"strict": true,
-							// TODO: add description
-							"schema": st_json.schema_with_additional_properties_false(),
-						}
-					}))
+		let response_format = match response_format_plan {
+			OpenAiResponseFormatPlan::None => None,
+			OpenAiResponseFormatPlan::JsonMode => Some(json!({"type": "json_object"})),
+			OpenAiResponseFormatPlan::JsonSchema { name, schema } => Some(json!({
+				"type": "json_schema",
+				"json_schema": {
+					"name": name,
+					"strict": true,
+					"schema": schema,
 				}
-			}
-		} else {
-			None
+			})),
 		};
 
 		if let Some(response_format) = response_format {
@@ -485,21 +479,7 @@ impl OpenAIAdapter {
 				.into_iter()
 				.map(|tool| {
 					let strict = tool.strict.unwrap_or(false);
-					let mut parameters = tool.schema;
-
-					// When strict mode is enabled, OpenAI requires `additionalProperties: false`
-					// on every object node in the schema.
-					if strict && let Some(ref mut schema_val) = parameters {
-						schema_val.x_walk(|parent_map, prop_name| {
-							if prop_name == "type" {
-								let typ = parent_map.get("type").and_then(|v| v.as_str()).unwrap_or("");
-								if typ == "object" {
-									parent_map.insert("additionalProperties".to_string(), false.into());
-								}
-							}
-							true
-						});
-					}
+					let parameters = tool_parameters_schema(tool.schema, strict);
 
 					json!({
 						"type": "function",

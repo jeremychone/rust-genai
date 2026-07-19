@@ -3,12 +3,14 @@ use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::openai::cache_policy::{
 	OpenAiPromptCacheMode, OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
 };
+use crate::adapter::adapters::openai::schema::{
+	OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema,
+};
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
-	ChatStreamResponse, ContentPart, MessageContent, ReasoningEffort, StopReason, Tool, ToolChoice, ToolConfig,
-	ToolName, Usage,
+	CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart,
+	MessageContent, ReasoningEffort, StopReason, Tool, ToolChoice, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebClient, WebResponse};
@@ -90,6 +92,7 @@ impl Adapter for OpenAIRespAdapter {
 			&chat_options,
 			OpenAiProtocol::Responses,
 		);
+		let response_format_plan = response_format_plan(&chat_options);
 
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
@@ -229,22 +232,15 @@ impl Adapter for OpenAIRespAdapter {
 		payload.x_insert("input", messages)?;
 
 		// -- Compute response format
-		let response_format = if let Some(response_format) = chat_options.response_format() {
-			match response_format {
-				ChatResponseFormat::JsonMode => Some(json!({"type": "json_object"})),
-				ChatResponseFormat::JsonSpec(st_json) => {
-					// Flatten for OpenAI Responses
-					Some(json!({
-						"type": "json_schema",
-						"name": st_json.name.clone(),
-						"strict": true,
-						// TODO: add description
-						"schema": st_json.schema_with_additional_properties_false(),
-					}))
-				}
-			}
-		} else {
-			None
+		let response_format = match response_format_plan {
+			OpenAiResponseFormatPlan::None => None,
+			OpenAiResponseFormatPlan::JsonMode => Some(json!({"type": "json_object"})),
+			OpenAiResponseFormatPlan::JsonSchema { name, schema } => Some(json!({
+				"type": "json_schema",
+				"name": name,
+				"strict": true,
+				"schema": schema,
+			})),
 		};
 
 		// -- Get verbosity
@@ -678,21 +674,7 @@ impl OpenAIRespAdapter {
 			}
 			name => {
 				let strict = strict.unwrap_or(false);
-				let mut parameters = schema;
-
-				// When strict mode is enabled, OpenAI requires `additionalProperties: false`
-				// on every object node in the schema.
-				if strict && let Some(ref mut schema_val) = parameters {
-					schema_val.x_walk(|parent_map, prop_name| {
-						if prop_name == "type" {
-							let typ = parent_map.get("type").and_then(|v| v.as_str()).unwrap_or("");
-							if typ == "object" {
-								parent_map.insert("additionalProperties".to_string(), false.into());
-							}
-						}
-						true
-					});
-				}
+				let parameters = tool_parameters_schema(schema, strict);
 
 				json!({
 					"type": "function",
@@ -736,7 +718,7 @@ fn apply_resp_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _
 mod tests {
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ChatOptions, Tool, ToolCall, ToolChoice};
+	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice};
 
 	#[test]
 	fn test_cache_control_without_eligible_content_does_not_fail_response_request() {
@@ -783,6 +765,84 @@ mod tests {
 
 		assert_eq!(web_req.payload["top_p"], 0.9);
 		assert_eq!(web_req.payload["metadata"]["source"], "test");
+	}
+
+	#[test]
+	fn pydantic_union_schema_is_sanitized_for_responses() {
+		let schema = json!({
+			"type": "object",
+			"properties": {
+				"animal": {
+					"discriminator": {"propertyName": "kind"},
+					"oneOf": [{"$ref": "#/$defs/Cat"}, {"$ref": "#/$defs/Dog"}]
+				}
+			},
+			"$defs": {
+				"Cat": {
+					"type": "object",
+					"properties": {"kind": {"const": "cat"}},
+					"required": ["kind"]
+				},
+				"Dog": {
+					"type": "object",
+					"properties": {"kind": {"const": "dog"}},
+					"required": ["kind"]
+				}
+			}
+		});
+		let options = ChatOptions::default().with_response_format(JsonSpec::new("union", schema));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("return an animal"),
+			options_set,
+		)
+		.unwrap();
+
+		let animal = &web_req.payload["text"]["format"]["schema"]["properties"]["animal"];
+		assert!(animal.get("oneOf").is_none());
+		assert_eq!(animal["discriminator"], json!({"propertyName": "kind"}));
+		assert_eq!(
+			animal["anyOf"],
+			json!([{"$ref": "#/$defs/Cat"}, {"$ref": "#/$defs/Dog"}])
+		);
+	}
+
+	#[test]
+	fn dynamic_map_schema_is_sent_to_backend_for_validation() {
+		let schema = json!({
+			"type": "object",
+			"properties": {
+				"lookup": {"type": "object", "additionalProperties": {"type": "integer"}}
+			}
+		});
+		let options = ChatOptions::default().with_response_format(JsonSpec::new("mapping", schema));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("return a mapping"),
+			options_set,
+		)
+		.unwrap();
+
+		assert_eq!(
+			web_req.payload["text"]["format"]["schema"]["properties"]["lookup"]["additionalProperties"],
+			json!({"type": "integer"})
+		);
 	}
 
 	#[test]
