@@ -372,6 +372,11 @@ impl OpenAIAdapter {
 									} else if is_image {
 										let image_url = binary.into_url();
 										values.push(json!({"type": "image_url", "image_url": {"url": image_url}}));
+									} else if binary.is_video() {
+										// OpenAI-compatible providers that support video (e.g. Alibaba qwen)
+										// accept it as a `video_url` content part, symmetric to `image_url`.
+										let video_url = binary.into_url();
+										values.push(json!({"type": "video_url", "video_url": {"url": video_url}}));
 									} else if matches!(&binary.source, BinarySource::Url(_)) {
 										// TODO: Need to return error
 										warn!("OpenAI doesn't support file from URL, need to handle it gracefully");

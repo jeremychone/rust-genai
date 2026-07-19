@@ -273,6 +273,14 @@ impl ContentPart {
 		}
 	}
 
+	/// Returns true if this part is a binary video (content_type starts with "video/").
+	pub fn is_video(&self) -> bool {
+		match self {
+			ContentPart::Binary(binary) => binary.content_type.trim().to_ascii_lowercase().starts_with("video/"),
+			_ => false,
+		}
+	}
+
 	/// Returns true if this part contains a tool call.
 	pub fn is_tool_call(&self) -> bool {
 		matches!(self, ContentPart::ToolCall(_))

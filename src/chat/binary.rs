@@ -100,6 +100,11 @@ impl Binary {
 		self.content_type.trim().eq_ignore_ascii_case("application/pdf")
 	}
 
+	/// Returns true if this binary is a video (content_type starts with "video/").
+	pub fn is_video(&self) -> bool {
+		self.content_type.trim().to_ascii_lowercase().starts_with("video/")
+	}
+
 	/// Generate the web or data url from this binary
 	pub fn into_url(self) -> String {
 		match self.source {
