@@ -1,0 +1,723 @@
+{
+  "cases": [
+    {
+      "name": "pydantic_2_12_4_ordinary",
+      "generator": "pydantic 2.12.4",
+      "raw_live_error": "additionalProperties is required to be supplied and to be false",
+      "input": {
+        "$defs": {
+          "Child": {
+            "properties": {
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "title": "Child",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "child": {
+            "$ref": "#/$defs/Child",
+            "description": "A described referenced child"
+          },
+          "optional_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Optional Note"
+          },
+          "limit": {
+            "default": 10,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "child"
+        ],
+        "title": "OrdinaryEnvelope",
+        "type": "object"
+      },
+      "expected": {
+        "$defs": {
+          "Child": {
+            "properties": {
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "title": "Child",
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "child": {
+            "properties": {
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "title": "Child",
+            "type": "object",
+            "description": "A described referenced child",
+            "additionalProperties": false
+          },
+          "optional_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Optional Note"
+          },
+          "limit": {
+            "default": 10,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "child",
+          "optional_note",
+          "limit"
+        ],
+        "title": "OrdinaryEnvelope",
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "pydantic_2_12_4_discriminated_union",
+      "generator": "pydantic 2.12.4",
+      "raw_live_error": "additionalProperties is required to be supplied and to be false",
+      "input": {
+        "$defs": {
+          "Cat": {
+            "properties": {
+              "kind": {
+                "const": "cat",
+                "title": "Kind",
+                "type": "string"
+              },
+              "lives": {
+                "title": "Lives",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "lives"
+            ],
+            "title": "Cat",
+            "type": "object"
+          },
+          "Dog": {
+            "properties": {
+              "kind": {
+                "const": "dog",
+                "title": "Kind",
+                "type": "string"
+              },
+              "bark_code": {
+                "title": "Bark Code",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "bark_code"
+            ],
+            "title": "Dog",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "animal": {
+            "discriminator": {
+              "mapping": {
+                "cat": "#/$defs/Cat",
+                "dog": "#/$defs/Dog"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/Cat"
+              },
+              {
+                "$ref": "#/$defs/Dog"
+              }
+            ],
+            "title": "Animal"
+          }
+        },
+        "required": [
+          "animal"
+        ],
+        "title": "UnionEnvelope",
+        "type": "object"
+      },
+      "expected": {
+        "$defs": {
+          "Cat": {
+            "properties": {
+              "kind": {
+                "const": "cat",
+                "title": "Kind",
+                "type": "string"
+              },
+              "lives": {
+                "title": "Lives",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "lives"
+            ],
+            "title": "Cat",
+            "type": "object",
+            "additionalProperties": false
+          },
+          "Dog": {
+            "properties": {
+              "kind": {
+                "const": "dog",
+                "title": "Kind",
+                "type": "string"
+              },
+              "bark_code": {
+                "title": "Bark Code",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "bark_code"
+            ],
+            "title": "Dog",
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "properties": {
+          "animal": {
+            "discriminator": {
+              "mapping": {
+                "cat": "#/$defs/Cat",
+                "dog": "#/$defs/Dog"
+              },
+              "propertyName": "kind"
+            },
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Cat"
+              },
+              {
+                "$ref": "#/$defs/Dog"
+              }
+            ],
+            "title": "Animal"
+          }
+        },
+        "required": [
+          "animal"
+        ],
+        "title": "UnionEnvelope",
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "pydantic_2_12_4_recursive",
+      "generator": "pydantic 2.12.4",
+      "raw_live_error": "additionalProperties is required to be supplied and to be false",
+      "input": {
+        "$defs": {
+          "Node": {
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "children": {
+                "items": {
+                  "$ref": "#/$defs/Node"
+                },
+                "title": "Children",
+                "type": "array"
+              }
+            },
+            "required": [
+              "name",
+              "children"
+            ],
+            "title": "Node",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "root": {
+            "$ref": "#/$defs/Node"
+          }
+        },
+        "required": [
+          "root"
+        ],
+        "title": "RecursiveEnvelope",
+        "type": "object"
+      },
+      "expected": {
+        "$defs": {
+          "Node": {
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "children": {
+                "items": {
+                  "$ref": "#/$defs/Node"
+                },
+                "title": "Children",
+                "type": "array"
+              }
+            },
+            "required": [
+              "name",
+              "children"
+            ],
+            "title": "Node",
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "properties": {
+          "root": {
+            "$ref": "#/$defs/Node"
+          }
+        },
+        "required": [
+          "root"
+        ],
+        "title": "RecursiveEnvelope",
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "zod_3_25_76_ordinary",
+      "generator": "zod 3.25.76 + zod-to-json-schema 3.25.1",
+      "raw_live_error": "required must include every key in properties; missing limit",
+      "input": {
+        "$ref": "#/definitions/OrdinaryEnvelope",
+        "definitions": {
+          "OrdinaryEnvelope": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "child": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false,
+                "description": "A described referenced child"
+              },
+              "optionalNote": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "limit": {
+                "type": "integer",
+                "default": 10
+              }
+            },
+            "required": [
+              "name",
+              "child"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "expected": {
+        "$ref": "#/definitions/OrdinaryEnvelope",
+        "definitions": {
+          "OrdinaryEnvelope": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "child": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false,
+                "description": "A described referenced child"
+              },
+              "optionalNote": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "limit": {
+                "type": "integer",
+                "default": 10
+              }
+            },
+            "required": [
+              "name",
+              "child",
+              "optionalNote",
+              "limit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "schemars_1_2_1_ordinary",
+      "generator": "schemars 1.2.1",
+      "raw_live_error": "additionalProperties is required to be supplied and to be false",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "OrdinaryEnvelope",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "child": {
+            "description": "A described referenced child",
+            "$ref": "#/$defs/Child"
+          },
+          "optional_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "default": 10
+          }
+        },
+        "required": [
+          "name",
+          "child"
+        ],
+        "$defs": {
+          "Child": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      },
+      "expected": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "OrdinaryEnvelope",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "child": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "description": "A described referenced child",
+            "additionalProperties": false
+          },
+          "optional_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32",
+            "default": 10
+          }
+        },
+        "required": [
+          "name",
+          "child",
+          "optional_note",
+          "limit"
+        ],
+        "$defs": {
+          "Child": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "schemars_1_2_1_discriminated_union",
+      "generator": "schemars 1.2.1",
+      "raw_live_error": "oneOf is not permitted",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "UnionEnvelope",
+        "type": "object",
+        "properties": {
+          "animal": {
+            "$ref": "#/$defs/Animal"
+          }
+        },
+        "required": [
+          "animal"
+        ],
+        "$defs": {
+          "Animal": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "lives": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "cat"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "lives"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "bark_code": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "dog"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "bark_code"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "UnionEnvelope",
+        "type": "object",
+        "properties": {
+          "animal": {
+            "$ref": "#/$defs/Animal"
+          }
+        },
+        "required": [
+          "animal"
+        ],
+        "$defs": {
+          "Animal": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "lives": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "cat"
+                  }
+                },
+                "required": [
+                  "lives",
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "bark_code": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "dog"
+                  }
+                },
+                "required": [
+                  "bark_code",
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "schemars_1_2_1_recursive",
+      "generator": "schemars 1.2.1",
+      "raw_live_error": "additionalProperties is required to be supplied and to be false",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "RecursiveEnvelope",
+        "type": "object",
+        "properties": {
+          "root": {
+            "$ref": "#/$defs/Node"
+          }
+        },
+        "required": [
+          "root"
+        ],
+        "$defs": {
+          "Node": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "children": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Node"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "children"
+            ]
+          }
+        }
+      },
+      "expected": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "RecursiveEnvelope",
+        "type": "object",
+        "properties": {
+          "root": {
+            "$ref": "#/$defs/Node"
+          }
+        },
+        "required": [
+          "root"
+        ],
+        "$defs": {
+          "Node": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "children": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Node"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "children"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  ]
+}

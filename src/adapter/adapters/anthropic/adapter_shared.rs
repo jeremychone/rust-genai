@@ -4,8 +4,8 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
-	ChatResponseFormat, ChatRole, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort, StopReason, Tool,
-	ToolCall, ToolChoice, ToolConfig, ToolName, Usage,
+	ChatResponseFormat, ChatRole, ContentPart, JsonSchemaDialect, MessageContent, PromptTokensDetails, ReasoningEffort,
+	StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, Usage, sanitize_json_schema,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
@@ -397,6 +397,14 @@ impl AnthropicAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
+		let response_schema = options_set.response_format().and_then(|format| match format {
+			ChatResponseFormat::JsonSpec(spec) => Some(sanitize_json_schema(
+				&spec.schema,
+				JsonSchemaDialect::AnthropicStructured,
+			)),
+			ChatResponseFormat::JsonMode => None,
+		});
+
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
@@ -480,14 +488,13 @@ impl AnthropicAdapter {
 		}
 
 		// -- Add supported ChatOptions
-		if let Some(ChatResponseFormat::JsonSpec(st_json)) = options_set.response_format() {
+		if let Some(schema) = response_schema {
 			// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-outputs
-			// Note: Anthropic's json_schema format does not use a schema name; JsonSpec.name is intentionally omitted.
 			output_config.insert(
 				"format".to_string(),
 				json!({
 					"type": "json_schema",
-					"schema": st_json.schema_with_additional_properties_false(),
+					"schema": schema,
 				}),
 			);
 		}
@@ -650,6 +657,7 @@ impl AnthropicAdapter {
 			config,
 			cache_control,
 			eager_input_streaming,
+			strict,
 			..
 		} = tool;
 
@@ -692,7 +700,15 @@ impl AnthropicAdapter {
 				}
 			}
 		} else {
+			let schema = if strict == Some(true) {
+				schema.map(|schema| sanitize_json_schema(&schema, JsonSchemaDialect::AnthropicStructured))
+			} else {
+				schema
+			};
 			tool_value.x_insert("input_schema", schema)?;
+			if let Some(strict) = strict {
+				tool_value.x_insert("strict", strict)?;
+			}
 			if let Some(description) = description {
 				// TODO: need to handle error
 				let _ = tool_value.x_insert("description", description);
@@ -1038,6 +1054,38 @@ mod tests {
 			Some("json_schema"),
 			"format.type must be present in output_config"
 		);
+		assert_eq!(output_config["format"]["schema"]["additionalProperties"], json!(false));
+	}
+
+	#[test]
+	fn test_dynamic_map_response_schema_is_sent_for_backend_validation() {
+		let chat_options = ChatOptions::default().with_response_format(JsonSpec::new(
+			"mapping",
+			json!({
+				"type": "object",
+				"properties": {
+					"lookup": {"type": "object", "additionalProperties": {"type": "integer"}}
+				}
+			}),
+		));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("return a mapping"),
+			ChatOptionsSet::default().with_chat_options(Some(&chat_options)),
+		)
+		.unwrap();
+
+		assert_eq!(
+			web_req.payload["output_config"]["format"]["schema"]["properties"]["lookup"]["additionalProperties"],
+			json!({"type": "integer"})
+		);
 	}
 
 	#[test]
@@ -1068,6 +1116,59 @@ mod tests {
 			Some(true),
 			"eager_input_streaming must serialize onto the tool"
 		);
+	}
+
+	#[test]
+	fn test_non_strict_tool_schema_is_untouched() {
+		let schema = json!({
+			"type": "object",
+			"properties": {"optional_limit": {"type": "integer", "default": 10}}
+		});
+		let req = ChatRequest::from_user("hi").with_tools(vec![Tool::new("search").with_schema(schema.clone())]);
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6"),
+		};
+
+		let web_req =
+			AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, req, ChatOptionsSet::default()).unwrap();
+
+		assert_eq!(web_req.payload["tools"][0]["input_schema"], schema);
+		assert!(web_req.payload["tools"][0].get("strict").is_none());
+	}
+
+	#[test]
+	fn test_strict_tool_uses_anthropic_schema_dialect() {
+		let req = ChatRequest::from_user("hi").with_tools(vec![
+			Tool::new("search")
+				.with_schema(json!({
+					"type": "object",
+					"properties": {
+						"query": {"type": "string"},
+						"optional_limit": {"type": "integer", "default": 10}
+					},
+					"required": ["query"]
+				}))
+				.with_strict(true),
+		]);
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-sonnet-4-6"),
+		};
+
+		let web_req =
+			AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, req, ChatOptionsSet::default()).unwrap();
+		let tool = &web_req.payload["tools"][0];
+
+		assert_eq!(tool["strict"], json!(true));
+		assert_eq!(tool["input_schema"]["required"], json!(["query"]));
+		assert_eq!(
+			tool["input_schema"]["properties"]["optional_limit"]["default"],
+			json!(10)
+		);
+		assert_eq!(tool["input_schema"]["additionalProperties"], json!(false));
 	}
 
 	#[test]

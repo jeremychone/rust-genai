@@ -39,8 +39,8 @@ pub struct Tool {
 	pub schema: Option<Value>,
 
 	/// When `true`, the provider enforces strict schema validation on tool-call arguments.
-	/// For OpenAI this sets `"strict": true` and auto-injects `"additionalProperties": false`
-	/// on every `"type": "object"` node in the schema.
+	/// For OpenAI and Anthropic this sets `"strict": true` and sanitizes the schema for
+	/// the provider's constrained-decoding dialect.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub strict: Option<bool>,
 
@@ -128,8 +128,7 @@ impl Tool {
 		self
 	}
 
-	/// Enable strict schema validation for tool-call arguments.
-	/// When `true`, OpenAI enforces exact schema conformance.
+	/// Enable strict schema validation for tool-call arguments on providers that support it.
 	pub fn with_strict(mut self, strict: bool) -> Self {
 		self.strict = Some(strict);
 		self

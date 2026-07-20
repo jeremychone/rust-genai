@@ -1,7 +1,6 @@
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use value_ext::JsonValueExt;
 
 /// Preferred response format for `ChatRequest` (structured output).
 /// Only applied when the provider supports it.
@@ -29,7 +28,7 @@ pub struct JsonSpec {
 	/// NOTE: Currently ignored by the OpenAI adapter.
 	pub description: Option<String>,
 
-	/// Simplified JSON schema forwarded to the provider.
+	/// JSON Schema adapted to the provider's constrained-decoding dialect when necessary.
 	pub schema: Value,
 }
 
@@ -51,25 +50,5 @@ impl JsonSpec {
 	pub fn with_description(mut self, description: impl Into<String>) -> Self {
 		self.description = Some(description.into());
 		self
-	}
-}
-
-/// Helpers
-impl JsonSpec {
-	/// Returns a clone of the schema with `"additionalProperties": false` injected into every
-	/// object node. Required by several providers (Anthropic, OpenAI) whose structured-output
-	/// APIs reject schemas that omit this constraint.
-	pub fn schema_with_additional_properties_false(&self) -> Value {
-		let mut schema = self.schema.clone();
-		schema.x_walk(|parent_map, name| {
-			if name == "type" {
-				let typ = parent_map.get("type").and_then(|v| v.as_str()).unwrap_or("");
-				if typ == "object" {
-					parent_map.insert("additionalProperties".to_string(), false.into());
-				}
-			}
-			true
-		});
-		schema
 	}
 }

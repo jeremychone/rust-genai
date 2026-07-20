@@ -89,6 +89,7 @@ name = "c12-otel"
 required-features = ["otel"]
 
 [dev-dependencies]
+schemars = "1.2.1"
 simple-fs = "0.12"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 serial_test = "3.2"
