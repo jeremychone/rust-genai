@@ -133,6 +133,18 @@ async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
 }
 
+// No video model setup yet.
+// #[tokio::test]
+// async fn test_chat_binary_audio_b64_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_audio_b64_ok(MODEL).await
+// }
+
+// No video model setup yet.
+// #[tokio::test]
+// async fn test_chat_binary_video_b64_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_video_b64_ok(MODEL).await
+// }
+
 // endregion: --- Binary Tests
 
 // region:    --- Tool Tests

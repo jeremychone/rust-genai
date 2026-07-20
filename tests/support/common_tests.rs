@@ -1,7 +1,7 @@
 use crate::get_option_value;
 use crate::support::data::{
-	AUDIO_TEST_FILE_PATH, IMAGE_URL_JPG_DUCK, TEST_IMAGE_FILE_PATH, get_b64_audio, get_b64_duck, get_b64_pdf,
-	has_audio_file,
+	AUDIO_TEST_FILE_PATH, IMAGE_URL_JPG_DUCK, TEST_IMAGE_FILE_PATH, VIDEO_TEST_FILE_PATH, get_b64_audio, get_b64_duck,
+	get_b64_pdf, has_audio_file, has_video_file,
 };
 use crate::support::{
 	Check, StreamExtract, TestResult, assert_contains, assert_reasoning_content, assert_reasoning_usage,
@@ -880,6 +880,36 @@ pub async fn common_test_chat_audio_b64_ok(model: &str) -> TestResult<()> {
 	// NOTE: here we make the test a little loose as the point of this test is not to test the model accuracy
 	assert_contains(res, "one small step");
 	assert_contains(res, "one giant leap");
+
+	Ok(())
+}
+
+pub async fn common_test_chat_video_b64_ok(model: &str) -> TestResult<()> {
+	if !has_video_file() {
+		println!("No test video file. Skipping this test.");
+		return Ok(());
+	}
+
+	// -- Setup
+	let client = Client::default();
+
+	// -- Build & Exec
+	// NOTE: Might not extract audio
+	let mut chat_req = ChatRequest::default().append_message(ChatMessage::user(
+		"Let what you see in the video, in order. What what you hear",
+	));
+	let cp_video = ContentPart::from_binary_file(VIDEO_TEST_FILE_PATH)?;
+
+	chat_req = chat_req.append_message(ChatMessage::user(vec![cp_video]));
+
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let res = chat_res.first_text().ok_or("Should have text result")?;
+
+	// NOTE: here we make the test a little loose as the point of this test is not to test the model accuracy
+	assert_contains(res, "person");
+	assert_contains(res, "camera");
 
 	Ok(())
 }

@@ -134,11 +134,6 @@ async fn test_chat_binary_image_file_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
-async fn test_chat_binary_audio_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_audio_b64_ok(AUDIO_MODEL).await
-}
-
-#[tokio::test]
 async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_pdf_b64_ok(MODEL_LATEST).await
 }
@@ -147,6 +142,17 @@ async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
 async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
 	common_tests::common_test_chat_multi_binary_b64_ok(MODEL_LATEST).await
 }
+
+#[tokio::test]
+async fn test_chat_binary_audio_b64_ok() -> TestResult<()> {
+	common_tests::common_test_chat_audio_b64_ok(AUDIO_MODEL).await
+}
+
+// No video model setup yet.
+// #[tokio::test]
+// async fn test_chat_binary_video_b64_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_video_b64_ok(VIDEO_MODEL).await
+// }
 
 // endregion: --- Binary Tests
 

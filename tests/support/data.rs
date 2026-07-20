@@ -9,6 +9,7 @@ use std::io::Read;
 
 pub const IMAGE_URL_JPG_DUCK: &str = "https://aipack.ai/images/test-duck.jpg";
 pub const AUDIO_TEST_FILE_PATH: &str = "./tests/data/phrase_neil_armstrong.wav";
+pub const VIDEO_TEST_FILE_PATH: &str = "./tests/data/test-video.mp4";
 pub const TEST_IMAGE_FILE_PATH: &str = "./tests/data/duck-small.jpg";
 
 /// Get the base64 of the image above (but resized/lower to fit 5kb)
@@ -17,6 +18,10 @@ pub fn get_b64_duck() -> TestResult<String> {
 }
 
 pub fn has_audio_file() -> bool {
+	SPath::new(AUDIO_TEST_FILE_PATH).exists()
+}
+
+pub fn has_video_file() -> bool {
 	SPath::new(AUDIO_TEST_FILE_PATH).exists()
 }
 
