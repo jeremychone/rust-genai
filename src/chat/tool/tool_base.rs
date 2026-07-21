@@ -38,6 +38,15 @@ pub struct Tool {
 	/// ```
 	pub schema: Option<Value>,
 
+	/// Provider-native freeform custom-tool format.
+	///
+	/// OpenAI Responses uses values such as
+	/// `{ "type": "grammar", "syntax": "lark", "definition": "..." }`.
+	/// When present, the OpenAI Responses adapter emits a `type: "custom"`
+	/// tool instead of a JSON-schema function tool.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub custom_format: Option<Value>,
+
 	/// When `true`, the provider enforces strict schema validation on tool-call arguments.
 	/// For OpenAI and Anthropic this sets `"strict": true` and sanitizes the schema for
 	/// the provider's constrained-decoding dialect.
@@ -81,6 +90,11 @@ impl Tool {
 			.map(|s| serde_json::to_string(s).map(|j| j.len()).unwrap_or_default())
 			.unwrap_or_default();
 		size += self
+			.custom_format
+			.as_ref()
+			.map(|f| serde_json::to_string(f).map(|j| j.len()).unwrap_or_default())
+			.unwrap_or_default();
+		size += self
 			.config
 			.as_ref()
 			.map(|c| match c {
@@ -100,6 +114,7 @@ impl Tool {
 			name: name.into(),
 			description: None,
 			schema: None,
+			custom_format: None,
 			strict: None,
 			config: None,
 			cache_control: None,
@@ -125,6 +140,12 @@ impl Tool {
 	/// Set the JSON Schema for the tool parameters. Returns self for chaining.
 	pub fn with_schema(mut self, parameters: Value) -> Self {
 		self.schema = Some(parameters);
+		self
+	}
+
+	/// Configure this as a provider-native freeform custom tool.
+	pub fn with_custom_format(mut self, format: Value) -> Self {
+		self.custom_format = Some(format);
 		self
 	}
 

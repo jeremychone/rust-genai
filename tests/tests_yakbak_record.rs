@@ -145,6 +145,101 @@ async fn record_openai_resp_reasoning_stream_tools() -> TestResult<()> {
 	Ok(())
 }
 
+#[tokio::test]
+#[ignore]
+async fn record_openai_resp_custom_grammar_tool() -> TestResult<()> {
+	// Records the freeform custom-tool (lark grammar) flow:
+	// request 1 — model answers with a `custom_tool_call` item whose `input`
+	// is a raw (non-JSON) patch constrained by the grammar; request 2 — the
+	// tool result goes back as `custom_tool_call_output` and the model
+	// produces the final text.
+	let (client, mut server) = record_client("openai_resp", "custom_grammar_tool", &openai_backend()).await?;
+
+	let chat_req = seed_apply_patch_request();
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	// -- Turn 1: expect a custom tool call with the raw patch as input
+	let stream_res = client.exec_chat_stream(OPENAI_MODEL, chat_req.clone(), Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	let tool_calls = extract
+		.stream_end
+		.captured_into_tool_calls()
+		.ok_or("Should have captured a custom tool call")?;
+	for tc in &tool_calls {
+		eprintln!("[record] Tool call: {} ({})", tc.fn_name, tc.call_id);
+		eprintln!(
+			"[record] Input:\n{}",
+			tc.fn_arguments.as_str().unwrap_or("<not a string>")
+		);
+	}
+
+	// -- Turn 2: send the tool output back, get the final text
+	let call_id = tool_calls[0].call_id.clone();
+	let chat_req = chat_req
+		.append_message(ChatMessage::from(tool_calls))
+		.append_message(ToolResponse::new(call_id, "Patch applied successfully."));
+
+	let stream_res = client.exec_chat_stream(OPENAI_MODEL, chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Final content: {:?}",
+		extract.content.as_deref().map(|s| &s[..s.len().min(120)])
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+/// The OpenAI `apply_patch` freeform custom tool, grammar-constrained (lark).
+fn apply_patch_tool() -> Tool {
+	Tool::new("apply_patch")
+		.with_description(
+			"Use the `apply_patch` tool to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON.",
+		)
+		.with_custom_format(json!({
+			"type": "grammar",
+			"syntax": "lark",
+			"definition": APPLY_PATCH_GRAMMAR,
+		}))
+}
+
+const APPLY_PATCH_GRAMMAR: &str = r#"start: begin_patch hunk+ end_patch
+begin_patch: "*** Begin Patch" LF
+end_patch: "*** End Patch" LF?
+
+hunk: add_hunk | delete_hunk | update_hunk
+add_hunk: "*** Add File: " filename LF add_line+
+delete_hunk: "*** Delete File: " filename LF
+update_hunk: "*** Update File: " filename LF change_move? change?
+
+filename: /(.+)/
+add_line: "+" /(.*)/ LF -> line
+
+change_move: "*** Move to: " filename LF
+change: (change_context | change_line)+ eof_line?
+change_context: ("@@" | "@@ " /(.+)/) LF
+change_line: ("+" | "-" | " ") /(.*)/ LF
+eof_line: "*** End of File" LF
+
+%import common.LF
+"#;
+
+fn seed_apply_patch_request() -> ChatRequest {
+	ChatRequest::new(vec![
+		ChatMessage::system("You are a coding assistant. Edit files with the apply_patch tool."),
+		ChatMessage::user(
+			"Rename the function `greet` to `welcome` in the file `hello.py` (update the call site too). \
+			 Current content of hello.py:\n\n\
+			 def greet(name):\n    print(f\"Hello, {name}!\")\n\ngreet(\"World\")\n",
+		),
+	])
+	.append_tool(apply_patch_tool())
+}
+
 fn gemini_backend() -> String {
 	std::env::var("GEMINI_BASE_URL").unwrap_or_else(|_| "https://generativelanguage.googleapis.com/v1beta/".to_string())
 }
