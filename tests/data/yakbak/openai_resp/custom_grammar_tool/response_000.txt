@@ -1,0 +1,165 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_0d6d0acf28b8b1c4016a5fc92e85788191a277c928578bf3ab","object":"response","created_at":1784662318,"status":"in_progress","background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You are a coding assistant. Edit files with the apply_patch tool.","max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5.4-mini-2026-03-17","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":"6fd372fa-d982-4ae1-8e40-74d84d087ad9","prompt_cache_retention":"24h","reasoning":{"context":"current_turn","effort":"low","mode":"standard","summary":null},"safety_identifier":"user-vmQPd6ZXWVxQkcYvg5lcpRzI","service_tier":"auto","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"custom","description":"Use the `apply_patch` tool to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON.","format":{"type":"grammar","definition":"start: begin_patch hunk+ end_patch\nbegin_patch: \"*** Begin Patch\" LF\nend_patch: \"*** End Patch\" LF?\n\nhunk: add_hunk | delete_hunk | update_hunk\nadd_hunk: \"*** Add File: \" filename LF add_line+\ndelete_hunk: \"*** Delete File: \" filename LF\nupdate_hunk: \"*** Update File: \" filename LF change_move? change?\n\nfilename: /(.+)/\nadd_line: \"+\" /(.*)/ LF -> line\n\nchange_move: \"*** Move to: \" filename LF\nchange: (change_context | change_line)+ eof_line?\nchange_context: (\"@@\" | \"@@ \" /(.+)/) LF\nchange_line: (\"+\" | \"-\" | \" \") /(.*)/ LF\neof_line: \"*** End of File\" LF\n\n%import common.LF\n","syntax":"lark"},"name":"apply_patch"}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":0}
+
+event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_0d6d0acf28b8b1c4016a5fc92e85788191a277c928578bf3ab","object":"response","created_at":1784662318,"status":"in_progress","background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You are a coding assistant. Edit files with the apply_patch tool.","max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5.4-mini-2026-03-17","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":"6fd372fa-d982-4ae1-8e40-74d84d087ad9","prompt_cache_retention":"24h","reasoning":{"context":"current_turn","effort":"low","mode":"standard","summary":null},"safety_identifier":"user-vmQPd6ZXWVxQkcYvg5lcpRzI","service_tier":"auto","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"custom","description":"Use the `apply_patch` tool to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON.","format":{"type":"grammar","definition":"start: begin_patch hunk+ end_patch\nbegin_patch: \"*** Begin Patch\" LF\nend_patch: \"*** End Patch\" LF?\n\nhunk: add_hunk | delete_hunk | update_hunk\nadd_hunk: \"*** Add File: \" filename LF add_line+\ndelete_hunk: \"*** Delete File: \" filename LF\nupdate_hunk: \"*** Update File: \" filename LF change_move? change?\n\nfilename: /(.+)/\nadd_line: \"+\" /(.*)/ LF -> line\n\nchange_move: \"*** Move to: \" filename LF\nchange: (change_context | change_line)+ eof_line?\nchange_context: (\"@@\" | \"@@ \" /(.+)/) LF\nchange_line: (\"+\" | \"-\" | \" \") /(.*)/ LF\neof_line: \"*** End of File\" LF\n\n%import common.LF\n","syntax":"lark"},"name":"apply_patch"}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":1}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"rs_0d6d0acf28b8b1c4016a5fc92ef2a88191ac58c918e598831e","type":"reasoning","content":[],"encrypted_content":"gAAAAABqX8kuhOSJld2msTEg3Qeoc4ZtU87tQ8Nvr4-CAj-QwaryPulE7SleVWG2gj-nxggocuZuQ-1onbS9qb8YOnTQZqpFS0WaWbDfqxAeObyaHoThlRhiQR9fF1EFTZMfxifm93aHuOMuHnoN6vg-gVYOj2i5nVBdO3_E6JUpNgdpOOu-nD0SjsZ6svO8KZINeKPAxHY1xmpFsffrMy5OLXfMxfElUCZ3OMi0uiFfK3rnO3lEDBxUVLiyKC7omDokqUW5Ad_XGcqjNxO68ckpN7DdXUYQv-KcMH1pJhcEI0id0YAeBF0tKQFICpDHOuhGWH4og9bgpdpGrU6stb8MAMsSva3LfJ-P1RtZWlNz1tz0JSKjk4A5uVPeH0DLyK67NAMeCnr7B15CGFTJSAjWK1eg8_pp5y3w2ynu_z1Wr-LXU47abCvP998kPgo7-VwtRJqU6gRRiFp-oPg1VAuydgAPpUoaVPAGM5h09BvGHEpF5eT4qJcqHifDiUg4yLWT5bBBTr5EFCN6hhrmcrWwG8Ku2M9vsLc84ob5TTjxpSW0hKk3R1wuO9brfeW26ZQM5Depb6X6QCit9Y9gfpZ9w6P2X1Iyu33b1hQ4yfGlqXra96HKAXOIn6wRkh3xVPc0tT1uWzPyyE8Y-UurkyB_X_TFRNcUEaA8kwc8OEa5LBJOYIRPzdKYYWfPkhFhwK-ElZ93FIK3o26jAn-H0zIwnlshh_iTHy53vgmdY4adlEpF2eZm48FG_rXl6SfddeA4t2hEpJAZ1TNgqXEfQwcrlopLGSHJf4iwnbzGaxvqTyhbqgGBHLf_vEAFkPpfplRMCEe1jKbdnD3Dr5peodRSc_oTBVEbpL4lSb4uOAtbQNRVWNIzlmcf3hNQGNgeeCpGms5Cu4DkXvu7dntHcNkn6EL0bN8wmrSGl8nA-RHwWSiv8t24R6g=","summary":[]},"output_index":0,"sequence_number":2}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"rs_0d6d0acf28b8b1c4016a5fc92ef2a88191ac58c918e598831e","type":"reasoning","content":[],"encrypted_content":"gAAAAABqX8kvJhAlQTrdsb1b8_AXFQtmQJBz967BabfstnfC0j9683AvGK8TynFaL-kpwOyfi1cvTw6i0b8zh2ySUV67hu3bD4c7t_lyl8i81bb8ue3mXmKUxozYnuqBw9eiTJ_fg-XZm7BmLkdEQIvDnBr8LM-bEEMXCeFK_NVNg94BJ2Vfpi-RvOTrqDQVn4ouwyfH-vt99xAguVFcFoVylFa6-t27x9yRIdaet2QI2yba3Bvw1kN3bxz0FPLb1KgU9zRFxv3UMBpy59KThTmY9D4L8X55265SPP0hlNhZ6kgLc9OXzz6nJBZnLl4ib1VgFEF7Ox4BMEyZWWP9eaWB3oZ4NHW8IiHncAXBI2GU2Barlz3CEuagjDzHcP5nzbC15zJDs7SbOspW7tcEh_4c_OtuzmimAjp5EkJcDshO5HNXcVyYd71orEWpAv8gBfgAPNv9W0XHppQzF2mxxM4goLLtE9wlUrYvadBM7RdCntxz_LsNQpHMMUNaht1Dp8EnSG4Zx7-zDGVOW33YpscaZjVZwUHQe1ZjbCByLHbsFtgxP9roQvTWihRDeWYANjUGvA936XlMD7pnPCwGtqu8LJjTTA0-qMB62EQRKCXpwjh-aePVSzSuksoLhHiObJRwk3Ej9Xfc9rbQMoJz6lbDtq7lrBg4Cp5jH2owKzKhL8PKUIW0shNQmSY5GJzQ1S51JfrOmMmpB01PJsk6-BnJwBjp2qGoh4pRrHnoQrP-jFvVuNWCbbbJhMJeyNM1Dr0DGJHNTMBBW5tYFeC39h-dHhtSTpvvRUMQgWsRXnm1C7Z4KWqdaA7fM6a3-g_5bve_VidLuMEMdTQMIF8IVAhNM9fRQ10pnTagp1LYpd7bqlbmKMSDaPOeGmfrtnofs1urggEtHwTdqvZS0XeoVDDKuGVBinWwygnmDY_gm8X6tos_wwypV5W_lWZ4Ftf7k-iRZ-KjE7aEFRT0H0NcbqbKtwRVSXVwGA==","summary":[]},"output_index":0,"sequence_number":3}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","type":"custom_tool_call","status":"in_progress","call_id":"call_dnKaJCb74pLKobQZDVi5yv2U","input":"","name":"apply_patch"},"output_index":1,"sequence_number":4}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"***","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"CaWJq4kCCgsGx","output_index":1,"sequence_number":5}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" Begin","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"Vg7xZ1aLsJ","output_index":1,"sequence_number":6}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" Patch","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"t07P9veSO8","output_index":1,"sequence_number":7}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"4OZ3NR7we4mxzBG","output_index":1,"sequence_number":8}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"***","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"gK6rZFsB6Sapy","output_index":1,"sequence_number":9}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" Update","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"7rrUMUcWG","output_index":1,"sequence_number":10}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" File","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"AGWPHMxXt64","output_index":1,"sequence_number":11}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":":","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"5P4gZYJJuub5GWq","output_index":1,"sequence_number":12}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" hello","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"UVw8FEjqUX","output_index":1,"sequence_number":13}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":".py","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"f05QO970edC5K","output_index":1,"sequence_number":14}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"ayHq515GqDBIoRz","output_index":1,"sequence_number":15}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"@@","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"ItzKLGfpt4g3sv","output_index":1,"sequence_number":16}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"vUAiaMb86KwmuTk","output_index":1,"sequence_number":17}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"-def","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"jiN18QjeCUyS","output_index":1,"sequence_number":18}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" greet","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"fPU6478NVE","output_index":1,"sequence_number":19}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"(name","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"fnRd8o7j9Xr","output_index":1,"sequence_number":20}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"):\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"dFCCNaKOS46Ja","output_index":1,"sequence_number":21}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"+","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"FwPUCCQL1vESsJo","output_index":1,"sequence_number":22}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"def","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"eaG5CZTvO7lFu","output_index":1,"sequence_number":23}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" welcome","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"eD3juyCe","output_index":1,"sequence_number":24}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"(name","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"vAAH8WKOnfn","output_index":1,"sequence_number":25}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"):\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"K3AGW9zDjtAI5","output_index":1,"sequence_number":26}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"    ","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"BmKTRXYWrLhj","output_index":1,"sequence_number":27}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" print","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"voj3La2C5U","output_index":1,"sequence_number":28}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"(f","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"5cXA8Yhal2AH8x","output_index":1,"sequence_number":29}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"\"","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"EpyjZGzII6cInu5","output_index":1,"sequence_number":30}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"Hello","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"VkEgUuJZRyq","output_index":1,"sequence_number":31}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":",","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"59dJssFvlgrJWF6","output_index":1,"sequence_number":32}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" {","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"gVXQ276EpUDsGA","output_index":1,"sequence_number":33}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"name","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"GTZLzORO7hL0","output_index":1,"sequence_number":34}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"}","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"hh82FnuuZebZ2xP","output_index":1,"sequence_number":35}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"!\")\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"IB9jt4QMD2qD","output_index":1,"sequence_number":36}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" \n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"uHzWRBLhvMtDjy","output_index":1,"sequence_number":37}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"-g","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"tOmT7LUrsxS1WU","output_index":1,"sequence_number":38}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"reet","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"glj05NwP1Als","output_index":1,"sequence_number":39}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"(\"","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"3QzlxWkN3oI1VG","output_index":1,"sequence_number":40}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"World","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"DYSkm5S6qpJ","output_index":1,"sequence_number":41}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"\")\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"2N90P7kfzkr7x","output_index":1,"sequence_number":42}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"+","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"xTkFLgE8ndJNAph","output_index":1,"sequence_number":43}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"welcome","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"Wq703YZgn","output_index":1,"sequence_number":44}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"(\"","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"V1LgBAGwA29uxk","output_index":1,"sequence_number":45}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"World","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"sfR1JyFuHIx","output_index":1,"sequence_number":46}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"\")\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"QrnlUI1HaUn7j","output_index":1,"sequence_number":47}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"***","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"9QRKeY1TuzyzZ","output_index":1,"sequence_number":48}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" End","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"zfaX2CVN24yU","output_index":1,"sequence_number":49}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":" Patch","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"NWESWZj5n2","output_index":1,"sequence_number":50}
+
+event: response.custom_tool_call_input.delta
+data: {"type":"response.custom_tool_call_input.delta","delta":"\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","obfuscation":"etr2hxTm9O5noDS","output_index":1,"sequence_number":51}
+
+event: response.custom_tool_call_input.done
+data: {"type":"response.custom_tool_call_input.done","input":"*** Begin Patch\n*** Update File: hello.py\n@@\n-def greet(name):\n+def welcome(name):\n     print(f\"Hello, {name}!\")\n \n-greet(\"World\")\n+welcome(\"World\")\n*** End Patch\n","item_id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","output_index":1,"sequence_number":52}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"ctc_0d6d0acf28b8b1c4016a5fc92f54008191b0f8ee27b70035f1","type":"custom_tool_call","status":"completed","call_id":"call_dnKaJCb74pLKobQZDVi5yv2U","input":"*** Begin Patch\n*** Update File: hello.py\n@@\n-def greet(name):\n+def welcome(name):\n     print(f\"Hello, {name}!\")\n \n-greet(\"World\")\n+welcome(\"World\")\n*** End Patch\n","name":"apply_patch"},"output_index":1,"sequence_number":53}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_0d6d0acf28b8b1c4016a5fc92e85788191a277c928578bf3ab","object":"response","created_at":1784662318,"status":"completed","background":false,"completed_at":1784662319,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You are a coding assistant. Edit files with the apply_patch tool.","max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5.4-mini-2026-03-17","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":"6fd372fa-d982-4ae1-8e40-74d84d087ad9","prompt_cache_retention":"24h","reasoning":{"context":"current_turn","effort":"low","mode":"standard","summary":null},"safety_identifier":"user-vmQPd6ZXWVxQkcYvg5lcpRzI","service_tier":"default","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"custom","description":"Use the `apply_patch` tool to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON.","format":{"type":"grammar","definition":"start: begin_patch hunk+ end_patch\nbegin_patch: \"*** Begin Patch\" LF\nend_patch: \"*** End Patch\" LF?\n\nhunk: add_hunk | delete_hunk | update_hunk\nadd_hunk: \"*** Add File: \" filename LF add_line+\ndelete_hunk: \"*** Delete File: \" filename LF\nupdate_hunk: \"*** Update File: \" filename LF change_move? change?\n\nfilename: /(.+)/\nadd_line: \"+\" /(.*)/ LF -> line\n\nchange_move: \"*** Move to: \" filename LF\nchange: (change_context | change_line)+ eof_line?\nchange_context: (\"@@\" | \"@@ \" /(.+)/) LF\nchange_line: (\"+\" | \"-\" | \" \") /(.*)/ LF\neof_line: \"*** End of File\" LF\n\n%import common.LF\n","syntax":"lark"},"name":"apply_patch"}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":{"input_tokens":358,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":68,"output_tokens_details":{"reasoning_tokens":8},"total_tokens":426},"user":null,"metadata":{}},"sequence_number":54}
+

@@ -6,7 +6,7 @@ use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -21,6 +21,7 @@ pub struct OpenAIRespStreamer {
 	captured_data: StreamerCapturedData,
 
 	in_progress_tool_calls: BTreeMap<usize, ToolCall>,
+	custom_tool_call_indexes: BTreeSet<usize>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -38,7 +39,7 @@ enum RespStreamEvent {
 	#[serde(rename = "response.output_item.done")]
 	OutputItemDone {
 		#[serde(default)]
-		_output_index: usize,
+		output_index: usize,
 		item: Value,
 	},
 
@@ -96,6 +97,13 @@ enum RespStreamEvent {
 		delta: String,
 	},
 
+	#[serde(rename = "response.custom_tool_call_input.delta")]
+	CustomToolCallInputDelta {
+		#[serde(default)]
+		output_index: usize,
+		delta: String,
+	},
+
 	#[serde(rename = "response.completed")]
 	ResponseCompleted { response: RespResponse },
 
@@ -117,6 +125,7 @@ impl OpenAIRespStreamer {
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 			in_progress_tool_calls: BTreeMap::new(),
+			custom_tool_call_indexes: BTreeSet::new(),
 		}
 	}
 }
@@ -152,9 +161,13 @@ impl futures::Stream for OpenAIRespStreamer {
 						}
 
 						RespStreamEvent::OutputItemAdded { output_index, item } => {
-							if item.x_get_str("type").ok() == Some("function_call") {
+							let item_type = item.x_get_str("type").ok();
+							if matches!(item_type, Some("function_call" | "custom_tool_call")) {
 								let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
 								let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
+								if item_type == Some("custom_tool_call") {
+									self.custom_tool_call_indexes.insert(output_index);
+								}
 
 								let tool_call = ToolCall {
 									call_id,
@@ -168,9 +181,9 @@ impl futures::Stream for OpenAIRespStreamer {
 							continue;
 						}
 
-						RespStreamEvent::OutputItemDone { item, .. } => {
+						RespStreamEvent::OutputItemDone { output_index, item } => {
 							// Capture encrypted reasoning blobs from `type: "reasoning"`
-							// items as they finalise. Some backends (tasfn-class proxies)
+							// items as they finalise. Some Responses-API-shaped proxies
 							// don't include `response.output` in the terminal
 							// `response.completed` event — they emit reasoning items only
 							// via this stream of `output_item.done` events. Reading them
@@ -185,6 +198,21 @@ impl futures::Stream for OpenAIRespStreamer {
 									.thought_signatures
 									.get_or_insert_with(Vec::new)
 									.push(encrypted.to_string());
+							}
+							if item.x_get_str("type").ok() == Some("custom_tool_call") {
+								let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
+								let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
+								let input = item.x_get_str("input").unwrap_or_default().to_string();
+								self.custom_tool_call_indexes.insert(output_index);
+								self.in_progress_tool_calls.insert(
+									output_index,
+									ToolCall {
+										call_id,
+										fn_name,
+										fn_arguments: Value::String(input),
+										thought_signatures: None,
+									},
+								);
 							}
 							continue;
 						}
@@ -237,6 +265,16 @@ impl futures::Stream for OpenAIRespStreamer {
 							continue;
 						}
 
+						RespStreamEvent::CustomToolCallInputDelta { output_index, delta } => {
+							if let Some(tool_call) = self.in_progress_tool_calls.get_mut(&output_index) {
+								if let Some(input) = tool_call.fn_arguments.as_str() {
+									tool_call.fn_arguments = Value::String(format!("{input}{delta}"));
+								}
+								return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tool_call.clone()))));
+							}
+							continue;
+						}
+
 						RespStreamEvent::ResponseCompleted { response } => {
 							self.done = true;
 							self.captured_data.stop_reason = Some(response.status.clone());
@@ -246,9 +284,10 @@ impl futures::Stream for OpenAIRespStreamer {
 							}
 
 							let mut tool_calls = Vec::new();
-							for (_, mut tc) in std::mem::take(&mut self.in_progress_tool_calls) {
+							for (index, mut tc) in std::mem::take(&mut self.in_progress_tool_calls) {
 								// Parse arguments if they are strings
-								if let Some(args_str) = tc.fn_arguments.as_str()
+								if !self.custom_tool_call_indexes.contains(&index)
+									&& let Some(args_str) = tc.fn_arguments.as_str()
 									&& let Ok(args_val) = serde_json::from_str(args_str)
 								{
 									tc.fn_arguments = args_val;
@@ -262,12 +301,21 @@ impl futures::Stream for OpenAIRespStreamer {
 							// events), extract them from the response.output payload.
 							if tool_calls.is_empty() {
 								for item in &response.output {
-									if item.x_get_str("type").ok() == Some("function_call") {
+									let item_type = item.x_get_str("type").ok();
+									if matches!(item_type, Some("function_call" | "custom_tool_call")) {
 										let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
 										let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
-										let args_str = item.x_get_str("arguments").unwrap_or_default();
-										let fn_arguments: Value = serde_json::from_str(args_str)
-											.unwrap_or_else(|_| Value::String(args_str.to_string()));
+										let args_str = if item_type == Some("custom_tool_call") {
+											item.x_get_str("input").unwrap_or_default()
+										} else {
+											item.x_get_str("arguments").unwrap_or_default()
+										};
+										let fn_arguments = if item_type == Some("custom_tool_call") {
+											Value::String(args_str.to_string())
+										} else {
+											serde_json::from_str(args_str)
+												.unwrap_or_else(|_| Value::String(args_str.to_string()))
+										};
 
 										tool_calls.push(ToolCall {
 											call_id,
@@ -383,5 +431,25 @@ impl futures::Stream for OpenAIRespStreamer {
 		}
 
 		Poll::Pending
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn recognizes_custom_tool_input_delta_events() {
+		let event: RespStreamEvent = serde_json::from_value(serde_json::json!({
+			"type": "response.custom_tool_call_input.delta",
+			"output_index": 3,
+			"delta": "*** Begin Patch\n",
+		}))
+		.unwrap();
+		assert!(matches!(
+			event,
+			RespStreamEvent::CustomToolCallInputDelta { output_index: 3, delta }
+				if delta == "*** Begin Patch\n"
+		));
 	}
 }

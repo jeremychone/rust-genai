@@ -407,3 +407,121 @@ async fn test_yakbak_openai_resp_tools_completed_no_output_field() -> TestResult
 
 	Ok(())
 }
+
+/// Replay test for freeform custom tools (lark-grammar-constrained), the
+/// OpenAI Responses `type: "custom"` tool family.
+///
+/// Covers the full roundtrip against a recorded backend session:
+/// - Request 1: a `Tool` with `custom_format` is serialized as a
+///   `type: "custom"` tool; the streamed `custom_tool_call` /
+///   `response.custom_tool_call_input.delta` events are accumulated into a
+///   `ToolCall` whose `fn_arguments` stays a RAW string (freeform input is
+///   NOT JSON — parsing it would mangle the patch).
+/// - Request 2: the assistant `ToolCall` is sent back as a
+///   `custom_tool_call` input item and the `ToolResponse` as
+///   `custom_tool_call_output` (not `function_call` / `function_call_output`,
+///   which the API rejects for custom tools), and the final text flows.
+#[tokio::test]
+async fn test_yakbak_openai_resp_custom_grammar_tool() -> TestResult<()> {
+	let (client, _server) = replay_client("openai_resp", "custom_grammar_tool").await?;
+
+	let chat_req = seed_apply_patch_request();
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::Low)
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	// -- Turn 1: the custom tool call, with the raw grammar-constrained patch
+	let stream_res = client
+		.exec_chat_stream("openai_resp::gpt-5.4-mini", chat_req.clone(), Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(usage.prompt_tokens, Some(358));
+	assert_eq!(usage.completion_tokens, Some(68));
+	assert_eq!(usage.total_tokens, Some(426));
+
+	let tool_calls = extract
+		.stream_end
+		.captured_into_tool_calls()
+		.ok_or("Should have captured the custom tool call")?;
+	assert_eq!(tool_calls.len(), 1, "Expected exactly one custom tool call");
+
+	let tc = &tool_calls[0];
+	assert_eq!(tc.fn_name, "apply_patch");
+	assert_eq!(tc.call_id, "call_dnKaJCb74pLKobQZDVi5yv2U");
+	// The freeform input must stay a raw string — not JSON-parsed.
+	let expected_patch = "*** Begin Patch\n*** Update File: hello.py\n@@\n-def greet(name):\n+def welcome(name):\n     print(f\"Hello, {name}!\")\n \n-greet(\"World\")\n+welcome(\"World\")\n*** End Patch\n";
+	assert_eq!(
+		tc.fn_arguments.as_str(),
+		Some(expected_patch),
+		"custom tool input should be the raw patch string"
+	);
+
+	// -- Turn 2: roundtrip — tool call + output go back as custom_* items
+	let call_id = tool_calls[0].call_id.clone();
+	let chat_req = chat_req
+		.append_message(ChatMessage::from(tool_calls))
+		.append_message(ToolResponse::new(call_id, "Patch applied successfully."));
+
+	let stream_res = client
+		.exec_chat_stream("openai_resp::gpt-5.4-mini", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	assert_eq!(extract.content.as_deref(), Some("Done."));
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(usage.prompt_tokens, Some(431));
+	assert_eq!(usage.completion_tokens, Some(6));
+	assert_eq!(usage.total_tokens, Some(437));
+
+	Ok(())
+}
+
+/// Same tool definition as `record_openai_resp_custom_grammar_tool` in
+/// `tests_yakbak_record.rs` — the OpenAI `apply_patch` freeform custom tool.
+fn seed_apply_patch_request() -> ChatRequest {
+	let apply_patch_grammar = r#"start: begin_patch hunk+ end_patch
+begin_patch: "*** Begin Patch" LF
+end_patch: "*** End Patch" LF?
+
+hunk: add_hunk | delete_hunk | update_hunk
+add_hunk: "*** Add File: " filename LF add_line+
+delete_hunk: "*** Delete File: " filename LF
+update_hunk: "*** Update File: " filename LF change_move? change?
+
+filename: /(.+)/
+add_line: "+" /(.*)/ LF -> line
+
+change_move: "*** Move to: " filename LF
+change: (change_context | change_line)+ eof_line?
+change_context: ("@@" | "@@ " /(.+)/) LF
+change_line: ("+" | "-" | " ") /(.*)/ LF
+eof_line: "*** End of File" LF
+
+%import common.LF
+"#;
+
+	ChatRequest::new(vec![
+		ChatMessage::system("You are a coding assistant. Edit files with the apply_patch tool."),
+		ChatMessage::user(
+			"Rename the function `greet` to `welcome` in the file `hello.py` (update the call site too). \
+			 Current content of hello.py:\n\n\
+			 def greet(name):\n    print(f\"Hello, {name}!\")\n\ngreet(\"World\")\n",
+		),
+	])
+	.append_tool(
+		Tool::new("apply_patch")
+			.with_description(
+				"Use the `apply_patch` tool to edit files. This is a FREEFORM tool, so do not wrap the patch in JSON.",
+			)
+			.with_custom_format(json!({
+				"type": "grammar",
+				"syntax": "lark",
+				"definition": apply_patch_grammar,
+			})),
+	)
+}

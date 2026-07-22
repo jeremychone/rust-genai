@@ -18,6 +18,7 @@ use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Map, Value, json};
+use std::collections::BTreeSet;
 use value_ext::JsonValueExt;
 
 pub struct OpenAIRespAdapter;
@@ -416,6 +417,15 @@ impl OpenAIRespAdapter {
 		cache_policy: Option<&OpenAiPromptCachePolicy>,
 	) -> Result<OpenAIRespRequestParts> {
 		let mut input_items: Vec<Value> = Vec::new();
+		let custom_tool_names = chat_req
+			.tools
+			.as_ref()
+			.into_iter()
+			.flatten()
+			.filter(|tool| tool.custom_format.is_some())
+			.map(|tool| tool.name.as_str().to_string())
+			.collect::<BTreeSet<_>>();
+		let mut custom_call_ids = BTreeSet::new();
 
 		// -- Process the system
 		if let Some(system_msg) = chat_req.system {
@@ -583,13 +593,27 @@ impl OpenAIRespAdapter {
 									}));
 									item_message_content = Vec::new();
 								}
-								// NOTE: Flatten for OpenAI Responsess API
-								input_items.push(json!({
-									"type": "function_call",
-									"call_id": tool_call.call_id,
-									"name": tool_call.fn_name,
-									"arguments": tool_call.fn_arguments.to_string(),
-								}))
+								if custom_tool_names.contains(&tool_call.fn_name) {
+									let input = tool_call
+										.fn_arguments
+										.as_str()
+										.map_or_else(|| tool_call.fn_arguments.to_string(), str::to_string);
+									custom_call_ids.insert(tool_call.call_id.clone());
+									input_items.push(json!({
+										"type": "custom_tool_call",
+										"call_id": tool_call.call_id,
+										"name": tool_call.fn_name,
+										"input": input,
+									}));
+								} else {
+									// NOTE: Flatten for OpenAI Responses API.
+									input_items.push(json!({
+										"type": "function_call",
+										"call_id": tool_call.call_id,
+										"name": tool_call.fn_name,
+										"arguments": tool_call.fn_arguments.to_string(),
+									}));
+								}
 							}
 
 							// TODO: Probably need towarn on this one (probably need to add binary here)
@@ -618,11 +642,16 @@ impl OpenAIRespAdapter {
 				ChatRole::Tool => {
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
+							let response_type = if custom_call_ids.contains(&tool_response.call_id) {
+								"custom_tool_call_output"
+							} else {
+								"function_call_output"
+							};
 							input_items.push(json!({
-								"type": "function_call_output",
+								"type": response_type,
 								"call_id": tool_response.call_id,
 								"output": tool_response.content,
-							}))
+							}));
 						}
 					}
 
@@ -645,6 +674,7 @@ impl OpenAIRespAdapter {
 			name,
 			description,
 			schema,
+			custom_format,
 			strict,
 			config,
 			..
@@ -655,34 +685,43 @@ impl OpenAIRespAdapter {
 			ToolName::Custom(name) => name,
 		};
 
-		let tool_value = match name.as_ref() {
-			"web_search" => {
-				let mut tool_value = json!({"type": "web_search"});
-				match config {
-					Some(ToolConfig::WebSearch(_ws_config)) => {
-						// FIXME: Implement what is posible in filters
-					}
-					Some(ToolConfig::Custom(config_value)) => {
-						// IMPORTANT: Here like anthropic, we merge it on top of the toll value
-						//            (and not as value of "name" as this would not fit that api)
-						//            Gemini does a `{name: config}` which fit that API
-						tool_value.x_merge(config_value)?;
-					}
-					None => (),
-				};
-				tool_value
-			}
-			name => {
-				let strict = strict.unwrap_or(false);
-				let parameters = tool_parameters_schema(schema, strict);
+		let tool_value = if let Some(format) = custom_format {
+			json!({
+				"type": "custom",
+				"name": name,
+				"description": description,
+				"format": format,
+			})
+		} else {
+			match name.as_ref() {
+				"web_search" => {
+					let mut tool_value = json!({"type": "web_search"});
+					match config {
+						Some(ToolConfig::WebSearch(_ws_config)) => {
+							// FIXME: Implement what is posible in filters
+						}
+						Some(ToolConfig::Custom(config_value)) => {
+							// IMPORTANT: Here like anthropic, we merge it on top of the toll value
+							//            (and not as value of "name" as this would not fit that api)
+							//            Gemini does a `{name: config}` which fit that API
+							tool_value.x_merge(config_value)?;
+						}
+						None => (),
+					};
+					tool_value
+				}
+				name => {
+					let strict = strict.unwrap_or(false);
+					let parameters = tool_parameters_schema(schema, strict);
 
-				json!({
-					"type": "function",
-					"name": name,
-					"description": description,
-					"parameters": parameters,
-					"strict": strict,
-				})
+					json!({
+						"type": "function",
+						"name": name,
+						"description": description,
+						"parameters": parameters,
+						"strict": strict,
+					})
+				}
 			}
 		};
 
@@ -718,7 +757,7 @@ fn apply_resp_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _
 mod tests {
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice};
+	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice, ToolResponse};
 
 	#[test]
 	fn test_cache_control_without_eligible_content_does_not_fail_response_request() {
@@ -741,6 +780,53 @@ mod tests {
 				.expect("unsupported breakpoint placement should be ignored");
 
 		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
+	}
+
+	#[test]
+	fn custom_grammar_tool_and_roundtrip_use_responses_native_items() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let patch = "*** Begin Patch\n*** Update File: source.c\n@@\n-old\n+new\n*** End Patch\n";
+		let assistant = ChatMessage::assistant(vec![ToolCall {
+			call_id: "call_patch".to_string(),
+			fn_name: "apply_patch".to_string(),
+			fn_arguments: Value::String(patch.to_string()),
+			thought_signatures: None,
+		}]);
+		let response = ChatMessage::from(ToolResponse::new("call_patch", "Done!"));
+		let format = json!({
+			"type": "grammar",
+			"syntax": "lark",
+			"definition": "start: PATCH",
+		});
+		let request = ChatRequest::new(vec![ChatMessage::user("patch it"), assistant, response]).with_tools(vec![
+			Tool::new("apply_patch")
+				.with_description("Apply a patch")
+				.with_custom_format(format.clone()),
+		]);
+
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())
+				.unwrap();
+		assert_eq!(
+			web_req.payload["tools"][0],
+			json!({
+				"type": "custom",
+				"name": "apply_patch",
+				"description": "Apply a patch",
+				"format": format,
+			})
+		);
+		let input = web_req.payload["input"].as_array().unwrap();
+		assert!(input.iter().any(|item| {
+			item["type"] == "custom_tool_call" && item["call_id"] == "call_patch" && item["input"] == patch
+		}));
+		assert!(input.iter().any(|item| {
+			item["type"] == "custom_tool_call_output" && item["call_id"] == "call_patch" && item["output"] == "Done!"
+		}));
 	}
 
 	#[test]
