@@ -11,6 +11,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#255](https://github.com/jeremychone/rust-genai/pull/255) anthropic: merge extra request body fields
   - [#257](https://github.com/jeremychone/rust-genai/pull/257) feat(gemini): forward JSON Schema raw via responseJsonSchema / parametersJsonSchema
   - [#263](https://github.com/jeremychone/rust-genai/pull/263) feat(schema): sanitize JSON Schema per adapter
+  - [#266](https://github.com/jeremychone/rust-genai/pull/266) feat(openai_resp): freeform custom tools with grammar-constrained input
 - [coaoac](https://github.com/coaoac)
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
