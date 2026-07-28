@@ -850,7 +850,7 @@ fn supports_anthropic_reasoning_max(model_name: &str) -> bool {
 }
 
 fn supports_anthropic_reasoning_xhigh(model_name: &str) -> bool {
-	is_opus_4_7_or_higher(model_name) || model_name.contains("claude-sonnet-5")
+	is_opus_4_7_or_higher(model_name) || is_fable_or_mythos(model_name) || model_name.contains("claude-sonnet-5")
 }
 
 /// Models where Anthropic enables adaptive thinking by default when the request omits the
@@ -885,6 +885,12 @@ fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
 /// and a missing one reads as `0`. Any parse or regex failure is treated as a
 /// conservative `false`.
 fn is_opus_4_7_or_higher(model_name: &str) -> bool {
+	/// A minor version is one or two digits; a longer run is a date stamp, not a
+	/// minor. Without this, `claude-opus-4-20250514` (Opus 4.0) would read as
+	/// version 4.20250514 and be promoted. Lookaround would express it in the
+	/// pattern, but the `regex` crate has none.
+	const MAX_MINOR_DIGITS: usize = 2;
+
 	static RE: OnceLock<Option<regex::Regex>> = OnceLock::new();
 	let re = RE.get_or_init(|| regex::Regex::new(r"claude-opus-(\d+)(?:-(\d+))?").ok());
 	let Some(re) = re.as_ref() else {
@@ -894,7 +900,11 @@ fn is_opus_4_7_or_higher(model_name: &str) -> bool {
 		return false;
 	};
 	let major = caps.get(1).and_then(|m| m.as_str().parse::<u32>().ok());
-	let minor = caps.get(2).map_or(Some(0), |m| m.as_str().parse::<u32>().ok());
+	let minor = match caps.get(2) {
+		Some(m) if m.as_str().len() > MAX_MINOR_DIGITS => Some(0),
+		Some(m) => m.as_str().parse::<u32>().ok(),
+		None => Some(0),
+	};
 	match (major, minor) {
 		(Some(major), Some(minor)) => (major, minor) >= (4, 7),
 		_ => false,
@@ -1368,7 +1378,7 @@ mod tests {
 	/// A future Opus release must work without a table update, in either naming shape.
 	#[test]
 	fn test_future_opus_generation_uses_effort() {
-		for model in ["claude-opus-6", "claude-opus-5-1"] {
+		for model in ["claude-opus-6", "claude-opus-5-1", "claude-opus-5-20260101"] {
 			let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Medium);
 			let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
 			let target = ServiceTarget {
@@ -1394,10 +1404,16 @@ mod tests {
 		}
 	}
 
-	/// The optional minor segment must not promote pre-4.7 models: an absent minor reads as `0`.
+	/// The optional minor segment must not promote pre-4.7 models: an absent minor reads as `0`,
+	/// and a date stamp (`claude-opus-4-20250514`, Opus 4.0) is not a minor version.
 	#[test]
 	fn test_pre_4_7_models_still_use_budget_tokens() {
-		for model in ["claude-opus-4-0", "claude-opus-4-1", "claude-sonnet-4-5"] {
+		for model in [
+			"claude-opus-4-0",
+			"claude-opus-4-1",
+			"claude-opus-4-20250514",
+			"claude-sonnet-4-5",
+		] {
 			let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
 			let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
 			let target = ServiceTarget {
@@ -1420,6 +1436,35 @@ mod tests {
 				"for {model}"
 			);
 			assert_eq!(web_req.payload.get("output_config"), None, "for {model}");
+		}
+	}
+
+	/// Fable/Mythos expose `xhigh`. Omitted from the predicate, `XHigh` fell through to the
+	/// `max` arm and silently bought a more expensive level than the caller asked for.
+	#[test]
+	fn test_fable_and_mythos_support_xhigh() {
+		for model in ["claude-fable-5", "claude-mythos-5"] {
+			let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::XHigh);
+			let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+			let target = ServiceTarget {
+				endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+				auth: AuthData::from_single("test-key"),
+				model: ModelIden::new(AdapterKind::Anthropic, model),
+			};
+
+			let web_req = AnthropicAdapter::to_web_request_data(
+				target,
+				ServiceType::Chat,
+				ChatRequest::from_user("hello"),
+				options_set,
+			)
+			.expect("to_web_request_data should succeed");
+
+			assert_eq!(
+				web_req.payload["output_config"]["effort"],
+				json!("xhigh"),
+				"for {model}"
+			);
 		}
 	}
 
