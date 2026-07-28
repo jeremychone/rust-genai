@@ -13,3 +13,17 @@ let tool = Tool {
 ```
 
 Use `Tool::with_custom_format(...)` for OpenAI Responses `type: "custom"` tools.
+
+### OpenAI-compatible video content
+
+`Binary` and `ContentPart` now expose `is_video()` helpers. OpenAI-compatible adapters serialize video binaries as `video_url` content parts instead of generic `file` parts.
+
+Existing integrations that implement or inspect content-part handling may use these helpers to detect video attachments.
+
+### JSON Schema sanitization
+
+JSON Schema handling for OpenAI and Anthropic structured outputs and strict tools is now provider-specific.
+
+The public `JsonSpec::schema_with_additional_properties_false` helper has been removed. Provider adapters now sanitize schemas as required by their target API. The new public `JsonSchemaDialect` enum and `sanitize_json_schema(...)` function are available for callers that need the same provider-aware behavior.
+
+Non-strict tool schemas are forwarded unchanged. Strict schemas may have provider-required constraints added, such as `additionalProperties: false` and required property entries.
