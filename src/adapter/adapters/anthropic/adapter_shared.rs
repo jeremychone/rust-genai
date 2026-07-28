@@ -854,13 +854,15 @@ fn supports_anthropic_reasoning_xhigh(model_name: &str) -> bool {
 }
 
 /// Models where Anthropic enables adaptive thinking by default when the request omits the
-/// `thinking` field (currently the Claude Sonnet 5 family). These need an explicit
-/// `{"type": "disabled"}` to turn reasoning off.
+/// `thinking` field (currently the Claude Sonnet 5 and Claude Opus 5 families). These need an
+/// explicit `{"type": "disabled"}` to turn reasoning off.
+///
+/// NOTE: not derivable from `is_opus_4_7_or_higher` — Opus 4.7 and 4.8 are off by default, 5 is on.
 ///
 /// NOTE: Fable/Mythos thinking is always-on and cannot be disabled (an explicit "disabled"
 /// is rejected), so they are intentionally not listed — for them, `Zero` omits `thinking`.
 fn anthropic_thinking_on_by_default(model_name: &str) -> bool {
-	model_name.contains("claude-sonnet-5")
+	model_name.contains("claude-sonnet-5") || model_name.contains("claude-opus-5")
 }
 
 fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
@@ -876,14 +878,15 @@ fn supports_anthropic_adaptive_thinking(model_name: &str) -> bool {
 // region:    --- Model Name Support
 
 /// Returns true when the given model name looks like a Claude Opus model with
-/// version >= 4.7 (e.g. `claude-opus-4-7`, `claude-opus-5-0`, ...).
+/// version >= 4.7 (e.g. `claude-opus-4-7`, `claude-opus-5`, ...).
 ///
 /// The regex is unanchored and tolerates arbitrary prefixes/suffixes around the
-/// core `claude-opus-<major>-<minor>` portion. Any parse or regex failure is
-/// treated as a conservative `false`.
+/// core `claude-opus-<major>[-<minor>]` portion. The minor segment is optional
+/// and a missing one reads as `0`. Any parse or regex failure is treated as a
+/// conservative `false`.
 fn is_opus_4_7_or_higher(model_name: &str) -> bool {
 	static RE: OnceLock<Option<regex::Regex>> = OnceLock::new();
-	let re = RE.get_or_init(|| regex::Regex::new(r"claude-opus-(\d+)-(\d+)").ok());
+	let re = RE.get_or_init(|| regex::Regex::new(r"claude-opus-(\d+)(?:-(\d+))?").ok());
 	let Some(re) = re.as_ref() else {
 		return false;
 	};
@@ -891,7 +894,7 @@ fn is_opus_4_7_or_higher(model_name: &str) -> bool {
 		return false;
 	};
 	let major = caps.get(1).and_then(|m| m.as_str().parse::<u32>().ok());
-	let minor = caps.get(2).and_then(|m| m.as_str().parse::<u32>().ok());
+	let minor = caps.get(2).map_or(Some(0), |m| m.as_str().parse::<u32>().ok());
 	match (major, minor) {
 		(Some(major), Some(minor)) => (major, minor) >= (4, 7),
 		_ => false,
@@ -1336,6 +1339,116 @@ mod tests {
 				"output_config.effort must be omitted for {model}"
 			);
 		}
+	}
+
+	/// `claude-opus-5` carries no minor version segment. If the version comparison misses it, the
+	/// request falls to the legacy branch and emits `thinking.budget_tokens`, removed on this model.
+	#[test]
+	fn test_opus_5_uses_effort_not_legacy_budget_tokens() {
+		let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-opus-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["output_config"]["effort"], json!("high"));
+		assert_eq!(web_req.payload["thinking"], json!({"type": "adaptive"}));
+	}
+
+	/// A future Opus release must work without a table update, in either naming shape.
+	#[test]
+	fn test_future_opus_generation_uses_effort() {
+		for model in ["claude-opus-6", "claude-opus-5-1"] {
+			let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Medium);
+			let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+			let target = ServiceTarget {
+				endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+				auth: AuthData::from_single("test-key"),
+				model: ModelIden::new(AdapterKind::Anthropic, model),
+			};
+
+			let web_req = AnthropicAdapter::to_web_request_data(
+				target,
+				ServiceType::Chat,
+				ChatRequest::from_user("hello"),
+				options_set,
+			)
+			.expect("to_web_request_data should succeed");
+
+			assert_eq!(
+				web_req.payload["output_config"]["effort"],
+				json!("medium"),
+				"for {model}"
+			);
+			assert_eq!(web_req.payload["thinking"], json!({"type": "adaptive"}), "for {model}");
+		}
+	}
+
+	/// The optional minor segment must not promote pre-4.7 models: an absent minor reads as `0`.
+	#[test]
+	fn test_pre_4_7_models_still_use_budget_tokens() {
+		for model in ["claude-opus-4-0", "claude-opus-4-1", "claude-sonnet-4-5"] {
+			let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+			let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+			let target = ServiceTarget {
+				endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+				auth: AuthData::from_single("test-key"),
+				model: ModelIden::new(AdapterKind::Anthropic, model),
+			};
+
+			let web_req = AnthropicAdapter::to_web_request_data(
+				target,
+				ServiceType::Chat,
+				ChatRequest::from_user("hello"),
+				options_set,
+			)
+			.expect("to_web_request_data should succeed");
+
+			assert_eq!(
+				web_req.payload["thinking"],
+				json!({"type": "enabled", "budget_tokens": REASONING_HIGH}),
+				"for {model}"
+			);
+			assert_eq!(web_req.payload.get("output_config"), None, "for {model}");
+		}
+	}
+
+	/// `Zero` on Opus 5 must send the explicit opt-out: thinking is on by default there (unlike
+	/// Opus 4.7/4.8), so omitting the field would leave adaptive thinking running.
+	#[test]
+	fn test_opus_5_reasoning_zero_disables_thinking() {
+		let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-opus-5"),
+		};
+
+		let web_req = AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed");
+
+		assert_eq!(web_req.payload["thinking"], json!({"type": "disabled"}));
+		assert_eq!(
+			web_req.payload.get("output_config"),
+			None,
+			"output_config.effort must be omitted"
+		);
 	}
 
 	#[test]
