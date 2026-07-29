@@ -13,6 +13,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#263](https://github.com/jeremychone/rust-genai/pull/263) feat(schema): sanitize JSON Schema per adapter
   - [#266](https://github.com/jeremychone/rust-genai/pull/266) feat(openai_resp): freeform custom tools with grammar-constrained input
 - [coaoac](https://github.com/coaoac)
+  - [#268](https://github.com/jeremychone/rust-genai/pull/268) fix(anthropic): correct reasoning routing for current model names
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
 - [lambdabetaeta](https://github.com/lambdabetaeta)
