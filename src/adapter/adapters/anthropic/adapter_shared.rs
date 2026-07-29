@@ -484,7 +484,14 @@ impl AnthropicAdapter {
 		let mut output_config: Map<String, Value> = Map::new();
 
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			insert_anthropic_reasoning(&mut payload, &mut output_config, model_name, &computed_reasoning_effort)?;
+			let capture_reasoning_content = options_set.capture_reasoning_content().unwrap_or_default();
+			insert_anthropic_reasoning(
+				&mut payload,
+				&mut output_config,
+				model_name,
+				&computed_reasoning_effort,
+				capture_reasoning_content,
+			)?;
 		}
 
 		// -- Add supported ChatOptions
@@ -748,6 +755,7 @@ fn insert_anthropic_reasoning(
 	output_config: &mut Map<String, Value>,
 	model_name: &str,
 	effort: &ReasoningEffort,
+	capture_reasoning_content: bool,
 ) -> Result<()> {
 	let mut budget: Option<u32> = None;
 	let support_effort = supports_anthropic_effort(model_name);
@@ -794,7 +802,7 @@ fn insert_anthropic_reasoning(
 
 	// Adaptive-thinking models use a `thinking` object, optionally with budget tokens.
 	if support_adaptive {
-		let thinking = match budget {
+		let mut thinking = match budget {
 			Some(budget) => json!({
 						"type": "adaptive",
 						"budget_tokens": budget // if None, should be ok.
@@ -802,6 +810,9 @@ fn insert_anthropic_reasoning(
 			None => json!({
 				"type": "adaptive"}),
 		};
+		if capture_reasoning_content {
+			thinking.x_insert("display", "summarized")?;
+		}
 
 		// Let the model choose adaptive thinking behavior, honoring an explicit budget when set.
 		payload.x_insert("thinking", thinking)?;
