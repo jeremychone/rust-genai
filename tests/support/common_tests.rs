@@ -73,7 +73,9 @@ pub async fn common_test_chat_reasoning_ok(
 		ChatMessage::system("Answer in one sentence. But make think hard to make sure it is not a trick question."),
 		ChatMessage::user("Why is the sky red?"),
 	]);
-	let options = ChatOptions::default().with_reasoning_effort(reasoning_effort);
+	let options = ChatOptions::default()
+		.with_reasoning_effort(reasoning_effort)
+		.with_capture_reasoning_content(true);
 
 	// -- Exec
 	let chat_res = client.exec_chat(model, chat_req, Some(&options)).await?;
