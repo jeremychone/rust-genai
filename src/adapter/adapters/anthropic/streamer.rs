@@ -244,7 +244,10 @@ impl futures::Stream for AnthropicStreamer {
 							return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
 						}
 
-						"ping" => continue, // Loop to the next event
+						"ping" => {
+							// Map ping events to Heartbeat events to indicate the stream is still active
+							return Poll::Ready(Some(Ok(InterStreamEvent::Heartbeat)));
+						}
 						"error" => {
 							// Anthropic may emit an `event: error` mid-stream (e.g. overloaded_error,
 							// rate_limit, internal_server_error). Propagate it as a typed error so the

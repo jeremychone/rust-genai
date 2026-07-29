@@ -81,6 +81,9 @@ pub struct StreamExtract {
 
 	/// All ToolCallChunk events received during streaming, in order.
 	pub tool_call_chunks: Vec<ToolCall>,
+
+	/// Number of Heartbeat events received during streaming.
+	pub heartbeat_count: usize,
 }
 
 pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<StreamExtract> {
@@ -89,6 +92,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 	let mut content: Vec<String> = Vec::new();
 	let mut reasoning_content: Vec<String> = Vec::new();
 	let mut tool_call_chunks: Vec<ToolCall> = Vec::new();
+	let mut heartbeat_count: usize = 0;
 
 	while let Some(Ok(stream_event)) = chat_stream.next().await {
 		match stream_event {
@@ -101,6 +105,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 				stream_end = Some(s_end);
 				break;
 			}
+			ChatStreamEvent::Heartbeat => heartbeat_count += 1,
 		}
 	}
 
@@ -113,6 +118,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 		content,
 		reasoning_content,
 		tool_call_chunks,
+		heartbeat_count,
 	})
 }
 

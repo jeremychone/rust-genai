@@ -80,6 +80,7 @@ impl Stream for ChatStream {
 						ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
 					}
 					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
+					InterStreamEvent::Heartbeat => ChatStreamEvent::Heartbeat,
 				};
 
 				// -- OTel: record time-to-first-chunk on the first content chunk, and the
@@ -141,6 +142,9 @@ pub enum ChatStreamEvent {
 	/// End of stream.
 	/// May include captured usage and/or content when enabled via `ChatOptions`.
 	End(StreamEnd),
+
+	/// Ping emitted periodically to indicate the stream is still active.
+	Heartbeat,
 }
 
 /// Content of `ChatStreamEvent::Chunk`.

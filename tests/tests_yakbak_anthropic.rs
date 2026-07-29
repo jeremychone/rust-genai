@@ -90,3 +90,76 @@ async fn test_yakbak_anthropic_tool_stream() -> TestResult<()> {
 
 	Ok(())
 }
+
+/// Verify that Anthropic SSE `event: ping` maps to public `ChatStreamEvent::Heartbeat`,
+/// and that heartbeats do not affect content, reasoning, tools, usage, or stop reason.
+#[tokio::test]
+async fn test_yakbak_anthropic_ping_stream() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "ping_stream").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence."),
+		ChatMessage::user("Hello"),
+	]);
+
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::claude-haiku-4-5", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	// -- Heartbeats (cassette has two `event: ping` messages)
+	assert_eq!(
+		extract.heartbeat_count, 2,
+		"Should yield one Heartbeat per Anthropic ping event"
+	);
+
+	// -- Content unchanged by pings
+	assert_eq!(
+		extract.content.as_deref(),
+		Some("Hello!"),
+		"Streamed content should be the text deltas only"
+	);
+	assert_eq!(
+		extract.stream_end.captured_first_text(),
+		Some("Hello!"),
+		"Captured content should match streamed text"
+	);
+
+	// -- Reasoning / tools unchanged (none in this cassette)
+	assert!(
+		extract.reasoning_content.is_none(),
+		"Should not invent reasoning content"
+	);
+	assert!(
+		extract.stream_end.captured_reasoning_content.is_none(),
+		"Should not capture reasoning content"
+	);
+	assert!(
+		extract.tool_call_chunks.is_empty(),
+		"Should not invent tool-call chunks"
+	);
+	assert!(
+		extract.stream_end.captured_tool_calls().is_none_or(|t| t.is_empty()),
+		"Should not capture tool calls"
+	);
+
+	// -- Usage and stop reason still captured
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	// message_start input_tokens (25) + message_delta output_tokens (15)
+	assert_eq!(usage.prompt_tokens, Some(25));
+	assert_eq!(usage.completion_tokens, Some(15));
+
+	assert_eq!(
+		extract.stream_end.captured_stop_reason,
+		Some(StopReason::Completed("end_turn".to_string())),
+		"Stop reason should come from message_delta, not pings"
+	);
+
+	Ok(())
+}
