@@ -79,8 +79,8 @@ impl Stream for ChatStream {
 					InterStreamEvent::ToolCallChunk(tool_call) => {
 						ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
 					}
-					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 					InterStreamEvent::Heartbeat => ChatStreamEvent::Heartbeat,
+					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 				};
 
 				// -- OTel: record time-to-first-chunk on the first content chunk, and the

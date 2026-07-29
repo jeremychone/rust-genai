@@ -4,6 +4,7 @@
 
 - `!` API CHANGE - `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
 - `+` openai_resp - support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`; custom tool-call input streams incrementally and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
+- `+` anthropic - expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
 - `+` NEW Provider/Adapter - Atlas Cloud OpenAI-compatible adapter (activated on `atlascloud::` namespace, using `ATLASCLOUD_API_KEY`) (PR #259)
 - `+` NEW Provider/Adapter - `AdapterKind::Kimi` (activated on `kimi::` namespace, or `kimi` model prefix) (moonshot.ai)
 - `+` otel - optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature (off by default; pure `tracing` bridge, no extra dependencies). 
