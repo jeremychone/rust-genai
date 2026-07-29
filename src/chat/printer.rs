@@ -151,6 +151,11 @@ async fn print_chat_stream_inner(
 							(None, None, false)
 						}
 					}
+
+					ChatStreamEvent::Heartbeat => {
+						// Liveness only — not user-facing content.
+						(None, None, false)
+					}
 				}
 			}
 			Err(e) => return Err(e.into()),

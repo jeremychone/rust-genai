@@ -40,4 +40,5 @@ pub enum InterStreamEvent {
 	ThoughtSignatureChunk(String),
 	ToolCallChunk(crate::chat::ToolCall),
 	End(InterStreamEnd),
+	Heartbeat,
 }
