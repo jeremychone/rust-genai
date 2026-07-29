@@ -1,12 +1,10 @@
-//! This module contains all the types related to a Chat Request (except ChatOptions, which has its own file).
-
 use crate::chat::{ChatMessage, ChatRole, StreamEnd, Tool, ToolCall, ToolResponse};
 use crate::support;
 use serde::{Deserialize, Serialize};
 
 // region:    --- ChatRequest
 
-/// Chat request for client chat calls.
+/// A provider-neutral chat request containing conversation messages and available tools.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
 	/// The initial system content of the request.
@@ -19,15 +17,13 @@ pub struct ChatRequest {
 	/// Optional tool definitions available to the model.
 	pub tools: Option<Vec<Tool>>,
 
-	/// Previous response ID for stateful sessions (OpenAI Responses API).
-	/// When set, the server uses cached conversation state — only new messages need to be sent.
+	/// Previous response ID used to continue a provider-managed stateful session.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub previous_response_id: Option<String>,
 
-	/// Whether to store the response for stateful sessions (OpenAI Responses API).
-	/// When true, the response_id can be used as previous_response_id in future calls.
-	/// Default: None → false (always opt-in, never implicit). Must be explicitly set to
-	/// Some(true) when using stateful sessions with previous_response_id.
+	/// Whether the provider should store the response for stateful continuation.
+	///
+	/// An unset value does not opt in to storage.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub store: Option<bool>,
 }
@@ -131,12 +127,10 @@ impl ChatRequest {
 		self
 	}
 
-	/// Append an assistant tool-use turn and the corresponding tool response based on a
-	/// streaming `StreamEnd` capture. Thought signatures are included automatically and
-	/// ordered before tool calls when present.
+	/// Appends a captured assistant tool-use turn followed by its tool response.
 	///
-	/// If neither content nor tool calls were captured, this is a no-op before appending
-	/// the provided tool response.
+	/// Captured content is preferred because it preserves part ordering. If no assistant
+	/// content or tool calls were captured, only the tool response is appended.
 	pub fn append_tool_use_from_stream_end(mut self, end: &StreamEnd, tool_response: ToolResponse) -> Self {
 		if let Some(content) = &end.captured_content {
 			// Use captured content directly (contains thoughts/text/tool calls in correct order)
@@ -168,8 +162,7 @@ impl ChatRequest {
 			}))
 	}
 
-	/// Concatenate all systems into one string,  
-	/// keeping one empty line in between
+	/// Joins all system content with one empty line between entries.
 	pub fn join_systems(&self) -> Option<String> {
 		let mut systems: Option<String> = None;
 
@@ -183,6 +176,7 @@ impl ChatRequest {
 	}
 
 	#[deprecated(note = "use join_systems()")]
+	/// Deprecated alias for [`Self::join_systems`].
 	pub fn combine_systems(&self) -> Option<String> {
 		self.join_systems()
 	}

@@ -1,5 +1,3 @@
-//! Types for chat responses. `ChatStream` is defined separately.
-
 use serde::{Deserialize, Serialize};
 
 use crate::ModelIden;
@@ -117,14 +115,13 @@ pub struct ChatResponse {
 	/// Set explicitly by construction code; no implicit defaulting at the type level.
 	pub provider_model_iden: ModelIden,
 
-	/// Normalised stop reason (see [`StopReason`]).
+	/// Normalized provider stop reason.
 	pub stop_reason: Option<StopReason>,
 
 	/// Token usage reported by the provider.
 	pub usage: Usage,
 
-	/// IMPORTANT: (since 0.5.3) This is populated at the client.exec_chat when the options capture_raw_body is set to true
-	/// Raw response body (only if asked via options.capture_raw_body)
+	/// Raw response body when raw-body capture is enabled.
 	pub captured_raw_body: Option<serde_json::Value>,
 
 	/// Response ID for stateful sessions (OpenAI Responses API).
@@ -134,7 +131,7 @@ pub struct ChatResponse {
 }
 
 impl ChatResponse {
-	/// Set response_id (builder pattern for adapter construction).
+	/// Sets the response ID returned for stateful continuation.
 	pub fn with_response_id(mut self, id: Option<String>) -> Self {
 		self.response_id = id;
 		self
@@ -153,22 +150,22 @@ impl ChatResponse {
 		self.content.into_first_text()
 	}
 
-	/// Returns all text segments (first per content item).
+	/// Returns all text segments.
 	pub fn texts(&self) -> Vec<&str> {
 		self.content.texts()
 	}
 
-	/// Consumes self and returns all text segments (first per content item).
+	/// Consumes the response and returns all text segments.
 	pub fn into_texts(self) -> Vec<String> {
 		self.content.into_texts()
 	}
 
-	/// Returns all captured tool calls.
+	/// Returns all tool calls in the response content.
 	pub fn tool_calls(&self) -> Vec<&ToolCall> {
 		self.content.tool_calls()
 	}
 
-	/// Consumes self and returns all captured tool calls.
+	/// Consumes the response and returns all tool calls.
 	pub fn into_tool_calls(self) -> Vec<ToolCall> {
 		self.content.into_tool_calls()
 	}

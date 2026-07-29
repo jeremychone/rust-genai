@@ -3,8 +3,8 @@ name = "genai"
 version = "0.7.0-beta.16-WIP"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-description = "Multi-AI Providers Library for Rust. (OpenAI, Gemini, Anthropic, Ollama, AWS Bedrock, Vertex, Groq, DeepSeek, GitHub Copilot and many more)"
-keywords = ["generative-ai","openai","chatgpt","gemini","ollama"]
+description = "Multi-AI Providers Library for Rust. (OpenAI, Gemini, Anthropic, Ollama, AWS Bedrock, Vertex, Groq, DeepSeek, Kimi, GLM and many more)"
+keywords = ["generative-ai","openai","anthropic","gemini","ollama"]
 homepage = "https://github.com/jeremychone/rust-genai"
 repository = "https://github.com/jeremychone/rust-genai"
 
@@ -29,6 +29,7 @@ native-tls = ["reqwest/native-tls"]
 # BYO crypto provider (FIPS/ring), static OpenSSL, custom root CAs, or mTLS: not a genai
 # feature — build your own `reqwest::Client` and inject it via `Client::builder().with_reqwest(...)`.
 
+# -- AWS
 # AWS Bedrock Converse adapter using SigV4 signing + the full AWS credential chain.
 # Pulls in aws-config (env → profile → SSO → IMDS → AssumeRole) and aws-sigv4 (request signing).
 # Heavy: aws-config transitively adds aws-smithy-*, hyper, tower, h2.
@@ -41,6 +42,7 @@ bedrock-sigv4 = [
 	"dep:aws-sigv4",
 ]
 
+# -- Telemetry
 # OpenTelemetry GenAI instrumentation (OFF by default).
 # Emits `gen_ai.*` tracing spans following the OpenTelemetry GenAI semantic
 # conventions (see docs/otel.md). This is a pure tracing-bridge: it only uses

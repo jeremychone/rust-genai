@@ -1,10 +1,3 @@
-//! ChatOptions configures a chat request.
-//! - It can be passed to `client::exec_chat(...)`, or
-//! - set as a default on the client via `client_config.with_chat_options(...)`.
-//!
-//! Note 1: Additional client-level defaults may be added over time.
-//! Note 2: Kept separate from `ChatRequest` for easier reuse and composition.
-
 use crate::Headers;
 use crate::chat::CacheControl;
 use crate::chat::chat_req_response_format::ChatResponseFormat;
@@ -57,7 +50,7 @@ pub struct ChatOptions {
 	pub tool_choice: Option<ToolChoice>,
 
 	// -- Reasoning options
-	/// Extract -style reasoning blocks into `ChatResponse.reasoning_content` when present.
+	/// Extract reasoning blocks such as `<think>...</think>` into the response reasoning content.
 	pub normalize_reasoning_content: Option<bool>,
 
 	/// Preferred reasoning effort, when supported by the provider.
@@ -239,22 +232,22 @@ impl ChatOptions {
 pub enum ReasoningEffort {
 	/// Explicitly request no reasoning.
 	///
-	/// Note: Distinct from leaving `ChatOptions::reasoning_effort` unset (`Option::None`),
-	/// which means "no preference, don't touch anything". The canonical keyword is `"zero"`
-	/// (the keyword `"none"` is a backward-compatible alias). The canonical model-name suffix
-	/// is `-zero` (`-none` is also accepted as a backward-compat alias). Adapters map
-	/// this to the provider's explicit opt-out where one exists (e.g., Anthropic models
-	/// that think by default) and otherwise omit the reasoning configuration.
+	/// This differs from leaving `ChatOptions::reasoning_effort` unset, which expresses no
+	/// preference. `"none"` is accepted as a backward-compatible alias for `"zero"`.
 	#[serde(alias = "None")]
 	Zero,
 	Low,
 	Medium,
 	High,
+	/// Extra-high effort. Adapters may treat this as an alias for [`Self::Max`].
 	XHigh,
+	/// Maximum effort. Adapters may treat this as an alias for [`Self::XHigh`].
 	Max,
+	/// Provider-specific reasoning token budget.
 	Budget(u32),
 
 	// Legacy reasoning for <= gpt-5
+	/// Legacy minimal effort used by older GPT-5 models.
 	Minimal,
 }
 
@@ -289,7 +282,7 @@ impl ReasoningEffort {
 		}
 	}
 
-	/// Parses a verbosity keyword.
+	/// Parses a reasoning effort keyword.
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
 			"zero" => Some(ReasoningEffort::Zero),
@@ -305,12 +298,9 @@ impl ReasoningEffort {
 		}
 	}
 
-	/// If `model_name` ends with `-reasoning_effort`, returns the parsed verbosity and the trimmed name.
+	/// Parses a trailing effort keyword from a model name and returns the trimmed name.
 	///
-	/// Returns `(reasosing_effort?, trimmed_model_name)`.
-	/// A whitelist of known real model names (e.g., `deepseek-r1-zero`) whose `-zero` suffix
-	/// must not be stripped. Other models ending in `-zero` will have the suffix recognized
-	/// as `ReasoningEffort::Zero`.
+	/// Known model names whose suffix is part of the actual name are left unchanged.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		// Protected model names that contain a `-zero` suffix as part of their actual name,
 		// not as a reasoning effort hint. These should not be stripped.
@@ -347,7 +337,7 @@ impl std::fmt::Display for ReasoningEffort {
 impl std::str::FromStr for ReasoningEffort {
 	type Err = Error;
 
-	/// Parses a verbosity keyword.
+	/// Parses a reasoning effort keyword or numeric token budget.
 	fn from_str(s: &str) -> Result<Self> {
 		Self::from_keyword(s)
 			.or_else(|| s.parse::<u32>().ok().map(Self::Budget))
@@ -368,7 +358,7 @@ pub enum Verbosity {
 }
 
 impl Verbosity {
-	/// Returns the lowercase variant name; `Budget(_)` returns `"budget"`.
+	/// Returns the lowercase variant name.
 	pub fn variant_name(&self) -> &'static str {
 		match self {
 			Verbosity::Low => "low",
@@ -396,10 +386,7 @@ impl Verbosity {
 		}
 	}
 
-	/// If `model_name` ends with `-<effort>`, returns the parsed effort and the trimmed name.
-	///
-	/// Only keyword variants are produced; `Budget` is never created here.
-	/// Returns `(effort, trimmed_model_name)`.
+	/// Parses a trailing verbosity keyword from a model name and returns the trimmed name.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
 		if let Some((prefix, last)) = model_name.rsplit_once('-')
 			&& let Some(effort) = Verbosity::from_keyword(last)
@@ -423,7 +410,7 @@ impl std::fmt::Display for Verbosity {
 impl std::str::FromStr for Verbosity {
 	type Err = Error;
 
-	/// Parses a keyword effort or a numeric budget.
+	/// Parses a verbosity keyword.
 	fn from_str(s: &str) -> Result<Self> {
 		Self::from_keyword(s).ok_or(Error::VerbosityParsing { actual: s.to_string() })
 	}
