@@ -1,7 +1,7 @@
 //! This is support implementation of the OpenAI Adapter which can also be called by other OpenAI Adapter Variants
 
 use super::cache_policy::{
-	OpenAiPromptCacheMode, OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
+	OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
 };
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
@@ -87,13 +87,9 @@ impl OpenAIAdapter {
 	) -> Result<WebRequestData> {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
-		let prompt_cache_policy = openai_prompt_cache_policy(
-			model.adapter_kind,
-			model_name,
-			&chat_req,
-			&options_set,
-			OpenAiProtocol::ChatCompletions,
-		);
+		let protocol = OpenAiProtocol::ChatCompletions;
+		let prompt_cache_policy =
+			openai_prompt_cache_policy(model.adapter_kind, model_name, &chat_req, &options_set, protocol);
 		let response_format_plan = response_format_plan(&options_set);
 
 		// -- url
@@ -134,11 +130,7 @@ impl OpenAIAdapter {
 		});
 
 		if let Some(policy) = prompt_cache_policy.as_ref() {
-			let mode = match policy.mode {
-				OpenAiPromptCacheMode::Implicit => "implicit",
-				OpenAiPromptCacheMode::Explicit => "explicit",
-			};
-			let mut prompt_cache_options = json!({"mode": mode});
+			let mut prompt_cache_options = json!({"mode": "explicit"});
 			if let Some(ttl) = policy.ttl {
 				prompt_cache_options["ttl"] = json!(ttl);
 			}
@@ -744,7 +736,7 @@ mod tests {
 	}
 
 	#[test]
-	fn test_gpt_5_6_chat_completion_cache_key_uses_implicit_mode() {
+	fn test_gpt_5_6_chat_completion_cache_key_uses_api_default_mode() {
 		let target = ServiceTarget {
 			model: ModelIden::new(AdapterKind::OpenAI, "gpt-5.6-mini"),
 			auth: AuthData::from_single("test-key"),
@@ -762,7 +754,7 @@ mod tests {
 		)
 		.expect("to_web_request_data should succeed");
 
-		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "implicit");
+		assert!(web_req.payload.get("prompt_cache_options").is_none());
 		assert!(web_req.payload["messages"][0]["content"]["prompt_cache_breakpoint"].is_null());
 	}
 
