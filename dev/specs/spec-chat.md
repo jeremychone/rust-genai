@@ -94,7 +94,7 @@ The functionality is divided into specialized files/sub-modules:
   - `with_stop_sequence(...)` for appending a single stop sequence
 
 - `ReasoningEffort` currently includes:
-  - `None`
+  - `Zero`
   - `Low`
   - `Medium`
   - `High`
@@ -102,3 +102,11 @@ The functionality is divided into specialized files/sub-modules:
   - `Max`
   - `Budget(u32)`
   - legacy `Minimal`
+
+- `ReasoningEffort::Zero` explicitly requests no reasoning and is distinct from leaving the reasoning effort unset.
+
+- Anthropic reasoning capabilities are derived from a locally maintained structured model-family and version definition rather than live provider negotiation.
+
+- Anthropic treats `Max` and `XHigh` as distinct effort levels. If the requested advanced level is unsupported by the selected model, it falls back to `High` without substituting the other advanced level.
+
+- Claude Opus 4.5 handles `ReasoningEffort::Budget(tokens)` through legacy enabled thinking with the requested token budget.
