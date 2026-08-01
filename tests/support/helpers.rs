@@ -79,6 +79,9 @@ pub struct StreamExtract {
 
 	pub reasoning_content: Option<String>,
 
+	/// Raw thought-signature deltas received during streaming, in order.
+	pub thought_signature_chunks: Vec<String>,
+
 	/// All ToolCallChunk events received during streaming, in order.
 	pub tool_call_chunks: Vec<ToolCall>,
 
@@ -91,6 +94,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 
 	let mut content: Vec<String> = Vec::new();
 	let mut reasoning_content: Vec<String> = Vec::new();
+	let mut thought_signature_chunks: Vec<String> = Vec::new();
 	let mut tool_call_chunks: Vec<ToolCall> = Vec::new();
 	let mut heartbeat_count: usize = 0;
 
@@ -99,7 +103,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 			ChatStreamEvent::Start => (), // nothing to do
 			ChatStreamEvent::Chunk(s_chunk) => content.push(s_chunk.content),
 			ChatStreamEvent::ReasoningChunk(s_chunk) => reasoning_content.push(s_chunk.content),
-			ChatStreamEvent::ThoughtSignatureChunk(_) => (), // ignore thought signature chunks for now
+			ChatStreamEvent::ThoughtSignatureChunk(s_chunk) => thought_signature_chunks.push(s_chunk.content),
 			ChatStreamEvent::ToolCallChunk(tc) => tool_call_chunks.push(tc.tool_call),
 			ChatStreamEvent::End(s_end) => {
 				stream_end = Some(s_end);
@@ -117,6 +121,7 @@ pub async fn extract_stream_end(mut chat_stream: ChatStream) -> TestResult<Strea
 		stream_end,
 		content,
 		reasoning_content,
+		thought_signature_chunks,
 		tool_call_chunks,
 		heartbeat_count,
 	})

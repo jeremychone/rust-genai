@@ -220,32 +220,37 @@ impl From<InterStreamEnd> for StreamEnd {
 		let mut captured_tool_calls = inter_end.captured_tool_calls;
 
 		// -- create public captured_content
-		// Ordering policy: ThoughtSignature -> Text -> ToolCall
-		// This matches provider expectations (e.g., Gemini 3 requires thought first).
-		let mut captured_content: Option<MessageContent> = None;
+		// Ordering policy: paired ThoughtSignature/ReasoningContent blocks, then
+		// unpaired signatures, text, and tool calls. Provider adapters can scan the
+		// leading parts to reconstruct their native continuation blocks.
+		let mut leading_content: Vec<ContentPart> = Vec::new();
+		if let Some(captured_blocks) = inter_end.captured_thought_blocks {
+			for block in captured_blocks {
+				leading_content.push(ContentPart::ThoughtSignature(block.signature));
+				if let Some(reasoning_content) = block.reasoning_content {
+					leading_content.push(ContentPart::ReasoningContent(reasoning_content));
+				}
+			}
+		}
 		if let Some(captured_thoughts) = inter_end.captured_thought_signatures {
-			let thoughts_content = captured_thoughts
-				.into_iter()
-				.map(ContentPart::ThoughtSignature)
-				.collect::<Vec<_>>();
+			leading_content.extend(captured_thoughts.into_iter().map(ContentPart::ThoughtSignature));
+		}
+
+		let mirrored_signatures = leading_content
+			.iter()
+			.filter_map(|part| part.as_thought_signature().map(str::to_string))
+			.collect::<Vec<_>>();
+		if !mirrored_signatures.is_empty() {
 			// Also attach thoughts to the first tool call so that
 			// ChatMessage::from(Vec<ToolCall>) can auto-prepend them.
 			if let Some(tool_calls) = captured_tool_calls.as_mut()
 				&& let Some(first_call) = tool_calls.first_mut()
 			{
-				first_call.thought_signatures = Some(
-					thoughts_content
-						.iter()
-						.filter_map(|p| p.as_thought_signature().map(|s| s.to_string()))
-						.collect(),
-				);
-			}
-			if let Some(existing_content) = &mut captured_content {
-				existing_content.extend_front(thoughts_content);
-			} else {
-				captured_content = Some(MessageContent::from_parts(thoughts_content));
+				first_call.thought_signatures = Some(mirrored_signatures);
 			}
 		}
+
+		let mut captured_content = (!leading_content.is_empty()).then(|| MessageContent::from_parts(leading_content));
 		if let Some(captured_text_content) = captured_text_content {
 			// This `captured_text_content` is the concatenation of all text chunks received.
 			if let Some(existing_content) = &mut captured_content {
@@ -343,22 +348,15 @@ impl StreamEnd {
 	/// were captured.
 	pub fn into_assistant_message_for_tool_use(self) -> Option<ChatMessage> {
 		let content = self.captured_content?;
-		let mut thought_signatures: Vec<String> = Vec::new();
-		let mut tool_calls: Vec<ToolCall> = Vec::new();
-		for part in content.into_parts() {
-			match part {
-				ContentPart::ThoughtSignature(t) => thought_signatures.push(t),
-				ContentPart::ToolCall(tc) => tool_calls.push(tc),
-				_ => {}
-			}
-		}
-		if tool_calls.is_empty() {
+		if content.tool_calls().is_empty() {
 			return None;
 		}
-		Some(
-			ChatMessage::assistant_tool_calls_with_thoughts(tool_calls, thought_signatures)
-				.with_reasoning_content(self.captured_reasoning_content),
-		)
+		let contains_reasoning = content.contains_reasoning_content();
+		let mut message = ChatMessage::assistant(content);
+		if !contains_reasoning {
+			message = message.with_reasoning_content(self.captured_reasoning_content);
+		}
+		Some(message)
 	}
 }
 
@@ -446,6 +444,33 @@ mod tests {
 		assert_eq!(
 			stream_end.captured_stop_reason,
 			Some(StopReason::Completed("stop".to_string()))
+		);
+	}
+
+	#[test]
+	fn stream_end_orders_signature_text_and_tool_call_and_mirrors_signature() {
+		let inter_end = InterStreamEnd {
+			captured_thought_signatures: Some(vec!["opaque-signature".to_string()]),
+			captured_text_content: Some("visible text".to_string()),
+			captured_tool_calls: Some(vec![ToolCall {
+				call_id: "call-1".to_string(),
+				fn_name: "lookup".to_string(),
+				fn_arguments: serde_json::json!({"query": "weather"}),
+				thought_signatures: None,
+			}]),
+			..Default::default()
+		};
+
+		let end = StreamEnd::from(inter_end);
+		let parts = end.captured_content.as_ref().expect("captured content").parts();
+		assert!(matches!(&parts[0], ContentPart::ThoughtSignature(signature) if signature == "opaque-signature"));
+		assert!(matches!(&parts[1], ContentPart::Text(text) if text == "visible text"));
+		assert!(matches!(&parts[2], ContentPart::ToolCall(_)));
+
+		let tool_call = end.captured_tool_calls().expect("tool calls")[0];
+		assert_eq!(
+			tool_call.thought_signatures.as_ref().expect("signature mirror"),
+			&vec!["opaque-signature".to_string()]
 		);
 	}
 }

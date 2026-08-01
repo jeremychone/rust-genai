@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::ModelIden;
-use crate::chat::{ChatStream, MessageContent, ToolCall, Usage};
+use crate::chat::{ChatMessage, ChatStream, MessageContent, ToolCall, Usage};
 
 // region:    --- StopReason
 
@@ -168,6 +168,20 @@ impl ChatResponse {
 	/// Consumes the response and returns all tool calls.
 	pub fn into_tool_calls(self) -> Vec<ToolCall> {
 		self.content.into_tool_calls()
+	}
+
+	/// Consume the response and build an assistant message for a tool-use handoff.
+	/// Provider continuation metadata and all assistant content are retained.
+	pub fn into_assistant_message_for_tool_use(self) -> Option<ChatMessage> {
+		if self.content.tool_calls().is_empty() {
+			return None;
+		}
+		let contains_reasoning = self.content.contains_reasoning_content();
+		let mut message = ChatMessage::assistant(self.content);
+		if !contains_reasoning {
+			message = message.with_reasoning_content(self.reasoning_content);
+		}
+		Some(message)
 	}
 }
 

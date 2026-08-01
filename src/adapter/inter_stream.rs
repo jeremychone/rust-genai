@@ -7,6 +7,16 @@
 
 use crate::chat::{StopReason, Usage};
 
+/// One provider reasoning block with its opaque continuation signature.
+///
+/// This remains internal so providers can preserve block pairing without
+/// flattening multiple reasoning blocks into a single string.
+#[derive(Debug)]
+pub struct InterStreamThoughtBlock {
+	pub reasoning_content: Option<String>,
+	pub signature: String,
+}
+
 #[derive(Debug, Default)]
 pub struct InterStreamEnd {
 	// When `ChatOptions..capture_usage == true`
@@ -24,8 +34,11 @@ pub struct InterStreamEnd {
 	// When `ChatOptions..capture_tool_calls == true`
 	pub captured_tool_calls: Option<Vec<crate::chat::ToolCall>>,
 
-	// When `ChatOptions..capture_thought_signatures == true` (implied or explicit)
+	// Provider continuation metadata captured whenever the provider emits it.
 	pub captured_thought_signatures: Option<Vec<String>>,
+
+	// Paired provider reasoning/signature blocks in original block order.
+	pub captured_thought_blocks: Option<Vec<InterStreamThoughtBlock>>,
 
 	// Response ID for stateful sessions (OpenAI Responses API).
 	pub captured_response_id: Option<String>,
