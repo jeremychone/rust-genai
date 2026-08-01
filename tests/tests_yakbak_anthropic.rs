@@ -163,3 +163,224 @@ async fn test_yakbak_anthropic_ping_stream() -> TestResult<()> {
 
 	Ok(())
 }
+
+fn thinking_tool_request() -> ChatRequest {
+	ChatRequest::new(vec![ChatMessage::user(
+		"Identify the relevant city and call the weather tool.",
+	)])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city": { "type": "string" },
+			"country": { "type": "string" },
+			"unit": { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"]
+	})))
+}
+
+#[tokio::test]
+async fn test_yakbak_anthropic_thinking_tool_stream_round_trip_capture() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "thinking_tool_stream").await?;
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+	let initial_request = thinking_tool_request();
+	let continuation_base = initial_request.clone();
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::fixture-model", initial_request, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let streamed_reasoning = extract.reasoning_content.as_deref().ok_or("streamed reasoning")?;
+	assert!(!streamed_reasoning.is_empty());
+	assert_eq!(
+		extract.stream_end.captured_reasoning_content.as_deref(),
+		Some(streamed_reasoning)
+	);
+
+	assert!(!extract.thought_signature_chunks.is_empty());
+	let logical_signature = extract.thought_signature_chunks.concat();
+	let captured_signatures = extract.stream_end.captured_thought_signatures().ok_or("captured signatures")?;
+	assert_eq!(captured_signatures, [logical_signature.as_str()]);
+
+	let parts = extract.stream_end.captured_content.as_ref().ok_or("captured content")?.parts();
+	assert!(matches!(&parts[0], ContentPart::ThoughtSignature(_)));
+	assert!(matches!(parts.last(), Some(ContentPart::ToolCall(_))));
+
+	let tool_calls = extract.stream_end.captured_tool_calls().ok_or("tool calls")?;
+	assert_eq!(tool_calls.len(), 1);
+	assert_eq!(
+		tool_calls[0].thought_signatures.as_deref(),
+		Some([logical_signature].as_slice())
+	);
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("usage")?;
+	assert!(usage.prompt_tokens.unwrap_or_default() > 0);
+	assert!(usage.completion_tokens.unwrap_or_default() > 0);
+	assert!(matches!(
+		extract.stream_end.captured_stop_reason,
+		Some(StopReason::ToolCall(_))
+	));
+
+	let tool_call = tool_calls[0].clone();
+	let continuation_request = continuation_base.append_tool_use_from_stream_end(
+		&extract.stream_end,
+		ToolResponse::from_tool_call(&tool_call, "25 C and clear"),
+	);
+	let assistant = continuation_request
+		.messages
+		.iter()
+		.rev()
+		.find(|message| message.role == ChatRole::Assistant)
+		.ok_or("assistant tool-use message")?;
+	assert_eq!(assistant.content.thought_signatures().len(), 1);
+	assert!(assistant.content.contains_reasoning_content());
+	assert_eq!(assistant.content.tool_calls().len(), 1);
+
+	let continuation_res = client
+		.exec_chat_stream("anthropic::fixture-model", continuation_request, Some(&options))
+		.await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	assert!(!continuation.content.as_deref().unwrap_or_default().is_empty());
+	assert!(!continuation.reasoning_content.as_deref().unwrap_or_default().is_empty());
+	assert!(!continuation.thought_signature_chunks.is_empty());
+	assert!(
+		continuation
+			.stream_end
+			.captured_thought_signatures()
+			.is_some_and(|signatures| !signatures.is_empty())
+	);
+	assert!(matches!(
+		continuation.stream_end.captured_stop_reason,
+		Some(StopReason::Completed(_))
+	));
+	assert!(continuation.stream_end.captured_usage.is_some());
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_yakbak_anthropic_thinking_signature_variants_preserve_block_pairs() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "thinking_signature_variants_stream").await?;
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+	let initial_request = thinking_tool_request();
+	let continuation_base = initial_request.clone();
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::fixture-model", initial_request, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	assert_eq!(
+		extract.thought_signature_chunks,
+		["opaque-start-only", "opaque-prefix-", "opaque-prefix-complete"]
+	);
+	assert_eq!(extract.reasoning_content.as_deref(), Some("First block.Second block."));
+	assert_eq!(
+		extract.stream_end.captured_thought_signatures(),
+		Some(vec!["opaque-start-only", "opaque-prefix-complete"])
+	);
+
+	let content = extract.stream_end.captured_content.as_ref().ok_or("captured content")?;
+	let parts = content.parts();
+	assert_eq!(parts.len(), 5);
+	assert!(matches!(&parts[0], ContentPart::ThoughtSignature(value) if value == "opaque-start-only"));
+	assert!(matches!(&parts[1], ContentPart::ReasoningContent(value) if value == "First block."));
+	assert!(matches!(&parts[2], ContentPart::ThoughtSignature(value) if value == "opaque-prefix-complete"));
+	assert!(matches!(&parts[3], ContentPart::ReasoningContent(value) if value == "Second block."));
+	assert!(matches!(&parts[4], ContentPart::ToolCall(_)));
+
+	let tool_call = extract.stream_end.captured_tool_calls().ok_or("tool call")?[0].clone();
+	assert_eq!(
+		tool_call.thought_signatures.as_deref(),
+		Some(["opaque-start-only".to_string(), "opaque-prefix-complete".to_string()].as_slice())
+	);
+	assert_eq!(
+		extract.stream_end.captured_usage.as_ref().and_then(|usage| usage.total_tokens),
+		Some(20)
+	);
+	assert!(matches!(
+		extract.stream_end.captured_stop_reason,
+		Some(StopReason::ToolCall(_))
+	));
+
+	let continuation_request = continuation_base.append_tool_use_from_stream_end(
+		&extract.stream_end,
+		ToolResponse::from_tool_call(&tool_call, "25 C and clear"),
+	);
+	let assistant = continuation_request
+		.messages
+		.iter()
+		.rev()
+		.find(|message| message.role == ChatRole::Assistant)
+		.ok_or("assistant tool-use message")?;
+	assert_eq!(
+		assistant.content.thought_signatures(),
+		vec!["opaque-start-only", "opaque-prefix-complete"]
+	);
+	assert_eq!(
+		assistant.content.reasoning_contents(),
+		vec!["First block.", "Second block."]
+	);
+
+	let continuation_res = client
+		.exec_chat_stream("anthropic::fixture-model", continuation_request, Some(&options))
+		.await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	assert_eq!(continuation.content.as_deref(), Some("Continuation accepted."));
+	assert!(matches!(
+		continuation.stream_end.captured_stop_reason,
+		Some(StopReason::Completed(_))
+	));
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_yakbak_anthropic_thinking_tool_non_stream_capture() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "thinking_tool_non_stream").await?;
+	let response = client
+		.exec_chat("anthropic::fixture-model", thinking_tool_request(), None)
+		.await?;
+
+	assert!(!response.reasoning_content.as_deref().unwrap_or_default().is_empty());
+	let signatures = response.content.thought_signatures();
+	assert_eq!(signatures.len(), 1);
+	assert!(matches!(
+		response.content.parts().first(),
+		Some(ContentPart::ThoughtSignature(_))
+	));
+	assert!(matches!(
+		response.content.parts().last(),
+		Some(ContentPart::ToolCall(_))
+	));
+
+	let tool_calls = response.tool_calls();
+	assert_eq!(tool_calls.len(), 1);
+	assert_eq!(
+		tool_calls[0]
+			.thought_signatures
+			.as_ref()
+			.map(|values| values.iter().map(String::as_str).collect::<Vec<_>>()),
+		Some(signatures)
+	);
+	assert!(response.usage.prompt_tokens.unwrap_or_default() > 0);
+	assert!(response.usage.completion_tokens.unwrap_or_default() > 0);
+	assert!(matches!(response.stop_reason, Some(StopReason::ToolCall(_))));
+
+	let assistant = response
+		.into_assistant_message_for_tool_use()
+		.ok_or("assistant tool-use message")?;
+	assert_eq!(assistant.content.thought_signatures().len(), 1);
+	assert!(assistant.content.contains_reasoning_content());
+
+	Ok(())
+}

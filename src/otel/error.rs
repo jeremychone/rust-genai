@@ -21,6 +21,7 @@ pub fn error_type(error: &Error) -> String {
 		Error::LastChatMessageIsNotUser { .. } => "last_chat_message_is_not_user".to_string(),
 		Error::MessageRoleNotSupported { .. } => "message_role_not_supported".to_string(),
 		Error::MessageContentTypeNotSupported { .. } => "message_content_type_not_supported".to_string(),
+		Error::AnthropicThinkingBlockMismatch { .. } => "anthropic_thinking_block_mismatch".to_string(),
 		Error::JsonModeWithoutInstruction => "json_mode_without_instruction".to_string(),
 		Error::VerbosityParsing { .. } => "verbosity_parsing".to_string(),
 		Error::ReasoningParsingError { .. } => "reasoning_parsing".to_string(),

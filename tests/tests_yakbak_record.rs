@@ -20,6 +20,9 @@
 //! # Record only Ollama Cloud scenarios:
 //! OLLAMA_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_ollama_cloud
 //!
+//! # Record an Anthropic thinking/tool scenario (endpoint and model may be overridden):
+//! ANTHROPIC_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_anthropic_thinking_tool_stream
+//!
 //! # Record a single scenario by name:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_thinking_stream
 //! ```
@@ -40,6 +43,99 @@ fn openai_backend() -> String {
 }
 
 const OPENAI_MODEL: &str = "openai_resp::gpt-5.4-mini";
+
+fn anthropic_backend() -> String {
+	std::env::var("ANTHROPIC_BASE_URL").unwrap_or_else(|_| "https://api.anthropic.com/v1/".to_string())
+}
+
+fn anthropic_thinking_model() -> String {
+	std::env::var("ANTHROPIC_THINKING_MODEL").unwrap_or_else(|_| "anthropic::claude-sonnet-4-5".to_string())
+}
+
+fn anthropic_thinking_tool_request() -> ChatRequest {
+	ChatRequest::new(vec![
+		ChatMessage::system("Use the provided tool when it is needed. Keep any visible answer concise."),
+		ChatMessage::user(
+			"Determine which of Berlin, Cairo, and Paris is in Africa, then call get_weather for that city in Celsius.",
+		),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city": { "type": "string" },
+			"country": { "type": "string" },
+			"unit": { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"]
+	})))
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_anthropic_thinking_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("anthropic", "thinking_tool_stream", &anthropic_backend()).await?;
+
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+
+	let model = anthropic_thinking_model();
+	let initial_request = anthropic_thinking_tool_request();
+	let continuation_request = initial_request.clone();
+	let stream_res = client.exec_chat_stream(&model, initial_request, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Reasoning chunks combined: {} bytes",
+		extract.reasoning_content.as_deref().map(str::len).unwrap_or(0)
+	);
+	eprintln!(
+		"[record] Signature deltas: count={}, lengths={:?}",
+		extract.thought_signature_chunks.len(),
+		extract.thought_signature_chunks.iter().map(String::len).collect::<Vec<_>>()
+	);
+	eprintln!(
+		"[record] Tool calls: {:?}",
+		extract.stream_end.captured_tool_calls().as_ref().map(|calls| calls.len())
+	);
+
+	let tool_call = extract
+		.stream_end
+		.captured_tool_calls()
+		.and_then(|calls| calls.first().cloned().cloned())
+		.ok_or("recorded response should contain a tool call")?;
+	let tool_response = ToolResponse::from_tool_call(&tool_call, "25 C and clear");
+	let continuation_request = continuation_request.append_tool_use_from_stream_end(&extract.stream_end, tool_response);
+	let continuation_res = client.exec_chat_stream(&model, continuation_request, Some(&options)).await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	eprintln!(
+		"[record] Continuation text: {} bytes, reasoning: {} bytes, signature deltas: {}",
+		continuation.content.as_deref().map(str::len).unwrap_or(0),
+		continuation.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		continuation.thought_signature_chunks.len(),
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_anthropic_thinking_tool_non_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("anthropic", "thinking_tool_non_stream", &anthropic_backend()).await?;
+
+	let model = anthropic_thinking_model();
+	let response = client.exec_chat(&model, anthropic_thinking_tool_request(), None).await?;
+	eprintln!(
+		"[record] Non-stream reasoning: {} bytes, tool calls: {}",
+		response.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		response.tool_calls().len()
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
 
 #[tokio::test]
 #[ignore]

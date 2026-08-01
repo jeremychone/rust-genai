@@ -11,7 +11,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
-use crate::{Headers, ModelIden};
+use crate::{Error, Headers, ModelIden};
 use serde_json::{Map, Value, json};
 use tracing::warn;
 use value_ext::JsonValueExt;
@@ -248,8 +248,47 @@ impl AnthropicAdapter {
 					let mut values: Vec<Value> = Vec::new();
 					let mut has_tool_use = false;
 					let mut has_text = false;
+					let mut thought_signatures: Vec<String> = Vec::new();
+					let mut reasoning_contents: Vec<String> = Vec::new();
+					let mut other_parts: Vec<ContentPart> = Vec::new();
 
 					for part in msg.content {
+						match part {
+							ContentPart::ThoughtSignature(signature) => thought_signatures.push(signature),
+							ContentPart::ReasoningContent(reasoning) => reasoning_contents.push(reasoning),
+							other => other_parts.push(other),
+						}
+					}
+
+					// `ToolCall.thought_signatures` is a convenience mirror. Use it only when
+					// canonical message content does not already carry signatures.
+					if thought_signatures.is_empty()
+						&& let Some(mirrored) = other_parts.iter().find_map(|part| match part {
+							ContentPart::ToolCall(tool_call) => tool_call.thought_signatures.clone(),
+							_ => None,
+						}) {
+						thought_signatures = mirrored;
+					}
+
+					if reasoning_contents.len() != thought_signatures.len() {
+						return Err(Error::AnthropicThinkingBlockMismatch {
+							reasoning_count: reasoning_contents.len(),
+							signature_count: thought_signatures.len(),
+						});
+					}
+
+					// Anthropic requires every signed thinking block before text/tool-use blocks.
+					values.extend(reasoning_contents.into_iter().zip(thought_signatures).map(
+						|(thinking, signature)| {
+							json!({
+								"type": "thinking",
+								"thinking": thinking,
+								"signature": signature,
+							})
+						},
+					));
+
+					for part in other_parts {
 						match part {
 							ContentPart::Text(text) => {
 								has_text = true;
@@ -276,8 +315,7 @@ impl AnthropicAdapter {
 							// Unsupported for assistant role in Anthropic message content
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
-							ContentPart::ThoughtSignature(_) => {}
-							ContentPart::ReasoningContent(_) => {}
+							ContentPart::ThoughtSignature(_) | ContentPart::ReasoningContent(_) => unreachable!(),
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
 						}
 					}
@@ -548,6 +586,7 @@ impl AnthropicAdapter {
 		let json_content_items: Vec<Value> = body.x_take("content")?;
 
 		let mut reasoning_content: Vec<String> = Vec::new();
+		let mut thought_signatures: Vec<String> = Vec::new();
 
 		for mut item in json_content_items {
 			let typ: String = item.x_take("type")?;
@@ -556,7 +595,14 @@ impl AnthropicAdapter {
 					let part = ContentPart::from_text(item.x_take::<String>("text")?);
 					content.push(part);
 				}
-				"thinking" => reasoning_content.push(item.x_take("thinking")?),
+				"thinking" => {
+					let reasoning: String = item.x_take("thinking")?;
+					let signature: String = item.x_take("signature")?;
+					reasoning_content.push(reasoning.clone());
+					thought_signatures.push(signature.clone());
+					content.push(ContentPart::ThoughtSignature(signature));
+					content.push(ContentPart::ReasoningContent(reasoning));
+				}
 				"tool_use" => {
 					let call_id = item.x_take::<String>("id")?;
 					let fn_name = item.x_take::<String>("name")?;
@@ -577,6 +623,15 @@ impl AnthropicAdapter {
 					item.x_insert("type", other_typ)?;
 					content.push(ContentPart::from_custom(item, Some(model_iden.clone())))
 				}
+			}
+		}
+
+		if !thought_signatures.is_empty() {
+			if let Some(tool_call) = content.iter_mut().find_map(|part| match part {
+				ContentPart::ToolCall(tool_call) => Some(tool_call),
+				_ => None,
+			}) {
+				tool_call.thought_signatures = Some(thought_signatures.clone());
 			}
 		}
 
