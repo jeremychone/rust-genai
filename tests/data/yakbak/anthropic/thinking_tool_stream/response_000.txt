@@ -1,0 +1,335 @@
+event:message_start
+data:{"type":"message_start","message":{"id":"msg_FxKzSMdWjjuzLJIiOCzL8wkX","type":"message","role":"assistant","content":[],"model":"k3","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":227,"output_tokens":0,"service_tier":"standard","inference_geo":"not_available"}}}
+
+event:content_block_start
+data:{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"The"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" user"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" wants"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" me"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" to"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" determine"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" which"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" of"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Berlin"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":","}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Cairo"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":","}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" and"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Paris"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" is"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Africa"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":","}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" then"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" call"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" get"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"_we"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"ather"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" for"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" that"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" city"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Celsius"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":".\n\n"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Ber"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"lin"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" is"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Germany"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" ("}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Europe"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"),"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Cairo"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" is"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Egypt"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" ("}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Africa"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"),"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Paris"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" is"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" France"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" ("}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Europe"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":")."}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" So"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Cairo"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" is"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" the"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" African"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" city"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"."}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" I"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" should"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" call"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" get"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"_we"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"ather"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" for"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Cairo"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":","}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Egypt"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":","}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Celsius"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"."}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"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"}}
+
+event:content_block_stop
+data:{"type":"content_block_stop","index":0}
+
+event:content_block_start
+data:{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"C"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"airo"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" is"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" the"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" city"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" Africa"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" ("}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"E"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"gypt"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":");"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" Berlin"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" and"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" Paris"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" are"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" in"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" Europe"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"."}}
+
+event:content_block_stop
+data:{"type":"content_block_stop","index":1}
+
+event:content_block_start
+data:{"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"tool_SXRkSO1yZvULC0bwQRVLGpqZ","name":"get_weather","input":{}}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"{\"city\":\""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"C"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"airo"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"\""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":",\"country\":\""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"E"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"gypt"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"\""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":",\"unit\":\""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"C"}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"\""}}
+
+event:content_block_delta
+data:{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"}"}}
+
+event:content_block_stop
+data:{"type":"content_block_stop","index":2}
+
+event:message_delta
+data:{"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":227,"output_tokens":175,"output_tokens_details":{"thinking_tokens":73}}}
+
+event:message_stop
+data:{"type":"message_stop"}
