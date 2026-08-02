@@ -1,7 +1,8 @@
 use super::{OpenAIRespStreamer, RespResponse};
 use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::openai::cache_policy::{
-	OpenAiPromptCacheMode, OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
+	OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
+	supports_openai_responses_prompt_cache_options,
 };
 use crate::adapter::adapters::openai::schema::{
 	OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema,
@@ -86,13 +87,12 @@ impl Adapter for OpenAIRespAdapter {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
 		let adapter_kind = model.adapter_kind;
-		let prompt_cache_policy = openai_prompt_cache_policy(
-			adapter_kind,
-			model_name,
-			&chat_req,
-			&chat_options,
-			OpenAiProtocol::Responses,
-		);
+		let protocol = OpenAiProtocol::Responses;
+		let prompt_cache_policy = if supports_openai_responses_prompt_cache_options(&endpoint) {
+			openai_prompt_cache_policy(adapter_kind, model_name, &chat_req, &chat_options, protocol)
+		} else {
+			None
+		};
 		let response_format_plan = response_format_plan(&chat_options);
 
 		// -- api_key
@@ -159,11 +159,7 @@ impl Adapter for OpenAIRespAdapter {
 		});
 
 		if let Some(policy) = prompt_cache_policy.as_ref() {
-			let mode = match policy.mode {
-				OpenAiPromptCacheMode::Implicit => "implicit",
-				OpenAiPromptCacheMode::Explicit => "explicit",
-			};
-			let mut prompt_cache_options = json!({"mode": mode});
+			let mut prompt_cache_options = json!({"mode": "explicit"});
 			if let Some(ttl) = policy.ttl {
 				prompt_cache_options.x_insert("ttl", ttl)?;
 			}
@@ -755,6 +751,8 @@ fn apply_resp_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _
 
 #[cfg(test)]
 mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
+
 	use super::*;
 	use crate::adapter::AdapterKind;
 	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice, ToolResponse};
@@ -1029,7 +1027,26 @@ mod tests {
 	}
 
 	#[test]
-	fn test_gpt_5_6_responses_cache_key_uses_implicit_cache_mode() {
+	fn test_gpt_5_6_codex_responses_endpoint_omits_prompt_cache_options() -> Result<()> {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: Endpoint::from_static("https://chatgpt.com/backend-api/codex/"),
+		};
+
+		let web_req = OpenAIRespAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			ChatOptionsSet::default(),
+		)?;
+
+		assert!(web_req.payload.get("prompt_cache_options").is_none());
+		Ok(())
+	}
+
+	#[test]
+	fn test_gpt_5_6_responses_cache_key_uses_api_default_cache_mode() {
 		let target = ServiceTarget {
 			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6-mini"),
 			auth: AuthData::from_single("test-key"),
@@ -1046,7 +1063,7 @@ mod tests {
 		)
 		.expect("to_web_request_data should succeed");
 
-		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "implicit");
+		assert!(web_req.payload.get("prompt_cache_options").is_none());
 		assert!(
 			web_req.payload["input"][0]["content"][0]
 				.get("prompt_cache_breakpoint")

@@ -1,5 +1,6 @@
 use crate::adapter::AdapterKind;
 use crate::chat::{CacheControl, ChatOptionsSet, ChatRequest};
+use crate::resolver::Endpoint;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OpenAiProtocol {
@@ -8,14 +9,7 @@ pub(crate) enum OpenAiProtocol {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum OpenAiPromptCacheMode {
-	Implicit,
-	Explicit,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct OpenAiPromptCachePolicy {
-	pub(crate) mode: OpenAiPromptCacheMode,
 	pub(crate) ttl: Option<&'static str>,
 	pub(crate) controlled_message_count: usize,
 }
@@ -44,6 +38,16 @@ pub(crate) fn openai_prompt_cache_ttl(_cache_control: &CacheControl) -> &'static
 	"30m"
 }
 
+pub(crate) fn supports_openai_responses_prompt_cache_options(endpoint: &Endpoint) -> bool {
+	const SUPPORTED_ORIGINS: [&str; 2] = ["https://api.openai.com", "http://api.openai.com"];
+
+	SUPPORTED_ORIGINS.iter().any(|origin| {
+		endpoint.base_url().strip_prefix(origin).is_some_and(|suffix| {
+			suffix.is_empty() || suffix.starts_with('/') || suffix.starts_with('?') || suffix.starts_with('#')
+		})
+	})
+}
+
 pub(crate) fn openai_prompt_cache_policy(
 	adapter_kind: AdapterKind,
 	model_name: &str,
@@ -70,17 +74,14 @@ pub(crate) fn openai_prompt_cache_policy(
 	let has_explicit_placement = controlled_message_count > 0;
 	let has_general_cache_intent = options.prompt_cache_key().is_some() || options.cache_control().is_some();
 
-	let mode = if has_explicit_placement || !has_general_cache_intent {
-		OpenAiPromptCacheMode::Explicit
-	} else {
-		OpenAiPromptCacheMode::Implicit
-	};
+	if !has_explicit_placement && has_general_cache_intent {
+		return None;
+	}
 
 	let has_cache_control = has_explicit_placement || options.cache_control().is_some();
 	let ttl = has_cache_control.then(|| openai_prompt_cache_ttl_from_request(chat_req, options));
 
 	Some(OpenAiPromptCachePolicy {
-		mode,
 		ttl,
 		controlled_message_count,
 	})
@@ -149,6 +150,43 @@ mod tests {
 	}
 
 	#[test]
+	fn test_adapter_adapters_openai_supports_prompt_cache_options_for_official_endpoint() -> Result<()> {
+		let endpoint = Endpoint::from_static("https://api.openai.com/v1/");
+
+		assert!(supports_openai_responses_prompt_cache_options(&endpoint));
+		Ok(())
+	}
+
+	#[test]
+	fn test_adapter_adapters_openai_rejects_prompt_cache_options_for_codex_responses_endpoint() -> Result<()> {
+		let endpoints = [
+			Endpoint::from_static("https://chatgpt.com/backend-api/codex"),
+			Endpoint::from_static("https://chatgpt.com/backend-api/codex/"),
+			Endpoint::from_static("https://chatgpt.com/backend-api/codex/responses"),
+		];
+
+		for endpoint in &endpoints {
+			assert!(!supports_openai_responses_prompt_cache_options(endpoint));
+		}
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_adapter_adapters_openai_prompt_cache_endpoint_check_uses_supported_domain_allowlist() -> Result<()> {
+		let host_lookalike = Endpoint::from_static("https://chatgpt.com.example/backend-api/codex/");
+		let path_lookalike = Endpoint::from_static("https://chatgpt.com/backend-api/codex-other/");
+		let openai_host_lookalike = Endpoint::from_static("https://api.openai.com.example/v1/");
+		let openai_path = Endpoint::from_static("https://api.openai.com/custom/v1/");
+
+		assert!(!supports_openai_responses_prompt_cache_options(&host_lookalike));
+		assert!(!supports_openai_responses_prompt_cache_options(&path_lookalike));
+		assert!(!supports_openai_responses_prompt_cache_options(&openai_host_lookalike));
+		assert!(supports_openai_responses_prompt_cache_options(&openai_path));
+		Ok(())
+	}
+
+	#[test]
 	fn test_adapter_adapters_openai_prompt_cache_policy_no_configuration_is_explicit() -> Result<()> {
 		let request = ChatRequest::from_user("hello");
 		let options = ChatOptionsSet::default();
@@ -161,14 +199,13 @@ mod tests {
 		)
 		.ok_or("supported OpenAI model should have a cache policy")?;
 
-		assert_eq!(policy.mode, OpenAiPromptCacheMode::Explicit);
 		assert_eq!(policy.ttl, None);
 		assert_eq!(policy.controlled_message_count, 0);
 		Ok(())
 	}
 
 	#[test]
-	fn test_adapter_adapters_openai_prompt_cache_policy_general_intent_is_implicit() -> Result<()> {
+	fn test_adapter_adapters_openai_prompt_cache_policy_general_intent_uses_api_default() -> Result<()> {
 		let request = ChatRequest::from_user("hello");
 		let chat_options = ChatOptions::default().with_prompt_cache_key("stable-key");
 		let options = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
@@ -178,11 +215,9 @@ mod tests {
 			&request,
 			&options,
 			OpenAiProtocol::ChatCompletions,
-		)
-		.ok_or("supported OpenAI model should have a cache policy")?;
+		);
 
-		assert_eq!(policy.mode, OpenAiPromptCacheMode::Implicit);
-		assert_eq!(policy.ttl, None);
+		assert!(policy.is_none());
 		Ok(())
 	}
 
@@ -201,7 +236,6 @@ mod tests {
 		)
 		.ok_or("supported OpenAI model should have a cache policy")?;
 
-		assert_eq!(policy.mode, OpenAiPromptCacheMode::Explicit);
 		assert_eq!(policy.ttl, Some("30m"));
 		assert_eq!(policy.controlled_message_count, 1);
 		Ok(())
@@ -219,12 +253,9 @@ mod tests {
 			&request,
 			&options,
 			OpenAiProtocol::Responses,
-		)
-		.ok_or("supported OpenAI model should have a cache policy")?;
+		);
 
-		assert_eq!(policy.mode, OpenAiPromptCacheMode::Implicit);
-		assert_eq!(policy.ttl, None);
-		assert_eq!(policy.controlled_message_count, 0);
+		assert!(policy.is_none());
 		Ok(())
 	}
 
