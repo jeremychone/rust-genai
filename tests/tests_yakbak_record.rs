@@ -23,6 +23,14 @@
 //! # Record an Anthropic thinking/tool scenario (endpoint and model may be overridden):
 //! ANTHROPIC_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_anthropic_thinking_tool_stream
 //!
+//! # Record two turns of the public FFmpeg H.264 adjudication reproduction. Gateways that
+//! # require their billing/identity system blocks and opaque metadata receive only those fields:
+//! ANTHROPIC_SMOKE_EXTRA_BODY="$(jq -c '{system: .system[0:2], metadata, context_management}' /path/to/request.json)" \
+//! ANTHROPIC_BASE_URL=... \
+//! ANTHROPIC_THINKING_MODEL=anthropic::claude-opus-5 \
+//! ANTHROPIC_API_KEY=... \
+//! cargo test --test tests_yakbak_record -- --ignored record_anthropic_adjudication_tool_stream
+//!
 //! # Record a single scenario by name:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_thinking_stream
 //! ```
@@ -34,7 +42,7 @@
 mod support;
 
 use genai::chat::*;
-use serde_json::json;
+use serde_json::{Value, json};
 use support::yakbak::record_client;
 use support::{TestResult, extract_stream_end};
 
@@ -68,6 +76,126 @@ fn anthropic_thinking_tool_request() -> ChatRequest {
 		},
 		"required": ["city", "country", "unit"]
 	})))
+}
+
+fn anthropic_adjudication_seed() -> TestResult<Value> {
+	serde_json::from_str(include_str!(
+		"data/recording_inputs/anthropic_adjudication_two_turn_seed.json"
+	))
+	.map_err(|err| format!("parse adjudication recording seed: {err}").into())
+}
+
+fn anthropic_adjudication_tool_request(seed: &Value) -> TestResult<ChatRequest> {
+	let prompt = seed
+		.pointer("/messages/0/content")
+		.and_then(Value::as_str)
+		.ok_or("adjudication seed is missing messages[0].content")?;
+	let tool_values = seed
+		.get("tools")
+		.and_then(Value::as_array)
+		.ok_or("adjudication seed is missing tools")?;
+	let tools = tool_values
+		.iter()
+		.map(|tool| {
+			let name = tool.get("name").and_then(Value::as_str).ok_or("seed tool is missing name")?;
+			let description = tool
+				.get("description")
+				.and_then(Value::as_str)
+				.ok_or("seed tool is missing description")?;
+			let schema = tool.get("schema").cloned().ok_or("seed tool is missing schema")?;
+			Ok(Tool::new(name).with_description(description).with_schema(schema))
+		})
+		.collect::<TestResult<Vec<_>>>()?;
+
+	Ok(ChatRequest::new(vec![ChatMessage::user(prompt)]).with_tools(tools))
+}
+
+fn anthropic_adjudication_tool_result(seed: &Value, tool_call: &ToolCall) -> TestResult<String> {
+	let results = seed
+		.get("tool_results")
+		.and_then(Value::as_array)
+		.ok_or("adjudication seed is missing tool_results")?;
+
+	if let Some(result) = results.iter().find(|result| {
+		result.get("name").and_then(Value::as_str) == Some(tool_call.fn_name.as_str())
+			&& result.get("arguments") == Some(&tool_call.fn_arguments)
+	}) {
+		return result
+			.get("result")
+			.and_then(Value::as_str)
+			.map(str::to_string)
+			.ok_or_else(|| "seed tool result is missing result text".into());
+	}
+
+	match tool_call.fn_name.as_str() {
+		"Read" => {
+			let requested_path = tool_call
+				.fn_arguments
+				.get("path")
+				.and_then(Value::as_str)
+				.ok_or("Read call is missing path")?;
+			let requested_offset = tool_call
+				.fn_arguments
+				.get("offset")
+				.and_then(Value::as_u64)
+				.ok_or("Read call is missing offset")?;
+			let requested_limit = tool_call
+				.fn_arguments
+				.get("limit")
+				.and_then(Value::as_u64)
+				.ok_or("Read call is missing limit")?;
+			let requested_end = requested_offset.checked_add(requested_limit).ok_or("Read range overflows")?;
+
+			let mut source_lines = std::collections::BTreeMap::new();
+			for result in results.iter().filter(|result| {
+				result.get("name").and_then(Value::as_str) == Some("Read")
+					&& result.pointer("/arguments/path").and_then(Value::as_str) == Some(requested_path)
+			}) {
+				if let Some(text) = result.get("result").and_then(Value::as_str) {
+					for line in text.lines() {
+						if let Some(line_number) =
+							line.split_whitespace().next().and_then(|value| value.parse::<u64>().ok())
+						{
+							source_lines.insert(line_number, line);
+						}
+					}
+				}
+			}
+
+			let selected = (requested_offset..requested_end)
+				.map(|line_number| source_lines.get(&line_number).copied())
+				.collect::<Option<Vec<_>>>()
+				.ok_or_else(|| {
+					format!(
+						"no complete public-source Read result for {requested_path}:{requested_offset}+{requested_limit}"
+					)
+				})?;
+			Ok(selected.join("\n"))
+		}
+		"Grep" => Ok("libavcodec/h264_picture.c:231:    h->current_slice = 0;\n\
+libavcodec/h264dec.c:472:    h->current_slice = 0;\n\
+libavcodec/h264dec.c:595:        h->current_slice = 0;\n\
+libavcodec/h264_slice.c:1982:    sl->slice_num = ++h->current_slice;"
+			.to_string()),
+		"Submit" => Ok("Submission recorded.".to_string()),
+		other => Err(format!("unexpected tool call in two-turn reproduction: {other}").into()),
+	}
+}
+
+fn anthropic_adjudication_options() -> TestResult<ChatOptions> {
+	let mut options = ChatOptions::default()
+		.with_max_tokens(4096)
+		.with_reasoning_effort(ReasoningEffort::High)
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+	if let Ok(raw) = std::env::var("ANTHROPIC_SMOKE_EXTRA_BODY") {
+		let extra_body: Value = serde_json::from_str(&raw)
+			.map_err(|err| format!("ANTHROPIC_SMOKE_EXTRA_BODY must be valid JSON: {err}"))?;
+		options = options.with_extra_body(extra_body);
+	}
+	Ok(options)
 }
 
 #[tokio::test]
@@ -114,6 +242,73 @@ async fn record_anthropic_thinking_tool_stream() -> TestResult<()> {
 		continuation.content.as_deref().map(str::len).unwrap_or(0),
 		continuation.reasoning_content.as_deref().map(str::len).unwrap_or(0),
 		continuation.thought_signature_chunks.len(),
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_anthropic_adjudication_tool_stream() -> TestResult<()> {
+	let (client, mut server) =
+		record_client("anthropic", "thinking_adjudication_tool_stream", &anthropic_backend()).await?;
+	let seed = anthropic_adjudication_seed()?;
+	let options = anthropic_adjudication_options()?;
+	let model = anthropic_thinking_model();
+	let initial_request = anthropic_adjudication_tool_request(&seed)?;
+	let continuation_base = initial_request.clone();
+
+	// Turn 1: ask the public FFmpeg adjudication question and capture the
+	// provider's canonical assistant content, including signed thinking.
+	let stream_res = client.exec_chat_stream(&model, initial_request, Some(&options)).await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+	let tool_calls: Vec<ToolCall> = first
+		.stream_end
+		.captured_tool_calls()
+		.ok_or("the first adjudication turn did not call an evidence tool")?
+		.into_iter()
+		.cloned()
+		.collect();
+	if tool_calls.is_empty() {
+		return Err("the first adjudication turn did not call an evidence tool".into());
+	}
+	eprintln!(
+		"[record] Adjudication turn 1: text={} bytes, reasoning={} bytes, signatures={}, tool_calls={}",
+		first.content.as_deref().map(str::len).unwrap_or(0),
+		first.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		first.thought_signature_chunks.len(),
+		tool_calls.len(),
+	);
+
+	// Return one public-source result for every tool call. The first helper
+	// appends the captured assistant turn exactly once; the rest are sibling
+	// tool-result messages for the same assistant turn.
+	let first_call = &tool_calls[0];
+	let first_result = anthropic_adjudication_tool_result(&seed, first_call)?;
+	let mut continuation_request = continuation_base.append_tool_use_from_stream_end(
+		&first.stream_end,
+		ToolResponse::from_tool_call(first_call, first_result),
+	);
+	for tool_call in &tool_calls[1..] {
+		let result = anthropic_adjudication_tool_result(&seed, tool_call)?;
+		continuation_request = continuation_request.append_message(ToolResponse::from_tool_call(tool_call, result));
+	}
+
+	// Turn 2: record exactly one response to the evidence, then stop.
+	let continuation_res = client.exec_chat_stream(&model, continuation_request, Some(&options)).await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	eprintln!(
+		"[record] Adjudication turn 2: text={} bytes, reasoning={} bytes, signatures={}, tool_calls={}",
+		continuation.content.as_deref().map(str::len).unwrap_or(0),
+		continuation.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		continuation.thought_signature_chunks.len(),
+		continuation
+			.stream_end
+			.captured_tool_calls()
+			.as_ref()
+			.map(|calls| calls.len())
+			.unwrap_or(0),
 	);
 
 	server.shutdown().await;
