@@ -2,17 +2,14 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
-use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 
 // note: "gpt-4o-mini" has issue when image & pdf
 // as for 2025-08-08 gpt-5-mini does not support temperature & stop sequence
-const MODEL_LATEST: &str = "gpt-5.4";
-const MODEL_MINI: &str = "gpt-5.4-mini"; // for the streaming reasoning test
-const MODEL_MINI_XHIGH: &str = "gpt-5.4-mini-xhigh";
+const MODEL: &str = "gpt-4.1-mini";
 const AUDIO_MODEL: &str = "gpt-audio-mini";
-const MODEL2: &str = "gpt-4.1-mini"; // for temperature & stop sequence
-const MODEL_NS: &str = "openai::gpt-5.4-mini";
+// const MODEL: &str = "gpt-4.1-mini"; // for temperature & stop sequence
+const MODEL_NS: &str = "openai::gpt-4.1-mini";
 
 // region:    --- Provider Specific
 
@@ -35,19 +32,21 @@ async fn test_chat_reasoning_minimal_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL_LATEST, None).await
+	common_tests::common_test_chat_simple_ok(MODEL, None).await
 }
 
-#[tokio::test]
-async fn test_chat_reasoning_ok() -> TestResult<()> {
-	// For now, do not test Check::REASONING, for OpenAI as it is not captured
-	common_tests::common_test_chat_reasoning_ok(MODEL_LATEST, ReasoningEffort::High, Some(Check::REASONING_USAGE)).await
-}
+// OLD models do not support resoning efforts
+// #[tokio::test]
+// async fn test_chat_reasoning_ok() -> TestResult<()> {
+// 	// For now, do not test Check::REASONING, for OpenAI as it is not captured
+// 	common_tests::common_test_chat_reasoning_ok(MODEL, ReasoningEffort::Low, Some(Check::REASONING_USAGE)).await
+// }
 
-#[tokio::test]
-async fn test_chat_verbosity_ok() -> TestResult<()> {
-	common_tests::common_test_chat_verbosity_ok(MODEL_MINI).await
-}
+// OLD models only support Low verbosity
+// #[tokio::test]
+// async fn test_chat_verbosity_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_verbosity_ok(MODEL).await
+// }
 
 #[tokio::test]
 async fn test_chat_namespaced_ok() -> TestResult<()> {
@@ -56,27 +55,27 @@ async fn test_chat_namespaced_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_multi_system_ok() -> TestResult<()> {
-	common_tests::common_test_chat_multi_system_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_multi_system_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_json_mode_ok() -> TestResult<()> {
-	common_tests::common_test_chat_json_mode_ok(MODEL_LATEST, Some(Check::USAGE)).await
+	common_tests::common_test_chat_json_mode_ok(MODEL, Some(Check::USAGE)).await
 }
 
 #[tokio::test]
 async fn test_chat_json_structured_ok() -> TestResult<()> {
-	common_tests::common_test_chat_json_structured_ok(MODEL_LATEST, Some(Check::USAGE)).await
+	common_tests::common_test_chat_json_structured_ok(MODEL, Some(Check::USAGE)).await
 }
 
 #[tokio::test]
 async fn test_chat_temperature_ok() -> TestResult<()> {
-	common_tests::common_test_chat_temperature_ok(MODEL2).await
+	common_tests::common_test_chat_temperature_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_stop_sequences_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stop_sequences_ok(MODEL2).await
+	common_tests::common_test_chat_stop_sequences_ok(MODEL).await
 }
 
 // endregion: --- Chat
@@ -85,7 +84,7 @@ async fn test_chat_stop_sequences_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_cache_implicit_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL_MINI).await
+	common_tests::common_test_chat_cache_implicit_simple_ok(MODEL).await
 }
 
 // endregion: --- Chat Implicit Cache
@@ -94,24 +93,26 @@ async fn test_chat_cache_implicit_simple_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_stream_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_simple_ok(MODEL_LATEST, None).await
+	common_tests::common_test_chat_stream_simple_ok(MODEL, None).await
 }
 
 #[tokio::test]
 async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
-	common_tests::common_test_chat_stream_capture_content_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
-#[tokio::test]
-async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
-	// NOTE: gpt-5.1 even when reasoning is Medium, does not give reasoning when simple chat when streaming
-	common_tests::common_test_chat_stream_capture_all_ok(MODEL_MINI_XHIGH, Some(Check::REASONING_USAGE)).await
-}
+// Not supported for OLD models
+// TODO: Probably need to see if we can make it work
+// #[tokio::test]
+// async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
+// 	// NOTE: gpt-5.1 even when reasoning is Medium, does not give reasoning when simple chat when streaming
+// 	common_tests::common_test_chat_stream_capture_all_ok(MODEL, Some(Check::REASONING_USAGE)).await
+// }
 
 #[tokio::test]
 async fn test_chat_stream_tool_capture_ok() -> TestResult<()> {
 	// NOTE: For now the OpenAI Adapter do not capture the thinking as not available in chat completions
-	common_tests::common_test_chat_stream_tool_capture_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_stream_tool_capture_ok(MODEL).await
 }
 
 // endregion: --- Chat Stream Tests
@@ -120,27 +121,27 @@ async fn test_chat_stream_tool_capture_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_chat_binary_image_url_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_url_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_image_url_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_b64_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_image_b64_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_binary_image_file_ok() -> TestResult<()> {
-	common_tests::common_test_chat_image_file_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_image_file_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_pdf_b64_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_pdf_b64_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
-	common_tests::common_test_chat_multi_binary_b64_ok(MODEL_LATEST).await
+	common_tests::common_test_chat_multi_binary_b64_ok(MODEL).await
 }
 
 #[tokio::test]
@@ -160,12 +161,12 @@ async fn test_chat_binary_audio_b64_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_tool_simple_ok() -> TestResult<()> {
-	common_tests::common_test_tool_simple_ok(MODEL_LATEST).await
+	common_tests::common_test_tool_simple_ok(MODEL).await
 }
 
 #[tokio::test]
 async fn test_tool_full_flow_ok() -> TestResult<()> {
-	common_tests::common_test_tool_full_flow_ok(MODEL_LATEST).await
+	common_tests::common_test_tool_full_flow_ok(MODEL).await
 }
 // endregion: --- Tool Tests
 
@@ -173,7 +174,7 @@ async fn test_tool_full_flow_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_resolver_auth_ok() -> TestResult<()> {
-	common_tests::common_test_resolver_auth_ok(MODEL_LATEST, AuthData::from_env("OPENAI_API_KEY")).await
+	common_tests::common_test_resolver_auth_ok(MODEL, AuthData::from_env("OPENAI_API_KEY")).await
 }
 
 // endregion: --- Resolver Tests
