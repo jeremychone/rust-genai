@@ -29,6 +29,7 @@
 //! ANTHROPIC_BASE_URL=... \
 //! ANTHROPIC_THINKING_MODEL=anthropic::claude-opus-5 \
 //! ANTHROPIC_API_KEY=... \
+//! EXPERIMENTAL_BEARER_TOKEN=... \
 //! cargo test --test tests_yakbak_record -- --ignored record_anthropic_adjudication_tool_stream
 //!
 //! # Record a single scenario by name:
@@ -194,6 +195,9 @@ fn anthropic_adjudication_options() -> TestResult<ChatOptions> {
 		let extra_body: Value = serde_json::from_str(&raw)
 			.map_err(|err| format!("ANTHROPIC_SMOKE_EXTRA_BODY must be valid JSON: {err}"))?;
 		options = options.with_extra_body(extra_body);
+	}
+	if let Ok(token) = std::env::var("EXPERIMENTAL_BEARER_TOKEN") {
+		options = options.with_extra_headers(("authorization", format!("Bearer {token}")));
 	}
 	Ok(options)
 }
