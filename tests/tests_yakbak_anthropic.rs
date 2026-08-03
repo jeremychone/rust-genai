@@ -264,6 +264,119 @@ async fn test_yakbak_anthropic_thinking_tool_stream_round_trip_capture() -> Test
 }
 
 #[tokio::test]
+async fn test_yakbak_anthropic_adjudication_two_turn_multi_tool_round_trip() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "thinking_adjudication_tool_stream").await?;
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+	let initial_request = ChatRequest::from_user("Adjudicate the public FFmpeg H.264 source candidate.").with_tools([
+		Tool::new("Read"),
+		Tool::new("Grep"),
+		Tool::new("Submit"),
+	]);
+	let continuation_base = initial_request.clone();
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::fixture-model", initial_request, Some(&options))
+		.await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+	assert_eq!(first.reasoning_content.as_deref(), Some("Let me look at the source."));
+	assert_eq!(first.thought_signature_chunks.len(), 1);
+	assert!(!first.thought_signature_chunks[0].is_empty());
+	assert_eq!(
+		first.stream_end.captured_thought_signatures(),
+		Some(first.thought_signature_chunks.iter().map(String::as_str).collect())
+	);
+
+	let first_content = first.stream_end.captured_content.as_ref().ok_or("captured first content")?;
+	assert!(matches!(first_content.parts()[0], ContentPart::ThoughtSignature(_)));
+	assert!(matches!(first_content.parts()[1], ContentPart::ReasoningContent(_)));
+	assert!(matches!(first_content.parts()[2], ContentPart::ToolCall(_)));
+	assert!(matches!(first_content.parts()[3], ContentPart::ToolCall(_)));
+
+	let first_tool_calls: Vec<ToolCall> = first
+		.stream_end
+		.captured_tool_calls()
+		.ok_or("first-turn tool calls")?
+		.into_iter()
+		.cloned()
+		.collect();
+	assert_eq!(first_tool_calls.len(), 2);
+	assert!(first_tool_calls.iter().all(|call| call.fn_name == "Read"));
+	assert_eq!(
+		first_tool_calls[0].thought_signatures.as_deref(),
+		Some(first.thought_signature_chunks.as_slice())
+	);
+	assert!(first_tool_calls[1].thought_signatures.is_none());
+	assert!(matches!(
+		first.stream_end.captured_stop_reason,
+		Some(StopReason::ToolCall(_))
+	));
+	assert!(first.stream_end.captured_usage.is_some());
+
+	let mut continuation_request = continuation_base.append_tool_use_from_stream_end(
+		&first.stream_end,
+		ToolResponse::from_tool_call(&first_tool_calls[0], "public FFmpeg source excerpt 1"),
+	);
+	continuation_request = continuation_request.append_message(ToolResponse::from_tool_call(
+		&first_tool_calls[1],
+		"public FFmpeg source excerpt 2",
+	));
+	assert_eq!(
+		continuation_request
+			.messages
+			.iter()
+			.filter(|message| message.role == ChatRole::Assistant)
+			.count(),
+		1
+	);
+	assert_eq!(
+		continuation_request
+			.messages
+			.iter()
+			.filter(|message| message.role == ChatRole::Tool)
+			.count(),
+		2
+	);
+	let assistant = continuation_request
+		.messages
+		.iter()
+		.find(|message| message.role == ChatRole::Assistant)
+		.ok_or("assistant tool-use message")?;
+	assert_eq!(assistant.content.thought_signatures().len(), 1);
+	assert!(assistant.content.contains_reasoning_content());
+	assert_eq!(assistant.content.tool_calls().len(), 2);
+
+	let continuation_res = client
+		.exec_chat_stream("anthropic::fixture-model", continuation_request, Some(&options))
+		.await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	assert_eq!(
+		continuation.reasoning_content.as_deref(),
+		Some("Now let's check current_slice: is it reset between frames? Search for current_slice.")
+	);
+	assert_eq!(continuation.thought_signature_chunks.len(), 1);
+	assert!(
+		continuation
+			.stream_end
+			.captured_thought_signatures()
+			.is_some_and(|signatures| signatures.len() == 1 && !signatures[0].is_empty())
+	);
+	let continuation_calls = continuation.stream_end.captured_tool_calls().ok_or("continuation tool calls")?;
+	assert_eq!(continuation_calls.len(), 2);
+	assert!(continuation_calls.into_iter().all(|call| call.fn_name == "Grep"));
+	assert!(matches!(
+		continuation.stream_end.captured_stop_reason,
+		Some(StopReason::ToolCall(_))
+	));
+	assert!(continuation.stream_end.captured_usage.is_some());
+
+	Ok(())
+}
+
+#[tokio::test]
 async fn test_yakbak_anthropic_thinking_signature_variants_preserve_block_pairs() -> TestResult<()> {
 	let (client, _server) = replay_client("anthropic", "thinking_signature_variants_stream").await?;
 	let options = ChatOptions::default()
