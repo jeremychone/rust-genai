@@ -422,19 +422,24 @@ async fn test_yakbak_anthropic_adjudication_two_turn_multi_tool_round_trip() -> 
 		.exec_chat_stream("anthropic::fixture-model", initial_request, Some(&options))
 		.await?;
 	let first = extract_stream_end(stream_res.stream).await?;
-	assert_eq!(first.reasoning_content.as_deref(), Some("Let me look at the source."));
-	assert_eq!(first.thought_signature_chunks.len(), 1);
-	assert!(!first.thought_signature_chunks[0].is_empty());
 	assert_eq!(
-		first.stream_end.captured_thought_signatures(),
-		Some(first.thought_signature_chunks.iter().map(String::as_str).collect())
+		first.content.as_deref(),
+		Some("I'll examine the candidate's cited lines and the surrounding logic.")
+	);
+	assert!(first.reasoning_content.is_none());
+	assert!(first.thought_signature_chunks.is_empty());
+	assert!(
+		first
+			.stream_end
+			.captured_thought_signatures()
+			.is_some_and(|signatures| signatures.is_empty())
 	);
 
 	let first_content = first.stream_end.captured_content.as_ref().ok_or("captured first content")?;
-	assert!(matches!(first_content.parts()[0], ContentPart::ThoughtSignature(_)));
-	assert!(matches!(first_content.parts()[1], ContentPart::ReasoningContent(_)));
+	assert_eq!(first_content.parts().len(), 3);
+	assert!(matches!(first_content.parts()[0], ContentPart::Text(_)));
+	assert!(matches!(first_content.parts()[1], ContentPart::ToolCall(_)));
 	assert!(matches!(first_content.parts()[2], ContentPart::ToolCall(_)));
-	assert!(matches!(first_content.parts()[3], ContentPart::ToolCall(_)));
 
 	let first_tool_calls: Vec<ToolCall> = first
 		.stream_end
@@ -444,12 +449,11 @@ async fn test_yakbak_anthropic_adjudication_two_turn_multi_tool_round_trip() -> 
 		.cloned()
 		.collect();
 	assert_eq!(first_tool_calls.len(), 2);
-	assert!(first_tool_calls.iter().all(|call| call.fn_name == "Read"));
 	assert_eq!(
-		first_tool_calls[0].thought_signatures.as_deref(),
-		Some(first.thought_signature_chunks.as_slice())
+		first_tool_calls.iter().map(|call| call.fn_name.as_str()).collect::<Vec<_>>(),
+		["Read", "Grep"]
 	);
-	assert!(first_tool_calls[1].thought_signatures.is_none());
+	assert!(first_tool_calls.iter().all(|call| call.thought_signatures.is_none()));
 	assert!(matches!(
 		first.stream_end.captured_stop_reason,
 		Some(StopReason::ToolCall(_))
@@ -485,8 +489,12 @@ async fn test_yakbak_anthropic_adjudication_two_turn_multi_tool_round_trip() -> 
 		.iter()
 		.find(|message| message.role == ChatRole::Assistant)
 		.ok_or("assistant tool-use message")?;
-	assert_eq!(assistant.content.thought_signatures().len(), 1);
-	assert!(assistant.content.contains_reasoning_content());
+	assert!(assistant.content.thought_signatures().is_empty());
+	assert!(!assistant.content.contains_reasoning_content());
+	assert_eq!(
+		assistant.content.first_text(),
+		Some("I'll examine the candidate's cited lines and the surrounding logic.")
+	);
 	assert_eq!(assistant.content.tool_calls().len(), 2);
 
 	let continuation_res = client
@@ -495,7 +503,9 @@ async fn test_yakbak_anthropic_adjudication_two_turn_multi_tool_round_trip() -> 
 	let continuation = extract_stream_end(continuation_res.stream).await?;
 	assert_eq!(
 		continuation.reasoning_content.as_deref(),
-		Some("Now let's check current_slice: is it reset between frames? Search for current_slice.")
+		Some(
+			"I need to trace through the h264 decoder to understand how slices are being reset each frame and check the boundary conditions. Looking at the field end function around line 231 in h264_picture.c, and then verifying the MAX_SLICES constraint in h264_slice.c near line 1982 to see if there's an issue with how the slice table is sized or typed."
+		)
 	);
 	assert_eq!(continuation.thought_signature_chunks.len(), 1);
 	assert!(
@@ -504,9 +514,34 @@ async fn test_yakbak_anthropic_adjudication_two_turn_multi_tool_round_trip() -> 
 			.captured_thought_signatures()
 			.is_some_and(|signatures| signatures.len() == 1 && !signatures[0].is_empty())
 	);
+	let continuation_content = continuation
+		.stream_end
+		.captured_content
+		.as_ref()
+		.ok_or("captured continuation content")?;
+	assert_eq!(continuation_content.parts().len(), 5);
+	assert!(matches!(
+		continuation_content.parts()[0],
+		ContentPart::ThoughtSignature(_)
+	));
+	assert!(matches!(
+		continuation_content.parts()[1],
+		ContentPart::ReasoningContent(_)
+	));
+	assert!(
+		continuation_content.parts()[2..]
+			.iter()
+			.all(|part| matches!(part, ContentPart::ToolCall(_)))
+	);
 	let continuation_calls = continuation.stream_end.captured_tool_calls().ok_or("continuation tool calls")?;
-	assert_eq!(continuation_calls.len(), 2);
-	assert!(continuation_calls.into_iter().all(|call| call.fn_name == "Grep"));
+	assert_eq!(continuation_calls.len(), 3);
+	assert_eq!(
+		continuation_calls
+			.into_iter()
+			.map(|call| call.fn_name.as_str())
+			.collect::<Vec<_>>(),
+		["Read", "Read", "Grep"]
+	);
 	assert!(matches!(
 		continuation.stream_end.captured_stop_reason,
 		Some(StopReason::ToolCall(_))
