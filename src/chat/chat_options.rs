@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ops::Deref;
 
+// Some model names have those keywors
+const PROTECTED_MODEL_NAMES: &[&str] = &["deepseek-r1-zero", "qwen3.8-max"];
+
 /// Options considered by all `Client::exec_*` chat calls.
 ///
 /// A default can be set on the `Client` during builder configuration.
@@ -286,13 +289,13 @@ impl ReasoningEffort {
 	pub fn from_keyword(name: &str) -> Option<Self> {
 		match name {
 			"zero" => Some(ReasoningEffort::Zero),
-			"none" => Some(ReasoningEffort::Zero), // backward-compat alias
+			"none" => Some(ReasoningEffort::Zero), // backward-compat alias (this is openai name as well)
 			"low" => Some(ReasoningEffort::Low),
 			"medium" => Some(ReasoningEffort::Medium),
 			"high" => Some(ReasoningEffort::High),
 			"xhigh" => Some(ReasoningEffort::XHigh),
 			"max" => Some(ReasoningEffort::Max),
-			// legacy
+			// openai legacy
 			"minimal" => Some(ReasoningEffort::Minimal),
 			_ => None,
 		}
@@ -302,15 +305,9 @@ impl ReasoningEffort {
 	///
 	/// Known model names whose suffix is part of the actual name are left unchanged.
 	pub fn from_model_name(model_name: &str) -> (Option<Self>, &str) {
-		// Protected model names that contain a `-zero` suffix as part of their actual name,
-		// not as a reasoning effort hint. These should not be stripped.
-		const PROTECTED_ZERO_MODELS: &[&str] = &["deepseek-r1-zero"];
-
-		if PROTECTED_ZERO_MODELS.contains(&model_name) {
-			return (None, model_name);
-		}
 		if let Some((prefix, last)) = model_name.rsplit_once('-')
 			&& let Some(effort) = ReasoningEffort::from_keyword(last)
+			&& !PROTECTED_MODEL_NAMES.contains(&model_name)
 		{
 			return (Some(effort), prefix);
 		}
@@ -702,6 +699,42 @@ mod tests {
 		// -- Check
 		assert!(effort.is_none(), "protected model should not strip suffix");
 		assert_eq!(trimmed, protected_name);
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_from_model_name_protected_qwen_max() -> Result<()> {
+		// -- Setup & Fixtures
+		let protected_name = "qwen3.8-max";
+		// -- Exec
+		let (effort, trimmed) = ReasoningEffort::from_model_name(protected_name);
+		// -- Check
+		assert!(effort.is_none(), "protected model should not strip max suffix");
+		assert_eq!(trimmed, protected_name);
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_from_model_name_qwen_max_low_suffix() -> Result<()> {
+		// -- Setup & Fixtures
+		let model_with_low = "qwen3.8-max-low";
+		// -- Exec
+		let (effort, trimmed) = ReasoningEffort::from_model_name(model_with_low);
+		// -- Check
+		assert!(matches!(effort, Some(ReasoningEffort::Low)));
+		assert_eq!(trimmed, "qwen3.8-max");
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_from_model_name_qwen_max_zero_suffix() -> Result<()> {
+		// -- Setup & Fixtures
+		let model_with_zero = "qwen3.8-max-zero";
+		// -- Exec
+		let (effort, trimmed) = ReasoningEffort::from_model_name(model_with_zero);
+		// -- Check
+		assert!(matches!(effort, Some(ReasoningEffort::Zero)));
+		assert_eq!(trimmed, "qwen3.8-max");
 		Ok(())
 	}
 
