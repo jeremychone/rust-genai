@@ -3,38 +3,47 @@
 ## v0.7.0-beta.x (see [genai versions](https://crates.io/crates/genai/versions))
 
 - `!` API CHANGE - `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
-- `+` openai_resp - support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`; custom tool-call input streams incrementally and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
-- `+` anthropic - expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
-- `+` NEW Provider/Adapter - Atlas Cloud OpenAI-compatible adapter (activated on `atlascloud::` namespace, using `ATLASCLOUD_API_KEY`) (PR #259)
-- `+` NEW Provider/Adapter - `AdapterKind::Kimi` (activated on `kimi::` namespace, or `kimi` model prefix) (moonshot.ai)
-- `+` otel - optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature (off by default; pure `tracing` bridge, no extra dependencies). 
-  - Auto-instruments `exec_chat` / `exec_chat_stream` / `exec_embed` as `gen_ai.*` spans (operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`). Prompt/response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent/workflow/tool spans and the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
-- `+` anthropic - prompt caching on tools via `Tool::with_cache_control`, and request-level `ChatOptions::with_cache_control` now auto-applies a cache breakpoint to the static (tools+system) prefix (was previously ignored). `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
-- `^` openai - capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
-- `^` CHANGE: OpenAI GPT-5.6 and later now use cache opt-in only. Here is how to opt in: (see [PR #260](https://github.com/jeremychone/rust-genai/pull/260))
-  - Set a request-level cache intent with `ChatOptions::with_cache_control(...)` or provide a `prompt_cache_key`. OpenAI then uses `prompt_cache_options.mode = "implicit"` and manages cache placement without an invented content breakpoint.
-  - Set message-level cache control to use explicit mode and place one cache breakpoint on the last eligible content block. Chat Completions supports text, image, audio, file, and refusal blocks. Responses supports input text, input image, and input file blocks.
-  - Otherwise, when there is no request-level cache intent, `prompt_cache_key`, message-level cache control, or tool-level cache control, the mode is set to `"explicit"` with no breakpoint. Nothing is implicitly cached.
-  - Tool-level cache control is ignored by OpenAI because the supported protocols do not provide a valid tool-definition breakpoint representation. It does not change the cache mode, fail serialization, or emit an unsupported breakpoint field.
-  - Message-level cache placement is best effort. When a controlled message has no eligible content block, OpenAI omits the breakpoint and continues request serialization without failing.
-  - This policy applies only to native OpenAI Chat Completions and Responses requests for GPT-5.6 and later. Older OpenAI models retain legacy cache-retention behavior, and OpenAI-compatible adapters do not receive these OpenAI-specific fields.
-  - Existing normalized usage continues to expose cache reads through `cached_tokens` and cache writes through `cache_creation_tokens`.
-- `^` adapters - move messages after tools in JSON payloads for better prompt cache utilization (PR #262)
-- `+` schema - sanitize JSON Schema per provider (PR #263) - for OpenAI structured responses and strict tools, and Anthropic structured responses and strict tools.
-- `^` gemini - forward JSON Schema raw via responseJsonSchema / parametersJsonSchema (PR #257)
-- `-` fix(anthropic) - capture streaming cache tokens from `message_delta` fallback (PR #258)
-- `-` fix: r[#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
--`!` `ReasoningEffort::None` -> `ReasoningEffort::Zero` (avoids confusion with `Option::None`). `#[serde(alias = "None")]` keeps old JSON deserializable. Canonical keyword is now `"zero"` (was `"none"`), `as_keyword()`/`Display` emit `"zero"`; `from_keyword()` still accepts `"none"` as backward-compat alias. (PR #253, #251)
-  - Anthropic: `Zero` now positively disables reasoning (was a no-op that still triggered adaptive thinking).
-  - Sonnet 5: sends `thinking: {"type": "disabled"}` (thinking is on by default).
-  - Other models: omits `thinking` and `output_config.effort`.
-  - Fable/Mythos: omits `thinking` (always-on, cannot be explicitly disabled).
-  - Anthropic `-zero` model suffix is canonical, `-none` is backward-compat alias; both map to `Zero` and are stripped.
-  - Model-name suffix parsing: `from_model_name()` now uses a whitelist to protect known model names (e.g., `deepseek-r1-zero`) from suffix stripping.
-  - Bedrock: mechanical rename, behavior unchanged.
-  - OpenAI: mechanical rename, behavior unchanged (keyword mapping to provider-specific values is preserved).
-  - Gemini: `Zero` set budget to `0` (might be rejected by provider on some models)
-- `^` anthropic - support `extra_body` ChatOptions field (merge extra request body fields) ([#255](https://github.com/jeremychone/rust-genai/pull/255))
+- `+` New Providers:
+  - AtlasCloud - default env: `ATLASCLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://api.atlascloud.ai/v1/` (activated on the `atlascloud::` namespace) (PR #259)
+  - Qwen Cloud - default env: `QWEN_CLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on the `qwen_cloud::` namespace)
+  - Kimi - default env: `KIMI_API_KEY`, Adapter: OpenAI, endpoint: `https://api.moonshot.ai/v1/` (activated on the `kimi::` namespace or `kimi` model prefix, moonshot.ai)
+- Anthropic:
+  - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
+  - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
+  - `+` Support the `extra_body` `ChatOptions` field, merging extra request body fields. ([#255](https://github.com/jeremychone/rust-genai/pull/255))
+  - `-` Capture streaming cache tokens from the `message_delta` fallback. (PR #258)
+  - `-` Fix: reuse Client WebClient for model listing. ([#249](https://github.com/jeremychone/rust-genai/pull/249))
+  - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
+  - `!` `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. `#[serde(alias = "None")]` keeps old JSON deserializable. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias. (PR #253, #251)
+    - `Zero` now positively disables reasoning, whereas it previously triggered adaptive thinking.
+    - Sonnet 5 sends `thinking: {"type": "disabled"}`, because thinking is on by default.
+    - Other models omit `thinking` and `output_config.effort`.
+    - Fable and Mythos omit `thinking`, because it is always on and cannot be explicitly disabled.
+    - The Anthropic `-zero` model suffix is canonical, while `-none` remains a backward-compatible alias. Both map to `Zero` and are stripped.
+- OpenAI:
+  - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
+  - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
+  - `^` GPT-5.6 and later now use cache opt-in only. Here is how to opt in: (see [PR #260](https://github.com/jeremychone/rust-genai/pull/260))
+    - Set a request-level cache intent with `ChatOptions::with_cache_control(...)` or provide a `prompt_cache_key`. OpenAI then uses `prompt_cache_options.mode = "implicit"` and manages cache placement without an invented content breakpoint.
+    - Set message-level cache control to use explicit mode and place one cache breakpoint on the last eligible content block. Chat Completions supports text, image, audio, file, and refusal blocks. Responses supports input text, input image, and input file blocks.
+    - Otherwise, when there is no request-level cache intent, `prompt_cache_key`, message-level cache control, or tool-level cache control, the mode is set to `"explicit"` with no breakpoint. Nothing is implicitly cached.
+    - Tool-level cache control is ignored by OpenAI because the supported protocols do not provide a valid tool-definition breakpoint representation. It does not change the cache mode, fail serialization, or emit an unsupported breakpoint field.
+    - Message-level cache placement is best effort. When a controlled message has no eligible content block, OpenAI omits the breakpoint and continues request serialization without failing.
+    - This policy applies only to native OpenAI Chat Completions and Responses requests for GPT-5.6 and later. Older OpenAI models retain legacy cache-retention behavior, and OpenAI-compatible adapters do not receive these OpenAI-specific fields.
+    - Existing normalized usage continues to expose cache reads through `cached_tokens` and cache writes through `cache_creation_tokens`.
+  - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
+  - `!` Apply the `ReasoningEffort::None` to `ReasoningEffort::Zero` rename mechanically, while preserving provider-specific keyword mappings.
+- Gemini:
+  - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
+  - `!` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
+  - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
+- Bedrock:
+  - `!` Apply the `ReasoningEffort::None` to `ReasoningEffort::Zero` rename mechanically, with behavior unchanged.
+- Cross-provider adapters:
+  - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
+- OpenTelemetry:
+  - `+` Add optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature, off by default, using a pure `tracing` bridge with no extra dependencies.
+    - Auto-instruments `exec_chat`, `exec_chat_stream`, and `exec_embed` as `gen_ai.*` spans, including operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`. Prompt and response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent, workflow, and tool spans, plus the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 
 ## 2026-06-06 [v0.6.5](https://github.com/jeremychone/rust-genai/compare/v0.6.4...v0.6.5)
 
