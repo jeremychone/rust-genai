@@ -17,7 +17,38 @@ genai = "0.6"
 
 Over 200+ LLM models, 26+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `atlascloud`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `atlascloud`, `xai`
+
+
+Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
+
+Providers and adapters can also be forced with a namespaced model name via `[name_space]::[model_name]`, for example, `qwen_cloud::qwen3.8-max`
+ 
+Custom OpenAI-compatible endpoints can be accessed with the built-in `genai_n` adapter. Set `GENAI_{n}_ENDPOINT` and optionally `GENAI_{n}_API_KEY`, then use the `genai_{n}::model_name` namespace:
+
+```text
+GENAI_1_ENDPOINT=https://my-host.example.com/v1/
+GENAI_1_API_KEY=sk-your-api-key
+```
+
+```rust
+let client = Client::default();
+let chat_res = client.exec_chat("genai_1::my-model", chat_req, None).await?;
+```
+
+For an OMLX deployment, set `OMLX_ENDPOINT` to the OpenAI-compatible base URL before creating the client. OMLX uses `OMLX_API_KEY` when authentication is required:
+
+```text
+OMLX_ENDPOINT=http://my-omlx-host:8000/v1/
+OMLX_API_KEY=your-api-key
+```
+
+Then target the model with the `omlx::` namespace:
+
+```rust
+let client = Client::default();
+let chat_res = client.exec_chat("omlx::my-model", chat_req, None).await?;
+```
 
 Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)) to support any other providers.
 
@@ -71,6 +102,7 @@ Here’s what’s new:
     - `opencode_go`
     - `baidu`
     - `aliyun`
+    - `qwen_cloud` (managed Qwen Cloud service at qwencloud.com, using the internal Aliyun-compatible endpoint)
     - `moonshot`
     - `aihubmix`
     - `ollama_cloud` (Ollama Cloud)
@@ -124,6 +156,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **Mimo**: `mimo-*`
 - **OpenCode Go**: Namespace `opencode_go::` only
 - **Atlas Cloud**: Namespace `atlascloud::` only
+- **Qwen Cloud**: Namespace `qwen_cloud::` only, for the managed Qwen Cloud service at qwencloud.com. It uses the internal Aliyun-compatible endpoint and `QWEN_CLOUD_API_KEY`.
 - **Fireworks**: Models containing `fireworks`
 - **Ollama**: Fallback for any other names, defaulting to local Ollama.
 
@@ -138,6 +171,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `github_copilot::openai/gpt-5.4-mini` (Forces **GitHub Copilot** adapter)
 - `nebius::Qwen/Qwen3-235B-A22B` (Forces **Nebius** adapter)
 - `aliyun::qwen-plus` (Forces **Aliyun** adapter)
+- `qwen_cloud::qwen-plus` (Forces **Qwen Cloud** adapter, managed by qwencloud.com and backed by the internal Aliyun-compatible service)
 - `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
 - `moonshot::moonshot-v1-8k` (Forces **Moonshot** adapter)
 - `baidu::ernie-4.0` (Forces **Baidu** adapter)

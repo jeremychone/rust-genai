@@ -42,6 +42,7 @@ genai (crate root / lib.rs)
   - `open_router` (since v0.6.0) is OpenRouter OpenAI-compatible gateway. Uses `OPEN_ROUTER_API_KEY`. Use via the `open_router::` namespace.
   - `baidu` (since v0.6.0) is Baidu's OpenAI/Anthropic compatible proxies.
   - `aliyun` (since v0.6.0) is Aliyun's namespace-only OpenAI-compatible service.
+  - `qwen_cloud` is the managed Qwen Cloud service at `qwencloud.com`. It uses the international Aliyun-compatible endpoint and requires `QWEN_CLOUD_API_KEY`.
   - `moonshot` (since v0.6.0) is Moonshot AI adapter.
   - `aihubmix` (since v0.6.0) is AIHubMix adapter.
 
@@ -624,7 +625,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
+Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`.
 
   - Namespace matches adapter lowercase name (updated in v0.6.0 with namespaces such as `open_router::`, `bedrock_api::`, `bedrock_sigv4::`, `vertex::`, `github_copilot::`, `opencode_go::`, `baidu::`, `aliyun::`, `moonshot::`, `aihubmix::`, and `ollama_cloud::`).
 
