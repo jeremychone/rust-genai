@@ -91,6 +91,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<Aliyun Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::QwenCloud => {
+				type A = crate::adapter::adapters::all_adapters::[<QwenCloud Adapter>];
+				$body
+			}
 			crate::adapter::AdapterKind::Baidu => {
 				type A = crate::adapter::adapters::all_adapters::[<Baidu Adapter>];
 				$body

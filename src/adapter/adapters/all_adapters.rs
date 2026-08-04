@@ -69,6 +69,16 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- Aliyun
+pub struct QwenCloudAdapter;
+impl_pass_through_adapter!(
+	name: QwenCloudAdapter,
+	kind: AdapterKind::QwenCloud,
+	key_env: Some("QWEN_CLOUD_API_KEY"),
+	endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- BigModel
 /// BigModel adapter.
 ///

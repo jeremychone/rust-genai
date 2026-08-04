@@ -64,6 +64,9 @@ pub enum AdapterKind {
 	/// For aliyun (Mostly use OpenAI)
 	Aliyun,
 
+	/// For QwenCloud, aliyun international
+	QwenCloud,
+
 	/// For baidu (Mostly use OpenAI)
 	Baidu,
 
@@ -146,6 +149,7 @@ adapter_kind_str_maps! {
 	Zai           => "Zai",           "zai",            adapters::all_adapters::ZaiAdapter;
 	BigModel      => "BigModel",      "bigmodel",       adapters::all_adapters::BigModelAdapter;
 	Aliyun        => "Aliyun",        "aliyun",         adapters::all_adapters::AliyunAdapter;
+	QwenCloud     => "QwenCloud",     "qwen_cloud",     adapters::all_adapters::QwenCloudAdapter;
 	Baidu         => "Baidu",         "baidu",          adapters::all_adapters::BaiduAdapter;
 	Cohere        => "Cohere",        "cohere",         adapters::all_adapters::CohereAdapter;
 	Ollama        => "Ollama",        "ollama",         adapters::all_adapters::OllamaAdapter;
