@@ -10,6 +10,7 @@
 /// - `endpoint`: The default endpoint URL as a string literal.
 /// - `delegate`: The target adapter type to which all trait methods are forwarded.
 /// - `unsupported`: (Optional) A list of features not supported. Currently only `embeddings` is recognized.
+/// - `managed_body_thinking`: (Optional) Enables the delegate's managed provider-specific thinking request construction.
 ///
 /// # Example
 ///
@@ -35,12 +36,18 @@ macro_rules! impl_pass_through_adapter {
 		endpoint: $endpoint:expr,
 		delegate: $delegate:ty
 		$(, unsupported: [ $($unsupported:ident),* $(,)? ])?
+		$(, managed_body_thinking: $managed_body_thinking:tt)?
 		$(,)?
 	) => {
 		impl $crate::adapter::Adapter for $name {
 			const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = $key_env;
 
-			$crate::impl_pass_through_adapter!(@common_methods delegate = $delegate, endpoint = $endpoint);
+			$crate::impl_pass_through_adapter!(
+				@common_methods
+				delegate = $delegate,
+				endpoint = $endpoint
+				$(, managed_body_thinking: $managed_body_thinking)?
+			);
 
 			async fn all_model_names(
 				kind: $crate::adapter::AdapterKind,
@@ -86,7 +93,11 @@ macro_rules! impl_pass_through_adapter {
 	};
 
 	// ----- Internal helper: shared trait-method bodies (never vary across call sites) -----
-	(@common_methods delegate = $delegate:ty, endpoint = $endpoint:expr) => {
+	(@common_methods
+		delegate = $delegate:ty,
+		endpoint = $endpoint:expr
+		$(, managed_body_thinking: $managed_body_thinking:tt)?
+	) => {
 		fn default_auth(_kind: $crate::adapter::AdapterKind) -> $crate::resolver::AuthData {
 			match Self::DEFAULT_API_KEY_ENV_NAME {
 				Some(env_name) => $crate::resolver::AuthData::from_env(env_name),
@@ -112,12 +123,15 @@ macro_rules! impl_pass_through_adapter {
 			chat_req: $crate::chat::ChatRequest,
 			options_set: $crate::chat::ChatOptionsSet<'_, '_>,
 		) -> $crate::Result<$crate::adapter::WebRequestData> {
-			<$delegate as $crate::adapter::Adapter>::to_web_request_data(
-				service_target,
-				service_type,
-				chat_req,
-				options_set,
-			)
+				$crate::impl_pass_through_adapter!(
+					@chat_req_body
+					delegate = $delegate,
+					st = service_target,
+					service_type = service_type,
+					chat_req = chat_req,
+					options_set = options_set
+					$(, managed_body_thinking: $managed_body_thinking)?
+				)
 		}
 
 		fn to_chat_response(
@@ -135,6 +149,43 @@ macro_rules! impl_pass_through_adapter {
 		) -> $crate::Result<$crate::chat::ChatStreamResponse> {
 			<$delegate as $crate::adapter::Adapter>::to_chat_stream(model_iden, reqwest_builder, options_set)
 		}
+	};
+
+	// ----- Internal helper: to_web_request_data, managed body thinking -----
+	(@chat_req_body
+		delegate = $delegate:ty,
+		st = $st:ident,
+		service_type = $service_type:ident,
+		chat_req = $chat_req:ident,
+		options_set = $options_set:ident,
+		managed_body_thinking: true $(,)?
+	) => {
+		<$delegate>::util_to_web_request_data(
+			$st,
+			$service_type,
+			$chat_req,
+			$options_set,
+			Some($crate::adapter::adapters::openai::ToWebRequestDataOptions {
+				managed_body_thinking: true,
+				..Default::default()
+			}),
+		)
+	};
+
+	// ----- Internal helper: to_web_request_data, default (delegate) -----
+	(@chat_req_body
+		delegate = $delegate:ty,
+		st = $st:ident,
+		service_type = $service_type:ident,
+		chat_req = $chat_req:ident,
+		options_set = $options_set:ident $(,)?
+	) => {
+		<$delegate as $crate::adapter::Adapter>::to_web_request_data(
+			$st,
+			$service_type,
+			$chat_req,
+			$options_set,
+		)
 	};
 
 	// ----- Internal helper: to_embed_request_data, unsupported: [embeddings] -----

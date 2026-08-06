@@ -1,8 +1,6 @@
 //! This is support implementation of the OpenAI Adapter which can also be called by other OpenAI Adapter Variants
 
-use super::cache_policy::{
-	OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy,
-};
+use super::cache_policy::{OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy};
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::support::get_api_key;
@@ -107,6 +105,7 @@ impl OpenAIAdapter {
 		};
 
 		let stream = matches!(service_type, ServiceType::ChatStream);
+		let managed_body_thinking = custom.as_ref().is_some_and(|custom| custom.managed_body_thinking);
 
 		// -- compute reasoning_effort and eventual trimmed model_name
 		// For now, just for openai AdapterKind
@@ -138,8 +137,21 @@ impl OpenAIAdapter {
 		}
 
 		// -- Set reasoning effort
-		if let Some(reasoning_effort) = reasoning_effort {
-			insert_openai_reasoning_effort(&mut payload, &reasoning_effort)?;
+		if let Some(reasoning_effort) = reasoning_effort.as_ref() {
+			if managed_body_thinking {
+				let thinking_type = if matches!(reasoning_effort, ReasoningEffort::Zero) {
+					"disabled"
+				} else {
+					"enabled"
+				};
+				payload.x_insert("thinking", json!({"type": thinking_type}))?;
+
+				if !matches!(reasoning_effort, ReasoningEffort::Zero) {
+					insert_openai_reasoning_effort(&mut payload, reasoning_effort)?;
+				}
+			} else {
+				insert_openai_reasoning_effort(&mut payload, reasoning_effort)?;
+			}
 		}
 
 		// -- Set verbosity
@@ -545,6 +557,9 @@ impl OpenAIAdapter {
 pub struct ToWebRequestDataOptions {
 	pub default_max_tokens: Option<u32>,
 	pub allow_no_api_key: bool,
+
+	/// Enables provider-specific `thinking.type` serialization coordinated with `reasoning_effort`.
+	pub managed_body_thinking: bool,
 }
 
 // region:    --- Support
@@ -849,3 +864,128 @@ mod tests {
 }
 
 // endregion: --- Tests
+
+#[cfg(test)]
+mod managed_body_thinking_tests {
+	use super::{OpenAIAdapter, ToWebRequestDataOptions};
+	use crate::adapter::{AdapterKind, ServiceType};
+	use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ReasoningEffort};
+	use crate::resolver::{AuthData, Endpoint};
+	use crate::{ModelIden, ServiceTarget};
+	use serde_json::Value;
+
+	fn target(model_name: &str) -> ServiceTarget {
+		ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAI, model_name),
+			auth: AuthData::from_single("test-key"),
+			endpoint: Endpoint::from_static("https://api.openai.com/v1/"),
+		}
+	}
+
+	fn managed_options() -> ToWebRequestDataOptions {
+		ToWebRequestDataOptions {
+			managed_body_thinking: true,
+			..Default::default()
+		}
+	}
+
+	fn payload(
+		model_name: &str,
+		options_set: ChatOptionsSet<'_, '_>,
+		custom: Option<ToWebRequestDataOptions>,
+	) -> Value {
+		OpenAIAdapter::util_to_web_request_data(
+			target(model_name),
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+			custom,
+		)
+		.expect("to_web_request_data should succeed")
+		.payload
+	}
+
+	#[test]
+	fn managed_body_thinking_disables_zero_effort() {
+		let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let payload = payload("test-model", options_set, Some(managed_options()));
+
+		assert_eq!(payload["thinking"]["type"], "disabled");
+		assert!(payload.get("reasoning_effort").is_none());
+	}
+
+	#[test]
+	fn managed_body_thinking_enables_max_effort() {
+		let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Max);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let payload = payload("test-model", options_set, Some(managed_options()));
+
+		assert_eq!(payload["thinking"]["type"], "enabled");
+		assert_eq!(payload["reasoning_effort"], "max");
+	}
+
+	#[test]
+	fn managed_body_thinking_enables_keyword_effort() {
+		let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Low);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let payload = payload("test-model", options_set, Some(managed_options()));
+
+		assert_eq!(payload["thinking"]["type"], "enabled");
+		assert_eq!(payload["reasoning_effort"], "low");
+	}
+
+	#[test]
+	fn managed_body_thinking_preserves_budget_behavior() {
+		let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Budget(1024));
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let payload = payload("test-model", options_set, Some(managed_options()));
+
+		assert_eq!(payload["thinking"]["type"], "enabled");
+		assert!(payload.get("reasoning_effort").is_none());
+	}
+
+	#[test]
+	fn managed_body_thinking_omits_fields_without_effort() {
+		let payload = payload("test-model", ChatOptionsSet::default(), Some(managed_options()));
+
+		assert!(payload.get("thinking").is_none());
+		assert!(payload.get("reasoning_effort").is_none());
+	}
+
+	#[test]
+	fn disabled_managed_body_thinking_preserves_reasoning_effort_payload() {
+		let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Max);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let payload = payload("test-model", options_set, None);
+
+		assert!(payload.get("thinking").is_none());
+		assert_eq!(payload["reasoning_effort"], "max");
+	}
+
+	#[test]
+	fn managed_body_thinking_uses_model_name_derived_effort() {
+		let candidates = [
+			"test-model-high",
+			"test-model:high",
+			"test-model@high",
+			"gpt-5-high",
+			"gpt-5:high",
+			"gpt-5@high",
+		];
+		let (model_name, derived_effort) = candidates
+			.into_iter()
+			.find_map(|model_name| {
+				let (effort, _) = ReasoningEffort::from_model_name(model_name);
+				effort.map(|effort| (model_name, effort))
+			})
+			.expect("a supported model-name reasoning suffix should be available");
+
+		assert!(matches!(derived_effort, ReasoningEffort::High));
+
+		let payload = payload(model_name, ChatOptionsSet::default(), Some(managed_options()));
+
+		assert_eq!(payload["thinking"]["type"], "enabled");
+		assert_eq!(payload["reasoning_effort"], "high");
+	}
+}
