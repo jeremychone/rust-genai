@@ -3,11 +3,13 @@
 use super::OllamaAdapter;
 use crate::Headers;
 use crate::adapter::AdapterKind;
-use crate::chat::{Binary, BinarySource, ChatRequest, ContentPart, Tool, ToolName, Usage};
+use crate::adapter::adapters::support::{TOOL_RESULT_IMAGES_LABEL, tool_response_fallback_text};
+use crate::chat::{Binary, BinarySource, ChatRequest, ContentPart, Tool, ToolName, ToolResponse, Usage};
 use crate::resolver::Endpoint;
 use crate::webc::WebClient;
 use crate::{Error, Result};
 use serde_json::{Value, json};
+use tracing::warn;
 use value_ext::JsonValueExt;
 
 /// Support functions for other adapters that share Ollama APIs
@@ -81,6 +83,9 @@ impl OllamaAdapter {
 			let mut content = String::new();
 			let mut images = Vec::new();
 			let mut tool_calls = Vec::new();
+			// Images attached to tool responses (`ToolResponse.parts`); they ride in a
+			// follow-up "user" message since tool messages carry only text content.
+			let mut tool_response_images = Vec::new();
 
 			for part in msg.content {
 				match part {
@@ -103,7 +108,43 @@ impl OllamaAdapter {
 					}
 					ContentPart::ToolResponse(tr) => {
 						// Note: Ollama native API expects role "tool" for tool response
-						ollama_msg.x_insert("content", tr.content)?;
+						let ToolResponse {
+							content: tr_content,
+							parts,
+							..
+						} = tr;
+						let parts = parts.unwrap_or_default();
+
+						if parts.is_empty() {
+							ollama_msg.x_insert("content", tr_content)?;
+						} else {
+							// Track whether THIS tool response contributed usable images, so the
+							// "(see attached image)" placeholder is not emitted for a response
+							// whose own parts were all skipped while an earlier response in the
+							// same message contributed images.
+							let images_count_before = tool_response_images.len();
+							for binary in parts {
+								if binary.is_image() {
+									match binary.source {
+										// Note: Ollama native API expects raw base64 (no data URL).
+										BinarySource::Base64(data) => tool_response_images.push(data),
+										BinarySource::Url(_) => {
+											warn!(
+												"Ollama native API doesn't support image URLs; skipping tool-result image part"
+											);
+										}
+									}
+								} else {
+									warn!(
+										"ToolResponse binary parts only support images for the Ollama adapter; skipping non-image part '{}'",
+										binary.content_type
+									);
+								}
+							}
+							let has_own_images = tool_response_images.len() > images_count_before;
+							let tr_content = tool_response_fallback_text(tr_content, has_own_images);
+							ollama_msg.x_insert("content", tr_content)?;
+						}
 					}
 					_ => {}
 				}
@@ -120,6 +161,15 @@ impl OllamaAdapter {
 			}
 
 			messages.push(ollama_msg);
+
+			// Follow-up user message carrying the tool-result images.
+			if !tool_response_images.is_empty() {
+				messages.push(json!({
+					"role": "user",
+					"content": TOOL_RESULT_IMAGES_LABEL,
+					"images": tool_response_images,
+				}));
+			}
 		}
 
 		// -- Tools
@@ -166,3 +216,11 @@ pub(in crate::adapter::adapters) struct OllamaRequestParts {
 	pub messages: Vec<Value>,
 	pub tools: Option<Vec<Value>>,
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+#[path = "adapter_shared_tests.rs"]
+mod tests;
+
+// endregion: --- Tests

@@ -34,7 +34,7 @@ The module exports the following key data structures:
 - **Tooling:**
   - `Tool`: Metadata and schema defining a function the model can call.
   - `ToolCall`: The model's invocation request for a specific tool.
-  - `ToolResponse`: The output returned from executing a tool, matched by call ID.
+  - `ToolResponse`: The output returned from executing a tool, matched by call ID. Carries text `content` plus optional binary `parts` (e.g., screenshots); see `spec-tool.md` for the per-adapter image serialization matrix.
 
 - **Metadata:**
   - `Usage`, `PromptTokensDetails`, `CompletionTokensDetails`: Normalized token usage statistics.

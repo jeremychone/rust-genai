@@ -3,10 +3,11 @@
 use super::cache_policy::{OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy};
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{TOOL_RESULT_IMAGES_LABEL, get_api_key, tool_response_fallback_text};
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, ReasoningEffort, ToolChoice, Usage,
+	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, ReasoningEffort, ToolChoice,
+	ToolResponse, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebClient;
@@ -304,8 +305,18 @@ impl OpenAIAdapter {
 			messages.push(json!({"role": "system", "content": system_msg}));
 		}
 
+		// Images attached to tool responses (`ToolResponse.parts`) cannot ride inside a
+		// Chat Completions `tool` message, so they are carried by a follow-up `user`
+		// message. Images from a run of consecutive Tool messages are batched into one
+		// trailing user message, emitted before the next non-tool message.
+		let mut pending_tool_images: Vec<Value> = Vec::new();
+
 		// -- Process the messages
 		for msg in chat_req.messages {
+			if !matches!(msg.role, ChatRole::Tool) && !pending_tool_images.is_empty() {
+				messages.push(tool_images_user_message(std::mem::take(&mut pending_tool_images)));
+			}
+
 			let cache_controlled = cache_policy.is_some()
 				&& msg
 					.options
@@ -469,17 +480,53 @@ impl OpenAIAdapter {
 				ChatRole::Tool => {
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
-							messages.push(json!({
-								"role": "tool",
-								"content": tool_response.content,
-								"tool_call_id": tool_response.call_id,
-							}))
+							let ToolResponse {
+								call_id,
+								content,
+								parts,
+								..
+							} = tool_response;
+							let parts = parts.unwrap_or_default();
+
+							if parts.is_empty() {
+								messages.push(json!({
+									"role": "tool",
+									"content": content,
+									"tool_call_id": call_id,
+								}));
+							} else {
+								let mut image_values: Vec<Value> = Vec::new();
+								for binary in parts {
+									if binary.is_image() {
+										let image_url = binary.into_url();
+										image_values
+											.push(json!({"type": "image_url", "image_url": {"url": image_url}}));
+									} else {
+										warn!(
+											"ToolResponse binary parts only support images for OpenAI-compatible adapters; skipping non-image part '{}'",
+											binary.content_type
+										);
+									}
+								}
+								let content = tool_response_fallback_text(content, !image_values.is_empty());
+								messages.push(json!({
+									"role": "tool",
+									"content": content,
+									"tool_call_id": call_id,
+								}));
+								pending_tool_images.extend(image_values);
+							}
 						}
 					}
 
 					// TODO: Probably need to trace/warn that this will be ignored
 				}
 			}
+		}
+
+		// Flush tool-result images from a trailing run of Tool messages.
+		if !pending_tool_images.is_empty() {
+			messages.push(tool_images_user_message(pending_tool_images));
 		}
 
 		// -- Process the tools
@@ -591,6 +638,16 @@ pub struct ToWebRequestDataOptions {
 struct OpenAIRequestParts {
 	messages: Vec<Value>,
 	tools: Option<Vec<Value>>,
+}
+
+/// Build the follow-up `user` message that carries tool-result images
+/// (`ToolResponse.parts`), since Chat Completions `tool` message content
+/// cannot include image blocks.
+fn tool_images_user_message(image_values: Vec<Value>) -> Value {
+	let mut values: Vec<Value> = Vec::with_capacity(image_values.len() + 1);
+	values.push(json!({"type": "text", "text": TOOL_RESULT_IMAGES_LABEL}));
+	values.extend(image_values);
+	json!({"role": "user", "content": values})
 }
 
 fn apply_chat_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _scope: &'static str) -> Result<()> {
