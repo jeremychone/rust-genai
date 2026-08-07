@@ -2,6 +2,7 @@
 
 ## v0.7.0-beta.x (see [genai versions](https://crates.io/crates/genai/versions))
 
+- `!` API CHANGE - `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls (e.g., `retry-after`, `retry-after-ms`, `x-should-retry`), matching the non-streaming `webc::Error::ResponseFailedStatus`, so downstream retry layers can honor provider-requested retry delays. Exhaustive matchers/constructors of `Error::HttpError` must add the `headers` field (or match with `..`).
 - `!` API CHANGE - `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
 - `+` New Providers:
   - AtlasCloud - default env: `ATLASCLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://api.atlascloud.ai/v1/` (activated on the `atlascloud::` namespace) (PR #259)
@@ -42,6 +43,7 @@
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:
+  - `-` Fix `otel` feature compilation, by covering the `CacheBreakpointNoEligibleContent` error variant in the `error.type` derivation (broken since v0.7.0-beta.18).
   - `+` Add optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature, off by default, using a pure `tracing` bridge with no extra dependencies.
     - Auto-instruments `exec_chat`, `exec_chat_stream`, and `exec_embed` as `gen_ai.*` spans, including operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`. Prompt and response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent, workflow, and tool spans, plus the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 

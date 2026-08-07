@@ -93,11 +93,15 @@ fn async_stream_once(
 			.map_err(|e| Box::new(e) as crate::error::BoxError)?;
 		let status = resp.status();
 		if !status.is_success() {
+			// Capture the headers while the response is still in hand
+			// (e.g., `retry-after`, `retry-after-ms`, `x-should-retry` for retry layers)
+			let headers = resp.headers().clone();
 			let body = resp.text().await.unwrap_or_default();
 			let err = crate::Error::HttpError {
 				status,
 				canonical_reason: status.canonical_reason().unwrap_or("Unknown").to_string(),
 				body,
+				headers: Box::new(headers),
 			};
 			return Err(Box::new(err) as crate::error::BoxError);
 		}

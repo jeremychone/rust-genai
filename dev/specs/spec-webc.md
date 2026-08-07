@@ -31,6 +31,6 @@ The module consists of three main internal components:
 
 - **Generic JSON Response Handling:** `WebResponse` abstracts successful non-streaming responses by immediately parsing the body into `serde_json::Value`. This allows adapter modules to deserialize into their specific structures subsequently.
 
-- **Error Richness:** The `Error::ResponseFailedStatus` variant includes the `StatusCode`, full `body`, and `HeaderMap` to provide comprehensive debugging information upon API failure.
+- **Error Richness:** The `Error::ResponseFailedStatus` variant includes the `StatusCode`, full `body`, and `HeaderMap` to provide comprehensive debugging information upon API failure. On the streaming path, `WebStream` mirrors this: when the lazy request send resolves to a non-success status, it surfaces a crate-level `genai::Error::HttpError` carrying the status, canonical reason, body, and response `HeaderMap` (captured while the `reqwest::Response` is still in hand), so retry-relevant headers such as `retry-after`, `retry-after-ms`, and `x-should-retry` remain visible to downstream retry layers.
 
 - **Async Implementation:** All network operations rely on `tokio` and `reqwest`, ensuring non-blocking execution throughout the I/O layer. `WebStream` leverages `futures::Stream` traits for integration with standard Rust async infrastructure.
