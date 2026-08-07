@@ -2,6 +2,7 @@
 
 ## v0.7.0-beta.x (see [genai versions](https://crates.io/crates/genai/versions))
 
+- `!` API CHANGE - `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls (e.g., `retry-after`, `retry-after-ms`, `x-should-retry`), matching the non-streaming `webc::Error::ResponseFailedStatus`, so downstream retry layers can honor provider-requested retry delays. Exhaustive matchers/constructors of `Error::HttpError` must add the `headers` field (or match with `..`).
 - `!` API CHANGE - `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
 - `+` New Providers:
   - AtlasCloud - default env: `ATLASCLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://api.atlascloud.ai/v1/` (activated on the `atlascloud::` namespace) (PR #259)

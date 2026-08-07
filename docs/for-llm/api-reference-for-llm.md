@@ -727,7 +727,7 @@ let chat_res = client.exec_chat("genai_1::some-model", chat_req, None).await?;
   - `ChatResponse { model_iden, body }`: Error event in stream.
   - `StreamParse { model_iden, serde_error }`: Stream data parse failure.
   - `WebStream { model_iden, cause, error }`: Web stream error.
-  - `HttpError { status, canonical_reason, body }`: HTTP error.
+  - `HttpError { status, canonical_reason, body, headers }`: HTTP error (streaming path); `headers` carries the failed response headers (e.g., `retry-after`).
   - `Resolver { model_iden, resolver_error }`: Resolver error wrapper.
   - `AdapterNotSupported { adapter_kind, feature }`: Feature not supported by adapter.
   - `AdapterKindMismatch { bound, requested, model }`: A client bound to one adapter received a namespaced model or `ModelIden` targeting another adapter. Since v0.6.0.

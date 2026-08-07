@@ -3,6 +3,7 @@ use crate::chat::ChatRole;
 use crate::{ModelIden, resolver, webc};
 use derive_more::{Display, From};
 use reqwest::StatusCode;
+use reqwest::header::HeaderMap;
 use value_ext::JsonValueExtError;
 
 /// Type alias for boxed errors that are Send + Sync
@@ -123,6 +124,9 @@ Cause:\n{cause}
 		status: StatusCode,
 		canonical_reason: String,
 		body: String,
+		/// Response headers of the failed HTTP call (e.g., `retry-after`, `retry-after-ms`, `x-should-retry`),
+		/// so that downstream retry layers can honor provider-requested retry delays.
+		headers: Box<HeaderMap>,
 	},
 
 	// -- Modules
