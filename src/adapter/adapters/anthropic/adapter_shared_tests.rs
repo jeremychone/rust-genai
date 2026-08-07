@@ -658,6 +658,127 @@ fn test_anthropic_adapter_protected_reasoning_suffix_is_retained() -> Result<()>
 	Ok(())
 }
 
+/// A `ToolResponse` with an image part must serialize the Anthropic `tool_result`
+/// content as an array of a text block followed by a base64 `image` block.
+#[test]
+fn test_anthropic_tool_response_image_part_serializes_tool_result_blocks() -> Result<()> {
+	// -- Setup & Fixtures
+	let tool_call = ToolCall {
+		call_id: "call_1".to_string(),
+		fn_name: "take_screenshot".to_string(),
+		fn_arguments: json!({}),
+		thought_signatures: None,
+	};
+	let tool_response = ToolResponse::new("call_1", "screenshot taken").with_parts([Binary::from_base64(
+		"image/png",
+		"iVBORw0KBASE64",
+		None,
+	)]);
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::user("Take a screenshot"),
+		ChatMessage::from(vec![tool_call]),
+		ChatMessage::from(tool_response),
+	]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+	};
+
+	// -- Exec
+	let web_req =
+		AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())?;
+
+	// -- Check
+	let messages = web_req.payload["messages"].as_array().ok_or("messages must be an array")?;
+	assert_eq!(messages.len(), 3, "user, assistant tool_use, and tool_result messages");
+	let tool_result_msg = &messages[2];
+	assert_eq!(tool_result_msg["role"], json!("user"));
+	assert_eq!(
+		tool_result_msg["content"][0],
+		json!({
+			"type": "tool_result",
+			"tool_use_id": "call_1",
+			"content": [
+				{"type": "text", "text": "screenshot taken"},
+				{
+					"type": "image",
+					"source": {
+						"type": "base64",
+						"media_type": "image/png",
+						"data": "iVBORw0KBASE64",
+					}
+				}
+			]
+		})
+	);
+
+	Ok(())
+}
+
+/// Regression guard: a text-only `ToolResponse` must keep the legacy `tool_result`
+/// shape with a plain string `content` (no content array).
+#[test]
+fn test_anthropic_tool_response_text_only_serializes_as_before() -> Result<()> {
+	// -- Setup & Fixtures
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(ToolResponse::new("call_1", "42"))]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+	};
+
+	// -- Exec
+	let web_req =
+		AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())?;
+
+	// -- Check
+	assert_eq!(
+		web_req.payload["messages"][0]["content"][0],
+		json!({
+			"type": "tool_result",
+			"content": "42",
+			"tool_use_id": "call_1",
+		})
+	);
+
+	Ok(())
+}
+
+/// Non-image and URL-based parts are not valid inside an Anthropic `tool_result`;
+/// they must be skipped while the text block is preserved.
+#[test]
+fn test_anthropic_tool_response_non_image_parts_are_skipped() -> Result<()> {
+	// -- Setup & Fixtures
+	let tool_response = ToolResponse::new("call_1", "text kept").with_parts([
+		Binary::from_base64("application/pdf", "PDFDATA", Some("doc.pdf".to_string())),
+		Binary::from_url("image/png", "https://example.com/shot.png", None),
+	]);
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+	};
+
+	// -- Exec
+	let web_req =
+		AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())?;
+
+	// -- Check
+	assert_eq!(
+		web_req.payload["messages"][0]["content"][0],
+		json!({
+			"type": "tool_result",
+			"tool_use_id": "call_1",
+			"content": [{"type": "text", "text": "text kept"}],
+		}),
+		"non-image and URL parts must be skipped, keeping only the text block"
+	);
+
+	Ok(())
+}
+
 // region:    --- Support
 
 fn build_characterization_payload(model_name: &str, reasoning_effort: Option<ReasoningEffort>) -> Result<Value> {

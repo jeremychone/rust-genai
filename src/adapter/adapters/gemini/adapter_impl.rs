@@ -1,5 +1,5 @@
 use crate::adapter::adapters::gemini::GeminiStreamer;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{TOOL_RESULT_IMAGES_LABEL, get_api_key, tool_response_fallback_text};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
@@ -11,6 +11,7 @@ use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Value, json};
+use tracing::warn;
 use value_ext::JsonValueExt;
 
 pub struct GeminiAdapter;
@@ -588,8 +589,19 @@ impl GeminiAdapter {
 			systems.push(system);
 		}
 
+		// Images attached to tool responses (`ToolResponse.parts`) of Tool-role messages
+		// ride in a follow-up "user" turn. They are batched across a run of consecutive
+		// Tool messages and flushed after it, so the functionResponse turns can still be
+		// merged into the single "user" turn that the Gemini FC protocol requires.
+		let mut pending_tool_images: Vec<Value> = Vec::new();
+
 		// -- Build
 		for msg in chat_req.messages {
+			if !matches!(msg.role, ChatRole::Tool) && !pending_tool_images.is_empty() {
+				contents.push(gemini_tool_images_user_content(std::mem::take(
+					&mut pending_tool_images,
+				)));
+			}
 			match msg.role {
 				// For now, system goes as "user" (later, we might have adapter_config.system_to_user_impl)
 				ChatRole::System => {
@@ -631,15 +643,26 @@ impl GeminiAdapter {
 							}
 							ContentPart::ToolResponse(tool_response) => {
 								let fn_name = gemini_function_response_name(&tool_response);
+								let ToolResponse { content, parts, .. } = tool_response;
+								let parts = parts.unwrap_or_default();
+								let has_parts = !parts.is_empty();
+								let image_values = gemini_tool_result_image_parts(parts);
+								let content = if has_parts {
+									tool_response_fallback_text(content, !image_values.is_empty())
+								} else {
+									content
+								};
 								parts_values.push(json!({
 									"functionResponse": {
 										"name": &fn_name,
 										"response": {
 											"name": &fn_name,
-											"content": tool_response.content,
+											"content": content,
 										}
 									}
 								}));
+								// Already a "user" turn: append the tool-result images inline.
+								parts_values.extend(image_values);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -743,15 +766,28 @@ impl GeminiAdapter {
 							}
 							ContentPart::ToolResponse(tool_response) => {
 								let fn_name = gemini_function_response_name(&tool_response);
+								let ToolResponse { content, parts, .. } = tool_response;
+								let parts = parts.unwrap_or_default();
+								let has_parts = !parts.is_empty();
+								let image_values = gemini_tool_result_image_parts(parts);
+								let content = if has_parts {
+									tool_response_fallback_text(content, !image_values.is_empty())
+								} else {
+									content
+								};
 								parts_values.push(json!({
 									"functionResponse": {
 										"name": &fn_name,
 										"response": {
 											"name": &fn_name,
-											"content": tool_response.content,
+											"content": content,
 										}
 									}
 								}));
+								// Images ride in a follow-up "user" turn emitted after the run of
+								// Tool messages (post functionResponse-merge), since media nested
+								// inside functionResponse is not supported across Gemini versions.
+								pending_tool_images.extend(image_values);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -771,6 +807,11 @@ impl GeminiAdapter {
 					contents.push(json!({"role": "user", "parts": parts_values}));
 				}
 			}
+		}
+
+		// Flush tool-result images from a trailing run of Tool messages.
+		if !pending_tool_images.is_empty() {
+			contents.push(gemini_tool_images_user_content(pending_tool_images));
 		}
 
 		let system = if !systems.is_empty() {
@@ -940,6 +981,48 @@ fn take_bool(v: &mut Value, key: &str) -> bool {
 		.unwrap_or(false)
 }
 
+/// Convert tool-result binary parts into Gemini user-content part values
+/// (`inline_data` for base64, `file_data` for URLs), skipping non-image parts
+/// with a warning.
+fn gemini_tool_result_image_parts(parts: Vec<Binary>) -> Vec<Value> {
+	let mut values: Vec<Value> = Vec::new();
+	for binary in parts {
+		if !binary.is_image() {
+			warn!(
+				"ToolResponse binary parts only support images for the Gemini adapter; skipping non-image part '{}'",
+				binary.content_type
+			);
+			continue;
+		}
+		let Binary {
+			content_type, source, ..
+		} = binary;
+		match source {
+			BinarySource::Url(url) => values.push(json!({
+				"file_data": {
+					"mime_type": content_type,
+					"file_uri": url
+				}
+			})),
+			BinarySource::Base64(data) => values.push(json!({
+				"inline_data": {
+					"mime_type": content_type,
+					"data": data
+				}
+			})),
+		}
+	}
+	values
+}
+
+/// Build the follow-up "user" turn that carries tool-result images.
+fn gemini_tool_images_user_content(image_parts: Vec<Value>) -> Value {
+	let mut parts: Vec<Value> = Vec::with_capacity(image_parts.len() + 1);
+	parts.push(json!({"text": TOOL_RESULT_IMAGES_LABEL}));
+	parts.extend(image_parts);
+	json!({"role": "user", "parts": parts})
+}
+
 fn gemini_function_response_name(tool_response: &ToolResponse) -> String {
 	tool_response
 		.fn_name
@@ -1024,6 +1107,73 @@ mod tests {
 
 		assert_eq!(function_response["name"], "get_weather");
 		assert_eq!(function_response["response"]["name"], "get_weather");
+	}
+
+	/// Tool-message `ToolResponse.parts` images ride in a follow-up "user" turn,
+	/// batched after the run of Tool messages so the functionResponse turns still
+	/// merge into the single "user" turn required by the Gemini FC protocol.
+	#[test]
+	fn tool_response_image_parts_ride_in_followup_user_turn() {
+		// -- Setup & Fixtures
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let tr1 = ToolResponse::new("call_1", "screenshot taken")
+			.with_fn_name("screenshot")
+			.with_parts([Binary::from_base64("image/png", "PNG64", None)]);
+		let tr2 = ToolResponse::new("call_2", "")
+			.with_fn_name("chart")
+			.with_parts([Binary::from_base64("image/jpeg", "JPEG64", None)]);
+		let chat_req = ChatRequest::new(vec![ChatMessage::from(tr1), ChatMessage::from(tr2)]);
+
+		// -- Exec
+		let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+
+		// -- Check
+		// The two functionResponse turns merge into one, followed by the image turn.
+		assert_eq!(parts.contents.len(), 2);
+		let fn_parts = parts.contents[0]["parts"].as_array().unwrap();
+		assert_eq!(fn_parts.len(), 2);
+		assert_eq!(
+			fn_parts[0]["functionResponse"]["response"]["content"],
+			"screenshot taken"
+		);
+		assert_eq!(
+			fn_parts[1]["functionResponse"]["response"]["content"], "(see attached image)",
+			"image-only tool response must use the placeholder text"
+		);
+		assert_eq!(
+			parts.contents[1],
+			json!({
+				"role": "user",
+				"parts": [
+					{"text": "Attached image(s) from tool result:"},
+					{"inline_data": {"mime_type": "image/png", "data": "PNG64"}},
+					{"inline_data": {"mime_type": "image/jpeg", "data": "JPEG64"}},
+				]
+			})
+		);
+	}
+
+	/// Regression guard: a text-only `ToolResponse` keeps its legacy functionResponse
+	/// shape with no follow-up user turn.
+	#[test]
+	fn tool_response_text_only_serializes_as_before() {
+		// -- Setup & Fixtures
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let chat_req = ChatRequest::new(vec![ChatMessage::from(
+			ToolResponse::new("call_1", "42").with_fn_name("calc"),
+		)]);
+
+		// -- Exec
+		let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+
+		// -- Check
+		assert_eq!(
+			parts.contents,
+			vec![json!({
+				"role": "user",
+				"parts": [{"functionResponse": {"name": "calc", "response": {"name": "calc", "content": "42"}}}]
+			})]
+		);
 	}
 
 	#[test]

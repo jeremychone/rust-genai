@@ -7,11 +7,11 @@ use crate::adapter::adapters::openai::cache_policy::{
 use crate::adapter::adapters::openai::schema::{
 	OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema,
 };
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{TOOL_RESULT_IMAGES_LABEL, get_api_key, tool_response_fallback_text};
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart,
-	MessageContent, ReasoningEffort, StopReason, Tool, ToolChoice, ToolConfig, ToolName, Usage,
+	MessageContent, ReasoningEffort, StopReason, Tool, ToolChoice, ToolConfig, ToolName, ToolResponse, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebClient, WebResponse};
@@ -20,6 +20,7 @@ use crate::{ModelIden, ServiceTarget};
 use reqwest::RequestBuilder;
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
+use tracing::warn;
 use value_ext::JsonValueExt;
 
 pub struct OpenAIRespAdapter;
@@ -430,8 +431,19 @@ impl OpenAIRespAdapter {
 
 		let mut unamed_file_count = 0;
 
+		// Images rescued from custom tool outputs (`custom_tool_call_output.output` is a
+		// raw string on the wire, so it cannot carry `input_image` blocks). They ride in a
+		// follow-up `user` message input item. Images from a run of consecutive Tool
+		// messages are batched into one trailing item, emitted before the next non-tool
+		// message (same batching as the Chat Completions serializer).
+		let mut pending_custom_tool_images: Vec<Value> = Vec::new();
+
 		// -- Process the messages
 		for msg in chat_req.messages {
+			if !matches!(msg.role, ChatRole::Tool) && !pending_custom_tool_images.is_empty() {
+				input_items.push(tool_images_user_item(std::mem::take(&mut pending_custom_tool_images)));
+			}
+
 			let cache_controlled = cache_policy.is_some()
 				&& msg
 					.options
@@ -638,22 +650,84 @@ impl OpenAIRespAdapter {
 				ChatRole::Tool => {
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
-							let response_type = if custom_call_ids.contains(&tool_response.call_id) {
+							let is_custom = custom_call_ids.contains(&tool_response.call_id);
+							let response_type = if is_custom {
 								"custom_tool_call_output"
 							} else {
 								"function_call_output"
 							};
-							input_items.push(json!({
-								"type": response_type,
-								"call_id": tool_response.call_id,
-								"output": tool_response.content,
-							}));
+							let ToolResponse {
+								call_id,
+								content,
+								parts,
+								..
+							} = tool_response;
+							let parts = parts.unwrap_or_default();
+							let has_parts = !parts.is_empty();
+
+							// The Responses API natively supports `output` as an array of
+							// `input_text` / `input_image` items for function call outputs.
+							// Custom tool outputs are raw strings, so their images are
+							// rescued into a follow-up `user` message input item instead.
+							let mut image_values: Vec<Value> = Vec::new();
+							for binary in parts {
+								if binary.is_image() {
+									image_values.push(json!({
+										"type": "input_image",
+										"detail": "auto",
+										"image_url": binary.into_url(),
+									}));
+								} else {
+									warn!(
+										"ToolResponse binary parts only support images for the OpenAI Responses adapter; skipping non-image part '{}'",
+										binary.content_type
+									);
+								}
+							}
+
+							if is_custom {
+								// NOTE: The fallback text applies only when parts were present, so
+								//       plain text-only responses keep their exact legacy serialization.
+								let output = if has_parts {
+									tool_response_fallback_text(content, !image_values.is_empty())
+								} else {
+									content
+								};
+								input_items.push(json!({
+									"type": response_type,
+									"call_id": call_id,
+									"output": output,
+								}));
+								pending_custom_tool_images.extend(image_values);
+							} else if image_values.is_empty() {
+								input_items.push(json!({
+									"type": response_type,
+									"call_id": call_id,
+									"output": content,
+								}));
+							} else {
+								let mut output: Vec<Value> = Vec::new();
+								if !content.is_empty() {
+									output.push(json!({"type": "input_text", "text": content}));
+								}
+								output.extend(image_values);
+								input_items.push(json!({
+									"type": response_type,
+									"call_id": call_id,
+									"output": output,
+								}));
+							}
 						}
 					}
 
 					// TODO: Probably need to trace/warn that this will be ignored
 				}
 			}
+		}
+
+		// Flush custom-tool-result images from a trailing run of Tool messages.
+		if !pending_custom_tool_images.is_empty() {
+			input_items.push(tool_images_user_item(pending_custom_tool_images));
 		}
 
 		// -- Process the tools
@@ -731,6 +805,16 @@ struct OpenAIRespRequestParts {
 	tools: Option<Vec<Value>>,
 }
 
+/// Build the follow-up `user` message input item that carries tool-result images
+/// (`ToolResponse.parts`) rescued from custom tool outputs, since
+/// `custom_tool_call_output.output` is a raw string and cannot include image blocks.
+fn tool_images_user_item(image_values: Vec<Value>) -> Value {
+	let mut content: Vec<Value> = Vec::with_capacity(image_values.len() + 1);
+	content.push(json!({"type": "input_text", "text": TOOL_RESULT_IMAGES_LABEL}));
+	content.extend(image_values);
+	json!({"type": "message", "role": "user", "content": content})
+}
+
 fn apply_resp_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _scope: &'static str) -> Result<()> {
 	let Some(content_block) = content.iter_mut().rev().find(|value| {
 		matches!(
@@ -755,7 +839,7 @@ mod tests {
 
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice, ToolResponse};
+	use crate::chat::{Binary, ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice};
 
 	#[test]
 	fn test_cache_control_without_eligible_content_does_not_fail_response_request() {
@@ -825,6 +909,177 @@ mod tests {
 		assert!(input.iter().any(|item| {
 			item["type"] == "custom_tool_call_output" && item["call_id"] == "call_patch" && item["output"] == "Done!"
 		}));
+	}
+
+	/// A `ToolResponse` with an image part must serialize natively as a
+	/// `function_call_output` whose `output` is an array of `input_text` / `input_image`
+	/// items (the Responses API supports image function-call outputs natively).
+	#[test]
+	fn test_tool_response_image_part_serializes_native_output_array() {
+		// -- Setup & Fixtures
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let tool_response = ToolResponse::new("call_1", "screenshot taken").with_parts([Binary::from_base64(
+			"image/png",
+			"PNG64",
+			None,
+		)]);
+		let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+		// -- Exec
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
+				.expect("to_web_request_data should succeed");
+
+		// -- Check
+		let input = web_req.payload["input"].as_array().expect("input array");
+		let item = input
+			.iter()
+			.find(|item| item["type"] == "function_call_output")
+			.expect("function_call_output item must be present");
+		assert_eq!(item["call_id"], "call_1");
+		assert_eq!(
+			item["output"],
+			json!([
+				{"type": "input_text", "text": "screenshot taken"},
+				{"type": "input_image", "detail": "auto", "image_url": "data:image/png;base64,PNG64"},
+			])
+		);
+	}
+
+	/// Regression guard: a text-only `ToolResponse` must keep `output` as a plain string.
+	#[test]
+	fn test_tool_response_text_only_output_stays_string() {
+		// -- Setup & Fixtures
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let chat_req = ChatRequest::new(vec![ChatMessage::from(ToolResponse::new("call_1", "42"))]);
+
+		// -- Exec
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
+				.expect("to_web_request_data should succeed");
+
+		// -- Check
+		let input = web_req.payload["input"].as_array().expect("input array");
+		let item = input
+			.iter()
+			.find(|item| item["type"] == "function_call_output")
+			.expect("function_call_output item must be present");
+		assert_eq!(
+			item["output"],
+			json!("42"),
+			"text-only output must remain a plain string"
+		);
+	}
+
+	/// A `ToolResponse` whose `call_id` belongs to a CUSTOM tool serializes as a
+	/// `custom_tool_call_output` with a raw string `output` (placeholder text when the
+	/// result is image-only), and its image parts are rescued into a follow-up `user`
+	/// message input item right after the output item.
+	#[test]
+	fn test_custom_tool_response_image_part_rides_in_followup_user_item() {
+		// -- Setup & Fixtures
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let assistant = ChatMessage::assistant(vec![ToolCall {
+			call_id: "call_patch".to_string(),
+			fn_name: "apply_patch".to_string(),
+			fn_arguments: Value::String("some patch".to_string()),
+			thought_signatures: None,
+		}]);
+		let response = ChatMessage::from(ToolResponse::new("call_patch", "").with_parts([Binary::from_base64(
+			"image/png",
+			"PNG64",
+			None,
+		)]));
+		let request = ChatRequest::new(vec![ChatMessage::user("patch it"), assistant, response]).with_tools(vec![
+			Tool::new("apply_patch").with_custom_format(json!({"type": "text"})),
+		]);
+
+		// -- Exec
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())
+				.expect("to_web_request_data should succeed");
+
+		// -- Check
+		let input = web_req.payload["input"].as_array().expect("input array");
+		let output_idx = input
+			.iter()
+			.position(|item| item["type"] == "custom_tool_call_output")
+			.expect("custom_tool_call_output item must be present");
+		assert_eq!(input[output_idx]["call_id"], "call_patch");
+		assert_eq!(
+			input[output_idx]["output"],
+			json!("(see attached image)"),
+			"custom output must stay a raw string with the image placeholder"
+		);
+		let followup = input
+			.get(output_idx + 1)
+			.expect("follow-up user message item must come right after the custom output");
+		assert_eq!(
+			*followup,
+			json!({
+				"type": "message",
+				"role": "user",
+				"content": [
+					{"type": "input_text", "text": TOOL_RESULT_IMAGES_LABEL},
+					{"type": "input_image", "detail": "auto", "image_url": "data:image/png;base64,PNG64"},
+				]
+			})
+		);
+	}
+
+	/// Regression guard: a text-only custom tool output keeps its raw-string `output`
+	/// and does NOT get a follow-up user message item.
+	#[test]
+	fn test_custom_tool_response_text_only_has_no_followup_item() {
+		// -- Setup & Fixtures
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let assistant = ChatMessage::assistant(vec![ToolCall {
+			call_id: "call_patch".to_string(),
+			fn_name: "apply_patch".to_string(),
+			fn_arguments: Value::String("some patch".to_string()),
+			thought_signatures: None,
+		}]);
+		let response = ChatMessage::from(ToolResponse::new("call_patch", "Done!"));
+		let request = ChatRequest::new(vec![ChatMessage::user("patch it"), assistant, response]).with_tools(vec![
+			Tool::new("apply_patch").with_custom_format(json!({"type": "text"})),
+		]);
+
+		// -- Exec
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())
+				.expect("to_web_request_data should succeed");
+
+		// -- Check
+		let input = web_req.payload["input"].as_array().expect("input array");
+		let item = input
+			.iter()
+			.find(|item| item["type"] == "custom_tool_call_output")
+			.expect("custom_tool_call_output item must be present");
+		assert_eq!(
+			item["output"],
+			json!("Done!"),
+			"text-only output must remain the raw string"
+		);
+		assert!(
+			!input.iter().any(|item| item["content"][0]["text"] == TOOL_RESULT_IMAGES_LABEL),
+			"no follow-up tool-images user item must be emitted for a text-only custom output"
+		);
 	}
 
 	#[test]

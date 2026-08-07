@@ -13,6 +13,35 @@ pub fn get_api_key(auth: AuthData, model: &ModelIden) -> Result<String> {
 	})
 }
 
+// region:    --- Tool Response Binary Parts
+
+/// Leading text of the follow-up `user` message that carries tool-result images on
+/// wire formats that cannot express images inside the tool-result item itself
+/// (e.g., OpenAI Chat Completions `tool` messages, Gemini `functionResponse`, Ollama).
+pub const TOOL_RESULT_IMAGES_LABEL: &str = "Attached image(s) from tool result:";
+
+/// Resolve the text content of a tool-result message when the `ToolResponse`
+/// carries binary parts.
+///
+/// - Non-empty text content is kept as-is.
+/// - Empty text with image parts becomes the `"(see attached image)"` placeholder,
+///   pointing the model at the follow-up user message that carries the images.
+/// - Empty text without any usable image part becomes `"(no tool output)"`.
+///
+/// NOTE: Only called when `ToolResponse.parts` is present, so plain text-only
+///       responses keep their exact legacy serialization.
+pub fn tool_response_fallback_text(content: String, has_images: bool) -> String {
+	if !content.is_empty() {
+		content
+	} else if has_images {
+		"(see attached image)".to_string()
+	} else {
+		"(no tool output)".to_string()
+	}
+}
+
+// endregion: --- Tool Response Binary Parts
+
 // region:    --- StreamerChatOptions
 
 #[derive(Debug)]
