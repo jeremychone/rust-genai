@@ -745,8 +745,10 @@ fn test_anthropic_tool_response_text_only_serializes_as_before() -> Result<()> {
 	Ok(())
 }
 
-/// Non-image and URL-based parts are not valid inside an Anthropic `tool_result`;
-/// they must be skipped while the text block is preserved.
+/// Non-image parts are not valid inside an Anthropic `tool_result`; they must be
+/// skipped while the text block and image parts (including URL sources) are preserved.
+/// NOTE: URL-source images were previously skipped as well; they now serialize
+///       natively as `url` image sources.
 #[test]
 fn test_anthropic_tool_response_non_image_parts_are_skipped() -> Result<()> {
 	// -- Setup & Fixtures
@@ -771,9 +773,134 @@ fn test_anthropic_tool_response_non_image_parts_are_skipped() -> Result<()> {
 		json!({
 			"type": "tool_result",
 			"tool_use_id": "call_1",
-			"content": [{"type": "text", "text": "text kept"}],
+			"content": [
+				{"type": "text", "text": "text kept"},
+				{
+					"type": "image",
+					"source": {
+						"type": "url",
+						"url": "https://example.com/shot.png",
+					}
+				}
+			],
 		}),
-		"non-image and URL parts must be skipped, keeping only the text block"
+		"non-image parts must be skipped, keeping the text block and the URL image"
+	);
+
+	Ok(())
+}
+
+/// A `ToolResponse` with a URL-source image part must serialize the image natively
+/// as an Anthropic `url` image source inside the `tool_result` content array.
+#[test]
+fn test_anthropic_tool_response_url_image_part_serializes_url_source() -> Result<()> {
+	// -- Setup & Fixtures
+	let tool_response = ToolResponse::new("call_1", "screenshot taken").with_parts([Binary::from_url(
+		"image/png",
+		"https://example.com/shot.png",
+		None,
+	)]);
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+	};
+
+	// -- Exec
+	let web_req =
+		AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())?;
+
+	// -- Check
+	assert_eq!(
+		web_req.payload["messages"][0]["content"][0],
+		json!({
+			"type": "tool_result",
+			"tool_use_id": "call_1",
+			"content": [
+				{"type": "text", "text": "screenshot taken"},
+				{
+					"type": "image",
+					"source": {
+						"type": "url",
+						"url": "https://example.com/shot.png",
+					}
+				}
+			],
+		})
+	);
+
+	Ok(())
+}
+
+/// A user message with a URL-source image must serialize natively as an Anthropic
+/// `url` image source block (the Messages API supports URL image sources).
+#[test]
+fn test_anthropic_user_message_url_image_serializes_url_source() -> Result<()> {
+	// -- Setup & Fixtures
+	let chat_req = ChatRequest::new(vec![ChatMessage::user(vec![
+		ContentPart::from_text("What is in this picture?"),
+		ContentPart::from_binary_url("image/png", "https://example.com/duck.png", None),
+	])]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+	};
+
+	// -- Exec
+	let web_req =
+		AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())?;
+
+	// -- Check
+	let content = web_req.payload["messages"][0]["content"]
+		.as_array()
+		.ok_or("user content must be an array")?;
+	assert_eq!(content[0], json!({"type": "text", "text": "What is in this picture?"}));
+	assert_eq!(
+		content[1],
+		json!({
+			"type": "image",
+			"source": {
+				"type": "url",
+				"url": "https://example.com/duck.png",
+			}
+		})
+	);
+
+	Ok(())
+}
+
+/// Regression guard: a user message with a base64 image must keep the exact
+/// base64 `image` source shape (unchanged by the URL-source support).
+#[test]
+fn test_anthropic_user_message_base64_image_serializes_as_before() -> Result<()> {
+	// -- Setup & Fixtures
+	let chat_req = ChatRequest::new(vec![ChatMessage::user(vec![
+		ContentPart::from_text("What is in this picture?"),
+		ContentPart::from_binary_base64("image/png", "iVBORw0KBASE64", None),
+	])]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+	};
+
+	// -- Exec
+	let web_req =
+		AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())?;
+
+	// -- Check
+	assert_eq!(
+		web_req.payload["messages"][0]["content"][1],
+		json!({
+			"type": "image",
+			"source": {
+				"type": "base64",
+				"media_type": "image/png",
+				"data": "iVBORw0KBASE64",
+			}
+		})
 	);
 
 	Ok(())

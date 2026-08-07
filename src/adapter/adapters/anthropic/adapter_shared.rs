@@ -183,11 +183,14 @@ impl AnthropicAdapter {
 
 									if is_image {
 										match &source {
-											BinarySource::Url(_) => {
-												// As of this API version, Anthropic doesn't support images by URL directly in messages.
-												warn!(
-													"Anthropic doesn't support images from URL, need to handle it gracefully"
-												);
+											BinarySource::Url(url) => {
+												values.push(json!({
+													"type": "image",
+													"source": {
+														"type": "url",
+														"url": url,
+													}
+												}));
 											}
 											BinarySource::Base64(content) => {
 												values.push(json!({
@@ -805,11 +808,11 @@ fn apply_cache_control_to_parts(cache_control: Option<&CacheControl>, parts: Vec
 ///
 /// - Without binary parts, `content` remains a plain string (legacy shape, unchanged).
 /// - With parts, `content` becomes an array of a `text` block (when the text is non-empty)
-///   followed by `image` blocks for base64 image parts.
+///   followed by `image` blocks for image parts (native `base64` or `url` source).
 ///
 /// NOTE: Anthropic `tool_result` content only accepts `text` and `image` blocks,
-///       so non-image parts are skipped with a warning. URL-based image sources are
-///       skipped as well, matching the user-message image handling above.
+///       so non-image parts are skipped with a warning. Image sources serialize
+///       the same way as in user-message image handling above.
 fn tool_response_to_tool_result(tool_response: ToolResponse) -> Value {
 	let ToolResponse {
 		call_id,
@@ -855,9 +858,14 @@ fn tool_response_to_tool_result(tool_response: ToolResponse) -> Value {
 					}
 				}));
 			}
-			BinarySource::Url(_) => {
-				// As of this API version, Anthropic doesn't support images by URL directly in messages.
-				warn!("Anthropic doesn't support images from URL, need to handle it gracefully");
+			BinarySource::Url(url) => {
+				values.push(json!({
+					"type": "image",
+					"source": {
+						"type": "url",
+						"url": url,
+					}
+				}));
 			}
 		}
 	}
