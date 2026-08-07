@@ -1,5 +1,6 @@
 use crate::adapter::AdapterKind;
 use crate::chat::ChatOptions;
+use crate::client::{IntoPayloadInterceptorFn, IntoResponseObserverFn, PayloadInterceptor, ResponseObserver};
 use crate::resolver::{
 	AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, IntoServiceTargetResolverFn, ModelMapper,
 	ServiceTargetResolver,
@@ -93,6 +94,44 @@ impl ClientBuilder {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
 		let model_mapper = ModelMapper::from_mapper_fn(model_mapper_fn);
 		client_config.model_mapper = Some(model_mapper);
+		self
+	}
+
+	/// Set `PayloadInterceptor` on `ClientConfig` (creates it if absent).
+	///
+	/// Per-request exec hook: called on each chat exec call (streaming and non-streaming) with
+	/// the target `ModelIden` and the serialized provider payload, before the HTTP request is
+	/// built. `Some` replaces the payload; `None` keeps it unchanged.
+	pub fn with_payload_interceptor(mut self, payload_interceptor: PayloadInterceptor) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.payload_interceptor = Some(payload_interceptor);
+		self
+	}
+
+	/// Set `PayloadInterceptor` from a sync interceptor function (creates `ClientConfig` if absent).
+	pub fn with_payload_interceptor_fn(mut self, payload_interceptor_fn: impl IntoPayloadInterceptorFn) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		let payload_interceptor = PayloadInterceptor::from_interceptor_fn(payload_interceptor_fn);
+		client_config.payload_interceptor = Some(payload_interceptor);
+		self
+	}
+
+	/// Set `ResponseObserver` on `ClientConfig` (creates it if absent).
+	///
+	/// Per-request exec hook: called on each chat exec call (streaming and non-streaming) with
+	/// the target `ModelIden`, the response `StatusCode`, and the response `HeaderMap`, as soon
+	/// as the HTTP response arrives and before its body/stream is consumed (also on 4xx/5xx).
+	pub fn with_response_observer(mut self, response_observer: ResponseObserver) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		client_config.response_observer = Some(response_observer);
+		self
+	}
+
+	/// Set `ResponseObserver` from a sync observer function (creates `ClientConfig` if absent).
+	pub fn with_response_observer_fn(mut self, response_observer_fn: impl IntoResponseObserverFn) -> Self {
+		let client_config = self.config.get_or_insert_with(ClientConfig::default);
+		let response_observer = ResponseObserver::from_observer_fn(response_observer_fn);
+		client_config.response_observer = Some(response_observer);
 		self
 	}
 

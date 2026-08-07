@@ -1,5 +1,6 @@
 use crate::adapter::AdapterKind;
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::client::BoundResponseObserver;
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
@@ -43,10 +44,15 @@ pub trait Adapter {
 	) -> Result<ChatResponse>;
 
 	/// To be implemented by Adapters.
+	///
+	/// The `response_observer` (per-request exec hook, if set) must be attached to the underlying
+	/// web stream so it fires when the lazy HTTP send resolves — on the response head, before the
+	/// stream body is consumed (also on 4xx/5xx).
 	fn to_chat_stream(
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<BoundResponseObserver>,
 	) -> Result<ChatStreamResponse>;
 
 	/// To be implemented by Adapters.

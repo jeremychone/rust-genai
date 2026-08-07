@@ -175,8 +175,9 @@ impl Adapter for CohereAdapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
-		let web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n");
+		let web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n").with_response_observer(response_observer);
 		let cohere_stream = CohereStreamer::new(web_stream, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(cohere_stream);
 

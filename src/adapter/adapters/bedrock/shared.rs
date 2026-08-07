@@ -69,9 +69,10 @@ fn urlencode_path_segment(s: &str) -> String {
 /// error path.
 pub(super) fn async_stream_bytes(
 	reqwest_builder: RequestBuilder,
+	response_observer: Option<crate::client::BoundResponseObserver>,
 ) -> impl futures::Stream<Item = std::result::Result<bytes::Bytes, crate::error::BoxError>> + Send {
 	use futures::StreamExt;
-	async_stream_once(reqwest_builder).flat_map(|result| match result {
+	async_stream_once(reqwest_builder, response_observer).flat_map(|result| match result {
 		Ok(stream) => stream.boxed(),
 		Err(err) => futures::stream::once(async move { Err(err) }).boxed(),
 	})
@@ -79,6 +80,7 @@ pub(super) fn async_stream_bytes(
 
 fn async_stream_once(
 	reqwest_builder: RequestBuilder,
+	response_observer: Option<crate::client::BoundResponseObserver>,
 ) -> impl futures::Stream<
 	Item = std::result::Result<
 		futures::stream::BoxStream<'static, std::result::Result<bytes::Bytes, crate::error::BoxError>>,
@@ -91,6 +93,11 @@ fn async_stream_once(
 			.send()
 			.await
 			.map_err(|e| Box::new(e) as crate::error::BoxError)?;
+		// Fire the response observer exec hook (if set) as soon as the response head is in hand —
+		// before the status check and before the body is consumed — so it also fires on 4xx/5xx.
+		if let Some(observer) = response_observer {
+			observer.observe(resp.status(), resp.headers().clone()).await;
+		}
 		let status = resp.status();
 		if !status.is_success() {
 			// Capture the headers while the response is still in hand

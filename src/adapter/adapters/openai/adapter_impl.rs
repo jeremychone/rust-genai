@@ -145,8 +145,9 @@ impl Adapter for OpenAIAdapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_sets: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
-		let event_source = EventSourceStream::new(reqwest_builder);
+		let event_source = EventSourceStream::new(reqwest_builder).with_response_observer(response_observer);
 		let openai_stream = OpenAIStreamer::new(event_source, model_iden.clone(), options_sets);
 		let chat_stream = ChatStream::from_inter_stream(openai_stream);
 

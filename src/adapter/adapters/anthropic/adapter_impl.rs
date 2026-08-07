@@ -69,8 +69,9 @@ impl Adapter for AnthropicAdapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
-		let event_source = EventSourceStream::new(reqwest_builder);
+		let event_source = EventSourceStream::new(reqwest_builder).with_response_observer(response_observer);
 		let anthropic_stream = AnthropicStreamer::new(event_source, model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
 		Ok(ChatStreamResponse {

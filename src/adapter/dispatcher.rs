@@ -2,6 +2,7 @@ use super::macros::dispatch_adapter;
 use crate::ModelIden;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::client::BoundResponseObserver;
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
@@ -63,11 +64,12 @@ impl AdapterDispatcher {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
 		let adapter_kind = model_iden.adapter_kind;
 		dispatch_adapter!(
 			adapter_kind,
-			A::to_chat_stream(model_iden, reqwest_builder, options_set)
+			A::to_chat_stream(model_iden, reqwest_builder, options_set, response_observer)
 		)
 	}
 

@@ -1,6 +1,6 @@
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
-use crate::client::ModelSpec;
+use crate::client::{BoundResponseObserver, ModelSpec};
 use crate::embed::{EmbedOptions, EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, ProviderConfig};
 use crate::{Client, Error, ModelIden, Result, ServiceTarget};
@@ -127,9 +127,22 @@ impl Client {
 				headers = override_headers;
 			};
 
+			// -- Apply the payload interceptor exec hook (if set), which can replace the payload.
+			let payload = match self.config().payload_interceptor() {
+				Some(interceptor) => interceptor.intercept(model.clone(), payload.clone()).await.unwrap_or(payload),
+				None => payload,
+			};
+
+			// -- Bind the response observer exec hook (if set) so it fires on the response head,
+			//    before the body is consumed (also on 4xx/5xx).
+			let response_observer = self
+				.config()
+				.response_observer()
+				.map(|observer| BoundResponseObserver::new(observer.clone(), model.clone()));
+
 			let web_res = self
 				.web_client()
-				.do_post(&url, &headers, &payload)
+				.do_post_with_observer(&url, &headers, &payload, response_observer.as_ref())
 				.await
 				.map_err(|webc_error| Error::WebModelCall {
 					model_iden: model.clone(),
@@ -190,8 +203,9 @@ impl Client {
 		#[cfg(feature = "otel")]
 		let otel_span = crate::otel::span::chat_request_span(&model, &target.endpoint, &options_set, &chat_req, true);
 
-		// Stream setup is synchronous; wrap it so setup errors are recorded on the span too.
-		let result = (move || {
+		// Stream setup is async (payload interceptor hook); wrap it so setup errors are recorded on the span too.
+		// Note: The HTTP send itself remains lazy (performed on the first stream poll).
+		let result = async {
 			let WebRequestData {
 				mut url,
 				mut headers,
@@ -214,6 +228,12 @@ impl Client {
 				headers = override_headers;
 			};
 
+			// -- Apply the payload interceptor exec hook (if set), which can replace the payload.
+			let payload = match self.config().payload_interceptor() {
+				Some(interceptor) => interceptor.intercept(model.clone(), payload.clone()).await.unwrap_or(payload),
+				None => payload,
+			};
+
 			let reqwest_builder =
 				self.web_client()
 					.new_req_builder(&url, &headers, &payload)
@@ -222,10 +242,19 @@ impl Client {
 						webc_error,
 					})?;
 
-			let res = AdapterDispatcher::to_chat_stream(model, reqwest_builder, options_set)?;
+			// -- Bind the response observer exec hook (if set) so it fires when the lazy send
+			//    resolves inside the stream — on the response head, before the status check and
+			//    before the stream body is consumed (also on 4xx/5xx).
+			let response_observer = self
+				.config()
+				.response_observer()
+				.map(|observer| BoundResponseObserver::new(observer.clone(), model.clone()));
+
+			let res = AdapterDispatcher::to_chat_stream(model, reqwest_builder, options_set, response_observer)?;
 
 			Ok(res)
-		})();
+		}
+		.await;
 
 		match result {
 			Ok(res) => {
@@ -319,3 +348,11 @@ impl Client {
 		result
 	}
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+#[path = "client_impl_tests.rs"]
+mod tests;
+
+// endregion: --- Tests

@@ -302,12 +302,17 @@ impl Adapter for BaiduAdapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
 		let baidu_info = BaiduModelEndpoint::from_model(&model_iden);
 
 		match baidu_info.protocol {
-			BaiduProtocol::OpenAI => OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
-			BaiduProtocol::Anthropic => AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			BaiduProtocol::OpenAI => {
+				OpenAIAdapter::to_chat_stream(model_iden, reqwest_builder, options_set, response_observer)
+			}
+			BaiduProtocol::Anthropic => {
+				AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set, response_observer)
+			}
 		}
 	}
 

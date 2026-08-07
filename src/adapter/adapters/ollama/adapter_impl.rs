@@ -188,9 +188,10 @@ impl Adapter for OllamaAdapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
 		let streamer = OllamaStreamer::new(
-			crate::webc::WebStream::new_with_delimiter(reqwest_builder, "\n"),
+			crate::webc::WebStream::new_with_delimiter(reqwest_builder, "\n").with_response_observer(response_observer),
 			model_iden.clone(),
 			options_set,
 		);

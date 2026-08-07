@@ -122,8 +122,9 @@ impl Adapter for OllamaCloudAdapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
-		OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set)
+		OllamaAdapter::to_chat_stream(model_iden, reqwest_builder, options_set, response_observer)
 	}
 
 	fn to_embed_request_data(

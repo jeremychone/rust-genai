@@ -32,6 +32,15 @@ impl EventSourceStream {
 			opened: false,
 		}
 	}
+
+	/// Sets the (optional) response observer exec hook on the inner `WebStream`.
+	///
+	/// Note: The observer fires when the lazy HTTP send resolves (on the response head), not on
+	/// the synthetic `Event::Open`, which is emitted before any HTTP activity.
+	pub fn with_response_observer(mut self, response_observer: Option<crate::client::BoundResponseObserver>) -> Self {
+		self.inner = self.inner.with_response_observer(response_observer);
+		self
+	}
 }
 
 impl Stream for EventSourceStream {

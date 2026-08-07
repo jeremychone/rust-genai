@@ -96,8 +96,9 @@ impl Adapter for BedrockSigv4Adapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
-		let stream = async_stream_bytes(reqwest_builder);
+		let stream = async_stream_bytes(reqwest_builder, response_observer);
 		let bedrock_stream = BedrockStreamer::new(Box::pin(stream), model_iden.clone(), options_set);
 		let chat_stream = ChatStream::from_inter_stream(bedrock_stream);
 		Ok(ChatStreamResponse {

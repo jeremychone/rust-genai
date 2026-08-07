@@ -1,6 +1,6 @@
 use crate::adapter::{AdapterDispatcher, AdapterKind};
 use crate::chat::ChatOptions;
-use crate::client::{ModelSpec, ServiceTarget};
+use crate::client::{ModelSpec, PayloadInterceptor, ResponseObserver, ServiceTarget};
 use crate::embed::EmbedOptions;
 use crate::resolver::{AuthData, AuthResolver, Endpoint, ModelMapper, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result, WebConfig};
@@ -15,6 +15,8 @@ pub struct ClientConfig {
 	pub(super) chat_options: Option<ChatOptions>,
 	pub(super) embed_options: Option<EmbedOptions>,
 	pub(super) adapter_kind: Option<AdapterKind>,
+	pub(super) payload_interceptor: Option<PayloadInterceptor>,
+	pub(super) response_observer: Option<ResponseObserver>,
 }
 
 /// Chainable setters related to the ClientConfig.
@@ -58,6 +60,26 @@ impl ClientConfig {
 	/// Sets the HTTP client configuration (reqwest).
 	pub fn with_web_config(mut self, web_config: WebConfig) -> Self {
 		self.web_config = Some(web_config);
+		self
+	}
+
+	/// Sets the PayloadInterceptor (per-request exec hook).
+	///
+	/// Called on each chat exec call (streaming and non-streaming) with the target `ModelIden`
+	/// and the serialized provider payload, before the HTTP request is built. `Some` replaces
+	/// the payload; `None` keeps it unchanged.
+	pub fn with_payload_interceptor(mut self, payload_interceptor: PayloadInterceptor) -> Self {
+		self.payload_interceptor = Some(payload_interceptor);
+		self
+	}
+
+	/// Sets the ResponseObserver (per-request exec hook).
+	///
+	/// Called on each chat exec call (streaming and non-streaming) with the target `ModelIden`,
+	/// the response `StatusCode`, and the response `HeaderMap`, as soon as the HTTP response
+	/// arrives and before its body/stream is consumed (also on 4xx/5xx responses).
+	pub fn with_response_observer(mut self, response_observer: ResponseObserver) -> Self {
+		self.response_observer = Some(response_observer);
 		self
 	}
 
@@ -124,6 +146,16 @@ impl ClientConfig {
 	/// Returns the bound [`AdapterKind`], if set via [`Self::with_adapter_kind`].
 	pub fn adapter_kind(&self) -> Option<AdapterKind> {
 		self.adapter_kind
+	}
+
+	/// Returns the PayloadInterceptor, if set.
+	pub fn payload_interceptor(&self) -> Option<&PayloadInterceptor> {
+		self.payload_interceptor.as_ref()
+	}
+
+	/// Returns the ResponseObserver, if set.
+	pub fn response_observer(&self) -> Option<&ResponseObserver> {
+		self.response_observer.as_ref()
 	}
 }
 

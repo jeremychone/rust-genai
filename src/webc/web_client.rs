@@ -1,4 +1,5 @@
 use crate::Headers;
+use crate::client::BoundResponseObserver;
 use crate::webc::{Error, Result};
 use reqwest::header::HeaderMap;
 use reqwest::{Method, RequestBuilder, StatusCode};
@@ -55,9 +56,26 @@ impl WebClient {
 	}
 
 	pub async fn do_post(&self, url: &str, headers: &Headers, content: &Value) -> Result<WebResponse> {
+		self.do_post_with_observer(url, headers, content, None).await
+	}
+
+	/// Same as `do_post`, but fires the (optional) bound response observer on the response head
+	/// (status + headers) as soon as the response arrives, before the body is consumed —
+	/// including on non-success statuses.
+	pub async fn do_post_with_observer(
+		&self,
+		url: &str,
+		headers: &Headers,
+		content: &Value,
+		response_observer: Option<&BoundResponseObserver>,
+	) -> Result<WebResponse> {
 		let reqwest_builder = self.new_req_builder(url, headers, content)?;
 
 		let reqwest_res = reqwest_builder.send().await?;
+
+		if let Some(observer) = response_observer {
+			observer.observe(reqwest_res.status(), reqwest_res.headers().clone()).await;
+		}
 
 		let response = WebResponse::from_reqwest_response(reqwest_res).await?;
 

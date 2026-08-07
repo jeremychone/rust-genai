@@ -178,13 +178,18 @@ impl Adapter for VertexAdapter {
 		model_iden: ModelIden,
 		reqwest_builder: RequestBuilder,
 		options_set: ChatOptionsSet<'_, '_>,
+		response_observer: Option<crate::client::BoundResponseObserver>,
 	) -> Result<ChatStreamResponse> {
 		let (_, model_name) = model_iden.model_name.namespace_and_name();
 		let publisher = VertexPublisher::from_model_name(model_name)?;
 
 		match publisher {
-			VertexPublisher::Google => GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
-			VertexPublisher::Anthropic => AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set),
+			VertexPublisher::Google => {
+				GeminiAdapter::to_chat_stream(model_iden, reqwest_builder, options_set, response_observer)
+			}
+			VertexPublisher::Anthropic => {
+				AnthropicAdapter::to_chat_stream(model_iden, reqwest_builder, options_set, response_observer)
+			}
 		}
 	}
 
