@@ -745,6 +745,50 @@ fn test_anthropic_tool_response_text_only_serializes_as_before() -> Result<()> {
 	Ok(())
 }
 
+/// A `ToolResponse` embedded in an Assistant message has no representation on any
+/// provider wire (there is no "tool result authored by the assistant"), so the
+/// serializer must reject the shape with a hard error instead of silently dropping
+/// the content (the previous behavior).
+#[test]
+fn test_anthropic_assistant_embedded_tool_response_is_rejected() -> Result<()> {
+	// -- Setup & Fixtures
+	let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::from_text("checking"),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call_1".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: json!({"city": "Paris"}),
+			thought_signatures: None,
+		}),
+		ContentPart::ToolResponse(ToolResponse::new("call_1", "sunny")),
+	]));
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("weather?"), assistant_msg]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-4-5"),
+	};
+
+	// -- Exec
+	let err = AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
+		.expect_err("assistant-embedded tool response must fail serialization");
+
+	// -- Check
+	let crate::Error::MessageContentTypeNotSupported { cause, .. } = err else {
+		return Err(format!("expected MessageContentTypeNotSupported, got: {err}").into());
+	};
+	assert!(
+		cause.contains("Assistant-role message"),
+		"cause must name the unsupported shape: {cause}"
+	);
+	assert!(
+		cause.contains("Tool-role message"),
+		"cause must point at the supported Tool-role shape: {cause}"
+	);
+
+	Ok(())
+}
+
 /// Non-image parts are not valid inside an Anthropic `tool_result`; they must be
 /// skipped while the text block and image parts (including URL sources) are preserved.
 /// NOTE: URL-source images were previously skipped as well; they now serialize

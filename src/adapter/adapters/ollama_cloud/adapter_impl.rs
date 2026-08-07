@@ -56,7 +56,7 @@ impl Adapter for OllamaCloudAdapter {
 		} = target;
 		let api_key = get_api_key(auth, &model)?;
 		let url = OllamaAdapter::get_service_url(&model, service_type, endpoint)?;
-		let OllamaRequestParts { messages, tools } = OllamaAdapter::into_ollama_request_parts(chat_req)?;
+		let OllamaRequestParts { messages, tools } = OllamaAdapter::into_ollama_request_parts(&model, chat_req)?;
 
 		let mut options = json!({});
 		if let Some(temperature) = chat_options.temperature() {

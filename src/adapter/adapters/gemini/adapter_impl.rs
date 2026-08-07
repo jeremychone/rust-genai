@@ -1,5 +1,7 @@
 use crate::adapter::adapters::gemini::GeminiStreamer;
-use crate::adapter::adapters::support::{TOOL_RESULT_IMAGES_LABEL, get_api_key, tool_response_fallback_text};
+use crate::adapter::adapters::support::{
+	TOOL_RESULT_IMAGES_LABEL, assistant_embedded_tool_response_err, get_api_key, tool_response_fallback_text,
+};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
@@ -736,10 +738,11 @@ impl GeminiAdapter {
 									parts_values.push(json!({"thoughtSignature": thought}));
 								}
 							}
+							// No provider wire represents a tool result authored by the
+							// assistant; fail loudly instead of silently dropping the
+							// content (use a Tool-role message).
 							ContentPart::ToolResponse(_) => {
-								if let Some(thought) = pending_thought.take() {
-									parts_values.push(json!({"thoughtSignature": thought}));
-								}
+								return Err(assistant_embedded_tool_response_err(model_iden));
 							}
 							ContentPart::ReasoningContent(_) => {}
 							// Custom are ignored for this logic
@@ -1174,6 +1177,45 @@ mod tests {
 				"role": "user",
 				"parts": [{"functionResponse": {"name": "calc", "response": {"name": "calc", "content": "42"}}}]
 			})]
+		);
+	}
+
+	/// A `ToolResponse` embedded in an Assistant message has no representation on any
+	/// provider wire (there is no "tool result authored by the assistant"), so the
+	/// serializer must reject the shape with a hard error instead of silently dropping
+	/// the content (the previous behavior).
+	#[test]
+	fn assistant_embedded_tool_response_is_rejected() {
+		// -- Setup & Fixtures
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+		let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![
+			ContentPart::from_text("checking"),
+			ContentPart::ToolCall(ToolCall {
+				call_id: "call_1".to_string(),
+				fn_name: "get_weather".to_string(),
+				fn_arguments: json!({"city": "Paris"}),
+				thought_signatures: None,
+			}),
+			ContentPart::ToolResponse(ToolResponse::new("call_1", "sunny")),
+		]));
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("weather?"), assistant_msg]);
+
+		// -- Exec
+		let err = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req)
+			.map(|_| ())
+			.expect_err("assistant-embedded tool response must fail serialization");
+
+		// -- Check
+		let Error::MessageContentTypeNotSupported { cause, .. } = err else {
+			panic!("expected MessageContentTypeNotSupported, got: {err}");
+		};
+		assert!(
+			cause.contains("Assistant-role message"),
+			"cause must name the unsupported shape: {cause}"
+		);
+		assert!(
+			cause.contains("Tool-role message"),
+			"cause must point at the supported Tool-role shape: {cause}"
 		);
 	}
 

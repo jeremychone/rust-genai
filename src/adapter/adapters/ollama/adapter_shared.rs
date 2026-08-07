@@ -3,12 +3,15 @@
 use super::OllamaAdapter;
 use crate::Headers;
 use crate::adapter::AdapterKind;
-use crate::adapter::adapters::support::{TOOL_RESULT_IMAGES_LABEL, tool_response_fallback_text};
-use crate::chat::{Binary, BinarySource, ChatRequest, ContentPart, Tool, ToolName, ToolResponse, Usage};
+use crate::adapter::adapters::support::{
+	TOOL_RESULT_IMAGES_LABEL, assistant_embedded_tool_response_err, tool_response_fallback_text,
+};
+use crate::chat::{Binary, BinarySource, ChatRequest, ChatRole, ContentPart, Tool, ToolName, ToolResponse, Usage};
 use crate::resolver::Endpoint;
 use crate::webc::WebClient;
-use crate::{Error, Result};
+use crate::{Error, ModelIden, Result};
 use serde_json::{Value, json};
+use std::sync::Arc;
 use tracing::warn;
 use value_ext::JsonValueExt;
 
@@ -63,7 +66,10 @@ impl OllamaAdapter {
 	}
 
 	/// Takes the GenAI ChatMessages and constructs the JSON Messages for Ollama.
-	pub(in crate::adapter::adapters) fn into_ollama_request_parts(chat_req: ChatRequest) -> Result<OllamaRequestParts> {
+	pub(in crate::adapter::adapters) fn into_ollama_request_parts(
+		model_iden: &ModelIden,
+		chat_req: ChatRequest,
+	) -> Result<OllamaRequestParts> {
 		let mut messages = Vec::new();
 
 		// -- System
@@ -86,6 +92,10 @@ impl OllamaAdapter {
 			// Images attached to tool responses (`ToolResponse.parts`); they ride in a
 			// follow-up "user" message since tool messages carry only text content.
 			let mut tool_response_images = Vec::new();
+			// Whether a `ToolResponse` part of this message was emitted as a standalone
+			// `role:"tool"` message (see below); when nothing else remains, the carrying
+			// message is omitted.
+			let mut had_tool_responses = false;
 
 			for part in msg.content {
 				match part {
@@ -107,49 +117,34 @@ impl OllamaAdapter {
 						}));
 					}
 					ContentPart::ToolResponse(tr) => {
-						// Note: Ollama native API expects role "tool" for tool response
-						let ToolResponse {
-							content: tr_content,
-							parts,
-							..
-						} = tr;
-						let parts = parts.unwrap_or_default();
-
-						if parts.is_empty() {
-							ollama_msg.x_insert("content", tr_content)?;
-						} else {
-							// Track whether THIS tool response contributed usable images, so the
-							// "(see attached image)" placeholder is not emitted for a response
-							// whose own parts were all skipped while an earlier response in the
-							// same message contributed images.
-							let images_count_before = tool_response_images.len();
-							for binary in parts {
-								if binary.is_image() {
-									match binary.source {
-										// Note: Ollama native API expects raw base64 (no data URL).
-										BinarySource::Base64(data) => tool_response_images.push(data),
-										BinarySource::Url(_) => {
-											warn!(
-												"Ollama native API doesn't support image URLs; skipping tool-result image part"
-											);
-										}
-									}
-								} else {
-									warn!(
-										"ToolResponse binary parts only support images for the Ollama adapter; skipping non-image part '{}'",
-										binary.content_type
-									);
-								}
-							}
-							let has_own_images = tool_response_images.len() > images_count_before;
-							let tr_content = tool_response_fallback_text(tr_content, has_own_images);
-							ollama_msg.x_insert("content", tr_content)?;
+						// No provider wire represents a tool result authored by the assistant;
+						// fail loudly instead of garbling it into assistant content
+						// (use a Tool-role message).
+						if matches!(msg.role, ChatRole::Assistant) {
+							return Err(assistant_embedded_tool_response_err(model_iden));
 						}
+						// Note: Ollama native API expects role "tool" for tool response, and
+						// the standalone `role:"tool"` message is the wire's only tool-result
+						// representation, so ONE such message is emitted PER response, in part
+						// order — a Tool-role message can carry several (matching the
+						// per-response messages the OpenAI Chat Completions serializer emits).
+						// For a tool response embedded in a user message (the Anthropic-style
+						// shape where tool results ride as user-message content blocks), the
+						// extracted tool message is emitted BEFORE the remaining user message.
+						// Images of every response in the message ride the same single
+						// labeled follow-up user image message.
+						let tr_content = tool_response_content_text(tr, &mut tool_response_images);
+						had_tool_responses = true;
+						messages.push(json!({
+							"role": "tool",
+							"content": tr_content,
+						}));
 					}
 					_ => {}
 				}
 			}
 
+			let leftover_is_empty = content.is_empty() && images.is_empty() && tool_calls.is_empty();
 			if !content.is_empty() {
 				ollama_msg.x_insert("content", content)?;
 			}
@@ -160,7 +155,13 @@ impl OllamaAdapter {
 				ollama_msg.x_insert("tool_calls", tool_calls)?;
 			}
 
-			messages.push(ollama_msg);
+			if had_tool_responses && leftover_is_empty {
+				// The message carried only tool responses (a Tool-role message, or a
+				// user message whose embedded responses were all extracted); nothing is
+				// left for the carrying message to say, so it is omitted.
+			} else {
+				messages.push(ollama_msg);
+			}
 
 			// Follow-up user message carrying the tool-result images.
 			if !tool_response_images.is_empty() {
@@ -216,6 +217,48 @@ pub(in crate::adapter::adapters) struct OllamaRequestParts {
 	pub messages: Vec<Value>,
 	pub tools: Option<Vec<Value>>,
 }
+
+// region:    --- Support
+
+/// Resolve the text content of an Ollama `role:"tool"` message for a `ToolResponse`,
+/// pushing its usable image parts (raw base64 only, no data URL) onto
+/// `tool_response_images`, which ride in the follow-up `user` image message since
+/// Ollama tool messages carry only text content. A response without `parts` keeps its
+/// exact legacy text; when parts are present, the `tool_response_fallback_text`
+/// placeholder rules apply, tracking only the images contributed by THIS response so
+/// the "(see attached image)" placeholder is not emitted for a response whose own
+/// parts were all skipped while an earlier response in the same message contributed
+/// images. Shared by the Tool-role path and the user-embedded extraction path.
+fn tool_response_content_text(tool_response: ToolResponse, tool_response_images: &mut Vec<Arc<str>>) -> String {
+	let ToolResponse { content, parts, .. } = tool_response;
+	let parts = parts.unwrap_or_default();
+
+	if parts.is_empty() {
+		content
+	} else {
+		let images_count_before = tool_response_images.len();
+		for binary in parts {
+			if binary.is_image() {
+				match binary.source {
+					// Note: Ollama native API expects raw base64 (no data URL).
+					BinarySource::Base64(data) => tool_response_images.push(data),
+					BinarySource::Url(_) => {
+						warn!("Ollama native API doesn't support image URLs; skipping tool-result image part");
+					}
+				}
+			} else {
+				warn!(
+					"ToolResponse binary parts only support images for the Ollama adapter; skipping non-image part '{}'",
+					binary.content_type
+				);
+			}
+		}
+		let has_own_images = tool_response_images.len() > images_count_before;
+		tool_response_fallback_text(content, has_own_images)
+	}
+}
+
+// endregion: --- Support
 
 // region:    --- Tests
 

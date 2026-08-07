@@ -100,7 +100,11 @@ impl Adapter for OpenCodeGoAdapter {
 					system,
 					messages,
 					tools,
-				} = AnthropicAdapter::into_anthropic_request_parts(chat_req, options_set.cache_control().cloned())?;
+				} = AnthropicAdapter::into_anthropic_request_parts(
+					&model,
+					chat_req,
+					options_set.cache_control().cloned(),
+				)?;
 
 				let stream = matches!(service_type, ServiceType::ChatStream);
 				let mut payload = json!({

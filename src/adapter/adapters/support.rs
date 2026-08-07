@@ -13,6 +13,21 @@ pub fn get_api_key(auth: AuthData, model: &ModelIden) -> Result<String> {
 	})
 }
 
+/// Build the error for a `ContentPart::ToolResponse` embedded in an Assistant-role message.
+///
+/// No provider wire has a representation for a tool result authored by the assistant
+/// (tool results are standalone `role:"tool"` messages / output items on the OpenAI
+/// wires, and user-carried `tool_result` / `toolResult` / `functionResponse` blocks on
+/// the Anthropic-style wires), so every serializer rejects the shape with this same
+/// error instead of silently dropping the content or inventing a placement the wire
+/// does not define. The supported shape is a Tool-role message.
+pub fn assistant_embedded_tool_response_err(model_iden: &ModelIden) -> Error {
+	Error::MessageContentTypeNotSupported {
+		model_iden: model_iden.clone(),
+		cause: "ContentPart::ToolResponse is not supported in an Assistant-role message — no provider wire represents a tool result authored by the assistant. Send the tool response as a Tool-role message instead (e.g., `ChatMessage::from(ToolResponse)`)",
+	}
+}
+
 // region:    --- Tool Response Binary Parts
 
 /// Leading text of the follow-up `user` message that carries tool-result images on

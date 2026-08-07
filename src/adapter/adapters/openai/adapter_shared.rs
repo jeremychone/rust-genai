@@ -3,7 +3,9 @@
 use super::cache_policy::{OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy};
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
-use crate::adapter::adapters::support::{TOOL_RESULT_IMAGES_LABEL, get_api_key, tool_response_fallback_text};
+use crate::adapter::adapters::support::{
+	TOOL_RESULT_IMAGES_LABEL, assistant_embedded_tool_response_err, get_api_key, tool_response_fallback_text,
+};
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, ReasoningEffort, ToolChoice,
@@ -313,7 +315,12 @@ impl OpenAIAdapter {
 
 		// -- Process the messages
 		for msg in chat_req.messages {
+			// Index of the tool-image flush message emitted for this iteration (if any),
+			// so tool messages extracted from an embedded `ToolResponse` can be inserted
+			// before it, adjacent to the tool-message run they belong to.
+			let mut flushed_images_at: Option<usize> = None;
 			if !matches!(msg.role, ChatRole::Tool) && !pending_tool_images.is_empty() {
+				flushed_images_at = Some(messages.len());
 				messages.push(tool_images_user_message(std::mem::take(&mut pending_tool_images)));
 			}
 
@@ -349,6 +356,13 @@ impl OpenAIAdapter {
 						messages.push(json! ({"role": "user", "content": content}));
 					} else {
 						let mut values: Vec<Value> = Vec::new();
+						// Tool responses embedded in this user message (the Anthropic-style
+						// shape where tool results ride as user-message content blocks) are
+						// extracted into proper `role:"tool"` messages emitted BEFORE this
+						// user message: such a user message conventionally directly follows
+						// the assistant `tool_calls` message, and the Chat Completions wire
+						// requires tool messages to sit adjacent to it.
+						let mut embedded_tool_messages: Vec<Value> = Vec::new();
 						for part in msg.content {
 							match part {
 								ContentPart::Text(content) => values.push(json!({"type": "text", "text": content})),
@@ -409,17 +423,39 @@ impl OpenAIAdapter {
 								// continue would allow to gracefully skip pushing unserializable message
 								// TODO: Probably need to warn if it is a ToolCalls type of content
 								ContentPart::ToolCall(_) => (),
-								ContentPart::ToolResponse(_) => (),
+								ContentPart::ToolResponse(tool_response) => {
+									// Extracted as a `role:"tool"` message before this user message
+									// (see `embedded_tool_messages` above). Image parts are folded
+									// into this same user message as `image_url` blocks, mirroring
+									// the Gemini serializer's user-embedded handling.
+									let mut rescued_images: Vec<Value> = Vec::new();
+									embedded_tool_messages
+										.push(tool_response_to_tool_message(tool_response, &mut rescued_images));
+									values.extend(rescued_images);
+								}
 								ContentPart::ThoughtSignature(_) => (),
 								ContentPart::ReasoningContent(_) => (),
 								// Custom are ignored for this logic
 								ContentPart::Custom(_) => {}
 							}
 						}
-						if cache_controlled {
-							apply_chat_cache_breakpoint(model_iden, &mut values, "message")?;
+						let had_embedded_tool_responses = !embedded_tool_messages.is_empty();
+						if had_embedded_tool_responses {
+							// Insert before the tool-image flush message emitted for this
+							// iteration (if any), so the extracted tool messages stay adjacent
+							// to the preceding tool-message run.
+							let insert_at = flushed_images_at.unwrap_or(messages.len());
+							messages.splice(insert_at..insert_at, embedded_tool_messages);
 						}
-						messages.push(json! ({"role": "user", "content": values}));
+						if values.is_empty() && had_embedded_tool_responses {
+							// The user message carried only embedded tool responses; nothing is
+							// left for it to say, so the now-empty user message is omitted.
+						} else {
+							if cache_controlled {
+								apply_chat_cache_breakpoint(model_iden, &mut values, "message")?;
+							}
+							messages.push(json! ({"role": "user", "content": values}));
+						}
 					}
 				}
 
@@ -447,7 +483,12 @@ impl OpenAIAdapter {
 
 							// TODO: Probably need towarn on this one (probably need to add binary here)
 							ContentPart::Binary(_) => (),
-							ContentPart::ToolResponse(_) => (),
+							// No provider wire represents a tool result authored by the
+							// assistant; fail loudly instead of dropping the content or
+							// inventing a placement (use a Tool-role message).
+							ContentPart::ToolResponse(_) => {
+								return Err(assistant_embedded_tool_response_err(model_iden));
+							}
 							ContentPart::ThoughtSignature(_) => {}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
@@ -480,42 +521,7 @@ impl OpenAIAdapter {
 				ChatRole::Tool => {
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
-							let ToolResponse {
-								call_id,
-								content,
-								parts,
-								..
-							} = tool_response;
-							let parts = parts.unwrap_or_default();
-
-							if parts.is_empty() {
-								messages.push(json!({
-									"role": "tool",
-									"content": content,
-									"tool_call_id": call_id,
-								}));
-							} else {
-								let mut image_values: Vec<Value> = Vec::new();
-								for binary in parts {
-									if binary.is_image() {
-										let image_url = binary.into_url();
-										image_values
-											.push(json!({"type": "image_url", "image_url": {"url": image_url}}));
-									} else {
-										warn!(
-											"ToolResponse binary parts only support images for OpenAI-compatible adapters; skipping non-image part '{}'",
-											binary.content_type
-										);
-									}
-								}
-								let content = tool_response_fallback_text(content, !image_values.is_empty());
-								messages.push(json!({
-									"role": "tool",
-									"content": content,
-									"tool_call_id": call_id,
-								}));
-								pending_tool_images.extend(image_values);
-							}
+							messages.push(tool_response_to_tool_message(tool_response, &mut pending_tool_images));
 						}
 					}
 
@@ -638,6 +644,53 @@ pub struct ToWebRequestDataOptions {
 struct OpenAIRequestParts {
 	messages: Vec<Value>,
 	tools: Option<Vec<Value>>,
+}
+
+/// Serialize a `ToolResponse` into a Chat Completions `role:"tool"` message.
+///
+/// The tool message content is text-only on this wire, so image parts are
+/// rescued as `image_url` blocks appended to `rescued_images`, and the tool
+/// message keeps the response text (or the `tool_response_fallback_text`
+/// placeholder rules when parts are present). The caller decides where the
+/// rescued images ride: the batched follow-up user message for Tool-role
+/// messages, or folded into the carrying user message for user-embedded
+/// responses.
+fn tool_response_to_tool_message(tool_response: ToolResponse, rescued_images: &mut Vec<Value>) -> Value {
+	let ToolResponse {
+		call_id,
+		content,
+		parts,
+		..
+	} = tool_response;
+	let parts = parts.unwrap_or_default();
+
+	if parts.is_empty() {
+		json!({
+			"role": "tool",
+			"content": content,
+			"tool_call_id": call_id,
+		})
+	} else {
+		let mut image_values: Vec<Value> = Vec::new();
+		for binary in parts {
+			if binary.is_image() {
+				let image_url = binary.into_url();
+				image_values.push(json!({"type": "image_url", "image_url": {"url": image_url}}));
+			} else {
+				warn!(
+					"ToolResponse binary parts only support images for OpenAI-compatible adapters; skipping non-image part '{}'",
+					binary.content_type
+				);
+			}
+		}
+		let content = tool_response_fallback_text(content, !image_values.is_empty());
+		rescued_images.extend(image_values);
+		json!({
+			"role": "tool",
+			"content": content,
+			"tool_call_id": call_id,
+		})
+	}
 }
 
 /// Build the follow-up `user` message that carries tool-result images

@@ -63,7 +63,7 @@ impl Adapter for OllamaAdapter {
 		let url = Self::get_service_url(&model, service_type, endpoint)?;
 
 		// -- Ollama Request Parts
-		let OllamaRequestParts { messages, tools } = Self::into_ollama_request_parts(chat_req)?;
+		let OllamaRequestParts { messages, tools } = Self::into_ollama_request_parts(&model, chat_req)?;
 
 		// -- Ollama Options
 		let mut options = json!({});

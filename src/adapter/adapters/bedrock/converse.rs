@@ -4,6 +4,7 @@
 //! work lives here. Publisher-specific bits (reasoning budget, etc.) go under
 //! `additionalModelRequestFields` via [`BedrockPublisher`].
 
+use crate::adapter::adapters::support::assistant_embedded_tool_response_err;
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ContentPart, MessageContent,
 	ReasoningEffort, StopReason, Tool, ToolCall, ToolName, ToolResponse, Usage,
@@ -60,7 +61,7 @@ pub(super) fn build_converse_payload(
 		system,
 		messages,
 		tools,
-	} = into_converse_request_parts(chat_req)?;
+	} = into_converse_request_parts(model_iden, chat_req)?;
 
 	let mut payload = json!({});
 
@@ -267,7 +268,7 @@ struct ConverseRequestParts {
 }
 
 /// Translate a genai `ChatRequest` into Converse's `{system, messages, toolConfig}` shape.
-fn into_converse_request_parts(chat_req: ChatRequest) -> Result<ConverseRequestParts> {
+fn into_converse_request_parts(model_iden: &ModelIden, chat_req: ChatRequest) -> Result<ConverseRequestParts> {
 	let mut messages: Vec<Value> = Vec::new();
 	let mut systems: Vec<String> = Vec::new();
 
@@ -289,7 +290,7 @@ fn into_converse_request_parts(chat_req: ChatRequest) -> Result<ConverseRequestP
 				}
 			}
 			ChatRole::Assistant => {
-				let blocks = assistant_content_to_converse_blocks(msg.content);
+				let blocks = assistant_content_to_converse_blocks(model_iden, msg.content)?;
 				if !blocks.is_empty() {
 					messages.push(json!({ "role": "assistant", "content": blocks }));
 				}
@@ -347,7 +348,7 @@ fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 	blocks
 }
 
-fn assistant_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
+fn assistant_content_to_converse_blocks(model_iden: &ModelIden, content: MessageContent) -> Result<Vec<Value>> {
 	let mut blocks = Vec::new();
 	for part in content {
 		match part {
@@ -366,15 +367,17 @@ fn assistant_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 					}
 				}));
 			}
+			// No provider wire represents a tool result authored by the assistant;
+			// fail loudly instead of silently dropping the content (use a Tool-role message).
+			ContentPart::ToolResponse(_) => return Err(assistant_embedded_tool_response_err(model_iden)),
 			// Unsupported in assistant role for Converse.
 			ContentPart::Binary(_) => {}
-			ContentPart::ToolResponse(_) => {}
 			ContentPart::ThoughtSignature(_) => {}
 			ContentPart::ReasoningContent(_) => {}
 			ContentPart::Custom(_) => {}
 		}
 	}
-	blocks
+	Ok(blocks)
 }
 
 fn tool_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {

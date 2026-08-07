@@ -2,7 +2,7 @@ use super::AnthropicAdapter;
 use super::ant_model::{AnthropicMaxTokens, AnthropicModel, AnthropicModelCapabilities};
 use crate::Result;
 use crate::adapter::adapters::anthropic::ant_reasoning::insert_anthropic_reasoning;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{assistant_embedded_tool_response_err, get_api_key};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
@@ -108,6 +108,7 @@ impl AnthropicAdapter {
 	/// Takes the GenAI ChatMessages and constructs the System string and JSON Messages for Anthropic.
 	/// - Will push the `ChatRequest.system` and system message to `AnthropicRequestParts.system`
 	pub(in crate::adapter::adapters) fn into_anthropic_request_parts(
+		model_iden: &ModelIden,
 		mut chat_req: ChatRequest,
 		request_cache_control: Option<CacheControl>,
 	) -> Result<AnthropicRequestParts> {
@@ -274,7 +275,12 @@ impl AnthropicAdapter {
 							}
 							// Unsupported for assistant role in Anthropic message content
 							ContentPart::Binary(_) => {}
-							ContentPart::ToolResponse(_) => {}
+							// No provider wire represents a tool result authored by the
+							// assistant; fail loudly instead of silently dropping the
+							// content (use a Tool-role message).
+							ContentPart::ToolResponse(_) => {
+								return Err(assistant_embedded_tool_response_err(model_iden));
+							}
 							ContentPart::ThoughtSignature(_) => {}
 							ContentPart::ReasoningContent(_) => {}
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
@@ -415,7 +421,7 @@ impl AnthropicAdapter {
 			system,
 			messages,
 			tools,
-		} = Self::into_anthropic_request_parts(chat_req, options_set.cache_control().cloned())?;
+		} = Self::into_anthropic_request_parts(&model, chat_req, options_set.cache_control().cloned())?;
 
 		// -- Extract Model Name and Reasoning
 		let (_, raw_model_name) = model.model_name.namespace_and_name();
