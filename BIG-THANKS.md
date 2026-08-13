@@ -34,6 +34,10 @@ _If I forgot your PR, feel free to submit a PR_
   - [#264](https://github.com/jeremychone/rust-genai/pull/264) add error handling for tool-call input JSON parsing in AnthropicStreamer
 - [blocksdevpro](https://github.com/blocksdevpro)
   - [#271](https://github.com/jeremychone/rust-genai/pull/271) map Anthropic ping events to `ChatStreamEvent::Heartbeat`
+- [VikashLoomba](https://github.com/VikashLoomba)
+  - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
+- [CristiC0](https://github.com/CristiC0)
+  - [#279](https://github.com/jeremychone/rust-genai/pull/279) fix(anthropic): align stream usage capture with new Anthropic API behaviour
 
 ## v0.6.0..0.6.x
 

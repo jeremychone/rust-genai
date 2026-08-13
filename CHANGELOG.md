@@ -12,6 +12,7 @@
   - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
   - `+` Support the `extra_body` `ChatOptions` field, merging extra request body fields. ([#255](https://github.com/jeremychone/rust-genai/pull/255))
   - `-` Capture streaming cache tokens from the `message_delta` fallback. (PR #258)
+  - `-` Fix Anthropic streaming usage capture to treat `message_start` and `message_delta` usage as cumulative snapshots, preventing token over-counting. (PR #279)
   - `-` Fix: reuse Client WebClient for model listing. ([#249](https://github.com/jeremychone/rust-genai/pull/249))
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
   - `!` `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. `#[serde(alias = "None")]` keeps old JSON deserializable. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias. (PR #253, #251)
