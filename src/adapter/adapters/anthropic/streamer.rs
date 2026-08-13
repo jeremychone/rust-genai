@@ -283,13 +283,12 @@ impl futures::Stream for AnthropicStreamer {
 impl AnthropicStreamer {
 	fn capture_usage(&mut self, message_type: &str, message_data: &str) -> Result<()> {
 		if self.options.capture_usage {
-			let data = self.parse_message_data(message_data)?;
-			// TODO: Might want to exit early if usage is not found
+			let mut data = self.parse_message_data(message_data)?;
 
-			let (input_path, output_path) = if message_type == "message_start" {
-				("/message/usage/input_tokens", "/message/usage/output_tokens")
+			let usage_path = if message_type == "message_start" {
+				"/message/usage"
 			} else if message_type == "message_delta" {
-				("/usage/input_tokens", "/usage/output_tokens")
+				"/usage"
 			} else {
 				// TODO: Use tracing
 				tracing::debug!(
@@ -298,82 +297,67 @@ impl AnthropicStreamer {
 				return Ok(()); // For now permissive
 			};
 
-			// -- Capture/Add the eventual input_tokens
-			// NOTE: Permissive on this one; if an error occurs, treat it as nonexistent (for now)
-			if let Ok(input_tokens) = data.x_get::<i32>(input_path) {
-				let val = self
-					.captured_data
-					.usage
-					.get_or_insert(Usage::default())
-					.prompt_tokens
-					.get_or_insert(0);
-				*val += input_tokens;
-			}
-
-			if let Ok(output_tokens) = data.x_get::<i32>(output_path) {
-				let val = self
-					.captured_data
-					.usage
-					.get_or_insert(Usage::default())
-					.completion_tokens
-					.get_or_insert(0);
-				*val += output_tokens;
-			}
-
-			// -- Capture cache tokens.
-			// Standard Anthropic reports them in `message_start` (`/message/usage`).
-			// Some Anthropic-compatible gateways (e.g. Alibaba DashScope / Qwen) instead report
-			// them in `message_delta` (`/usage`), so fall back to that location when `message_start`
-			// did not carry them.
-			// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
-			// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
-			let cache_base = match message_type {
-				"message_start" => Some("/message/usage"),
-				// Fall back to message_delta only if message_start did not already provide cache details.
-				"message_delta"
-					if self
-						.captured_data
-						.usage
-						.as_ref()
-						.and_then(|u| u.prompt_tokens_details.as_ref())
-						.is_none() =>
-				{
-					Some("/usage")
-				}
-				_ => None,
+			// NOTE: Permissive on this one; if the usage object is absent, treat it as nonexistent (for now)
+			let Ok(mut usage_value) = data.x_take::<Value>(usage_path) else {
+				return Ok(());
 			};
 
-			if let Some(base) = cache_base {
-				let cache_creation: i32 = data.x_get(&format!("{base}/cache_creation_input_tokens")).unwrap_or(0);
-				let cache_read: i32 = data.x_get(&format!("{base}/cache_read_input_tokens")).unwrap_or(0);
+			// -- Capture the eventual input/output tokens
+			let input_tokens = usage_value.x_take::<i32>("input_tokens").ok();
+			let output_tokens = usage_value.x_take::<i32>("output_tokens").ok();
 
-				// Parse cache_creation breakdown if present (TTL-specific breakdown)
-				let cache_creation_details = data
-					.x_get::<Value>(&format!("{base}/cache_creation"))
-					.ok()
-					.as_ref()
-					.and_then(parse_cache_creation_details);
+			// -- Capture cache tokens.
+			// Standard Anthropic reports them in `message_start` and repeats them in `message_delta`;
+			// some gateways (e.g. Alibaba DashScope / Qwen) report them only in `message_delta`.
+			// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
+			// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
+			let cache_creation: i32 = usage_value.x_get("cache_creation_input_tokens").unwrap_or(0);
+			let cache_read: i32 = usage_value.x_get("cache_read_input_tokens").unwrap_or(0);
 
-				if cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some() {
-					let usage = self.captured_data.usage.get_or_insert(Usage::default());
+			// Parse cache_creation breakdown if present (TTL-specific breakdown)
+			let cache_creation_details = usage_value
+				.x_get::<Value>("cache_creation")
+				.ok()
+				.as_ref()
+				.and_then(parse_cache_creation_details);
 
-					// Add cache tokens to prompt_tokens only for message_start, where Anthropic's
-					// input_tokens excludes them. For the message_delta fallback the token accounting
-					// is gateway-specific, so we only surface the breakdown to avoid double counting.
-					if message_type == "message_start"
-						&& let Some(ref mut pt) = usage.prompt_tokens
-					{
-						*pt += cache_creation + cache_read;
-					}
+			let has_cache = cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some();
 
-					// Set prompt_tokens_details (match into_usage behavior: always Some(value))
-					usage.prompt_tokens_details = Some(PromptTokensDetails {
-						cache_creation_tokens: Some(cache_creation),
-						cache_creation_details,
-						cached_tokens: Some(cache_read),
-						audio_tokens: None,
-					});
-				}
+			// Nothing to capture from this snapshot, leave `usage` as-is (possibly None).
+			if input_tokens.is_none() && output_tokens.is_none() && !has_cache {
+				return Ok(());
+			}
+
+			let usage = self.captured_data.usage.get_or_insert(Usage::default());
+
+			if let Some(input_tokens) = input_tokens {
+				usage.prompt_tokens = Some(input_tokens + cache_creation + cache_read);
+			}
+			// NOTE: Cache tokens without `input_tokens` (gateway shape) are deliberately NOT added
+			// to `prompt_tokens`, since gateway token accounting is provider-specific.
+
+			if let Some(output_tokens) = output_tokens {
+				usage.completion_tokens = Some(output_tokens);
+			}
+
+			if has_cache {
+				// Anthropic sends the `cache_creation` breakdown only in `message_start`, while
+				// `message_delta` repeats the totals without it. Keep the earlier breakdown so the
+				// later snapshot does not erase it.
+				let cache_creation_details = cache_creation_details.or_else(|| {
+					usage
+						.prompt_tokens_details
+						.as_ref()
+						.and_then(|details| details.cache_creation_details.clone())
+				});
+
+				// Set prompt_tokens_details (match into_usage behavior: always Some(value))
+				usage.prompt_tokens_details = Some(PromptTokensDetails {
+					cache_creation_tokens: Some(cache_creation),
+					cache_creation_details,
+					cached_tokens: Some(cache_read),
+					audio_tokens: None,
+				});
 			}
 		}
 

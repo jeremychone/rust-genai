@@ -1,5 +1,5 @@
 event: message_start
-data: {"type":"message_start","message":{"id":"msg_01XFDUFYzQKEhQN3M5vW7tTH","type":"message","role":"assistant","content":[],"model":"claude-haiku-4-5-20251001","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":85,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}
+data: {"type":"message_start","message":{"id":"msg_01XFDUFYzQKEhQN3M5vW7tTH","type":"message","role":"assistant","content":[],"model":"claude-haiku-4-5-20251001","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":85,"output_tokens":3,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}
 
 event: content_block_start
 data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_01A2B3C4D5","name":"get_weather","input":{}}}

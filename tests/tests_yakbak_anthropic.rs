@@ -87,6 +87,7 @@ async fn test_yakbak_anthropic_tool_stream() -> TestResult<()> {
 	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
 	assert_eq!(usage.prompt_tokens, Some(85));
 	assert_eq!(usage.completion_tokens, Some(42));
+	assert_eq!(usage.total_tokens, Some(127));
 
 	Ok(())
 }
@@ -154,12 +155,128 @@ async fn test_yakbak_anthropic_ping_stream() -> TestResult<()> {
 	// message_start input_tokens (25) + message_delta output_tokens (15)
 	assert_eq!(usage.prompt_tokens, Some(25));
 	assert_eq!(usage.completion_tokens, Some(15));
+	assert_eq!(usage.total_tokens, Some(40));
 
 	assert_eq!(
 		extract.stream_end.captured_stop_reason,
 		Some(StopReason::Completed("end_turn".to_string())),
 		"Stop reason should come from message_delta, not pings"
 	);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_yakbak_anthropic_usage_stream() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "usage_stream").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence."),
+		ChatMessage::user("Hello"),
+	]);
+
+	let options = ChatOptions::default().with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::claude-haiku-4-5", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(usage.prompt_tokens, Some(19));
+	assert_eq!(usage.completion_tokens, Some(34));
+	assert_eq!(usage.total_tokens, Some(53));
+
+	let details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Real Anthropic sends cache_creation even when uncached, so details should be Some")?;
+	assert_eq!(details.cache_creation_tokens, Some(0));
+	assert_eq!(details.cached_tokens, Some(0));
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_yakbak_anthropic_usage_cache_stream() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "usage_cache_stream").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence."),
+		ChatMessage::user("Hello"),
+	]);
+
+	let options = ChatOptions::default().with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::claude-haiku-4-5", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(
+		usage.prompt_tokens,
+		Some(4211),
+		"prompt = input + cache_creation + cache_read"
+	);
+	assert_eq!(usage.completion_tokens, Some(5));
+	assert_eq!(usage.total_tokens, Some(4216));
+
+	let details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	assert_eq!(details.cache_creation_tokens, Some(0));
+	assert_eq!(details.cached_tokens, Some(4202));
+
+	let creation_details = details
+		.cache_creation_details
+		.as_ref()
+		.ok_or("message_start breakdown should survive message_delta")?;
+	assert_eq!(creation_details.ephemeral_5m_tokens, Some(0));
+	assert_eq!(creation_details.ephemeral_1h_tokens, Some(0));
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_yakbak_anthropic_usage_cache_creation_stream() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "usage_cache_creation_stream").await?;
+
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::system("Answer in one sentence."),
+		ChatMessage::user("Hello"),
+	]);
+
+	let options = ChatOptions::default().with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::claude-haiku-4-5", chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(
+		usage.prompt_tokens,
+		Some(4211),
+		"prompt = input + cache_creation + cache_read"
+	);
+	assert_eq!(usage.completion_tokens, Some(5));
+	assert_eq!(usage.total_tokens, Some(4216));
+
+	let details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("Should have prompt_tokens_details")?;
+	assert_eq!(details.cache_creation_tokens, Some(4202));
+	assert_eq!(details.cached_tokens, Some(0));
+
+	let creation_details = details
+		.cache_creation_details
+		.as_ref()
+		.ok_or("message_start breakdown should survive message_delta")?;
+	assert_eq!(creation_details.ephemeral_5m_tokens, Some(4202));
+	assert_eq!(creation_details.ephemeral_1h_tokens, Some(0));
 
 	Ok(())
 }
