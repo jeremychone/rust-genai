@@ -49,6 +49,7 @@ pub fn error_type(error: &Error) -> String {
 		// -- Adapter support
 		Error::AdapterNotSupported { .. } => "adapter_not_supported".to_string(),
 		Error::AdapterKindMismatch { .. } => "adapter_kind_mismatch".to_string(),
+		Error::CacheBreakpointNoEligibleContent { .. } => "cache_breakpoint_no_eligible_content".to_string(),
 
 		// -- Internals / externals
 		Error::Internal(_) => "internal".to_string(),

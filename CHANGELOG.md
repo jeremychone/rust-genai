@@ -42,6 +42,7 @@
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:
+  - `-` Fix `otel` feature compilation, by covering the `CacheBreakpointNoEligibleContent` error variant in the `error.type` derivation (broken since v0.7.0-beta.18).
   - `+` Add optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature, off by default, using a pure `tracing` bridge with no extra dependencies.
     - Auto-instruments `exec_chat`, `exec_chat_stream`, and `exec_embed` as `gen_ai.*` spans, including operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`. Prompt and response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent, workflow, and tool spans, plus the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 
