@@ -4,11 +4,13 @@
 
 - `!` API CHANGE - `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls.
 - `!` API CHANGE - `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
+- `!` API CHANGE - `ToolResponse` adds the public `parts: Option<Vec<Binary>>` field for binary tool-result attachments (e.g., screenshots produced by agentic tools). Downstream `ToolResponse` struct literals must add `parts: None`, or preferably migrate to `ToolResponse::new(...)` and the new `ToolResponse::with_parts(...)` / `ToolResponse::append_binary(...)` builders. Image parts serialize natively where the wire supports them (Anthropic `tool_result`, Bedrock Converse `toolResult`, OpenAI Responses `function_call_output`) and ride in a follow-up user message elsewhere (OpenAI Chat Completions-compatible providers, Gemini, Ollama). Non-image parts are skipped with a warning, and text-only tool responses keep their exact previous serialization on every adapter.
 - `+` New Providers:
   - AtlasCloud - default env: `ATLASCLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://api.atlascloud.ai/v1/` (activated on the `atlascloud::` namespace) (PR #259)
   - Qwen Cloud - default env: `QWEN_CLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on the `qwen_cloud::` namespace)
   - Kimi - default env: `KIMI_API_KEY`, Adapter: OpenAI, endpoint: `https://api.moonshot.ai/v1/` (activated on the `kimi::` namespace or `kimi` model prefix, moonshot.ai)
 - Anthropic:
+  - `+` Serialize `ToolResponse.parts` image attachments as base64 `image` blocks inside the `tool_result` content array (after the text block). Text-only tool responses keep the legacy plain-string `content`. Non-image and URL-based parts are skipped with a warning, since Anthropic `tool_result` content only accepts text and image blocks.
   - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
   - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
   - `+` Support the `extra_body` `ChatOptions` field, merging extra request body fields. ([#255](https://github.com/jeremychone/rust-genai/pull/255))
@@ -23,6 +25,8 @@
     - Fable and Mythos omit `thinking`, because it is always on and cannot be explicitly disabled.
     - The Anthropic `-zero` model suffix is canonical, while `-none` remains a backward-compatible alias. Both map to `Zero` and are stripped.
 - OpenAI:
+  - `+` Chat Completions: `ToolResponse.parts` images ride in a follow-up `user` message (`image_url` blocks), batched across a run of consecutive tool messages; the `tool` message keeps its text, or the `"(see attached image)"` placeholder when the result is image-only. Applies to all OpenAI-compatible providers sharing this serializer.
+  - `+` Responses: `ToolResponse.parts` images serialize natively as `input_image` items in the `function_call_output` `output` array (after the `input_text` item). Custom tool-call outputs stay raw strings (with the `"(see attached image)"` / `"(no tool output)"` placeholder rules); their images ride in a follow-up `user` message input item, batched across a run of consecutive tool messages.
   - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
   - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
   - `^` GPT-5.6 and later now use cache opt-in only. Here is how to opt in: (see [PR #260](https://github.com/jeremychone/rust-genai/pull/260))
@@ -36,11 +40,15 @@
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
   - `!` Apply the `ReasoningEffort::None` to `ReasoningEffort::Zero` rename mechanically, while preserving provider-specific keyword mappings.
 - Gemini:
+  - `+` `ToolResponse.parts` images ride in a follow-up `user` turn (`inline_data` / `file_data`) emitted after the merged `functionResponse` turn; the `functionResponse` keeps its text, or the `"(see attached image)"` placeholder when the result is image-only. Also applies to Vertex (Google publisher).
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
   - `!` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
 - Bedrock:
+  - `+` `ToolResponse.parts` images serialize natively as `image` blocks inside the Converse `toolResult` content array (after the text block).
   - `!` Apply the `ReasoningEffort::None` to `ReasoningEffort::Zero` rename mechanically, with behavior unchanged.
+- Ollama:
+  - `+` `ToolResponse.parts` images (base64 only) ride in a follow-up `user` message via the native `images` array; the `tool` message keeps its text, or the `"(see attached image)"` placeholder when the result is image-only.
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:

@@ -60,11 +60,29 @@ pub struct ToolCall {
 ```rust
 pub struct ToolResponse {
     pub call_id: String,
+    pub fn_name: Option<String>,
     pub content: String,
+    pub parts: Option<Vec<Binary>>,
 }
 ```
 
 - `ToolResponse::new(call_id, content)`: Links the execution output back to the original call.
+- `ToolResponse::from_tool_call(&tool_call, content)`: Convenience constructor that also captures `fn_name` (needed by Gemini's `functionResponse.name`).
+- `with_fn_name(name)`: Builder-style method to set the function/tool name.
+- `with_parts(parts)` / `append_binary(binary)`: Builder-style methods to attach binary parts (e.g., screenshots) to the tool result.
+
+Adapter behavior for `parts` (image parts only; non-image parts are skipped with a warning on every adapter, and a `ToolResponse` without `parts` keeps its exact legacy serialization everywhere):
+
+- **Anthropic**: image parts serialize natively as base64 `image` blocks inside the `tool_result` content array, after the text block (text block omitted when the text is empty). URL-based image sources are skipped with a warning (matching user-message image handling).
+- **Bedrock (Converse)**: image parts serialize natively as `image` blocks inside the `toolResult` content array, after the text block. Base64 only (Converse binary handling does not support URLs).
+- **OpenAI Responses**: image parts serialize natively: `function_call_output.output` becomes an array of `input_text` (when text is non-empty) plus `input_image` items (`detail: "auto"`, `image_url` as data URL or plain URL). `custom_tool_call_output` stays a raw string with the same placeholder rules as Chat Completions (`"(see attached image)"` / `"(no tool output)"`); its images are rescued into a follow-up `user` message input item (`input_text` label + `input_image` items), batched across a run of consecutive Tool messages and emitted after the run.
+- **OpenAI Chat Completions** (shared by all OpenAI-compatible providers: Groq, Together, Fireworks, DeepSeek, etc.): the `tool` message stays text-only. When parts are present, its content is the text, or `"(see attached image)"` when the result has images but no text, or `"(no tool output)"` when it has neither. The images then ride in a follow-up `user` message with content `[{type: "text", text: "Attached image(s) from tool result:"}, ...image_url blocks]`. Images from a run of consecutive Tool messages are batched into ONE follow-up user message, emitted before the next non-tool message.
+- **Gemini** (also Vertex/Google): the `functionResponse` content stays text-only with the same placeholder rules as Chat Completions. Images from Tool-role messages ride in a follow-up `user` turn (label text part + `inline_data` for base64 / `file_data` for URLs), batched across the run of Tool messages and emitted after them, so the `functionResponse` turns can still be merged into the single user turn the Gemini FC protocol requires. For a `ToolResponse` embedded in a User-role message, the images are appended inline in that same user turn instead.
+- **Ollama (native)**: the `tool` message stays text-only with the same placeholder rules. Base64 images ride in a follow-up `user` message using the native `images` array (one follow-up per tool message); URL sources are skipped with a warning.
+
+Notes:
+
+- genai has no model-capability catalog, so the fallback is emitted whenever parts exist — attaching parts is the caller's opt-in that the target model accepts image input. No interstitial-assistant compatibility message is inserted, and Gemini is not version-gated for multimodal `functionResponse` nesting (the universal follow-up-user-turn form is used instead).
 
 ### Integration Points
 

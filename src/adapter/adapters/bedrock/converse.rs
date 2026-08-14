@@ -6,7 +6,7 @@
 
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ContentPart, MessageContent,
-	ReasoningEffort, StopReason, Tool, ToolCall, ToolName, Usage,
+	ReasoningEffort, StopReason, Tool, ToolCall, ToolName, ToolResponse, Usage,
 };
 use crate::webc::WebResponse;
 use crate::{Error, ModelIden, Result};
@@ -335,12 +335,7 @@ fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 				}
 			}
 			ContentPart::ToolResponse(tool_response) => {
-				blocks.push(json!({
-					"toolResult": {
-						"toolUseId": tool_response.call_id,
-						"content": [{ "text": tool_response.content }],
-					}
-				}));
+				blocks.push(tool_response_to_converse_block(tool_response));
 			}
 			// Not valid in user role for Converse — skip.
 			ContentPart::ToolCall(_) => {}
@@ -386,15 +381,57 @@ fn tool_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 	let mut blocks = Vec::new();
 	for part in content {
 		if let ContentPart::ToolResponse(tool_response) = part {
-			blocks.push(json!({
-				"toolResult": {
-					"toolUseId": tool_response.call_id,
-					"content": [{ "text": tool_response.content }],
-				}
-			}));
+			blocks.push(tool_response_to_converse_block(tool_response));
 		}
 	}
 	blocks
+}
+
+/// Serialize a `ToolResponse` into a Converse `toolResult` block.
+///
+/// Converse natively supports image blocks inside `toolResult.content`, so image
+/// parts (base64 only) are emitted after the text block. Non-image parts are
+/// skipped with a warning, matching the other adapters' image-only contract.
+fn tool_response_to_converse_block(tool_response: ToolResponse) -> Value {
+	let ToolResponse {
+		call_id,
+		content,
+		parts,
+		..
+	} = tool_response;
+	let parts = parts.unwrap_or_default();
+
+	let mut content_blocks: Vec<Value> = Vec::new();
+	if parts.is_empty() {
+		content_blocks.push(json!({ "text": content }));
+	} else {
+		if !content.is_empty() {
+			content_blocks.push(json!({ "text": content }));
+		}
+		for binary in parts {
+			if !binary.is_image() {
+				warn!(
+					"ToolResponse binary parts only support images for the Bedrock Converse adapter; skipping non-image part '{}'",
+					binary.content_type
+				);
+				continue;
+			}
+			if let Some(block) = binary_to_converse_block(binary) {
+				content_blocks.push(block);
+			}
+		}
+		// If all parts were skipped, fall back to the legacy text block.
+		if content_blocks.is_empty() {
+			content_blocks.push(json!({ "text": content }));
+		}
+	}
+
+	json!({
+		"toolResult": {
+			"toolUseId": call_id,
+			"content": content_blocks,
+		}
+	})
 }
 
 fn binary_to_converse_block(binary: Binary) -> Option<Value> {
@@ -493,3 +530,11 @@ fn tool_to_converse_tool(tool: Tool) -> Result<Value> {
 
 	Ok(json!({ "toolSpec": tool_spec }))
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+#[path = "converse_tests.rs"]
+mod tests;
+
+// endregion: --- Tests

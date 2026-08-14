@@ -1,8 +1,8 @@
 use super::{OpenAIAdapter, ToWebRequestDataOptions};
 use crate::adapter::AdapterKind;
 use crate::chat::{
-	CacheControl, ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest, ContentPart, MessageContent, Tool, ToolCall,
-	ToolChoice,
+	Binary, CacheControl, ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest, ContentPart, MessageContent, Tool,
+	ToolCall, ToolChoice, ToolResponse,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::{ModelIden, ServiceTarget};
@@ -449,6 +449,119 @@ fn test_managed_body_thinking_uses_model_name_derived_effort() -> Result<()> {
 }
 
 // endregion: --- Managed Thinking
+
+/// Tool-result images cannot ride inside a Chat Completions `tool` message: the tool
+/// message keeps its text, and the images from a run of consecutive tool messages are
+/// batched into ONE follow-up `user` message, emitted before the next non-tool message.
+#[test]
+fn test_tool_response_image_parts_batched_into_followup_user_message() -> Result<()> {
+	// -- Setup & Fixtures
+	let tool_response_1 = ToolResponse::new("call_1", "screenshot taken").with_parts([Binary::from_base64(
+		"image/png",
+		"BASE64PNG",
+		None,
+	)]);
+	let tool_response_2 =
+		ToolResponse::new("call_2", "chart built").with_parts([Binary::from_base64("image/jpeg", "BASE64JPEG", None)]);
+	let chat_req = ChatRequest::new(vec![
+		ChatMessage::from(tool_response_1),
+		ChatMessage::from(tool_response_2),
+		ChatMessage::user("continue"),
+	]);
+
+	// -- Exec
+	let web_req = OpenAIAdapter::util_to_web_request_data(
+		target("gpt-4o-mini"),
+		crate::adapter::ServiceType::Chat,
+		chat_req,
+		ChatOptionsSet::default(),
+		None,
+	)?;
+
+	// -- Check
+	let messages = web_req.payload["messages"].as_array().ok_or("messages should be an array")?;
+	assert_eq!(messages.len(), 4, "2 tool + 1 batched image user + 1 user");
+	assert_eq!(
+		messages[0],
+		json!({"role": "tool", "content": "screenshot taken", "tool_call_id": "call_1"})
+	);
+	assert_eq!(
+		messages[1],
+		json!({"role": "tool", "content": "chart built", "tool_call_id": "call_2"})
+	);
+	assert_eq!(
+		messages[2],
+		json!({
+			"role": "user",
+			"content": [
+				{"type": "text", "text": "Attached image(s) from tool result:"},
+				{"type": "image_url", "image_url": {"url": "data:image/png;base64,BASE64PNG"}},
+				{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,BASE64JPEG"}},
+			]
+		}),
+		"images from the run of tool messages must batch into one follow-up user message"
+	);
+	assert_eq!(messages[3], json!({"role": "user", "content": "continue"}));
+
+	Ok(())
+}
+
+/// An image-only tool response (no text) gets the "(see attached image)" placeholder
+/// as the tool message content.
+#[test]
+fn test_tool_response_image_only_uses_placeholder_text() -> Result<()> {
+	// -- Setup & Fixtures
+	let tool_response = ToolResponse::new("call_1", "").with_parts([Binary::from_base64("image/png", "PNG64", None)]);
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+	// -- Exec
+	let web_req = OpenAIAdapter::util_to_web_request_data(
+		target("gpt-4o-mini"),
+		crate::adapter::ServiceType::Chat,
+		chat_req,
+		ChatOptionsSet::default(),
+		None,
+	)?;
+
+	// -- Check
+	assert_eq!(
+		web_req.payload["messages"][0],
+		json!({"role": "tool", "content": "(see attached image)", "tool_call_id": "call_1"})
+	);
+	assert_eq!(
+		web_req.payload["messages"][1]["content"][1]["image_url"]["url"],
+		json!("data:image/png;base64,PNG64")
+	);
+
+	Ok(())
+}
+
+/// Regression guard: a text-only `ToolResponse` must serialize exactly as before,
+/// with no follow-up user message.
+#[test]
+fn test_tool_response_text_only_serializes_as_before() -> Result<()> {
+	// -- Setup & Fixtures
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(ToolResponse::new("call_1", "42"))]);
+
+	// -- Exec
+	let web_req = OpenAIAdapter::util_to_web_request_data(
+		target("gpt-4o-mini"),
+		crate::adapter::ServiceType::Chat,
+		chat_req,
+		ChatOptionsSet::default(),
+		None,
+	)?;
+
+	// -- Check
+	let messages = web_req.payload["messages"].as_array().ok_or("messages should be an array")?;
+	assert_eq!(messages.len(), 1, "no follow-up user message for text-only");
+	assert_eq!(
+		messages[0],
+		json!({"role": "tool", "content": "42", "tool_call_id": "call_1"})
+	);
+
+	Ok(())
+}
 
 // region:    --- Support
 
