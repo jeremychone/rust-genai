@@ -1,6 +1,10 @@
 # Migration Guide: v0.6.x to v0.7.0
 
 
+### `Error::HttpError.headers`
+
+`Error::HttpError` now includes `headers: Box<HeaderMap>` for failed streaming HTTP responses. Existing exhaustive matches and constructors must add `headers` or use `..`; retry metadata such as `retry-after` is now available.
+
 ### `Tool.custom_format`
 
 `Tool` now includes `custom_format: Option<serde_json::Value>` for OpenAI Responses freeform custom tools. Existing `Tool` struct literals must add `custom_format: None`.

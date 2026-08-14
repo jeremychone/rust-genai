@@ -35,6 +35,7 @@ _If I forgot your PR, feel free to submit a PR_
 - [blocksdevpro](https://github.com/blocksdevpro)
   - [#271](https://github.com/jeremychone/rust-genai/pull/271) map Anthropic ping events to `ChatStreamEvent::Heartbeat`
 - [VikashLoomba](https://github.com/VikashLoomba)
+  - [#280](https://github.com/jeremychone/rust-genai/pull/280) feat(webc): expose response headers on streaming HTTP errors
   - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
 - [CristiC0](https://github.com/CristiC0)
   - [#279](https://github.com/jeremychone/rust-genai/pull/279) fix(anthropic): align stream usage capture with new Anthropic API behaviour
