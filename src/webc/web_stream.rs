@@ -90,6 +90,9 @@ impl Stream for WebStream {
 							// For error responses, we need to read the body to get the error message
 							// Store a future that reads the body and returns an error
 							let error_future = async move {
+								// Capture the headers while the response is still in hand
+								// (e.g., `retry-after`, `retry-after-ms`, `x-should-retry` for retry layers)
+								let headers = response.headers().clone();
 								let body = response
 									.text()
 									.await
@@ -98,6 +101,7 @@ impl Stream for WebStream {
 									status,
 									canonical_reason: status.canonical_reason().unwrap_or("Unknown").to_string(),
 									body,
+									headers: Box::new(headers),
 								}))
 							};
 							this.response_future = Some(Box::pin(error_future));
@@ -264,3 +268,11 @@ fn process_buff_string_delimited(
 		candidate_message,
 	})
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+#[path = "web_stream_tests.rs"]
+mod tests;
+
+// endregion: --- Tests

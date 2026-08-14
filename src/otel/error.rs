@@ -98,6 +98,7 @@ mod tests {
 			status: StatusCode::TOO_MANY_REQUESTS,
 			canonical_reason: "Too Many Requests".to_string(),
 			body: String::new(),
+			headers: Box::new(HeaderMap::new()),
 		};
 		assert_eq!(error_type(&error), "429");
 	}
