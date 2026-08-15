@@ -1,4 +1,4 @@
-use crate::chat::{Binary, CustomPart, ToolCall, ToolResponse};
+use crate::chat::{Binary, CustomPart, ThinkingBlock, ToolCall, ToolResponse};
 use crate::{ModelIden, Result};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,10 @@ pub enum ContentPart {
 	/// (e.g., sibling `reasoning_content` field for OpenAI-compatible providers).
 	#[from(ignore)]
 	ReasoningContent(String),
+	/// Anthropic-style signed thinking. Unlike `ReasoningContent`, the optional
+	/// signature is part of the block and must survive an assistant replay.
+	#[from]
+	Thinking(ThinkingBlock),
 
 	#[from]
 	Custom(CustomPart),
@@ -82,6 +86,10 @@ impl ContentPart {
 
 	pub fn from_custom(data: Value, model_iden: Option<ModelIden>) -> Self {
 		ContentPart::Custom(CustomPart { data, model_iden })
+	}
+
+	pub fn from_thinking(thinking: impl Into<String>, signature: Option<String>) -> Self {
+		ContentPart::Thinking(ThinkingBlock::new(thinking, signature))
 	}
 }
 
@@ -195,6 +203,22 @@ impl ContentPart {
 		}
 	}
 
+	pub fn as_thinking(&self) -> Option<&ThinkingBlock> {
+		if let ContentPart::Thinking(thinking) = self {
+			Some(thinking)
+		} else {
+			None
+		}
+	}
+
+	pub fn into_thinking(self) -> Option<ThinkingBlock> {
+		if let ContentPart::Thinking(thinking) = self {
+			Some(thinking)
+		} else {
+			None
+		}
+	}
+
 	/// Borrow the custom part if present.
 	pub fn as_custom(&self) -> Option<&CustomPart> {
 		if let ContentPart::Custom(custom_part) = self {
@@ -218,7 +242,7 @@ impl ContentPart {
 impl ContentPart {
 	/// Returns an approximate in-memory size of this `ContentPart`, in bytes.
 	///
-	/// - For `Text`, `ThoughtSignature`, and `ReasoningContent`: the UTF-8 length of the string.
+	/// - For textual and thinking parts: the UTF-8 length of their owned strings.
 	/// - For `Binary`: delegates to `Binary::size()`.
 	/// - For `ToolCall`: delegates to `ToolCall::size()`.
 	/// - For `ToolResponse`: delegates to `ToolResponse::size()`.
@@ -230,6 +254,9 @@ impl ContentPart {
 			ContentPart::ToolResponse(tool_response) => tool_response.size(),
 			ContentPart::ThoughtSignature(thought) => thought.len(),
 			ContentPart::ReasoningContent(reasoning) => reasoning.len(),
+			ContentPart::Thinking(thinking) => {
+				thinking.thinking.len() + thinking.signature.as_ref().map_or(0, String::len)
+			}
 			ContentPart::Custom(_value) => 0, // TODO: will need to compute this size
 		}
 	}
@@ -299,6 +326,10 @@ impl ContentPart {
 	/// Returns true if this part is reasoning content.
 	pub fn is_reasoning_content(&self) -> bool {
 		matches!(self, ContentPart::ReasoningContent(_))
+	}
+
+	pub fn is_thinking(&self) -> bool {
+		matches!(self, ContentPart::Thinking(_))
 	}
 
 	/// Returns true if this part is custom provider-specific content.

@@ -1,7 +1,7 @@
 use super::OpenAIAdapter;
 use crate::adapter::AdapterKind;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
-use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, assemble_captured_content};
 use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
@@ -194,10 +194,12 @@ impl futures::Stream for OpenAIStreamer {
 						let inter_stream_end = InterStreamEnd {
 							captured_usage,
 							captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
-							captured_text_content: self.captured_data.content.take(),
+							captured_content: assemble_captured_content(
+								self.captured_data.content.take(),
+								captured_tool_calls,
+								None,
+							),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
-							captured_tool_calls,
-							captured_thought_signatures: None,
 							captured_response_id: None,
 						};
 

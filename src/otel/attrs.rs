@@ -123,7 +123,7 @@ fn part_value(part: &ContentPart) -> Option<Value> {
 		ContentPart::ReasoningContent(text) => Some(json!({ "type": "reasoning", "content": text })),
 		// Opaque/internal parts: represented by type only (no content emitted).
 		ContentPart::Binary(_) => Some(json!({ "type": "blob" })),
-		ContentPart::ThoughtSignature(_) | ContentPart::Custom(_) => None,
+		ContentPart::ThoughtSignature(_) | ContentPart::Thinking(_) | ContentPart::Custom(_) => None,
 	}
 }
 

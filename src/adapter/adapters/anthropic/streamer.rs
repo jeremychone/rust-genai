@@ -1,7 +1,9 @@
 use super::parse_cache_creation_details;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, PromptTokensDetails, StopReason, ToolCall, Usage};
+use crate::chat::{
+	ChatOptionsSet, ContentPart, MessageContent, PromptTokensDetails, StopReason, ThinkingBlock, ToolCall, Usage,
+};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -18,13 +20,15 @@ pub struct AnthropicStreamer {
 	done: bool,
 
 	captured_data: StreamerCapturedData,
+	captured_parts: Vec<ContentPart>,
 	in_progress_block: InProgressBlock,
 }
 
 enum InProgressBlock {
-	Text,
+	Idle,
+	Text { content: String },
 	ToolUse { id: String, name: String, input: String },
-	Thinking,
+	Thinking(ThinkingBlock),
 }
 
 impl AnthropicStreamer {
@@ -34,7 +38,8 @@ impl AnthropicStreamer {
 			done: false,
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
-			in_progress_block: InProgressBlock::Text,
+			captured_parts: Vec::new(),
+			in_progress_block: InProgressBlock::Idle,
 		}
 	}
 }
@@ -77,8 +82,17 @@ impl futures::Stream for AnthropicStreamer {
 								})?;
 
 							match data.x_get_str("/content_block/type") {
-								Ok("text") => self.in_progress_block = InProgressBlock::Text,
-								Ok("thinking") => self.in_progress_block = InProgressBlock::Thinking,
+								Ok("text") => {
+									self.in_progress_block = InProgressBlock::Text {
+										content: data.x_take::<String>("/content_block/text").unwrap_or_default(),
+									}
+								}
+								Ok("thinking") => {
+									let thinking = data.x_take::<String>("/content_block/thinking").unwrap_or_default();
+									let signature = data.x_take::<String>("/content_block/signature").ok();
+									self.in_progress_block =
+										InProgressBlock::Thinking(ThinkingBlock::new(thinking, signature));
+								}
 								Ok("tool_use") => {
 									let id: String = data.x_take("/content_block/id")?;
 									let name: String = data.x_take("/content_block/name")?;
@@ -118,18 +132,12 @@ impl futures::Stream for AnthropicStreamer {
 								})?;
 
 							match &mut self.in_progress_block {
-								InProgressBlock::Text => {
-									let content: String = data.x_take("/delta/text")?;
+								InProgressBlock::Idle => continue,
+								InProgressBlock::Text { content } => {
+									let delta: String = data.x_take("/delta/text")?;
+									content.push_str(&delta);
 
-									// Add to the captured_content if chat options say so
-									if self.options.capture_content {
-										match self.captured_data.content {
-											Some(ref mut c) => c.push_str(&content),
-											None => self.captured_data.content = Some(content.clone()),
-										}
-									}
-
-									return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
+									return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(delta))));
 								}
 								InProgressBlock::ToolUse { id, name, input } => {
 									let partial = data.x_get_str("/delta/partial_json")?;
@@ -146,8 +154,9 @@ impl futures::Stream for AnthropicStreamer {
 
 									return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tc))));
 								}
-								InProgressBlock::Thinking => {
+								InProgressBlock::Thinking(block) => {
 									if let Ok(thinking) = data.x_take::<String>("/delta/thinking") {
+										block.thinking.push_str(&thinking);
 										// Add to the captured_thinking if chat options say so
 										if self.options.capture_reasoning_content {
 											match self.captured_data.reasoning_content {
@@ -158,6 +167,10 @@ impl futures::Stream for AnthropicStreamer {
 
 										return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(thinking))));
 									} else if let Ok(signature) = data.x_take::<String>("/delta/signature") {
+										match &mut block.signature {
+											Some(captured) => captured.push_str(&signature),
+											None => block.signature = Some(signature.clone()),
+										}
 										return Poll::Ready(Some(Ok(InterStreamEvent::ThoughtSignatureChunk(
 											signature,
 										))));
@@ -172,7 +185,13 @@ impl futures::Stream for AnthropicStreamer {
 							}
 						}
 						"content_block_stop" => {
-							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text) {
+							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Idle) {
+								InProgressBlock::Text { content } if self.options.capture_content => {
+									self.captured_parts.push(ContentPart::Text(content));
+								}
+								InProgressBlock::Thinking(block) if self.options.capture_reasoning_content => {
+									self.captured_parts.push(ContentPart::Thinking(block));
+								}
 								InProgressBlock::ToolUse { id, name, input } if self.options.capture_tool_calls => {
 									// ToolCallChunks were already emitted incrementally
 									// during content_block_start and content_block_delta.
@@ -196,10 +215,7 @@ impl futures::Stream for AnthropicStreamer {
 										thought_signatures: None,
 									};
 
-									match self.captured_data.tool_calls {
-										Some(ref mut t) => t.push(tc),
-										None => self.captured_data.tool_calls = Some(vec![tc]),
-									}
+									self.captured_parts.push(ContentPart::ToolCall(tc));
 								}
 								_ => {
 									// no-op for remaining block types
@@ -233,10 +249,9 @@ impl futures::Stream for AnthropicStreamer {
 							let inter_stream_end = InterStreamEnd {
 								captured_usage,
 								captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
-								captured_text_content: self.captured_data.content.take(),
+								captured_content: (!self.captured_parts.is_empty())
+									.then(|| MessageContent::from_parts(std::mem::take(&mut self.captured_parts))),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
-								captured_tool_calls: self.captured_data.tool_calls.take(),
-								captured_thought_signatures: None,
 								captured_response_id: None,
 							};
 

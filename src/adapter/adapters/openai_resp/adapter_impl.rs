@@ -521,6 +521,7 @@ impl OpenAIRespAdapter {
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
 								ContentPart::ReasoningContent(_) => (),
+								ContentPart::Thinking(_) => (),
 								// Custom are ignored for this logic
 								ContentPart::Custom(_) => {}
 							}
@@ -619,6 +620,7 @@ impl OpenAIRespAdapter {
 							// top-level `type:reasoning` items in the pre-pass above.
 							ContentPart::ThoughtSignature(_) => {}
 							ContentPart::ReasoningContent(_) => {}
+							ContentPart::Thinking(_) => {}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}

@@ -7,7 +7,7 @@ use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
 	ChatResponseFormat, ChatRole, ContentPart, JsonSchemaDialect, MessageContent, PromptTokensDetails, ReasoningEffort,
-	StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, Usage, sanitize_json_schema,
+	StopReason, ThinkingBlock, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, Usage, sanitize_json_schema,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
@@ -235,6 +235,7 @@ impl AnthropicAdapter {
 								}
 								ContentPart::ThoughtSignature(_) => {}
 								ContentPart::ReasoningContent(_) => {}
+								ContentPart::Thinking(_) => {}
 								ContentPart::Custom(custom_part) => values.push(custom_part.data),
 							}
 						}
@@ -272,6 +273,16 @@ impl AnthropicAdapter {
 									"name": tool_call.fn_name,
 									"input": input,
 								}));
+							}
+							ContentPart::Thinking(block) => {
+								let mut value = json!({
+									"type": "thinking",
+									"thinking": block.thinking,
+								});
+								if let Some(signature) = block.signature {
+									value.x_insert("signature", signature)?;
+								}
+								values.push(value);
 							}
 							// Unsupported for assistant role in Anthropic message content
 							ContentPart::Binary(_) => {}
@@ -311,6 +322,7 @@ impl AnthropicAdapter {
 								}));
 							}
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
+							ContentPart::Thinking(_) => {}
 							_ => {}
 						}
 					}
@@ -556,7 +568,12 @@ impl AnthropicAdapter {
 					let part = ContentPart::from_text(item.x_take::<String>("text")?);
 					content.push(part);
 				}
-				"thinking" => reasoning_content.push(item.x_take("thinking")?),
+				"thinking" => {
+					let thinking: String = item.x_take("thinking")?;
+					let signature = item.x_take::<String>("signature").ok();
+					reasoning_content.push(thinking.clone());
+					content.push(ContentPart::Thinking(ThinkingBlock::new(thinking, signature)));
+				}
 				"tool_use" => {
 					let call_id = item.x_take::<String>("id")?;
 					let fn_name = item.x_take::<String>("name")?;

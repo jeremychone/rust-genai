@@ -648,6 +648,7 @@ impl GeminiAdapter {
 							}
 
 							ContentPart::ReasoningContent(_) => {}
+							ContentPart::Thinking(_) => {}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}
@@ -718,6 +719,7 @@ impl GeminiAdapter {
 								}
 							}
 							ContentPart::ReasoningContent(_) => {}
+							ContentPart::Thinking(_) => {}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}
