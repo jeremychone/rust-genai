@@ -26,6 +26,7 @@ pub struct ChatOptions {
 	pub top_p: Option<f64>,
 
 	/// Sequences that halt generation when encountered.
+	#[serde(default)]
 	pub stop_sequences: Vec<String>,
 
 	// -- Stream Options
@@ -759,6 +760,38 @@ mod tests {
 		// -- Check
 		assert!(matches!(effort, Some(ReasoningEffort::Zero)));
 		assert_eq!(trimmed, "some-model");
+		Ok(())
+	}
+
+	// -- Deserialization surface tests
+
+	#[test]
+	fn test_chat_options_deser_partial_without_stop_sequences() -> Result<()> {
+		// -- Setup & Fixtures
+		let json = serde_json::json!({"temperature": 0.4});
+
+		// -- Exec
+		let options: ChatOptions = serde_json::from_value(json)?;
+
+		// -- Check
+		assert_eq!(options.temperature, Some(0.4));
+		assert!(options.stop_sequences.is_empty());
+		assert_eq!(options.max_tokens, None);
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_chat_options_deser_empty_object() -> Result<()> {
+		// -- Setup & Fixtures
+		let json = serde_json::json!({});
+
+		// -- Exec
+		let options: ChatOptions = serde_json::from_value(json)?;
+
+		// -- Check
+		assert!(options.stop_sequences.is_empty());
+
 		Ok(())
 	}
 }
