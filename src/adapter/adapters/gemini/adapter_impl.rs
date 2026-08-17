@@ -520,6 +520,16 @@ impl GeminiAdapter {
 		//       ```
 		//       So, in short same as Open asi
 		let g_cached_tokens: Option<i32> = usage_value.x_take("cachedContentTokenCount").ok();
+
+        // When using urlContext or search, Gemini sticks those token counts into
+        // a separate field called toolUsePromptTokenCount. We are just adding that to the input prompt
+		let g_tool_use_tokens: Option<i32> = usage_value.x_take("toolUsePromptTokenCount").ok();
+		let prompt_tokens = match (prompt_tokens, g_tool_use_tokens) {
+			(Some(prompt), Some(tool_use)) => Some(prompt + tool_use),
+			(None, Some(tool_use)) => Some(tool_use),
+			(prompt, None) => prompt,
+		};
+
 		let prompt_tokens_details = g_cached_tokens.map(|g_cached_tokens| PromptTokensDetails {
 			cache_creation_tokens: None,
 			cache_creation_details: None,
@@ -963,6 +973,86 @@ fn infer_gemini_synthetic_call_fn_name(call_id: &str) -> Option<String> {
 mod tests {
 	use super::*;
 	use crate::chat::{ChatMessage, ChatOptions, JsonSpec};
+
+	// region:    --- usageMetadata normalization
+
+	/// `toolUsePromptTokenCount` sits OUTSIDE `promptTokenCount`: the page content
+	/// `urlContext` retrieves is real, billable input that Gemini reports on its own.
+	/// The numbers are verbatim from a live v1beta `gemini-3.7-flash` call, because the
+	/// arithmetic between them is the claim — 68 + 50 + 112 + 5858 = 6088, the reported
+	/// total, which only closes once the tool-use tokens are counted.
+	#[test]
+	fn tool_use_prompt_tokens_are_folded_into_prompt_tokens() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"promptTokenCount": 68,
+			"candidatesTokenCount": 50,
+			"thoughtsTokenCount": 112,
+			"toolUsePromptTokenCount": 5858,
+			"totalTokenCount": 6088
+		}));
+
+		assert_eq!(usage.prompt_tokens, Some(68 + 5858));
+		assert_eq!(usage.completion_tokens, Some(50 + 112));
+		assert_eq!(usage.total_tokens, Some(6088));
+
+		// The invariant this fix restores: the normalized halves reconcile with the
+		// provider's own total. Without the fold, prompt + completion is 5858 short.
+		assert_eq!(
+			usage.prompt_tokens.unwrap() + usage.completion_tokens.unwrap(),
+			usage.total_tokens.unwrap()
+		);
+	}
+
+	/// A call that used no server-side tool must be untouched — `prompt_tokens` left
+	/// exactly as reported and no details object conjured for it.
+	#[test]
+	fn usage_without_tool_use_is_unchanged() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"promptTokenCount": 10,
+			"candidatesTokenCount": 4,
+			"totalTokenCount": 14
+		}));
+
+		assert_eq!(usage.prompt_tokens, Some(10));
+		assert_eq!(usage.completion_tokens, Some(4));
+		assert_eq!(usage.prompt_tokens_details, None);
+	}
+
+	/// Cached and tool-use tokens are counted differently and must not be conflated:
+	/// `cachedContentTokenCount` is already INSIDE `promptTokenCount` (so it is only
+	/// reported in the details), while `toolUsePromptTokenCount` is outside it (so it
+	/// is added). Adding both, or neither, is the easy mistake here.
+	#[test]
+	fn cached_tokens_are_not_added_but_tool_use_tokens_are() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"promptTokenCount": 100,
+			"cachedContentTokenCount": 80,
+			"candidatesTokenCount": 10,
+			"toolUsePromptTokenCount": 500,
+			"totalTokenCount": 610
+		}));
+
+		assert_eq!(usage.prompt_tokens, Some(600), "only tool-use is added, not cached");
+		assert_eq!(
+			usage.prompt_tokens_details.and_then(|d| d.cached_tokens),
+			Some(80),
+			"cached tokens still reported as a subset"
+		);
+	}
+
+	/// Tool-use tokens with no `promptTokenCount` at all still have to count — dropping
+	/// them would report a call with thousands of billable input tokens as having none.
+	#[test]
+	fn tool_use_tokens_alone_become_the_prompt_count() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"candidatesTokenCount": 10,
+			"toolUsePromptTokenCount": 500,
+			"totalTokenCount": 510
+		}));
+		assert_eq!(usage.prompt_tokens, Some(500));
+	}
+
+	// endregion: --- usageMetadata normalization
 
 	#[test]
 	fn merge_consecutive_tool_responses() {

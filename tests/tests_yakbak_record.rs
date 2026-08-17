@@ -246,6 +246,7 @@ fn gemini_backend() -> String {
 
 const GEMINI_MODEL: &str = "gemini-2.5-flash";
 const GEMINI_TOOL_MODEL: &str = "gemini-3.1-pro-preview";
+const GEMINI_URL_CONTEXT_MODEL: &str = "gemini-3.7-flash";
 
 #[tokio::test]
 #[ignore]
@@ -316,6 +317,29 @@ async fn record_gemini_tool_stream() -> TestResult<()> {
 		"[record] Reasoning len: {:?}",
 		extract.reasoning_content.as_deref().map(|s| s.len())
 	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_url_context_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini", "url_context_stream", &gemini_backend()).await?;
+
+	let chat_req = ChatRequest::from_user(
+		"Read https://blog.rust-lang.org/ and tell me the title of the most recent post. One sentence.",
+	)
+	.append_tool(Tool::new("urlContext").with_config(json!({})));
+
+	let options = ChatOptions::default().with_capture_content(true).with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream(GEMINI_URL_CONTEXT_MODEL, chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	eprintln!("[record] usage: {:?}", extract.stream_end.captured_usage);
 
 	server.shutdown().await;
 	Ok(())

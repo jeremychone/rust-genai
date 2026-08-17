@@ -49,6 +49,35 @@ async fn test_yakbak_gemini_thinking_stream() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_yakbak_gemini_url_context_stream() -> TestResult<()> {
+	let (client, _server) = replay_client("gemini", "url_context_stream").await?;
+
+	let chat_req = ChatRequest::from_user(
+		"Read https://blog.rust-lang.org/ and tell me the title of the most recent post. One sentence.",
+	)
+	.append_tool(Tool::new("urlContext").with_config(json!({})));
+
+	let options = ChatOptions::default().with_capture_content(true).with_capture_usage(true);
+
+	let stream_res = client.exec_chat_stream("gemini-3.7-flash", chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+
+	assert_eq!(usage.prompt_tokens, Some(5914), "tool-use tokens must count as input");
+	assert_eq!(usage.completion_tokens, Some(209), "thoughts and output tokens");
+	assert_eq!(usage.total_tokens, Some(6123));
+
+	assert_eq!(
+		usage.prompt_tokens.unwrap() + usage.completion_tokens.unwrap(),
+		usage.total_tokens.unwrap(),
+		"prompt + completion must reconcile with the reported total"
+	);
+
+	Ok(())
+}
+
+#[tokio::test]
 async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 	let (client, _server) = replay_client("gemini", "tool_stream").await?;
 
