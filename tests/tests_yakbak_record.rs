@@ -345,6 +345,47 @@ async fn record_gemini_url_context_stream() -> TestResult<()> {
 	Ok(())
 }
 
+#[tokio::test]
+#[ignore]
+async fn record_gemini_builtin_with_functions() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini", "builtin_with_functions", &gemini_backend()).await?;
+
+	let chat_req = ChatRequest::from_user("Use the get_weather tool to get the current weather in Cairo, in Celsius.")
+		.append_tool(Tool::new_web_search().with_config(WebSearchConfig::default()))
+		.append_tool(Tool::new("urlContext").with_config(json!({})))
+		.append_tool(
+			Tool::new("get_weather")
+				.with_description("Get the current weather for a city")
+				.with_schema(json!({
+					"type": "object",
+					"properties": {
+						"city": { "type": "string" },
+						"unit": { "type": "string", "enum": ["C", "F"] }
+					},
+					"required": ["city", "unit"],
+				})),
+		);
+
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream(GEMINI_URL_CONTEXT_MODEL, chat_req, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	eprintln!(
+		"[record] tool calls: {:?}",
+		extract.stream_end.captured_tool_calls().map(|tc| tc.len())
+	);
+	eprintln!("[record] usage: {:?}", extract.stream_end.captured_usage);
+
+	server.shutdown().await;
+	Ok(())
+}
+
 fn github_copilot_backend() -> String {
 	std::env::var("GITHUB_COPILOT_BASE_URL").unwrap_or_else(|_| "https://models.github.ai/inference/".to_string())
 }
