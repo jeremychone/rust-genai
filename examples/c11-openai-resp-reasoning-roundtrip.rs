@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let client = Client::builder()
 		.with_adapter_kind(AdapterKind::OpenAIResp)
 		.with_auth_resolver(auth_resolver)
-		.build();
+		.build()?;
 
 	let options = ChatOptions::default()
 		.with_capture_content(true)

@@ -1,5 +1,5 @@
 use crate::webc::WebClient;
-use crate::{ClientBuilder, ClientConfig};
+use crate::{ClientBuilder, ClientConfig, Result};
 use std::sync::Arc;
 
 /// Client for sending AI requests to supported providers.
@@ -15,21 +15,16 @@ pub struct Client {
 
 // region:    --- Client Constructors
 
-impl Default for Client {
-	/// Creates a [`Client`] with default configuration.
-	///
-	/// Equivalent to `Client::builder().build()`.
-	fn default() -> Self {
-		Client::builder().build()
-	}
-}
-
 impl Client {
 	/// Returns a builder for configuring and constructing a [`Client`].
 	///
 	/// Equivalent to calling [`ClientBuilder::default()`].
 	pub fn builder() -> ClientBuilder {
 		ClientBuilder::default()
+	}
+
+	pub fn new() -> Result<Client> {
+		Client::builder().build()
 	}
 }
 

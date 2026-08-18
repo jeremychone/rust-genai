@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	);
 
 	// -- Build the new client with this adapter_config
-	let client = Client::builder().with_service_target_resolver(target_resolver).build();
+	let client = Client::builder().with_service_target_resolver(target_resolver).build()?;
 
 	// -- Normalize the eventual reasoning content (fireworks use the <think></think> style)
 	let chat_options = ChatOptions::default().with_normalize_reasoning_content(true);

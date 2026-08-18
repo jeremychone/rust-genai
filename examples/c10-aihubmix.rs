@@ -13,7 +13,7 @@ const MODEL: &str = "aihubmix::gpt-4o-mini";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	let client = Client::default();
+	let client = Client::new()?;
 
 	let chat_req = ChatRequest::default()
 		.with_system("You are a helpful assistant.")

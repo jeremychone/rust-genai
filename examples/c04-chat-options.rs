@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		ClientConfig::default().with_chat_options(ChatOptions::default().with_temperature(0.0).with_top_p(0.99));
 
 	// -- Build the new client with this client_config
-	let client = Client::builder().with_config(client_config).build();
+	let client = Client::builder().with_config(client_config).build()?;
 
 	// -- Build the chat request
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);

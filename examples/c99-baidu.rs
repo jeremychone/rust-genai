@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	tracing_subscriber::fmt::init();
 
 	// Create a client with default configuration
-	let client = Client::default();
+	let client = Client::new()?;
 
 	// Example 1: Using glm models (chat)
 	println!("=== Example 1: Using glm-5 ===");

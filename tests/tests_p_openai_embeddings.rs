@@ -45,7 +45,7 @@ async fn test_embed_batch_empty_should_fail() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_embed_request_single_ok() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let embed_req = EmbedRequest::from_text("Direct EmbedRequest test");
 
 	let response = client.exec_embed(MODEL, embed_req, None).await?;
@@ -61,7 +61,7 @@ async fn test_embed_request_single_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_embed_request_batch_ok() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let embed_req = EmbedRequest::from_texts(vec![
 		"Batch request text 1".to_string(),
 		"Batch request text 2".to_string(),
@@ -85,7 +85,7 @@ async fn test_embed_request_batch_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_embed_different_models_ok() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let text = "Compare embedding models";
 
 	// Test small model
@@ -110,7 +110,7 @@ async fn test_embed_different_models_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_embed_invalid_model_should_fail() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let text = "Test with invalid model";
 
 	let result = client.embed("invalid-embedding-model", text, None).await;
@@ -125,7 +125,7 @@ async fn test_embed_invalid_model_should_fail() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_embed_empty_text_should_work() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let text = "";
 
 	// Empty text should still work (though may have minimal dimensions)
@@ -146,7 +146,7 @@ async fn test_embed_empty_text_should_work() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_embed_response_methods_ok() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let texts = vec!["First".to_string(), "Second".to_string()];
 
 	let response = client.embed_batch(MODEL, texts, None).await?;
@@ -180,7 +180,7 @@ async fn test_embed_response_methods_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_embed_with_openai_specific_options_ok() -> TestResult<()> {
 	// OpenAI supports encoding_format and user parameters
-	let client = Client::default();
+	let client = Client::new()?;
 	let text = "Test with OpenAI-specific options";
 
 	let options = EmbedOptions::new()

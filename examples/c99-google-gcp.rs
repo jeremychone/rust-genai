@@ -63,7 +63,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 	let auth_resolver = AuthResolver::from_resolver_async_fn(resolve_fn);
 
 	// -- Create Chat Client
-	let client = Client::builder().with_auth_resolver(auth_resolver).build();
+	let client = Client::builder().with_auth_resolver(auth_resolver).build()?;
 
 	// -- Example 1: Gemini on Vertex AI
 	println!("--- Gemini on Vertex AI ---");

@@ -133,7 +133,7 @@ async fn test_tool_deterministic_history_gemini_3_ok() -> TestResult<()> {
 	use genai::chat::{ChatMessage, ChatRequest, Tool, ToolCall, ToolResponse};
 	use serde_json::json;
 
-	let client = genai::Client::default();
+	let client = genai::Client::new()?;
 
 	let weather_tool = Tool::new("get_weather").with_schema(json!({
 		"type": "object",
@@ -180,7 +180,7 @@ async fn test_tool_google_web_search_ok() -> TestResult<()> {
 	use serde_json::json;
 
 	// -- Fixtures & Setup
-	let client = genai::Client::default();
+	let client = genai::Client::new()?;
 	let web_search_tool = Tool::new("googleSearch").with_config(json!({}));
 	let chat_req =
 		ChatRequest::from_user("What is the latest version of Rust? (be concise)").append_tool(web_search_tool);

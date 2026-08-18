@@ -18,7 +18,9 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
 	// -- Chat Input
 	#[display("Chat Request has no messages. (for model {model_iden}")]
-	ChatReqHasNoMessages { model_iden: ModelIden },
+	ChatReqHasNoMessages {
+		model_iden: ModelIden,
+	},
 
 	#[display("Last chat request message is not of Role 'user' (Actual role '{actual_role}') for model '{model_iden}'")]
 	LastChatMessageIsNotUser {
@@ -27,42 +29,66 @@ pub enum Error {
 	},
 
 	#[display("Role '{role}' not supported for model '{model_iden}'")]
-	MessageRoleNotSupported { model_iden: ModelIden, role: ChatRole },
+	MessageRoleNotSupported {
+		model_iden: ModelIden,
+		role: ChatRole,
+	},
 
 	#[display("Content type not supported for model '{model_iden}'.\nCause: {cause}")]
-	MessageContentTypeNotSupported { model_iden: ModelIden, cause: &'static str },
+	MessageContentTypeNotSupported {
+		model_iden: ModelIden,
+		cause: &'static str,
+	},
 
 	#[display("JSON mode requested but no instruction/prompt provided.")]
 	JsonModeWithoutInstruction,
 
 	#[display("Failed to parse verbosity. Actual: '{actual}'")]
-	VerbosityParsing { actual: String },
+	VerbosityParsing {
+		actual: String,
+	},
 
 	#[display("Failed to parse reasoning. Actual: '{actual}'")]
-	ReasoningParsingError { actual: String },
+	ReasoningParsingError {
+		actual: String,
+	},
 
 	#[display("Failed to parse service tier. Actual: '{actual}'")]
-	ServiceTierParsing { actual: String },
+	ServiceTierParsing {
+		actual: String,
+	},
 
 	#[display("Failed to parse prompt cache retention. Actual: '{actual}'")]
-	PromptCacheRetentionParsing { actual: String },
+	PromptCacheRetentionParsing {
+		actual: String,
+	},
 
 	// -- Chat Output
 	#[display("No chat response from model '{model_iden}'")]
-	NoChatResponse { model_iden: ModelIden },
+	NoChatResponse {
+		model_iden: ModelIden,
+	},
 
 	#[display("Invalid JSON response element: {info}")]
-	InvalidJsonResponseElement { info: &'static str },
+	InvalidJsonResponseElement {
+		info: &'static str,
+	},
 
 	// -- Auth
 	#[display("Model '{model_iden}' requires an API key.")]
-	RequiresApiKey { model_iden: ModelIden },
+	RequiresApiKey {
+		model_iden: ModelIden,
+	},
 
 	#[display("No authentication resolver found for model '{model_iden}'.")]
-	NoAuthResolver { model_iden: ModelIden },
+	NoAuthResolver {
+		model_iden: ModelIden,
+	},
 
 	#[display("No authentication data available for model '{model_iden}'.")]
-	NoAuthData { model_iden: ModelIden },
+	NoAuthData {
+		model_iden: ModelIden,
+	},
 
 	// -- ModelMapper
 	#[display("Model mapping failed for '{model_iden}'.\nCause: {cause}")]
@@ -138,10 +164,16 @@ Cause:\n{cause}
 
 	// -- Adapter Support
 	#[display("Adapter '{adapter_kind}' does not support feature '{feature}'")]
-	AdapterNotSupported { adapter_kind: AdapterKind, feature: String },
+	AdapterNotSupported {
+		adapter_kind: AdapterKind,
+		feature: String,
+	},
 
 	#[display("Cache breakpoint requested for model '{model_iden}', but {scope} has no eligible OpenAI content block.")]
-	CacheBreakpointNoEligibleContent { model_iden: ModelIden, scope: &'static str },
+	CacheBreakpointNoEligibleContent {
+		model_iden: ModelIden,
+		scope: &'static str,
+	},
 
 	#[display(
 		"Client is bound to adapter '{bound}' but model '{model}' resolved to adapter '{requested}'. \
@@ -159,6 +191,11 @@ Drop the `::` namespace prefix or `ModelSpec::Iden`, or build a Client without \
 
 	#[display("Internal error: {_0}")]
 	Internal(String),
+
+	// -- Client Error
+	ClientBuildFail {
+		cause: String,
+	},
 
 	// -- Externals
 	#[display("JSON value extension error: {_0}")]
