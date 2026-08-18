@@ -49,6 +49,84 @@ async fn test_yakbak_gemini_thinking_stream() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_yakbak_gemini_url_context_stream() -> TestResult<()> {
+	let (client, _server) = replay_client("gemini", "url_context_stream").await?;
+
+	let chat_req = ChatRequest::from_user(
+		"Read https://blog.rust-lang.org/ and tell me the title of the most recent post. One sentence.",
+	)
+	.append_tool(Tool::new("urlContext").with_config(json!({})));
+
+	let options = ChatOptions::default().with_capture_content(true).with_capture_usage(true);
+
+	let stream_res = client.exec_chat_stream("gemini-3.7-flash", chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+
+	assert_eq!(usage.prompt_tokens, Some(5914), "tool-use tokens must count as input");
+	assert_eq!(usage.completion_tokens, Some(209), "thoughts and output tokens");
+	assert_eq!(usage.total_tokens, Some(6123));
+
+	assert_eq!(
+		usage.prompt_tokens.unwrap() + usage.completion_tokens.unwrap(),
+		usage.total_tokens.unwrap(),
+		"prompt + completion must reconcile with the reported total"
+	);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_yakbak_gemini_builtin_with_functions() -> TestResult<()> {
+	let (client, _server) = replay_client("gemini", "builtin_with_functions").await?;
+
+	let chat_req = ChatRequest::from_user("Use the get_weather tool to get the current weather in Cairo, in Celsius.")
+		.append_tool(Tool::new_web_search().with_config(WebSearchConfig::default()))
+		.append_tool(Tool::new("urlContext").with_config(json!({})))
+		.append_tool(
+			Tool::new("get_weather")
+				.with_description("Get the current weather for a city")
+				.with_schema(json!({
+					"type": "object",
+					"properties": {
+						"city": { "type": "string" },
+						"unit": { "type": "string", "enum": ["C", "F"] }
+					},
+					"required": ["city", "unit"],
+				})),
+		);
+
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	let stream_res = client.exec_chat_stream("gemini-3.7-flash", chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	// The client-side function still gets called normally with the builtins attached.
+	let tool_calls = extract
+		.stream_end
+		.captured_tool_calls()
+		.ok_or("Should have captured a tool call")?;
+	assert_eq!(tool_calls.len(), 1);
+	assert_eq!(tool_calls[0].fn_name, "get_weather");
+	let args = tool_calls[0]
+		.fn_arguments
+		.as_object()
+		.ok_or("fn_arguments should be an object")?;
+	assert_eq!(args.get("city").and_then(|v| v.as_str()), Some("Cairo"));
+
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
+	assert_eq!(usage.prompt_tokens, Some(90));
+	assert_eq!(usage.completion_tokens, Some(98), "22 visible + 76 thoughts");
+	assert_eq!(usage.total_tokens, Some(188));
+
+	Ok(())
+}
+
+#[tokio::test]
 async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 	let (client, _server) = replay_client("gemini", "tool_stream").await?;
 

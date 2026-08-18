@@ -39,6 +39,20 @@ fn insert_gemini_thinking_budget_value(payload: &mut Value, effort: &ReasoningEf
 	Ok(())
 }
 
+const GEMINI_BUILTIN_TOOL_NAMES: &[&str] = &["googleSearch", "googleSearchRetrieval", "codeExecution", "urlContext"];
+
+// The flag tool_config.include_server_side_tool_invocations is required for
+// the Gemini API and ignored by the vertex endpoint
+fn needs_server_side_tool_invocations(tools: &[Value]) -> bool {
+	let has_builtin = tools.iter().any(|tool| {
+		tool.as_object()
+			.is_some_and(|obj| obj.keys().any(|key| GEMINI_BUILTIN_TOOL_NAMES.contains(&key.as_str())))
+	});
+	let has_functions = tools.iter().any(|tool| tool.get("functionDeclarations").is_some());
+
+	has_builtin && has_functions
+}
+
 fn gemini_tool_config(tool_choice: Option<&ToolChoice>) -> Option<Value> {
 	let tool_choice = tool_choice?;
 	let mut config = json!({
@@ -462,11 +476,22 @@ impl GeminiAdapter {
 			payload.x_insert("systemInstruction", json!({ "parts": [{ "text": system }] }))?;
 		}
 
-		// -- Tools (before contents/messages)
+		// `include_server_side_tool_invocations` is set automatically when the request mixes
+		// a builtin (googleSearch, urlContext, codeExecution, ...) with function declarations.
+		// See https://ai.google.dev/gemini-api/docs/generate-content/tool-combination
+		let server_side_invocations = tools.as_deref().is_some_and(needs_server_side_tool_invocations);
 		if let Some(tools) = tools {
 			payload.x_insert("tools", tools)?;
 		}
-		if let Some(tool_config) = gemini_tool_config(options_set.tool_choice()) {
+
+		let tool_config = gemini_tool_config(options_set.tool_choice());
+		if tool_config.is_some() || server_side_invocations {
+			// Merged rather than overwritten: `tool_choice` may already have put a
+			// `functionCallingConfig` here, and both belong under the same `toolConfig`.
+			let mut tool_config = tool_config.unwrap_or_else(|| json!({}));
+			if server_side_invocations {
+				tool_config.x_insert("includeServerSideToolInvocations", true)?;
+			}
 			payload.x_insert("toolConfig", tool_config)?;
 		}
 
@@ -520,6 +545,16 @@ impl GeminiAdapter {
 		//       ```
 		//       So, in short same as Open asi
 		let g_cached_tokens: Option<i32> = usage_value.x_take("cachedContentTokenCount").ok();
+
+		// When using urlContext or search, Gemini sticks those token counts into
+		// a separate field called toolUsePromptTokenCount. We are just adding that to the input prompt
+		let g_tool_use_tokens: Option<i32> = usage_value.x_take("toolUsePromptTokenCount").ok();
+		let prompt_tokens = match (prompt_tokens, g_tool_use_tokens) {
+			(Some(prompt), Some(tool_use)) => Some(prompt + tool_use),
+			(None, Some(tool_use)) => Some(tool_use),
+			(prompt, None) => prompt,
+		};
+
 		let prompt_tokens_details = g_cached_tokens.map(|g_cached_tokens| PromptTokensDetails {
 			cache_creation_tokens: None,
 			cache_creation_details: None,
@@ -827,10 +862,7 @@ impl GeminiAdapter {
 		};
 
 		// -- if it is a builtin tool
-		if matches!(
-			name_str,
-			"googleSearch" | "googleSearchRetrieval" | "codeExecution" | "urlContext"
-		) {
+		if GEMINI_BUILTIN_TOOL_NAMES.contains(&name_str) {
 			let config = match config {
 				// GoogleSearch does not take any config for now
 				Some(ToolConfig::WebSearch(_config)) => Some(json!({})),
@@ -962,7 +994,87 @@ fn infer_gemini_synthetic_call_fn_name(call_id: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::chat::{ChatMessage, ChatOptions, JsonSpec};
+	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, WebSearchConfig};
+
+	// region:    --- usageMetadata normalization
+
+	/// `toolUsePromptTokenCount` sits OUTSIDE `promptTokenCount`: the page content
+	/// `urlContext` retrieves is real, billable input that Gemini reports on its own.
+	/// The numbers are verbatim from a live v1beta `gemini-3.7-flash` call, because the
+	/// arithmetic between them is the claim — 68 + 50 + 112 + 5858 = 6088, the reported
+	/// total, which only closes once the tool-use tokens are counted.
+	#[test]
+	fn tool_use_prompt_tokens_are_folded_into_prompt_tokens() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"promptTokenCount": 68,
+			"candidatesTokenCount": 50,
+			"thoughtsTokenCount": 112,
+			"toolUsePromptTokenCount": 5858,
+			"totalTokenCount": 6088
+		}));
+
+		assert_eq!(usage.prompt_tokens, Some(68 + 5858));
+		assert_eq!(usage.completion_tokens, Some(50 + 112));
+		assert_eq!(usage.total_tokens, Some(6088));
+
+		// The invariant this fix restores: the normalized halves reconcile with the
+		// provider's own total. Without the fold, prompt + completion is 5858 short.
+		assert_eq!(
+			usage.prompt_tokens.unwrap() + usage.completion_tokens.unwrap(),
+			usage.total_tokens.unwrap()
+		);
+	}
+
+	/// A call that used no server-side tool must be untouched — `prompt_tokens` left
+	/// exactly as reported and no details object conjured for it.
+	#[test]
+	fn usage_without_tool_use_is_unchanged() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"promptTokenCount": 10,
+			"candidatesTokenCount": 4,
+			"totalTokenCount": 14
+		}));
+
+		assert_eq!(usage.prompt_tokens, Some(10));
+		assert_eq!(usage.completion_tokens, Some(4));
+		assert_eq!(usage.prompt_tokens_details, None);
+	}
+
+	/// Cached and tool-use tokens are counted differently and must not be conflated:
+	/// `cachedContentTokenCount` is already INSIDE `promptTokenCount` (so it is only
+	/// reported in the details), while `toolUsePromptTokenCount` is outside it (so it
+	/// is added). Adding both, or neither, is the easy mistake here.
+	#[test]
+	fn cached_tokens_are_not_added_but_tool_use_tokens_are() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"promptTokenCount": 100,
+			"cachedContentTokenCount": 80,
+			"candidatesTokenCount": 10,
+			"toolUsePromptTokenCount": 500,
+			"totalTokenCount": 610
+		}));
+
+		assert_eq!(usage.prompt_tokens, Some(600), "only tool-use is added, not cached");
+		assert_eq!(
+			usage.prompt_tokens_details.and_then(|d| d.cached_tokens),
+			Some(80),
+			"cached tokens still reported as a subset"
+		);
+	}
+
+	/// Tool-use tokens with no `promptTokenCount` at all still have to count — dropping
+	/// them would report a call with thousands of billable input tokens as having none.
+	#[test]
+	fn tool_use_tokens_alone_become_the_prompt_count() {
+		let usage = GeminiAdapter::into_usage(json!({
+			"candidatesTokenCount": 10,
+			"toolUsePromptTokenCount": 500,
+			"totalTokenCount": 510
+		}));
+		assert_eq!(usage.prompt_tokens, Some(500));
+	}
+
+	// endregion: --- usageMetadata normalization
 
 	#[test]
 	fn merge_consecutive_tool_responses() {
@@ -1024,6 +1136,86 @@ mod tests {
 
 		assert_eq!(function_response["name"], "get_weather");
 		assert_eq!(function_response["response"]["name"], "get_weather");
+	}
+
+	fn build_payload(chat_req: ChatRequest, options: &ChatOptions) -> Value {
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-3.7-flash");
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(options));
+		GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-3.7-flash", chat_req, options_set)
+			.unwrap()
+			.0
+	}
+
+	fn web_search_tool() -> Tool {
+		Tool::new_web_search().with_config(WebSearchConfig::default())
+	}
+
+	#[test]
+	fn mixing_builtin_and_function_tools_opts_into_server_side_invocations() {
+		let chat_req = ChatRequest::from_user("What is the weather in Cairo?")
+			.with_tools(vec![web_search_tool(), Tool::new("get_weather")]);
+
+		let payload = build_payload(chat_req, &ChatOptions::default());
+
+		assert_eq!(payload["toolConfig"]["includeServerSideToolInvocations"], true);
+	}
+
+	#[test]
+	fn every_builtin_triggers_the_opt_in_when_mixed() {
+		for builtin in GEMINI_BUILTIN_TOOL_NAMES {
+			let chat_req = ChatRequest::from_user("Do the thing.").with_tools(vec![
+				Tool::new(*builtin).with_config(json!({})),
+				Tool::new("get_weather"),
+			]);
+			let payload = build_payload(chat_req, &ChatOptions::default());
+			assert_eq!(
+				payload["toolConfig"]["includeServerSideToolInvocations"], true,
+				"builtin {builtin} should opt in when mixed with function declarations"
+			);
+		}
+	}
+
+	#[test]
+	fn unmixed_requests_do_not_get_the_opt_in() {
+		// Builtin only.
+		let builtin_only = build_payload(
+			ChatRequest::from_user("Search for something.").with_tools(vec![web_search_tool()]),
+			&ChatOptions::default(),
+		);
+		assert!(
+			builtin_only.get("toolConfig").is_none(),
+			"a builtin-only request needs no toolConfig"
+		);
+
+		// Function declarations only.
+		let functions_only = build_payload(
+			ChatRequest::from_user("What is the weather?").with_tools(vec![Tool::new("get_weather")]),
+			&ChatOptions::default(),
+		);
+		assert!(
+			functions_only.get("toolConfig").is_none(),
+			"a function-only request needs no toolConfig"
+		);
+
+		// No tools at all.
+		let no_tools = build_payload(ChatRequest::from_user("Hello."), &ChatOptions::default());
+		assert!(no_tools.get("toolConfig").is_none());
+	}
+
+	#[test]
+	fn the_opt_in_merges_with_tool_choice_rather_than_replacing_it() {
+		let options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
+		let chat_req = ChatRequest::from_user("What is the weather in Cairo?")
+			.with_tools(vec![web_search_tool(), Tool::new("get_weather")]);
+
+		let payload = build_payload(chat_req, &options);
+
+		assert_eq!(payload["toolConfig"]["includeServerSideToolInvocations"], true);
+		assert_eq!(payload["toolConfig"]["functionCallingConfig"]["mode"], "ANY");
+		assert_eq!(
+			payload["toolConfig"]["functionCallingConfig"]["allowedFunctionNames"],
+			json!(["get_weather"])
+		);
 	}
 
 	#[test]
