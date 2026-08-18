@@ -59,6 +59,12 @@ async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 
 #[tokio::test]
 #[serial(cohere)]
+async fn test_chat_stream_frame_sink_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_frame_sink_ok(MODEL).await
+}
+
+#[tokio::test]
+#[serial(cohere)]
 async fn test_chat_temperature_ok() -> TestResult<()> {
 	common_tests::common_test_chat_temperature_ok(MODEL).await
 }

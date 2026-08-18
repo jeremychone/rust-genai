@@ -1,5 +1,6 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatMessage, ContentPart, MessageContent, StopReason, ToolCall, Usage};
+use crate::webc::FrameTap;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
@@ -10,6 +11,11 @@ type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>
 /// A stream of chat events produced by a streaming chat request.
 pub struct ChatStream {
 	inter_stream: InterStreamType,
+
+	/// Terminal hooks for the user `ChatFrameSink`
+	/// Per-frame calls happen in the transport; `on_end` fires here, where the public
+	/// `StreamEnd` is built, and `on_error` fires on the single error path.
+	frame_tap: Option<FrameTap>,
 
 	/// OTel span state for the streaming operation (feature `otel`).
 	/// Set by `Client::exec_chat_stream` so the span covers the full stream
@@ -31,6 +37,7 @@ impl ChatStream {
 	pub(crate) fn new(inter_stream: InterStreamType) -> Self {
 		ChatStream {
 			inter_stream,
+			frame_tap: None,
 			#[cfg(feature = "otel")]
 			otel: None,
 		}
@@ -42,6 +49,13 @@ impl ChatStream {
 	{
 		let boxed_stream: InterStreamType = Box::pin(inter_stream);
 		ChatStream::new(boxed_stream)
+	}
+
+	/// Attaches the frame tap cloned from the streamer, so the terminal sink hooks fire once
+	/// the public `StreamEnd` exists (or once the stream fails).
+	pub(crate) fn with_frame_tap(mut self, frame_tap: Option<FrameTap>) -> Self {
+		self.frame_tap = frame_tap;
+		self
 	}
 
 	/// Attaches the OTel operation span, starting the time-to-first-chunk clock.
@@ -83,6 +97,13 @@ impl Stream for ChatStream {
 					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 				};
 
+				// -- Frame sink: terminal hook, once, with the public StreamEnd.
+				if let Some(frame_tap) = this.frame_tap.as_ref()
+					&& let ChatStreamEvent::End(stream_end) = &chat_event
+				{
+					frame_tap.on_stream_end(stream_end);
+				}
+
 				// -- OTel: record time-to-first-chunk on the first content chunk, and the
 				//          captured usage/finish/content on the end event.
 				#[cfg(feature = "otel")]
@@ -105,6 +126,12 @@ impl Stream for ChatStream {
 				Poll::Ready(Some(Ok(chat_event)))
 			}
 			Poll::Ready(Some(Err(e))) => {
+				// -- Frame sink: a mid-stream failure ends the stream without an End event,
+				//    so this is the sink's only notification.
+				if let Some(frame_tap) = this.frame_tap.as_ref() {
+					frame_tap.on_error(&e);
+				}
+
 				#[cfg(feature = "otel")]
 				if let Some(otel) = this.otel.as_ref() {
 					crate::otel::span::record_error(&otel.span, &e);

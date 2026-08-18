@@ -345,7 +345,8 @@ impl Adapter for OpenAIRespAdapter {
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSourceStream::new(reqwest_builder);
 		let openai_stream = OpenAIRespStreamer::new(event_source, model_iden.clone(), options_sets);
-		let chat_stream = ChatStream::from_inter_stream(openai_stream);
+		let frame_tap = openai_stream.frame_tap();
+		let chat_stream = ChatStream::from_inter_stream(openai_stream).with_frame_tap(frame_tap);
 
 		Ok(ChatStreamResponse {
 			model_iden,

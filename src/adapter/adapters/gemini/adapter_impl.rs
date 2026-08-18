@@ -260,7 +260,8 @@ impl Adapter for GeminiAdapter {
 		let event_source = EventSourceStream::new(reqwest_builder);
 
 		let gemini_stream = GeminiStreamer::new(event_source, model_iden.clone(), options_set);
-		let chat_stream = ChatStream::from_inter_stream(gemini_stream);
+		let frame_tap = gemini_stream.frame_tap();
+		let chat_stream = ChatStream::from_inter_stream(gemini_stream).with_frame_tap(frame_tap);
 
 		Ok(ChatStreamResponse {
 			model_iden,

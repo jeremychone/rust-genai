@@ -15,9 +15,10 @@
 //!
 //! See: https://docs.aws.amazon.com/transcribe/latest/dg/event-stream.html
 
-use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
+use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
+use crate::webc::FrameTap;
 use crate::{Error, ModelIden, Result};
 use bytes::{Buf, BytesMut};
 use futures::Stream;
@@ -38,6 +39,9 @@ pub(super) struct BedrockStreamer {
 	done: bool,
 	emitted_start: bool,
 	in_progress_tool: Option<ToolCallAccumulator>,
+	// Feeds the user `ChatFrameSink`, when one is configured. Bedrock decodes its own
+	// event-stream framing, so the tap lives here rather than in a shared transport.
+	frame_tap: Option<FrameTap>,
 }
 
 struct ToolCallAccumulator {
@@ -52,6 +56,8 @@ impl BedrockStreamer {
 		model_iden: ModelIden,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Self {
+		let frame_tap = new_frame_tap(&model_iden, &options_set);
+
 		Self {
 			inner: bytes_stream,
 			buf: BytesMut::with_capacity(8 * 1024),
@@ -60,7 +66,13 @@ impl BedrockStreamer {
 			done: false,
 			emitted_start: false,
 			in_progress_tool: None,
+			frame_tap,
 		}
+	}
+
+	/// Clones the frame tap (if any), so `ChatStream` can fire the terminal sink hooks.
+	pub(super) fn frame_tap(&self) -> Option<FrameTap> {
+		self.frame_tap.clone()
 	}
 
 	/// Try to pull one complete event-stream frame from `self.buf` and return its
@@ -119,6 +131,12 @@ impl BedrockStreamer {
 	/// Dispatch a decoded frame into zero or more InterStreamEvents.
 	fn handle_frame(&mut self, frame: DecodedFrame) -> Result<Vec<InterStreamEvent>> {
 		let event_type = frame.headers.get(":event-type").cloned().unwrap_or_default();
+
+		if let Some(frame_tap) = self.frame_tap.as_mut() {
+			let data = String::from_utf8_lossy(&frame.payload);
+			frame_tap.on_frame(Some(&event_type), &data);
+		}
+
 		let message_type = frame.headers.get(":message-type").cloned().unwrap_or_default();
 
 		if message_type == "exception" || message_type == "error" {

@@ -1,5 +1,5 @@
 use super::parse_cache_creation_details;
-use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
+use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, PromptTokensDetails, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
@@ -29,13 +29,20 @@ enum InProgressBlock {
 
 impl AnthropicStreamer {
 	pub fn new(inner: EventSourceStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
+		let frame_tap = new_frame_tap(&model_iden, &options_set);
+
 		Self {
-			inner,
+			inner: inner.with_frame_tap(frame_tap),
 			done: false,
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 			in_progress_block: InProgressBlock::Text,
 		}
+	}
+
+	/// Clones the frame tap (if any), so `ChatStream` can fire the terminal sink hooks.
+	pub fn frame_tap(&self) -> Option<crate::webc::FrameTap> {
+		self.inner.frame_tap()
 	}
 }
 

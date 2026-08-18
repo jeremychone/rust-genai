@@ -178,7 +178,8 @@ impl Adapter for CohereAdapter {
 	) -> Result<ChatStreamResponse> {
 		let web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n");
 		let cohere_stream = CohereStreamer::new(web_stream, model_iden.clone(), options_set);
-		let chat_stream = ChatStream::from_inter_stream(cohere_stream);
+		let frame_tap = cohere_stream.frame_tap();
+		let chat_stream = ChatStream::from_inter_stream(cohere_stream).with_frame_tap(frame_tap);
 
 		Ok(ChatStreamResponse {
 			model_iden,

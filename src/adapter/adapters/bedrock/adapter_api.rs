@@ -90,7 +90,8 @@ impl Adapter for BedrockApiAdapter {
 	) -> Result<ChatStreamResponse> {
 		let stream = async_stream_bytes(reqwest_builder);
 		let bedrock_stream = BedrockStreamer::new(Box::pin(stream), model_iden.clone(), options_set);
-		let chat_stream = ChatStream::from_inter_stream(bedrock_stream);
+		let frame_tap = bedrock_stream.frame_tap();
+		let chat_stream = ChatStream::from_inter_stream(bedrock_stream).with_frame_tap(frame_tap);
 		Ok(ChatStreamResponse {
 			model_iden,
 			stream: chat_stream,
