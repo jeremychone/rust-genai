@@ -133,13 +133,19 @@ impl ChatRequest {
 	/// content or tool calls were captured, only the tool response is appended.
 	pub fn append_tool_use_from_stream_end(mut self, end: &StreamEnd, tool_response: ToolResponse) -> Self {
 		if let Some(content) = &end.captured_content {
-			// Use captured content directly (contains thoughts/text/tool calls in correct order)
-			self.messages.push(ChatMessage::assistant(content.clone()));
+			// Use captured content directly. Older adapters may still expose reasoning
+			// only through the separately normalized convenience field.
+			let mut assistant = ChatMessage::assistant(content.clone());
+			if !content.contains_reasoning_content() {
+				assistant = assistant.with_reasoning_content(end.captured_reasoning_content.clone());
+			}
+			self.messages.push(assistant);
 		} else if let Some(calls_ref) = end.captured_tool_calls() {
 			// Fallback: build assistant message from tool calls only
 			let calls: Vec<ToolCall> = calls_ref.into_iter().cloned().collect();
 			if !calls.is_empty() {
-				self.messages.push(ChatMessage::from(calls));
+				self.messages
+					.push(ChatMessage::from(calls).with_reasoning_content(end.captured_reasoning_content.clone()));
 			}
 		}
 

@@ -1,0 +1,279 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Adjudicate exactly one source-derived candidate for `libavcodec/h264_slice.c`. Do not\nbroaden into discovery and do not trust the candidate's conclusion.\n\nTrace only the minimum source path needed to decide whether an attacker-driven\nstate reaches a concrete memory access. Resolve the allocation, any pointer\nbias or padding, the exact source guards, the literal minimum and maximum\ncoordinates they permit, the resulting allocation-relative address, access\nwidth, and read/write direction. Record decisive predicates with concrete\nsubstitutions and Boolean results.\n\nUse `proven_memory_unsafe` only when the complete source-supported path has no\nopen question. Use `memory_unsafe_candidate` when a concrete out-of-allocation\naccess is established but at least one reachability or input-construction\nprecondition remains open. Use `unresolved` when no concrete memory expression\nis established and a decisive question remains. Do not infer memory unsafety\nfrom semantic corruption alone.\n\nUse only Read and Grep over source. Do not consult history, patches, tests,\nadvisories, vulnerability descriptions, or the internet.\n\n<source_candidate>\n{\n  \"id\": \"ffmpeg-h264-slice-table-wrap\",\n  \"title\": \"slice_table comparison at lines 2344-2352 uses unmasked slice_num for deblocking_filter==2, causing cross-slice neighbor suppression failure under aliasing\",\n  \"hypothesis\": \"At fill_filter_caches lines 2343-2352, neighbor types are zeroed based on whether h->slice_table[neighbor_xy] matches sl->slice_num. For deblocking_filter==2, the exact comparison h->slice_table[top_xy] != sl->slice_num (line 2344) is used. For deblocking_filter==1, h->slice_table[top_xy] == 0xFFFF (line 2349) checks for uninitialized. The slice_table stores the full uint16_t slice_num. When slice_num exceeds 65535 (uint16_t overflow), slice_table values wrap, and the exact comparison at line 2344 may incorrectly match or fail to match, causing neighbor types to not be zeroed when they should be (or vice versa). This is distinct from the MAX_SLICES aliasing: slice_table is uint16_t, so slice_num itself wraps at 65536.\",\n  \"attacker_influence\": [\n    \"Attacker controls number of slices across frames, accumulating current_slice\",\n    \"After 65535 slices, slice_table values wrap, causing the == comparison to fail or succeed incorrectly\",\n    \"This affects whether neighbor MBs are treated as same-slice or cross-slice for deblocking\"\n  ],\n  \"relevant_symbols\": [\n    \"slice_table\",\n    \"slice_num\",\n    \"current_slice\",\n    \"deblocking_filter\",\n    \"top_type\",\n    \"left_type\"\n  ],\n  \"security_consequence\": \"If the slice_table comparison fails to zero a cross-slice neighbor's type, fill_filter_caches_inter proceeds to read that neighbor's ref_index and motion_val data, which may point to data from a different slice with different reference configurations. This is a semantic correctness issue. The terminal effect is that ref_cache and mv_cache get incorrect values used in integer comparisons for bS computation. No direct memory safety issue follows unless the neighbor MB coordinates are themselves out of bounds, which is outside this candidate.\",\n  \"supporting_evidence\": [\n    \"slice_table is uint16_t* (h264dec.h:407), so slice_num stored as uint16_t wraps at 65536\",\n    \"Line 2344: h->slice_table[top_xy] != sl->slice_num — exact comparison, not masked\",\n    \"sl->slice_num = ++h->current_slice (line 1982), which is an int with no upper bound check\",\n    \"The fill_filter_caches_inter function is only called if IS_INTRA(mb_type) is false (line 2358-2359 returns early for intra), and neighbor types must be nonzero for the top/left ref_index reads to occur\",\n    \"For deblocking_filter==1, the check is slice_table[x] == 0xFFFF (line 2349) — this works correctly as long as no legitimate slice_num equals 0xFFFF (65535), which would happen after exactly 65535 slices\"\n  ],\n  \"open_questions\": [\n    \"Does current_slice get reset between frames? It appears to be incremented per slice with no per-frame reset in the nearby code, but h264_frame_start or similar may reset it.\",\n    \"Is current_slice bounded anywhere upstream? If it's bounded to < 65536, then the uint16_t slice_table comparison is always correct and this path is moot.\",\n    \"For deblocking_filter==1 (the 0xFFFF sentinel path), is 0xFFFF a possible slice_num? Since slice_num starts at 1 (++h->current_slice), slice_num 65535 occurs after 65535 slices — feasible in a long stream.\"\n  ],\n  \"citations\": [\n    \"libavcodec/h264_slice.c:2343-2352\",\n    \"libavcodec/h264_slice.c:1982\",\n    \"libavcodec/h264dec.h:407\"\n  ],\n  \"confidence\": \"low\"\n}\n</source_candidate>\n\n\nYour final action must be a call to Submit. Do not return the final answer as ordinary prose."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Read",
+      "description": "Read numbered lines from one repository file",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "Grep",
+      "description": "Search repository text with ripgrep",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "glob": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "Submit",
+      "description": "Submit the final CandidateProof; call exactly once when finished",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "proven_memory_unsafe",
+              "memory_unsafe_candidate",
+              "proven_memory_safe",
+              "correctness_only",
+              "unresolved"
+            ],
+            "type": "string"
+          },
+          "mechanism": {
+            "type": "string"
+          },
+          "call_path": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "predicate_evaluations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "expression": {
+                  "type": "string"
+                },
+                "substituted_expression": {
+                  "type": "string"
+                },
+                "result": {
+                  "type": "boolean"
+                },
+                "consequence": {
+                  "type": "string"
+                },
+                "citations": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "expression",
+                "substituted_expression",
+                "result",
+                "consequence",
+                "citations"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "memory_expressions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "expression": {
+                  "type": "string"
+                },
+                "boundary_coordinates": {
+                  "type": "string"
+                },
+                "substituted_range": {
+                  "type": "string"
+                },
+                "allocation": {
+                  "type": "string"
+                },
+                "address_range": {
+                  "type": "string"
+                },
+                "access": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "expression",
+                "boundary_coordinates",
+                "substituted_range",
+                "allocation",
+                "address_range",
+                "access"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "preconditions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "unresolved": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "verdict",
+          "mechanism",
+          "call_path",
+          "predicate_evaluations",
+          "memory_expressions",
+          "preconditions",
+          "citations",
+          "unresolved"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "first_response": {
+    "text": "I'll trace the minimum source path needed to decide this candidate. Let me start by examining the key code sections.",
+    "reasoning_content": "Let me analyze this candidate carefully. The hypothesis is about slice_table comparisons using unmasked slice_num for deblocking_filter==2, potentially causing cross-slice neighbor suppression failure under uint16_t overflow.\n\nLet me trace through the source to understand:\n1. How slice_table is allocated and indexed\n2. How slice_num is computed\n3. The actual comparison logic\n4. Whether this leads to a concrete memory safety issue\n\nLet me start by reading the relevant code sections.",
+    "tool_calls": [
+      {
+        "fn_name": "Read",
+        "fn_arguments": {
+          "path": "libavcodec/h264_slice.c",
+          "offset": 2335,
+          "limit": 40
+        }
+      },
+      {
+        "fn_name": "Read",
+        "fn_arguments": {
+          "path": "libavcodec/h264_slice.c",
+          "offset": 1975,
+          "limit": 20
+        }
+      },
+      {
+        "fn_name": "Read",
+        "fn_arguments": {
+          "path": "libavcodec/h264dec.h",
+          "offset": 400,
+          "limit": 20
+        }
+      }
+    ]
+  },
+  "tool_results": [
+    {
+      "name": "Read",
+      "arguments": {
+        "path": "libavcodec/h264_slice.c",
+        "offset": 2335,
+        "limit": 40
+      },
+      "result": "  2335\t                 ((qp + h->cur_pic.qscale_table[top_xy - h->mb_stride] + 1) >> 1) <= qp_thresh))\n  2336\t                return 1;\n  2337\t        }\n  2338\t    }\n  2339\t\n  2340\t    top_type        = h->cur_pic.mb_type[top_xy];\n  2341\t    left_type[LTOP] = h->cur_pic.mb_type[left_xy[LTOP]];\n  2342\t    left_type[LBOT] = h->cur_pic.mb_type[left_xy[LBOT]];\n  2343\t    if (sl->deblocking_filter == 2) {\n  2344\t        if (h->slice_table[top_xy] != sl->slice_num)\n  2345\t            top_type = 0;\n  2346\t        if (h->slice_table[left_xy[LBOT]] != sl->slice_num)\n  2347\t            left_type[LTOP] = left_type[LBOT] = 0;\n  2348\t    } else {\n  2349\t        if (h->slice_table[top_xy] == 0xFFFF)\n  2350\t            top_type = 0;\n  2351\t        if (h->slice_table[left_xy[LBOT]] == 0xFFFF)\n  2352\t            left_type[LTOP] = left_type[LBOT] = 0;\n  2353\t    }\n  2354\t    sl->top_type        = top_type;\n  2355\t    sl->left_type[LTOP] = left_type[LTOP];\n  2356\t    sl->left_type[LBOT] = left_type[LBOT];\n  2357\t\n  2358\t    if (IS_INTRA(mb_type))\n  2359\t        return 0;\n  2360\t\n  2361\t    fill_filter_caches_inter(h, sl, mb_type, top_xy, left_xy,\n  2362\t                             top_type, left_type, mb_xy, 0);\n  2363\t    if (sl->list_count == 2)\n  2364\t        fill_filter_caches_inter(h, sl, mb_type, top_xy, left_xy,\n  2365\t                                 top_type, left_type, mb_xy, 1);\n  2366\t\n  2367\t    nnz       = h->non_zero_count[mb_xy];\n  2368\t    nnz_cache = sl->non_zero_count_cache;\n  2369\t    AV_COPY32(&nnz_cache[4 + 8 * 1], &nnz[0]);\n  2370\t    AV_COPY32(&nnz_cache[4 + 8 * 2], &nnz[4]);\n  2371\t    AV_COPY32(&nnz_cache[4 + 8 * 3], &nnz[8]);\n  2372\t    AV_COPY32(&nnz_cache[4 + 8 * 4], &nnz[12]);\n  2373\t    sl->cbp = h->cbp_table[mb_xy];\n  2374\t"
+    },
+    {
+      "name": "Read",
+      "arguments": {
+        "path": "libavcodec/h264_slice.c",
+        "offset": 1975,
+        "limit": 20
+      },
+      "result": "  1975\t    sl->qp_thresh = 15 -\n  1976\t                   FFMIN(sl->slice_alpha_c0_offset, sl->slice_beta_offset) -\n  1977\t                   FFMAX3(0,\n  1978\t                          h->ps.pps->chroma_qp_index_offset[0],\n  1979\t                          h->ps.pps->chroma_qp_index_offset[1]) +\n  1980\t                   6 * (h->ps.sps->bit_depth_luma - 8);\n  1981\t\n  1982\t    sl->slice_num       = ++h->current_slice;\n  1983\t\n  1984\t    if (sl->slice_num)\n  1985\t        h->slice_row[(sl->slice_num-1)&(MAX_SLICES-1)]= sl->resync_mb_y;\n  1986\t    if (   h->slice_row[sl->slice_num&(MAX_SLICES-1)] + 3 >= sl->resync_mb_y\n  1987\t        && h->slice_row[sl->slice_num&(MAX_SLICES-1)] <= sl->resync_mb_y\n  1988\t        && sl->slice_num >= MAX_SLICES) {\n  1989\t        //in case of ASO this check needs to be updated depending on how we decide to assign slice numbers in this case\n  1990\t        av_log(h->avctx, AV_LOG_WARNING, \"Possibly too many slices (%d >= %d), increase MAX_SLICES and recompile if there are artifacts\\n\", sl->slice_num, MAX_SLICES);\n  1991\t    }\n  1992\t\n  1993\t    for (j = 0; j < 2; j++) {\n  1994\t        int id_list[16];"
+    },
+    {
+      "name": "Read",
+      "arguments": {
+        "path": "libavcodec/h264dec.h",
+        "offset": 400,
+        "limit": 20
+      },
+      "result": "   400\t     */\n   401\t    int block_offset[2 * (16 * 3)];\n   402\t\n   403\t    uint32_t *mb2b_xy;  // FIXME are these 4 a good idea?\n   404\t    uint32_t *mb2br_xy;\n   405\t    int b_stride;       // FIXME use s->b4_stride\n   406\t\n   407\t    uint16_t *slice_table;      ///< slice_table_base + 2*mb_stride + 1\n   408\t\n   409\t    // interlacing specific flags\n   410\t    int mb_aff_frame;\n   411\t    int picture_structure;\n   412\t    int first_field;\n   413\t\n   414\t    uint8_t *list_counts;               ///< Array of list_count per MB specifying the slice type\n   415\t\n   416\t    /* 0x100 -> non null luma_dc, 0x80/0x40 -> non null chroma_dc (cb/cr), 0x?0 -> chroma_cbp(0, 1, 2), 0x0? luma_cbp */\n   417\t    uint16_t *cbp_table;\n   418\t\n   419\t    /* chroma_pred_mode for i4x4 or i16x16, else 0 */"
+    },
+    {
+      "name": "Read",
+      "arguments": {
+        "limit": 80,
+        "offset": 2269,
+        "path": "libavcodec/h264_slice.c"
+      },
+      "result": "  2269\t        const int *ref2frm = &h->ref2frm[sl->slice_num & (MAX_SLICES - 1)][list][(MB_MBAFF(sl) ? 20 : 2)];\n  2270\t        uint32_t ref01 = (pack16to32(ref2frm[ref[0]], ref2frm[ref[1]]) & 0x00FF00FF) * 0x0101;\n  2271\t        uint32_t ref23 = (pack16to32(ref2frm[ref[2]], ref2frm[ref[3]]) & 0x00FF00FF) * 0x0101;\n  2272\t        AV_WN32A(&ref_cache[0 * 8], ref01);\n  2273\t        AV_WN32A(&ref_cache[1 * 8], ref01);\n  2274\t        AV_WN32A(&ref_cache[2 * 8], ref23);\n  2275\t        AV_WN32A(&ref_cache[3 * 8], ref23);\n  2276\t    }\n  2277\t\n  2278\t    {\n  2279\t        int16_t(*mv_src)[2] = &h->cur_pic.motion_val[list][4 * sl->mb_x + 4 * sl->mb_y * b_stride];\n  2280\t        AV_COPY128(mv_dst + 8 * 0, mv_src + 0 * b_stride);\n  2281\t        AV_COPY128(mv_dst + 8 * 1, mv_src + 1 * b_stride);\n  2282\t        AV_COPY128(mv_dst + 8 * 2, mv_src + 2 * b_stride);\n  2283\t        AV_COPY128(mv_dst + 8 * 3, mv_src + 3 * b_stride);\n  2284\t    }\n  2285\t}\n  2286\t\n  2287\t/**\n  2288\t * @return non zero if the loop filter can be skipped\n  2289\t */\n  2290\tstatic int fill_filter_caches(const H264Context *h, H264SliceContext *sl, int mb_type)\n  2291\t{\n  2292\t    const int mb_xy = sl->mb_xy;\n  2293\t    int top_xy, left_xy[LEFT_MBS];\n  2294\t    int top_type, left_type[LEFT_MBS];\n  2295\t    const uint8_t *nnz;\n  2296\t    uint8_t *nnz_cache;\n  2297\t\n  2298\t    top_xy = mb_xy - (h->mb_stride << MB_FIELD(sl));\n  2299\t\n  2300\t    left_xy[LBOT] = left_xy[LTOP] = mb_xy - 1;\n  2301\t    if (FRAME_MBAFF(h)) {\n  2302\t        const int left_mb_field_flag = IS_INTERLACED(h->cur_pic.mb_type[mb_xy - 1]);\n  2303\t        const int curr_mb_field_flag = IS_INTERLACED(mb_type);\n  2304\t        if (sl->mb_y & 1) {\n  2305\t            if (left_mb_field_flag != curr_mb_field_flag)\n  2306\t                left_xy[LTOP] -= h->mb_stride;\n  2307\t        } else {\n  2308\t            if (curr_mb_field_flag)\n  2309\t                top_xy += h->mb_stride &\n  2310\t                          (((h->cur_pic.mb_type[top_xy] >> 7) & 1) - 1);\n  2311\t            if (left_mb_field_flag != curr_mb_field_flag)\n  2312\t                left_xy[LBOT] += h->mb_stride;\n  2313\t        }\n  2314\t    }\n  2315\t\n  2316\t    sl->top_mb_xy        = top_xy;\n  2317\t    sl->left_mb_xy[LTOP] = left_xy[LTOP];\n  2318\t    sl->left_mb_xy[LBOT] = left_xy[LBOT];\n  2319\t    {\n  2320\t        /* For sufficiently low qp, filtering wouldn't do anything.\n  2321\t         * This is a conservative estimate: could also check beta_offset\n  2322\t         * and more accurate chroma_qp. */\n  2323\t        int qp_thresh = sl->qp_thresh; // FIXME strictly we should store qp_thresh for each mb of a slice\n  2324\t        int qp        = h->cur_pic.qscale_table[mb_xy];\n  2325\t        if (qp <= qp_thresh &&\n  2326\t            (left_xy[LTOP] < 0 ||\n  2327\t             ((qp + h->cur_pic.qscale_table[left_xy[LTOP]] + 1) >> 1) <= qp_thresh) &&\n  2328\t            (top_xy < 0 ||\n  2329\t             ((qp + h->cur_pic.qscale_table[top_xy] + 1) >> 1) <= qp_thresh)) {\n  2330\t            if (!FRAME_MBAFF(h))\n  2331\t                return 1;\n  2332\t            if ((left_xy[LTOP] < 0 ||\n  2333\t                 ((qp + h->cur_pic.qscale_table[left_xy[LBOT]] + 1) >> 1) <= qp_thresh) &&\n  2334\t                (top_xy < h->mb_stride ||\n  2335\t                 ((qp + h->cur_pic.qscale_table[top_xy - h->mb_stride] + 1) >> 1) <= qp_thresh))\n  2336\t                return 1;\n  2337\t        }\n  2338\t    }\n  2339\t\n  2340\t    top_type        = h->cur_pic.mb_type[top_xy];\n  2341\t    left_type[LTOP] = h->cur_pic.mb_type[left_xy[LTOP]];\n  2342\t    left_type[LBOT] = h->cur_pic.mb_type[left_xy[LBOT]];\n  2343\t    if (sl->deblocking_filter == 2) {\n  2344\t        if (h->slice_table[top_xy] != sl->slice_num)\n  2345\t            top_type = 0;\n  2346\t        if (h->slice_table[left_xy[LBOT]] != sl->slice_num)\n  2347\t            left_type[LTOP] = left_type[LBOT] = 0;\n  2348\t    } else {"
+    },
+    {
+      "name": "Read",
+      "arguments": {
+        "path": "libavcodec/h264_slice.c",
+        "offset": 2300,
+        "limit": 120
+      },
+      "result": "  2300\t    left_xy[LBOT] = left_xy[LTOP] = mb_xy - 1;\n  2301\t    if (FRAME_MBAFF(h)) {\n  2302\t        const int left_mb_field_flag = IS_INTERLACED(h->cur_pic.mb_type[mb_xy - 1]);\n  2303\t        const int curr_mb_field_flag = IS_INTERLACED(mb_type);\n  2304\t        if (sl->mb_y & 1) {\n  2305\t            if (left_mb_field_flag != curr_mb_field_flag)\n  2306\t                left_xy[LTOP] -= h->mb_stride;\n  2307\t        } else {\n  2308\t            if (curr_mb_field_flag)\n  2309\t                top_xy += h->mb_stride &\n  2310\t                          (((h->cur_pic.mb_type[top_xy] >> 7) & 1) - 1);\n  2311\t            if (left_mb_field_flag != curr_mb_field_flag)\n  2312\t                left_xy[LBOT] += h->mb_stride;\n  2313\t        }\n  2314\t    }\n  2315\t\n  2316\t    sl->top_mb_xy        = top_xy;\n  2317\t    sl->left_mb_xy[LTOP] = left_xy[LTOP];\n  2318\t    sl->left_mb_xy[LBOT] = left_xy[LBOT];\n  2319\t    {\n  2320\t        /* For sufficiently low qp, filtering wouldn't do anything.\n  2321\t         * This is a conservative estimate: could also check beta_offset\n  2322\t         * and more accurate chroma_qp. */\n  2323\t        int qp_thresh = sl->qp_thresh; // FIXME strictly we should store qp_thresh for each mb of a slice\n  2324\t        int qp        = h->cur_pic.qscale_table[mb_xy];\n  2325\t        if (qp <= qp_thresh &&\n  2326\t            (left_xy[LTOP] < 0 ||\n  2327\t             ((qp + h->cur_pic.qscale_table[left_xy[LTOP]] + 1) >> 1) <= qp_thresh) &&\n  2328\t            (top_xy < 0 ||\n  2329\t             ((qp + h->cur_pic.qscale_table[top_xy] + 1) >> 1) <= qp_thresh)) {\n  2330\t            if (!FRAME_MBAFF(h))\n  2331\t                return 1;\n  2332\t            if ((left_xy[LTOP] < 0 ||\n  2333\t                 ((qp + h->cur_pic.qscale_table[left_xy[LBOT]] + 1) >> 1) <= qp_thresh) &&\n  2334\t                (top_xy < h->mb_stride ||\n  2335\t                 ((qp + h->cur_pic.qscale_table[top_xy - h->mb_stride] + 1) >> 1) <= qp_thresh))\n  2336\t                return 1;\n  2337\t        }\n  2338\t    }\n  2339\t\n  2340\t    top_type        = h->cur_pic.mb_type[top_xy];\n  2341\t    left_type[LTOP] = h->cur_pic.mb_type[left_xy[LTOP]];\n  2342\t    left_type[LBOT] = h->cur_pic.mb_type[left_xy[LBOT]];\n  2343\t    if (sl->deblocking_filter == 2) {\n  2344\t        if (h->slice_table[top_xy] != sl->slice_num)\n  2345\t            top_type = 0;\n  2346\t        if (h->slice_table[left_xy[LBOT]] != sl->slice_num)\n  2347\t            left_type[LTOP] = left_type[LBOT] = 0;\n  2348\t    } else {\n  2349\t        if (h->slice_table[top_xy] == 0xFFFF)\n  2350\t            top_type = 0;\n  2351\t        if (h->slice_table[left_xy[LBOT]] == 0xFFFF)\n  2352\t            left_type[LTOP] = left_type[LBOT] = 0;\n  2353\t    }\n  2354\t    sl->top_type        = top_type;\n  2355\t    sl->left_type[LTOP] = left_type[LTOP];\n  2356\t    sl->left_type[LBOT] = left_type[LBOT];\n  2357\t\n  2358\t    if (IS_INTRA(mb_type))\n  2359\t        return 0;\n  2360\t\n  2361\t    fill_filter_caches_inter(h, sl, mb_type, top_xy, left_xy,\n  2362\t                             top_type, left_type, mb_xy, 0);\n  2363\t    if (sl->list_count == 2)\n  2364\t        fill_filter_caches_inter(h, sl, mb_type, top_xy, left_xy,\n  2365\t                                 top_type, left_type, mb_xy, 1);\n  2366\t\n  2367\t    nnz       = h->non_zero_count[mb_xy];\n  2368\t    nnz_cache = sl->non_zero_count_cache;\n  2369\t    AV_COPY32(&nnz_cache[4 + 8 * 1], &nnz[0]);\n  2370\t    AV_COPY32(&nnz_cache[4 + 8 * 2], &nnz[4]);\n  2371\t    AV_COPY32(&nnz_cache[4 + 8 * 3], &nnz[8]);\n  2372\t    AV_COPY32(&nnz_cache[4 + 8 * 4], &nnz[12]);\n  2373\t    sl->cbp = h->cbp_table[mb_xy];\n  2374\t\n  2375\t    if (top_type) {\n  2376\t        nnz = h->non_zero_count[top_xy];\n  2377\t        AV_COPY32(&nnz_cache[4 + 8 * 0], &nnz[3 * 4]);\n  2378\t    }\n  2379\t\n  2380\t    if (left_type[LTOP]) {\n  2381\t        nnz = h->non_zero_count[left_xy[LTOP]];\n  2382\t        nnz_cache[3 + 8 * 1] = nnz[3 + 0 * 4];\n  2383\t        nnz_cache[3 + 8 * 2] = nnz[3 + 1 * 4];\n  2384\t        nnz_cache[3 + 8 * 3] = nnz[3 + 2 * 4];\n  2385\t        nnz_cache[3 + 8 * 4] = nnz[3 + 3 * 4];\n  2386\t    }\n  2387\t\n  2388\t    /* CAVLC 8x8dct requires NNZ values for residual decoding that differ\n  2389\t     * from what the loop filter needs */\n  2390\t    if (!CABAC(h) && h->ps.pps->transform_8x8_mode) {\n  2391\t        if (IS_8x8DCT(top_type)) {\n  2392\t            nnz_cache[4 + 8 * 0] =\n  2393\t            nnz_cache[5 + 8 * 0] = (h->cbp_table[top_xy] & 0x4000) >> 12;\n  2394\t            nnz_cache[6 + 8 * 0] =\n  2395\t            nnz_cache[7 + 8 * 0] = (h->cbp_table[top_xy] & 0x8000) >> 12;\n  2396\t        }\n  2397\t        if (IS_8x8DCT(left_type[LTOP])) {\n  2398\t            nnz_cache[3 + 8 * 1] =\n  2399\t            nnz_cache[3 + 8 * 2] = (h->cbp_table[left_xy[LTOP]] & 0x2000) >> 12; // FIXME check MBAFF\n  2400\t        }\n  2401\t        if (IS_8x8DCT(left_type[LBOT])) {\n  2402\t            nnz_cache[3 + 8 * 3] =\n  2403\t            nnz_cache[3 + 8 * 4] = (h->cbp_table[left_xy[LBOT]] & 0x8000) >> 12; // FIXME check MBAFF\n  2404\t        }\n  2405\t\n  2406\t        if (IS_8x8DCT(mb_type)) {\n  2407\t            nnz_cache[scan8[0]] =\n  2408\t            nnz_cache[scan8[1]] =\n  2409\t            nnz_cache[scan8[2]] =\n  2410\t            nnz_cache[scan8[3]] = (sl->cbp & 0x1000) >> 12;\n  2411\t\n  2412\t            nnz_cache[scan8[0 + 4]] =\n  2413\t            nnz_cache[scan8[1 + 4]] =\n  2414\t            nnz_cache[scan8[2 + 4]] =\n  2415\t            nnz_cache[scan8[3 + 4]] = (sl->cbp & 0x2000) >> 12;\n  2416\t\n  2417\t            nnz_cache[scan8[0 + 8]] =\n  2418\t            nnz_cache[scan8[1 + 8]] =\n  2419\t            nnz_cache[scan8[2 + 8]] ="
+    },
+    {
+      "name": "Read",
+      "arguments": {
+        "path": "libavcodec/h264_slice.c",
+        "offset": 1950,
+        "limit": 60
+      },
+      "result": "  1950\t    if (sl->slice_type_nos == AV_PICTURE_TYPE_B && !sl->direct_spatial_mv_pred)\n  1951\t        ff_h264_direct_dist_scale_factor(h, sl);\n  1952\t    if (!h->setup_finished)\n  1953\t        ff_h264_direct_ref_list_init(h, sl);\n  1954\t\n  1955\t    if (h->avctx->skip_loop_filter >= AVDISCARD_ALL ||\n  1956\t        (h->avctx->skip_loop_filter >= AVDISCARD_NONKEY &&\n  1957\t         h->nal_unit_type != H264_NAL_IDR_SLICE) ||\n  1958\t        (h->avctx->skip_loop_filter >= AVDISCARD_NONINTRA &&\n  1959\t         sl->slice_type_nos != AV_PICTURE_TYPE_I) ||\n  1960\t        (h->avctx->skip_loop_filter >= AVDISCARD_BIDIR  &&\n  1961\t         sl->slice_type_nos == AV_PICTURE_TYPE_B) ||\n  1962\t        (h->avctx->skip_loop_filter >= AVDISCARD_NONREF &&\n  1963\t         nal->ref_idc == 0))\n  1964\t        sl->deblocking_filter = 0;\n  1965\t\n  1966\t    if (sl->deblocking_filter == 1 && h->nb_slice_ctx > 1) {\n  1967\t        if (h->avctx->flags2 & AV_CODEC_FLAG2_FAST) {\n  1968\t            /* Cheat slightly for speed:\n  1969\t             * Do not bother to deblock across slices. */\n  1970\t            sl->deblocking_filter = 2;\n  1971\t        } else {\n  1972\t            h->postpone_filter = 1;\n  1973\t        }\n  1974\t    }\n  1975\t    sl->qp_thresh = 15 -\n  1976\t                   FFMIN(sl->slice_alpha_c0_offset, sl->slice_beta_offset) -\n  1977\t                   FFMAX3(0,\n  1978\t                          h->ps.pps->chroma_qp_index_offset[0],\n  1979\t                          h->ps.pps->chroma_qp_index_offset[1]) +\n  1980\t                   6 * (h->ps.sps->bit_depth_luma - 8);\n  1981\t\n  1982\t    sl->slice_num       = ++h->current_slice;\n  1983\t\n  1984\t    if (sl->slice_num)\n  1985\t        h->slice_row[(sl->slice_num-1)&(MAX_SLICES-1)]= sl->resync_mb_y;\n  1986\t    if (   h->slice_row[sl->slice_num&(MAX_SLICES-1)] + 3 >= sl->resync_mb_y\n  1987\t        && h->slice_row[sl->slice_num&(MAX_SLICES-1)] <= sl->resync_mb_y\n  1988\t        && sl->slice_num >= MAX_SLICES) {\n  1989\t        //in case of ASO this check needs to be updated depending on how we decide to assign slice numbers in this case\n  1990\t        av_log(h->avctx, AV_LOG_WARNING, \"Possibly too many slices (%d >= %d), increase MAX_SLICES and recompile if there are artifacts\\n\", sl->slice_num, MAX_SLICES);\n  1991\t    }\n  1992\t\n  1993\t    for (j = 0; j < 2; j++) {\n  1994\t        int id_list[16];\n  1995\t        int *ref2frm = h->ref2frm[sl->slice_num & (MAX_SLICES - 1)][j];\n  1996\t        for (i = 0; i < 16; i++) {\n  1997\t            id_list[i] = 60;\n  1998\t            if (j < sl->list_count && i < sl->ref_count[j] &&\n  1999\t                sl->ref_list[j][i].parent->f->buf[0]) {\n  2000\t                int k;\n  2001\t                const AVBuffer *buf = sl->ref_list[j][i].parent->f->buf[0]->buffer;\n  2002\t                for (k = 0; k < h->short_ref_count; k++)\n  2003\t                    if (h->short_ref[k]->f->buf[0]->buffer == buf) {\n  2004\t                        id_list[i] = k;\n  2005\t                        break;\n  2006\t                    }\n  2007\t                for (k = 0; k < h->long_ref_count; k++)\n  2008\t                    if (h->long_ref[k] && h->long_ref[k]->f->buf[0]->buffer == buf) {\n  2009\t                        id_list[i] = h->short_ref_count + k;"
+    },
+    {
+      "name": "Read",
+      "arguments": {
+        "limit": 50,
+        "offset": 380,
+        "path": "libavcodec/h264dec.h"
+      },
+      "result": "   380\t    /*\n   381\t     * Set to 1 when the current picture contains only I slices, 0 otherwise.\n   382\t     */\n   383\t    int picture_intra_only;\n   384\t\n   385\t    int crop_left;\n   386\t    int crop_right;\n   387\t    int crop_top;\n   388\t    int crop_bottom;\n   389\t\n   390\t    int8_t(*intra4x4_pred_mode);\n   391\t    H264PredContext hpc;\n   392\t\n   393\t    uint8_t (*non_zero_count)[48];\n   394\t\n   395\t#define LIST_NOT_USED -1 // FIXME rename?\n   396\t\n   397\t    /**\n   398\t     * block_offset[ 0..23] for frame macroblocks\n   399\t     * block_offset[24..47] for field macroblocks\n   400\t     */\n   401\t    int block_offset[2 * (16 * 3)];\n   402\t\n   403\t    uint32_t *mb2b_xy;  // FIXME are these 4 a good idea?\n   404\t    uint32_t *mb2br_xy;\n   405\t    int b_stride;       // FIXME use s->b4_stride\n   406\t\n   407\t    uint16_t *slice_table;      ///< slice_table_base + 2*mb_stride + 1\n   408\t\n   409\t    // interlacing specific flags\n   410\t    int mb_aff_frame;\n   411\t    int picture_structure;\n   412\t    int first_field;\n   413\t\n   414\t    uint8_t *list_counts;               ///< Array of list_count per MB specifying the slice type\n   415\t\n   416\t    /* 0x100 -> non null luma_dc, 0x80/0x40 -> non null chroma_dc (cb/cr), 0x?0 -> chroma_cbp(0, 1, 2), 0x0? luma_cbp */\n   417\t    uint16_t *cbp_table;\n   418\t\n   419\t    /* chroma_pred_mode for i4x4 or i16x16, else 0 */\n   420\t    uint8_t *chroma_pred_mode_table;\n   421\t    uint8_t (*mvd_table[2])[2];\n   422\t    uint8_t *direct_table;\n   423\t\n   424\t    uint8_t scan_padding[16];\n   425\t    uint8_t zigzag_scan[16];\n   426\t    uint8_t zigzag_scan8x8[64];\n   427\t    uint8_t zigzag_scan8x8_cavlc[64];\n   428\t    uint8_t field_scan[16];\n   429\t    uint8_t field_scan8x8[64];"
+    }
+  ]
+}

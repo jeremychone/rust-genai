@@ -15,7 +15,8 @@ pub struct ToolCall {
 	/// Kept as `serde_json::Value` so callers can deserialize into their own types.
 	pub fn_arguments: Value,
 
-	/// Optional thought signatures that should precede tool calls in the assistant turn.
+	/// Convenience mirror of the canonical `ContentPart::ThoughtSignature` values that
+	/// should precede tool calls in the assistant turn.
 	///
 	/// When present on the first tool call in a batch, `ChatMessage::from(Vec<ToolCall>)`
 	/// will automatically include these as leading `ThoughtSignature` parts in the

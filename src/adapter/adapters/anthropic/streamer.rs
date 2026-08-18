@@ -1,10 +1,11 @@
 use super::parse_cache_creation_details;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions};
-use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
 use crate::chat::{ChatOptionsSet, PromptTokensDetails, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
+use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -18,13 +19,66 @@ pub struct AnthropicStreamer {
 	done: bool,
 
 	captured_data: StreamerCapturedData,
+	captured_thought_blocks: Vec<InterStreamThoughtBlock>,
 	in_progress_block: InProgressBlock,
+	pending_events: VecDeque<InterStreamEvent>,
 }
 
 enum InProgressBlock {
 	Text,
 	ToolUse { id: String, name: String, input: String },
-	Thinking,
+	Thinking(ThinkingBlock),
+}
+
+#[derive(Default)]
+struct ThinkingBlock {
+	/// `None` when the caller did not opt into reasoning content capture.
+	reasoning: Option<String>,
+	/// `None` when the caller opted out of every capture this block feeds.
+	signature: Option<String>,
+}
+
+impl ThinkingBlock {
+	fn new(reasoning: Option<String>, signature: Option<String>) -> Self {
+		Self { reasoning, signature }
+	}
+
+	fn append_reasoning(&mut self, reasoning: &str) {
+		if let Some(captured) = &mut self.reasoning {
+			captured.push_str(reasoning);
+		}
+	}
+
+	fn append_signature_delta(&mut self, delta: &str) {
+		let Some(signature) = &mut self.signature else {
+			return;
+		};
+		if delta.is_empty() || signature.ends_with(delta) || signature.starts_with(delta) {
+			return;
+		}
+		if delta.starts_with(signature.as_str()) {
+			*signature = delta.to_string();
+			return;
+		}
+
+		let overlap = (1..=signature.len().min(delta.len()))
+			.rev()
+			.find(|&len| {
+				signature.is_char_boundary(signature.len() - len)
+					&& delta.is_char_boundary(len)
+					&& signature.ends_with(&delta[..len])
+			})
+			.unwrap_or(0);
+		signature.push_str(&delta[overlap..]);
+	}
+
+	fn into_thought_block(self) -> Option<InterStreamThoughtBlock> {
+		let signature = self.signature.filter(|signature| !signature.is_empty())?;
+		Some(InterStreamThoughtBlock {
+			reasoning_content: self.reasoning,
+			signature,
+		})
+	}
 }
 
 impl AnthropicStreamer {
@@ -34,7 +88,9 @@ impl AnthropicStreamer {
 			done: false,
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
+			captured_thought_blocks: Vec::new(),
 			in_progress_block: InProgressBlock::Text,
+			pending_events: VecDeque::new(),
 		}
 	}
 }
@@ -45,6 +101,9 @@ impl futures::Stream for AnthropicStreamer {
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		if self.done {
 			return Poll::Ready(None);
+		}
+		if let Some(event) = self.pending_events.pop_front() {
+			return Poll::Ready(Some(Ok(event)));
 		}
 
 		while let Poll::Ready(event) = Pin::new(&mut self.inner).poll_next(cx) {
@@ -78,7 +137,42 @@ impl futures::Stream for AnthropicStreamer {
 
 							match data.x_get_str("/content_block/type") {
 								Ok("text") => self.in_progress_block = InProgressBlock::Text,
-								Ok("thinking") => self.in_progress_block = InProgressBlock::Thinking,
+								Ok("thinking") => {
+									let thinking = data.x_take::<String>("/content_block/thinking").unwrap_or_default();
+									let signature =
+										data.x_take::<String>("/content_block/signature").unwrap_or_default();
+
+									if self.options.capture_reasoning_content && !thinking.is_empty() {
+										match self.captured_data.reasoning_content {
+											Some(ref mut reasoning) => reasoning.push_str(&thinking),
+											None => self.captured_data.reasoning_content = Some(thinking.clone()),
+										}
+									}
+
+									// The signature is the replayable half of a thinking block, so it
+									// follows the same opt-in as the reasoning text it belongs to.
+									// Callers replaying a signed assistant turn must set
+									// `capture_reasoning_content`, otherwise Anthropic rejects the
+									// continuation.
+									let capture_block = self.options.capture_reasoning_content;
+									let captured_reasoning = capture_block.then_some(thinking.clone());
+									let captured_signature = capture_block.then(|| signature.clone());
+									self.in_progress_block = InProgressBlock::Thinking(ThinkingBlock::new(
+										captured_reasoning,
+										captured_signature,
+									));
+
+									if !signature.is_empty() {
+										self.pending_events
+											.push_back(InterStreamEvent::ThoughtSignatureChunk(signature));
+									}
+									if !thinking.is_empty() {
+										self.pending_events.push_back(InterStreamEvent::ReasoningChunk(thinking));
+									}
+									if let Some(event) = self.pending_events.pop_front() {
+										return Poll::Ready(Some(Ok(event)));
+									}
+								}
 								Ok("tool_use") => {
 									let id: String = data.x_take("/content_block/id")?;
 									let name: String = data.x_take("/content_block/name")?;
@@ -146,8 +240,9 @@ impl futures::Stream for AnthropicStreamer {
 
 									return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tc))));
 								}
-								InProgressBlock::Thinking => {
+								InProgressBlock::Thinking(thinking_block) => {
 									if let Ok(thinking) = data.x_take::<String>("/delta/thinking") {
+										thinking_block.append_reasoning(&thinking);
 										// Add to the captured_thinking if chat options say so
 										if self.options.capture_reasoning_content {
 											match self.captured_data.reasoning_content {
@@ -158,6 +253,7 @@ impl futures::Stream for AnthropicStreamer {
 
 										return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(thinking))));
 									} else if let Ok(signature) = data.x_take::<String>("/delta/signature") {
+										thinking_block.append_signature_delta(&signature);
 										return Poll::Ready(Some(Ok(InterStreamEvent::ThoughtSignatureChunk(
 											signature,
 										))));
@@ -201,6 +297,11 @@ impl futures::Stream for AnthropicStreamer {
 										None => self.captured_data.tool_calls = Some(vec![tc]),
 									}
 								}
+								InProgressBlock::Thinking(thinking_block) => {
+									if let Some(block) = thinking_block.into_thought_block() {
+										self.captured_thought_blocks.push(block);
+									}
+								}
 								_ => {
 									// no-op for remaining block types
 								}
@@ -237,6 +338,8 @@ impl futures::Stream for AnthropicStreamer {
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
 								captured_thought_signatures: None,
+								captured_thought_blocks: (!self.captured_thought_blocks.is_empty())
+									.then(|| std::mem::take(&mut self.captured_thought_blocks)),
 								captured_response_id: None,
 							};
 
@@ -371,5 +474,41 @@ impl AnthropicStreamer {
 			model_iden: self.options.model_iden.clone(),
 			serde_error,
 		})
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::ThinkingBlock;
+
+	fn signature(start: &str, deltas: &[&str]) -> Option<String> {
+		let mut block = ThinkingBlock::new(None, Some(start.to_string()));
+		for delta in deltas {
+			block.append_signature_delta(delta);
+		}
+		block.into_thought_block().map(|block| block.signature)
+	}
+
+	#[test]
+	fn split_signature_deltas_form_one_logical_block_signature() {
+		assert_eq!(
+			signature("", &["signed-", "fragmented"]).as_deref(),
+			Some("signed-fragmented")
+		);
+	}
+
+	#[test]
+	fn start_and_delta_signature_variants_form_one_logical_signature() {
+		assert_eq!(signature("start-only", &[]).as_deref(), Some("start-only"));
+		assert_eq!(signature("signed-", &["suffix"]).as_deref(), Some("signed-suffix"));
+		assert_eq!(signature("complete", &["complete"]).as_deref(), Some("complete"));
+		assert_eq!(
+			signature("prefix", &["prefix-and-rest"]).as_deref(),
+			Some("prefix-and-rest")
+		);
+		assert_eq!(
+			signature("", &["part", "partial", "partial-signature"]).as_deref(),
+			Some("partial-signature")
+		);
 	}
 }
