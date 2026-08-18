@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		AdapterKind::AtlasCloud,
 	];
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	for &kind in KINDS {
 		println!("\n--- Models for {kind}");

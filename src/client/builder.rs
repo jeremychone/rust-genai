@@ -6,6 +6,7 @@ use crate::resolver::{
 };
 use crate::webc::WebClient;
 use crate::{Client, ClientConfig, WebConfig};
+use crate::{Error, Result};
 use std::sync::Arc;
 
 /// Builder for `Client`.
@@ -112,7 +113,7 @@ impl ClientBuilder {
 
 impl ClientBuilder {
 	/// Build a `Client`.
-	pub fn build(self) -> Client {
+	pub fn build(self) -> Result<Client> {
 		let config = self.config.unwrap_or_default();
 
 		// Create WebClient based on configuration
@@ -121,20 +122,26 @@ impl ClientBuilder {
 			web_client
 		} else if let Some(req_config) = config.web_config() {
 			// Create WebClient with reqwest configuration
-			let mut builder = reqwest::Client::builder();
-			builder = req_config.apply_to_builder(builder);
-			let reqwest_client = builder.build().expect("Failed to build reqwest client");
-			WebClient::from_reqwest_client(reqwest_client)
+			let mut reqwest_builder = reqwest::Client::builder();
+			reqwest_builder = req_config.apply_to_builder(reqwest_builder);
+			WebClient::from_reqwest_client(build_reqwest(reqwest_builder)?)
 		} else {
 			// Use default WebClient with performance optimizations
 			let default_config = super::web_config::WebConfig::default();
-			let mut builder = reqwest::Client::builder();
-			builder = default_config.apply_to_builder(builder);
-			let reqwest_client = builder.build().expect("Failed to build reqwest client");
-			WebClient::from_reqwest_client(reqwest_client)
+			let mut reqwest_builder = reqwest::Client::builder();
+			reqwest_builder = default_config.apply_to_builder(reqwest_builder);
+			WebClient::from_reqwest_client(build_reqwest(reqwest_builder)?)
 		};
 
 		let inner = super::ClientInner { web_client, config };
-		Client { inner: Arc::new(inner) }
+
+		Ok(Client { inner: Arc::new(inner) })
 	}
+}
+
+fn build_reqwest(reqwest_builder: reqwest::ClientBuilder) -> Result<reqwest::Client> {
+	let reqwest_client = reqwest_builder
+		.build()
+		.map_err(|e| Error::ClientBuildFail { cause: e.to_string() })?;
+	Ok(reqwest_client)
 }

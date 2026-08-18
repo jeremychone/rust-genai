@@ -9,7 +9,7 @@ use genai::chat::{ChatMessage, ChatRequest};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	let client = Client::builder().build();
+	let client = Client::builder().build()?;
 
 	// Test cases demonstrating automatic endpoint routing
 	let test_cases = vec![

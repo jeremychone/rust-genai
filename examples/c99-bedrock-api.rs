@@ -30,7 +30,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 		return Ok(());
 	}
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	// -- Example 1: Claude via Bedrock Converse
 	println!("--- Claude on Bedrock ---");

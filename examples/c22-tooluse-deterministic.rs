@@ -6,7 +6,7 @@ const MODEL: &str = "gemini-3-flash-preview";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	let client = Client::default();
+	let client = Client::new()?;
 
 	let weather_tool = Tool::new("get_weather")
 		.with_description("Get the current weather for a location")

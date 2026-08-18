@@ -11,8 +11,10 @@ pub struct WebClient {
 }
 
 // Implements Default with performance optimizations
-impl Default for WebClient {
-	fn default() -> Self {
+impl WebClient {
+	// TODO: Needs to understand why this one is not used. Either remove or use.
+	#[allow(unused)]
+	pub fn new() -> Result<Self> {
 		use std::time::Duration;
 		let reqwest_client = reqwest::Client::builder()
 			.tcp_nodelay(true)
@@ -23,8 +25,9 @@ impl Default for WebClient {
 			.http2_keep_alive_while_idle(true)
 			.http2_adaptive_window(true)
 			.build()
-			.expect("Failed to build default reqwest client");
-		WebClient { reqwest_client }
+			.map_err(Error::Reqwest)?;
+
+		Ok(WebClient { reqwest_client })
 	}
 }
 

@@ -5,7 +5,7 @@ const MODEL: &str = "gemini-3-pro-image-preview";
 
 #[tokio::test]
 async fn test_p_gemini_image_generation() -> Result<(), Box<dyn std::error::Error>> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let prompt = "Generate a small icon of a star";
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(prompt)]);
 

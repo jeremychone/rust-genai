@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		ChatMessage::user(question),
 	]);
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	let print_options = PrintChatStreamOptions::from_print_events(false);
 

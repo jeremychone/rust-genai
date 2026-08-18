@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	});
 
 	// -- Build the new client with this client_config
-	let client = Client::builder().with_model_mapper(model_mapper).build();
+	let client = Client::builder().with_model_mapper(model_mapper).build()?;
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 

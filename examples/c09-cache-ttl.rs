@@ -60,7 +60,7 @@ fn get_or_zero(val: Option<i32>) -> i32 {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let mut all_passed = true;
 
 	// -- Request 1: Cache creation
