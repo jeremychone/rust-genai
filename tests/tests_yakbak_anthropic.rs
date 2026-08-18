@@ -10,6 +10,61 @@ use serde_json::{Value, json};
 use support::yakbak::replay_client;
 use support::{TestResult, extract_stream_end};
 
+#[tokio::test]
+async fn test_yakbak_anthropic_signed_thinking_stream_preserves_block_order() -> TestResult<()> {
+	// Cause/effect graph: C1 SSE emits a Thinking block in multiple reasoning and
+	// signature deltas; C2 Text is the next block; C3 ToolUse is last; C4 all
+	// capture switches are enabled. Effects: E1 streamed reasoning is complete;
+	// E2 terminal content binds signature to Thinking; E3 terminal block order is
+	// Thinking→Text→ToolCall. Rule R1=C1&C2&C3&C4 => E1+E2+E3.
+	let (client, _server) = replay_client("anthropic", "thinking_tool_stream").await?;
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+	let request = ChatRequest::from_user("Read the compatibility fixture").append_tool(
+		Tool::new("read_fixture").with_schema(json!({
+			"type":"object",
+			"properties":{"marker":{"type":"string"}},
+			"required":["marker"]
+		})),
+	);
+	let stream = client
+		.exec_chat_stream("anthropic::deepseek-v4-pro", request, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream.stream).await?;
+	assert_eq!(
+		extract.reasoning_content.as_deref(),
+		Some("I should use the fixture."),
+		"R1/E1"
+	);
+	assert_eq!(
+		extract.stream_end.captured_reasoning_content.as_deref(),
+		Some("I should use the fixture."),
+		"R1/E1 normalized capture"
+	);
+	let parts = extract
+		.stream_end
+		.captured_content
+		.as_ref()
+		.ok_or("R1 captured content")?
+		.parts();
+	assert!(
+		matches!(&parts[0], ContentPart::Thinking(block) if block.thinking == "I should use the fixture." && block.signature.as_deref() == Some("sig-123")),
+		"R1/E2"
+	);
+	assert!(
+		matches!(&parts[1], ContentPart::Text(text) if text == "Checking."),
+		"R1/E3 text"
+	);
+	assert!(
+		matches!(&parts[2], ContentPart::ToolCall(call) if call.call_id == "toolu_stream_1" && call.fn_name == "read_fixture"),
+		"R1/E3 tool"
+	);
+	Ok(())
+}
+
 /// Verify that the Anthropic adapter emits incremental ToolCallChunk events
 /// during streaming: one at content_block_start (name + empty args), then one
 /// per content_block_delta (accumulated args as Value::String).

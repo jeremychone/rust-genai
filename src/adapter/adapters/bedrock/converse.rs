@@ -346,6 +346,7 @@ fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 			ContentPart::ToolCall(_) => {}
 			ContentPart::ThoughtSignature(_) => {}
 			ContentPart::ReasoningContent(_) => {}
+			ContentPart::Thinking(_) => {}
 			ContentPart::Custom(_) => {}
 		}
 	}
@@ -376,6 +377,7 @@ fn assistant_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 			ContentPart::ToolResponse(_) => {}
 			ContentPart::ThoughtSignature(_) => {}
 			ContentPart::ReasoningContent(_) => {}
+			ContentPart::Thinking(_) => {}
 			ContentPart::Custom(_) => {}
 		}
 	}

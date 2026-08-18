@@ -1,4 +1,4 @@
-use crate::chat::{ContentPart, MessageContent, ToolCall, ToolResponse};
+use crate::chat::{ContentPart, MessageContent, ThinkingBlock, ToolCall, ToolResponse};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
@@ -89,6 +89,12 @@ impl ChatMessage {
 		if let Some(reasoning) = reasoning {
 			self.content.push(ContentPart::ReasoningContent(reasoning));
 		}
+		self
+	}
+
+	/// Append one provider-issued signed thinking block to this message.
+	pub fn with_thinking(mut self, thinking: ThinkingBlock) -> Self {
+		self.content.push(ContentPart::Thinking(thinking));
 		self
 	}
 

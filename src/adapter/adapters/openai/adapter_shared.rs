@@ -401,6 +401,7 @@ impl OpenAIAdapter {
 								ContentPart::ToolResponse(_) => (),
 								ContentPart::ThoughtSignature(_) => (),
 								ContentPart::ReasoningContent(_) => (),
+								ContentPart::Thinking(_) => (),
 								// Custom are ignored for this logic
 								ContentPart::Custom(_) => {}
 							}
@@ -438,6 +439,7 @@ impl OpenAIAdapter {
 							ContentPart::Binary(_) => (),
 							ContentPart::ToolResponse(_) => (),
 							ContentPart::ThoughtSignature(_) => {}
+							ContentPart::Thinking(_) => {}
 							// Custom are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}

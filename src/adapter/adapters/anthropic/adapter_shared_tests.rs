@@ -4,8 +4,90 @@ use super::*;
 use crate::ServiceTarget;
 use crate::adapter::adapters::anthropic::ant_reasoning::REASONING_HIGH;
 use crate::adapter::{Adapter, ServiceType};
-use crate::chat::{ChatMessage, ChatOptions, ChatRequest, JsonSpec, Tool, ToolChoice};
+use crate::chat::{
+	ChatMessage, ChatOptions, ChatRequest, ContentPart, JsonSpec, MessageContent, ThinkingBlock, Tool, ToolCall,
+	ToolChoice,
+};
 use crate::resolver::AuthData;
+use reqwest::StatusCode;
+
+#[test]
+fn test_anthropic_signed_thinking_round_trip_preserves_block_order() {
+	// Cause/effect graph: C1 an assistant turn contains signed Thinking; C2
+	// public Text follows; C3 ToolCall follows. Effects: E1 request serialization
+	// preserves the exact three-block order and signature; E2 response parsing
+	// reconstructs the same typed order; E3 the legacy normalized reasoning view
+	// remains available. Decision rule R1=C1&C2&C3 => E1+E2+E3.
+	let model = ModelIden::new(AdapterKind::Anthropic, "deepseek-v4-pro");
+	let tool_call = ToolCall {
+		call_id: "toolu_1".into(),
+		fn_name: "read_fixture".into(),
+		fn_arguments: json!({"marker":"anthropic"}),
+		thought_signatures: None,
+	};
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::Thinking(ThinkingBlock::new("choose the fixture", Some("sig-123".into()))),
+		ContentPart::Text("Checking the fixture.".into()),
+		ContentPart::ToolCall(tool_call.clone()),
+	]));
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: model.clone(),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		ChatRequest::new(vec![assistant]),
+		ChatOptionsSet::default(),
+	)
+	.expect("R1/E1 serialize signed thinking");
+	assert_eq!(
+		web_req.payload["messages"][0]["content"],
+		json!([
+			{"type":"thinking", "thinking":"choose the fixture", "signature":"sig-123"},
+			{"type":"text", "text":"Checking the fixture."},
+			{"type":"tool_use", "id":"toolu_1", "name":"read_fixture", "input":{"marker":"anthropic"}}
+		]),
+		"R1/E1"
+	);
+
+	let response = AnthropicAdapter::build_chat_response(
+		model,
+		WebResponse {
+			status: StatusCode::OK,
+			body: json!({
+				"model":"deepseek-v4-pro",
+				"stop_reason":"tool_use",
+				"usage":{"input_tokens":10,"output_tokens":5},
+				"content":[
+					{"type":"thinking", "thinking":"choose the fixture", "signature":"sig-123"},
+					{"type":"text", "text":"Checking the fixture."},
+					{"type":"tool_use", "id":"toolu_1", "name":"read_fixture", "input":{"marker":"anthropic"}}
+				]
+			}),
+		},
+	)
+	.expect("R1/E2 parse signed thinking");
+	let parts = response.content.parts();
+	assert!(
+		matches!(&parts[0], ContentPart::Thinking(block) if block.thinking == "choose the fixture" && block.signature.as_deref() == Some("sig-123")),
+		"R1/E2 thinking"
+	);
+	assert!(
+		matches!(&parts[1], ContentPart::Text(text) if text == "Checking the fixture."),
+		"R1/E2 text"
+	);
+	assert!(
+		matches!(&parts[2], ContentPart::ToolCall(call) if call.call_id == "toolu_1"),
+		"R1/E2 tool"
+	);
+	assert_eq!(
+		response.reasoning_content.as_deref(),
+		Some("choose the fixture"),
+		"R1/E3"
+	);
+}
 
 /// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
 /// on a model that uses the `output_config` effort API (e.g. `claude-sonnet-4-6`), both

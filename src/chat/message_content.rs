@@ -1,5 +1,5 @@
 /// Note: MessageContent is used for ChatRequest and ChatResponse.
-use crate::chat::{Binary, ContentPart, CustomPart, ToolCall, ToolResponse};
+use crate::chat::{Binary, ContentPart, CustomPart, ThinkingBlock, ToolCall, ToolResponse};
 use serde::{Deserialize, Serialize};
 
 /// Message content container used in ChatRequest and ChatResponse.
@@ -265,6 +265,16 @@ impl MessageContent {
 		self.parts.into_iter().filter_map(|p| p.into_reasoning_content()).collect()
 	}
 
+	/// Return Anthropic-style signed thinking blocks in message order.
+	pub fn thinking_blocks(&self) -> Vec<&ThinkingBlock> {
+		self.parts.iter().filter_map(ContentPart::as_thinking).collect()
+	}
+
+	/// Consume and return Anthropic-style signed thinking blocks in message order.
+	pub fn into_thinking_blocks(self) -> Vec<ThinkingBlock> {
+		self.parts.into_iter().filter_map(ContentPart::into_thinking).collect()
+	}
+
 	/// Join all reasoning content parts with a newline separator.
 	/// Returns None if there are no reasoning content parts.
 	pub fn joined_reasoning_content(&self) -> Option<String> {
@@ -408,6 +418,11 @@ impl MessageContent {
 	/// True if at least one part is ReasoningContent.
 	pub fn contains_reasoning_content(&self) -> bool {
 		self.parts.iter().any(|p| p.is_reasoning_content())
+	}
+
+	/// True if at least one Anthropic-style signed thinking block exists.
+	pub fn contains_thinking(&self) -> bool {
+		self.parts.iter().any(ContentPart::is_thinking)
 	}
 
 	/// True if at least one part is Custom.
