@@ -2,8 +2,9 @@ use crate::adapter::{AdapterDispatcher, AdapterKind};
 use crate::chat::ChatOptions;
 use crate::client::{ModelSpec, ServiceTarget};
 use crate::embed::EmbedOptions;
-use crate::resolver::{AuthData, AuthResolver, Endpoint, ModelMapper, ServiceTargetResolver};
+use crate::resolver::{AuthData, AuthResolver, Endpoint, ModelMapper, ProviderConfig, ServiceTargetResolver};
 use crate::{Error, ModelIden, Result, WebConfig};
+use std::collections::HashMap;
 
 /// Configuration for building and customizing a `Client`.
 #[derive(Debug, Default, Clone)]
@@ -15,6 +16,7 @@ pub struct ClientConfig {
 	pub(super) chat_options: Option<ChatOptions>,
 	pub(super) embed_options: Option<EmbedOptions>,
 	pub(super) adapter_kind: Option<AdapterKind>,
+	pub(super) provider_configs: HashMap<AdapterKind, ProviderConfig>,
 }
 
 /// Chainable setters related to the ClientConfig.
@@ -24,6 +26,33 @@ impl ClientConfig {
 	/// Called before `service_target_resolver`; if set, it will receive this value.
 	pub fn with_auth_resolver(mut self, auth_resolver: AuthResolver) -> Self {
 		self.auth_resolver = Some(auth_resolver);
+		self
+	}
+
+	/// Sets the endpoint and/or auth for one adapter kind.
+	///
+	/// Repeatable — call once per provider a Client should be able to
+	/// reach. This is the declarative form of what an `AuthResolver` or
+	/// `ServiceTargetResolver` closure would otherwise have to do by hand
+	/// for the common "this provider lives here, with this key" case.
+	///
+	/// Precedence, lowest to highest: the adapter's built-in default, then
+	/// this configuration, then the resolvers — so a resolver can still
+	/// override a statically configured provider, and configuring one
+	/// provider never affects any other.
+	pub fn with_provider_config(
+		mut self,
+		adapter_kind: AdapterKind,
+		provider_config: impl Into<ProviderConfig>,
+	) -> Self {
+		let ProviderConfig { endpoint, auth } = provider_config.into();
+		let entry = self.provider_configs.entry(adapter_kind).or_default();
+		if endpoint.is_some() {
+			entry.endpoint = endpoint;
+		}
+		if auth.is_some() {
+			entry.auth = auth;
+		}
 		self
 	}
 
@@ -101,6 +130,11 @@ impl ClientConfig {
 		self.auth_resolver.as_ref()
 	}
 
+	/// Returns the configured [`ProviderConfig`] for an adapter kind, if any.
+	pub fn provider_config(&self, adapter_kind: AdapterKind) -> Option<&ProviderConfig> {
+		self.provider_configs.get(&adapter_kind)
+	}
+
 	/// Returns the ServiceTargetResolver, if set.
 	pub fn service_target_resolver(&self) -> Option<&ServiceTargetResolver> {
 		self.service_target_resolver.as_ref()
@@ -135,7 +169,7 @@ impl ClientConfig {
 	pub(crate) async fn resolve_adapter_config(&self, adapter_kind: AdapterKind) -> Result<(AuthData, Endpoint)> {
 		let model = ModelIden::new(adapter_kind, "");
 		let auth = self.run_auth_resolver(model).await?;
-		let endpoint = AdapterDispatcher::default_endpoint(adapter_kind);
+		let endpoint = self.default_endpoint(adapter_kind);
 		Ok((auth, endpoint))
 	}
 
@@ -154,7 +188,7 @@ impl ClientConfig {
 
 		// -- Get the default endpoint
 		// For now, just get the default endpoint; the `resolve_target` will allow overriding it.
-		let endpoint = AdapterDispatcher::default_endpoint(model.adapter_kind);
+		let endpoint = self.default_endpoint(model.adapter_kind);
 
 		// -- Create the default service target
 		let service_target = ServiceTarget {
@@ -192,13 +226,31 @@ impl ClientConfig {
 						model_iden: model.clone(),
 						resolver_error: err,
 					})?
-					// default the resolver resolves to nothing
-					.unwrap_or_else(|| AdapterDispatcher::default_auth(model.adapter_kind));
+					// default when the resolver resolves to nothing
+					.unwrap_or_else(|| self.default_auth(model.adapter_kind));
 
 				Ok(auth_data)
 			}
-			None => Ok(AdapterDispatcher::default_auth(model.adapter_kind)),
+			None => Ok(self.default_auth(model.adapter_kind)),
 		}
+	}
+
+	/// The auth to use when no resolver supplied one: the configured
+	/// [`ProviderConfig`] if there is one, else the adapter's default.
+	fn default_auth(&self, adapter_kind: AdapterKind) -> AuthData {
+		self.provider_configs
+			.get(&adapter_kind)
+			.and_then(|config| config.auth.clone())
+			.unwrap_or_else(|| AdapterDispatcher::default_auth(adapter_kind))
+	}
+
+	/// The endpoint to seed a [`ServiceTarget`] with before the
+	/// [`ServiceTargetResolver`] runs.
+	fn default_endpoint(&self, adapter_kind: AdapterKind) -> Endpoint {
+		self.provider_configs
+			.get(&adapter_kind)
+			.and_then(|config| config.endpoint.clone())
+			.unwrap_or_else(|| AdapterDispatcher::default_endpoint(adapter_kind))
 	}
 
 	/// Resolves a [`ServiceTarget`] via the [`ServiceTargetResolver`] (if any).
@@ -312,6 +364,81 @@ mod tests {
 					Ok(service_target)
 				},
 			))
+	}
+
+	#[tokio::test]
+	async fn provider_config_supplies_endpoint_and_auth() {
+		// -- Setup & Fixtures
+		let config = ClientConfig::default().with_provider_config(
+			AdapterKind::OpenAI,
+			(
+				Endpoint::from_static("https://gateway.internal/v1/"),
+				AuthData::from_single("gateway-key"),
+			),
+		);
+
+		// -- Exec
+		let target = config
+			.resolve_model_spec(ModelSpec::Iden(ModelIden::new(AdapterKind::OpenAI, "gpt-4o")))
+			.await
+			.expect("should resolve");
+
+		// -- Check
+		assert_eq!(target.endpoint.base_url(), "https://gateway.internal/v1/");
+		assert!(matches!(target.auth, AuthData::Key(ref key) if key == "gateway-key"));
+	}
+
+	#[tokio::test]
+	async fn provider_config_is_scoped_to_its_adapter() {
+		// Configuring one provider must not leak into another.
+		let config = ClientConfig::default().with_provider_config(
+			AdapterKind::OpenAI,
+			Endpoint::from_static("https://gateway.internal/v1/"),
+		);
+
+		let target = config
+			.resolve_model_spec(ModelSpec::Iden(ModelIden::new(
+				AdapterKind::Anthropic,
+				"claude-sonnet-4-6",
+			)))
+			.await
+			.expect("should resolve");
+
+		assert_eq!(
+			target.endpoint.base_url(),
+			AdapterDispatcher::default_endpoint(AdapterKind::Anthropic).base_url()
+		);
+	}
+
+	#[tokio::test]
+	async fn resolvers_still_win_over_provider_config() {
+		// The static configuration seeds the target; the dynamic hook keeps
+		// the final say.
+		let config = bound_config(AdapterKind::OpenAI, "https://from-resolver/v1")
+			.with_provider_config(AdapterKind::OpenAI, Endpoint::from_static("https://from-config/v1/"));
+
+		let target = config
+			.resolve_model_spec(ModelSpec::Iden(ModelIden::new(AdapterKind::OpenAI, "gpt-4o")))
+			.await
+			.expect("should resolve");
+
+		assert_eq!(target.endpoint.base_url(), "https://from-resolver/v1");
+	}
+
+	#[tokio::test]
+	async fn provider_config_applies_to_adapter_config_resolution() {
+		// `all_model_names` resolves through here, with no model name.
+		let config = ClientConfig::default().with_provider_config(
+			AdapterKind::OpenAI,
+			Endpoint::from_static("https://gateway.internal/v1/"),
+		);
+
+		let (_auth, endpoint) = config
+			.resolve_adapter_config(AdapterKind::OpenAI)
+			.await
+			.expect("should resolve");
+
+		assert_eq!(endpoint.base_url(), "https://gateway.internal/v1/");
 	}
 
 	#[tokio::test]
