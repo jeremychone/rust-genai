@@ -210,7 +210,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Gemini, "gemini-3-pro-preview").await
+	common_tests::common_test_list_models(AdapterKind::Gemini, "gemini-3.1-flash-lite").await
 }
 
 // endregion: --- List
