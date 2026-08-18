@@ -32,6 +32,23 @@ pub enum Error {
 	Reqwest(reqwest::Error),
 }
 
+/// Accessors
+impl Error {
+	/// The HTTP status behind this error, when there is one.
+	///
+	/// `ResponseFailedStatus` carries it directly; a `Reqwest` error may
+	/// also carry one (for instance from `error_for_status`). Everything
+	/// else — a non-JSON body, an unparsable body, a connection failure —
+	/// has no status to report.
+	pub fn status(&self) -> Option<StatusCode> {
+		match self {
+			Error::ResponseFailedStatus { status, .. } => Some(*status),
+			Error::Reqwest(reqwest_error) => reqwest_error.status(),
+			_ => None,
+		}
+	}
+}
+
 // region:    --- Error Boilerplate
 
 // NOTE: The manual Display implementation is removed as derive_more::Display handles it.

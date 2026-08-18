@@ -170,6 +170,33 @@ Drop the `::` namespace prefix or `ModelSpec::Iden`, or build a Client without \
 	SerdeJson(serde_json::Error),
 }
 
+/// Accessors
+impl Error {
+	/// The HTTP status the provider responded with, when the failure came
+	/// from an HTTP response.
+	///
+	/// The status is already carried by the error, but reaching it means
+	/// knowing that a failed chat call arrives as
+	/// `WebModelCall { webc_error: webc::Error::ResponseFailedStatus { .. } }`,
+	/// that adapter-level calls use `WebAdapterCall` instead, and that
+	/// `HttpError` is a third, separate shape. Callers that want to branch
+	/// on 429 or 5xx should not have to know any of that.
+	///
+	/// Returns `None` for failures with no HTTP response behind them:
+	/// connection and timeout errors, resolver failures, request
+	/// validation, stream parsing.
+	///
+	/// Retry policy stays with the caller — this only reports what the
+	/// provider said.
+	pub fn status(&self) -> Option<StatusCode> {
+		match self {
+			Error::HttpError { status, .. } => Some(*status),
+			Error::WebModelCall { webc_error, .. } | Error::WebAdapterCall { webc_error, .. } => webc_error.status(),
+			_ => None,
+		}
+	}
+}
+
 // region:    --- Error Boilerplate
 
 // The Display trait is now derived via derive_more::Display
@@ -182,3 +209,94 @@ Drop the `::` namespace prefix or `ModelSpec::Iden`, or build a Client without \
 impl std::error::Error for Error {}
 
 // endregion: --- Error Boilerplate
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
+
+	use super::*;
+	use reqwest::header::HeaderMap;
+
+	fn webc_status_error(status: u16) -> webc::Error {
+		webc::Error::ResponseFailedStatus {
+			status: StatusCode::from_u16(status).expect("valid status code"),
+			body: "body".to_string(),
+			headers: Box::new(HeaderMap::new()),
+		}
+	}
+
+	#[test]
+	fn test_error_status_from_web_model_call() -> Result<()> {
+		// -- Setup & Fixtures
+		let error = Error::WebModelCall {
+			model_iden: ModelIden::new(AdapterKind::OpenAI, "gpt-4o"),
+			webc_error: webc_status_error(429),
+		};
+
+		// -- Exec & Check
+		assert_eq!(error.status(), Some(StatusCode::TOO_MANY_REQUESTS));
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_error_status_from_web_adapter_call() -> Result<()> {
+		// -- Setup & Fixtures
+		let error = Error::WebAdapterCall {
+			adapter_kind: AdapterKind::OpenAI,
+			webc_error: webc_status_error(503),
+		};
+
+		// -- Exec & Check
+		assert_eq!(error.status(), Some(StatusCode::SERVICE_UNAVAILABLE));
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_error_status_from_http_error() -> Result<()> {
+		// -- Setup & Fixtures
+		let error = Error::HttpError {
+			status: StatusCode::BAD_GATEWAY,
+			canonical_reason: "Bad Gateway".to_string(),
+			body: "body".to_string(),
+			headers: Box::new(HeaderMap::new()),
+		};
+
+		// -- Exec & Check
+		assert_eq!(error.status(), Some(StatusCode::BAD_GATEWAY));
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_error_status_none_without_a_response() -> Result<()> {
+		// -- Setup & Fixtures
+		let error = Error::NoAuthData {
+			model_iden: ModelIden::new(AdapterKind::OpenAI, "gpt-4o"),
+		};
+
+		// -- Exec & Check
+		assert_eq!(error.status(), None);
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_webc_error_status_none_for_non_status_failures() -> Result<()> {
+		// -- Setup & Fixtures
+		let error = webc::Error::ResponseFailedNotJson {
+			content_type: "text/html".to_string(),
+			body: "<html></html>".to_string(),
+		};
+
+		// -- Exec & Check
+		assert_eq!(error.status(), None);
+
+		Ok(())
+	}
+}
+
+// endregion: --- Tests
