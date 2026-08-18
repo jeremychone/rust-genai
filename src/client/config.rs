@@ -132,11 +132,21 @@ impl ClientConfig {
 	/// Resolves auth and endpoint for the given adapter kind.
 	///
 	/// Used by `Client::all_model_names()` where no specific model name is available.
+	///
+	/// Both resolvers see a `ModelIden` with an empty model name, since
+	/// listing models is not about any one model. The `ServiceTargetResolver`
+	/// is run for the same reason the `AuthResolver` is: a Client pointed at
+	/// a private endpoint must not fall back to the adapter's public default
+	/// here, or it would send that Client's credentials to the wrong host.
 	pub(crate) async fn resolve_adapter_config(&self, adapter_kind: AdapterKind) -> Result<(AuthData, Endpoint)> {
 		let model = ModelIden::new(adapter_kind, "");
-		let auth = self.run_auth_resolver(model).await?;
+		let auth = self.run_auth_resolver(model.clone()).await?;
 		let endpoint = AdapterDispatcher::default_endpoint(adapter_kind);
-		Ok((auth, endpoint))
+
+		let service_target = ServiceTarget { model, auth, endpoint };
+		let service_target = self.run_service_target_resolver(service_target).await?;
+
+		Ok((service_target.auth, service_target.endpoint))
 	}
 
 	/// Resolves a ServiceTarget for the given model.
@@ -312,6 +322,40 @@ mod tests {
 					Ok(service_target)
 				},
 			))
+	}
+
+	#[tokio::test]
+	async fn adapter_config_applies_service_target_resolver() {
+		// `all_model_names` resolves through here, with no model name to go
+		// on. The AuthResolver was already honored; the ServiceTargetResolver
+		// must be too, or a Client configured for a private endpoint would
+		// list models from the adapter's public default — and send the
+		// credential the AuthResolver just supplied along with it.
+		let config = bound_config(AdapterKind::OpenAI, "https://custom.example/v1");
+
+		let (auth, endpoint) = config
+			.resolve_adapter_config(AdapterKind::OpenAI)
+			.await
+			.expect("adapter config should resolve");
+
+		assert_eq!(endpoint.base_url(), "https://custom.example/v1");
+		assert!(matches!(auth, AuthData::Key(_)));
+	}
+
+	#[tokio::test]
+	async fn adapter_config_falls_back_to_the_default_endpoint() {
+		// No service-target resolver attached: the adapter default stands.
+		let config = ClientConfig::default();
+
+		let (_auth, endpoint) = config
+			.resolve_adapter_config(AdapterKind::OpenAI)
+			.await
+			.expect("adapter config should resolve");
+
+		assert_eq!(
+			endpoint.base_url(),
+			AdapterDispatcher::default_endpoint(AdapterKind::OpenAI).base_url()
+		);
 	}
 
 	#[tokio::test]
