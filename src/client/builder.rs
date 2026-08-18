@@ -1,7 +1,7 @@
 use crate::adapter::AdapterKind;
 use crate::chat::ChatOptions;
 use crate::resolver::{
-	AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, IntoServiceTargetResolverFn, ModelMapper,
+	AuthResolver, IntoAuthResolverFn, IntoModelMapperFn, IntoServiceTargetResolverFn, ModelMapper, ProviderConfig,
 	ServiceTargetResolver,
 };
 use crate::webc::WebClient;
@@ -107,6 +107,36 @@ impl ClientBuilder {
 	pub fn with_adapter_kind(mut self, adapter_kind: AdapterKind) -> Self {
 		let client_config = self.config.get_or_insert_with(ClientConfig::default);
 		client_config.adapter_kind = Some(adapter_kind);
+		self
+	}
+
+	/// Append the endpoint and/or auth for one adapter kind.
+	///
+	/// Call once per provider this Client should reach; each call adds to
+	/// the list rather than replacing it:
+	///
+	/// ```rust
+	/// # use genai::Client;
+	/// # use genai::adapter::AdapterKind;
+	/// # use genai::resolver::{AuthData, Endpoint};
+	/// let client = Client::builder()
+	///     .append_provider_config(
+	///         AdapterKind::OpenAI,
+	///         (Endpoint::from_static("https://gateway.internal/v1/"), AuthData::from_env("GATEWAY_KEY")),
+	///     )
+	///     .append_provider_config(AdapterKind::Ollama, Endpoint::from_static("http://localhost:11434/v1/"))
+	///     .build();
+	/// ```
+	///
+	/// Precedence, lowest to highest: the adapter's built-in default, then
+	/// this configuration, then the resolvers.
+	pub fn append_provider_config(
+		mut self,
+		adapter_kind: AdapterKind,
+		provider_config: impl Into<ProviderConfig>,
+	) -> Self {
+		let config = self.config.take().unwrap_or_default();
+		self.config = Some(config.append_provider_config(adapter_kind, provider_config));
 		self
 	}
 }
