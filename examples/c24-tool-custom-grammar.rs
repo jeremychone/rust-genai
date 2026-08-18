@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			},
 		));
 	}
-	let client = client_builder.build();
+	let client = client_builder.build()?;
 
 	println!("--- Model: {MODEL}");
 

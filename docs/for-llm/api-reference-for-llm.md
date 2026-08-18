@@ -692,7 +692,7 @@ Example:
 ```rust
 use genai::Client;
 
-let client = Client::default();
+let client = Client::new()?;
 // Set environment variables:
 //   GENAI_1_ENDPOINT=https://my-api.example.com/v1/
 //   GENAI_1_API_KEY=sk-...

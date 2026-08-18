@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let sink: Arc<dyn ChatFrameSink> = counter.clone();
 	let options = ChatOptions::default().with_capture_usage(true).with_raw_frame_sink_arc(sink);
 
-	let client = Client::default();
+	let client = Client::new()?;
 	let chat_req = ChatRequest::from_user(question)
 		.append_tool(Tool::new(ToolName::WebSearch).with_config(WebSearchConfig::default()));
 

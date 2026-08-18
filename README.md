@@ -32,7 +32,7 @@ GENAI_1_API_KEY=sk-your-api-key
 ```
 
 ```rust
-let client = Client::default();
+let client = Client::new()?;
 let chat_res = client.exec_chat("genai_1::my-model", chat_req, None).await?;
 ```
 
@@ -46,7 +46,7 @@ OMLX_API_KEY=your-api-key
 Then target the model with the `omlx::` namespace:
 
 ```rust
-let client = Client::default();
+let client = Client::new()?;
 let chat_res = client.exec_chat("omlx::my-model", chat_req, None).await?;
 ```
 
@@ -56,7 +56,7 @@ Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examp
 ```rust
 
 // Can talk to any models / providers
-let client = Client::default();
+let client = Client::new()?;
 
 let question = "Why is the sky red?";
 
@@ -258,7 +258,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		ChatMessage::user(question),
 	]);
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	let print_options = PrintChatStreamOptions::from_print_events(false);
 

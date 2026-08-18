@@ -21,7 +21,7 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 async fn test_list_models() -> TestResult<()> {
 	// common_tests::common_test_list_models(AdapterKind::DeepSeek, "deepseek-v4-flash").await
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	// -- Exec
 	let models = client.all_model_names(AdapterKind::Custom(1), None).await?;

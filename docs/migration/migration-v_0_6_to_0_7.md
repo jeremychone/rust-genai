@@ -2,6 +2,30 @@
 
 ## API Breaking Changes
 
+### Fallible `Client` construction and builder
+
+`Client` building is now fallible to enforce genai's zero-panic strategy, eliminating internal `.expect(...)` calls during `reqwest` client initialization. `Client::default()` has been removed to align with **genai's zero-panic strategy**.
+
+- `Client::new()` now returns `Result<Client>`
+- `ClientBuilder::build()` now returns `Result<Client>`.
+- `Client::default()` has been removed.
+
+Sorry for the inconvenience, but this was a necessary update.
+
+**Now:**
+
+```rust
+let client = Client::new()?;
+let client = Client::builder().with_chat_options(options).build()?;
+```
+
+**Before:**
+
+```rust
+let client = Client::default();
+let client = Client::builder().with_chat_options(options).build();
+```
+
 ### `ReasoningEffort::None` renamed to `ReasoningEffort::Zero`
 
 `ReasoningEffort::None` has been renamed to `ReasoningEffort::Zero` to avoid confusion with `Option::None`. The canonical keyword is now `"zero"`. `from_keyword()` still accepts `"none"` as a backward-compatible alias.
