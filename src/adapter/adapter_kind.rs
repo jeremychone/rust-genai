@@ -273,3 +273,47 @@ impl AdapterKind {
 		}
 	}
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
+
+	use super::*;
+
+	#[test]
+	fn test_adapter_kind_all_round_trips_lower_str() -> Result<()> {
+		// -- Exec & Check
+		for kind in AdapterKind::all() {
+			let lower = kind.as_lower_str();
+			assert_eq!(AdapterKind::from_lower_str(lower), Some(*kind), "for '{lower}'");
+		}
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_adapter_kind_all_has_no_duplicates() -> Result<()> {
+		// -- Setup & Fixtures
+		let all = AdapterKind::all();
+
+		// -- Exec
+		let unique: std::collections::HashSet<_> = all.iter().collect();
+
+		// -- Check
+		assert_eq!(unique.len(), all.len());
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_adapter_kind_all_excludes_custom() -> Result<()> {
+		// -- Check
+		assert!(!AdapterKind::all().iter().any(|kind| matches!(kind, AdapterKind::Custom(_))));
+
+		Ok(())
+	}
+}
+
+// endregion: --- Tests
