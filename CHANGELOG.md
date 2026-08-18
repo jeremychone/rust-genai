@@ -8,6 +8,9 @@
   - AtlasCloud - default env: `ATLASCLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://api.atlascloud.ai/v1/` (activated on the `atlascloud::` namespace) (PR #259)
   - Qwen Cloud - default env: `QWEN_CLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on the `qwen_cloud::` namespace)
   - Kimi - default env: `KIMI_API_KEY`, Adapter: OpenAI, endpoint: `https://api.moonshot.ai/v1/` (activated on the `kimi::` namespace or `kimi` model prefix, moonshot.ai)
+- `-` ChatOptions - Allow partial deserialization without `stop_sequences`, defaulting it to an empty vector. (PR #285)
+- `+` Adapter - Add `AdapterKind::all()` to enumerate built-in adapters, excluding `Custom`. (PR #286)
+- `+` Error - Add `Error::status()` and `webc::Error::status()` accessors for HTTP status inspection. (PR #287)
 - Anthropic:
   - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
   - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
@@ -36,6 +39,7 @@
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
   - `!` Apply the `ReasoningEffort::None` to `ReasoningEffort::Zero` rename mechanically, while preserving provider-specific keyword mappings.
 - Gemini:
+  - `-` Count server-side built-in tool-use tokens in normalized prompt usage and allow mixing built-in and user-defined function tools. (PR #284)
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
   - `!` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.

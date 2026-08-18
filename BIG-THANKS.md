@@ -7,11 +7,14 @@ _If I forgot your PR, feel free to submit a PR_
 ## v0.7.0-beta.x
 
 - [ropoctl](https://github.com/ropoctl)
-  - [#254](https://github.com/jeremychone/rust-genai/pull/254) anthropic: pass custom content parts through
-  - [#255](https://github.com/jeremychone/rust-genai/pull/255) anthropic: merge extra request body fields
-  - [#257](https://github.com/jeremychone/rust-genai/pull/257) feat(gemini): forward JSON Schema raw via responseJsonSchema / parametersJsonSchema
-  - [#263](https://github.com/jeremychone/rust-genai/pull/263) feat(schema): sanitize JSON Schema per adapter
+  - [#287](https://github.com/jeremychone/rust-genai/pull/287) error: `Error::status()` accessor
+  - [#286](https://github.com/jeremychone/rust-genai/pull/286) adapter: `AdapterKind::all()` to enumerate the built-in adapters
+  - [#285](https://github.com/jeremychone/rust-genai/pull/285) fix(chat): default `ChatOptions.stop_sequences` for partial deserialization
   - [#266](https://github.com/jeremychone/rust-genai/pull/266) feat(openai_resp): freeform custom tools with grammar-constrained input
+  - [#263](https://github.com/jeremychone/rust-genai/pull/263) feat(schema): sanitize JSON Schema per adapter
+  - [#257](https://github.com/jeremychone/rust-genai/pull/257) feat(gemini): forward JSON Schema raw via responseJsonSchema / parametersJsonSchema
+  - [#255](https://github.com/jeremychone/rust-genai/pull/255) anthropic: merge extra request body fields
+  - [#254](https://github.com/jeremychone/rust-genai/pull/254) anthropic: pass custom content parts through
 - [coaoac](https://github.com/coaoac)
   - [#268](https://github.com/jeremychone/rust-genai/pull/268) fix(anthropic): correct reasoning routing for current model names
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
@@ -19,6 +22,14 @@ _If I forgot your PR, feel free to submit a PR_
 - [lambdabetaeta](https://github.com/lambdabetaeta)
   - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
   - [#250](https://github.com/jeremychone/rust-genai/pull/250) fix: support adaptive thinking for Claude Sonnet 5
+- [J-F-Liu](https://github.com/J-F-Liu) 
+  - [#262](https://github.com/jeremychone/rust-genai/pull/262) move messages after tools in JSON payloads for better prompt cache utilization
+  - [#264](https://github.com/jeremychone/rust-genai/pull/264) add error handling for tool-call input JSON parsing in AnthropicStreamer
+- [VikashLoomba](https://github.com/VikashLoomba)
+  - [#280](https://github.com/jeremychone/rust-genai/pull/280) feat(webc): expose response headers on streaming HTTP errors
+  - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
+- [vagmi](https://github.com/vagmi)
+  - [#284](https://github.com/jeremychone/rust-genai/pull/284) fix(gemini): count built-in tool prompt tokens and allow mixed tools
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 
@@ -29,14 +40,8 @@ _If I forgot your PR, feel free to submit a PR_
   - [#259](https://github.com/jeremychone/rust-genai/pull/259) add Atlas Cloud OpenAI-compatible adapter
 - [Jackkakaya](https://github.com/Jackkakaya)
   - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
-- [J-F-Liu](https://github.com/J-F-Liu) 
-  - [#262](https://github.com/jeremychone/rust-genai/pull/262) move messages after tools in JSON payloads for better prompt cache utilization
-  - [#264](https://github.com/jeremychone/rust-genai/pull/264) add error handling for tool-call input JSON parsing in AnthropicStreamer
 - [blocksdevpro](https://github.com/blocksdevpro)
   - [#271](https://github.com/jeremychone/rust-genai/pull/271) map Anthropic ping events to `ChatStreamEvent::Heartbeat`
-- [VikashLoomba](https://github.com/VikashLoomba)
-  - [#280](https://github.com/jeremychone/rust-genai/pull/280) feat(webc): expose response headers on streaming HTTP errors
-  - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
 - [CristiC0](https://github.com/CristiC0)
   - [#279](https://github.com/jeremychone/rust-genai/pull/279) fix(anthropic): align stream usage capture with new Anthropic API behaviour
 
