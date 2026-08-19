@@ -1,16 +1,17 @@
 //! Raw provider frame callbacks.
 //!
 //! Used internally for debugging and as a convenient escape hatch without
-//! the need for changing the internals of the library. exec_chat_stream provies
+//! the need for changing the internals of the library. `exec_chat_stream` provides
 //! a normalized view of providers but hides many of the details that may be required
 //! for billing. For e.g., a gemini grounding search costs $0.014 for search. There
-//! are similar items like Anthropic's server_tool_use or OpenAI web_search_call.
+//! are similar items like Anthropic's `server_tool_use` or OpenAI `web_search_call`.
 //!
 //! A [`ChatFrameSink`] set on [`ChatOptions`](crate::chat::ChatOptions) receives every wire
-//! frame as it is decoded, so callers can aggregate or log whatever they need. The library
+//! frame as it is decoded, so callers can aggregate or log whatever they need without the
+//! library having to buffer the stream.
 //!
-//! The sink is invoked for both exec paths — once with the whole body for `exec_chat`
-//! (`FrameCtx.streaming == false`), and per frame for `exec_chat_stream`.
+//! Streaming only: `exec_chat` ignores any sink, since `ChatResponse.captured_raw_body`
+//! already carries the whole body.
 
 use crate::ModelIden;
 use crate::chat::StreamEnd;
@@ -82,7 +83,8 @@ pub struct RawFrameRef<'a> {
 	/// Provider event name, when the transport has one (see [`RawFrame::event`]).
 	pub event: Option<&'a str>,
 
-	/// The exact payload text, unparsed.
+	/// The payload text, unparsed. For SSE this is the decoded `data:` payload of the block
+	/// (multi-line `data:` fields joined with `\n`), not the raw wire block.
 	pub data: &'a str,
 
 	/// Microseconds since the stream was issued.
@@ -152,16 +154,26 @@ impl FrameCtx {
 ///   Push heavy work elsewhere (see [`ChannelSink`]).
 /// - Frames arrive in wire order per `FrameCtx.stream_id`; there is no ordering guarantee
 ///   across streams sharing one sink.
-/// - `on_end` is not called when a stream is dropped before completion.
+/// - The terminal hooks are latched: for a given stream, `on_end` and `on_error` are mutually
+///   exclusive and fire at most once, whichever comes first. A stream that reports an error
+///   and then keeps producing frames still yields a single terminal callback.
+/// - Neither terminal hook is guaranteed to fire. A stream dropped before completion, or one
+///   whose upstream ends early, may deliver frames and nothing else. Do not treat `on_end` as
+///   a cleanup hook.
 pub trait ChatFrameSink: Send + Sync {
 	/// Called once per wire frame.
 	fn on_frame(&self, ctx: &FrameCtx, frame: RawFrameRef<'_>);
 
-	/// Called once when the stream completes normally, with the terminal `StreamEnd`.
+	/// Called at most once, when the stream reaches its `End` event, with the terminal
+	/// `StreamEnd`. Not called if the stream failed first, or if it was dropped or truncated
+	/// before an `End` event was decoded.
+	///
+	/// Note: providers differ on truncated streams. Some (Ollama, the OpenAI Responses API)
+	/// synthesize an `End` when the upstream body ends, and so do call this; the others do not.
 	fn on_end(&self, _ctx: &FrameCtx, _end: &StreamEnd) {}
 
-	/// Called when the stream fails. A mid-stream failure ends the stream without an
-	/// `End` event, so this is the only notification a sink gets.
+	/// Called at most once, on the first failure. A mid-stream failure ends the stream without
+	/// an `End` event, so this is the only terminal notification a sink gets for it.
 	fn on_error(&self, _ctx: &FrameCtx, _err: &crate::Error) {}
 }
 
