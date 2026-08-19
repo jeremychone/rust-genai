@@ -7,6 +7,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use crate::error::{BoxError, Error as GenaiError};
+use crate::webc::FrameTap;
 
 /// WebStream is a simple web stream implementation that splits the stream messages by a given delimiter.
 /// - It is intended to be a pragmatic solution for services that do not adhere to the `text/event-stream` format and content type.
@@ -28,6 +29,10 @@ pub struct WebStream {
 	// When a multi-byte character is split across TCP/HTTP chunk boundaries,
 	// the trailing bytes are carried over to be prepended to the next chunk.
 	utf8_carry: Vec<u8>,
+	// Feeds the user `ChatFrameSink`, when one is configured.
+	// Only set for the delimited modes; in `Sse` mode the `EventSourceStream` wrapper taps
+	// instead, so the sink sees `(event, data)` rather than the undecoded event block.
+	frame_tap: Option<FrameTap>,
 }
 
 pub enum StreamMode {
@@ -49,7 +54,24 @@ impl WebStream {
 			partial_message: None,
 			remaining_messages: None,
 			utf8_carry: Vec::new(),
+			frame_tap: None,
 		}
+	}
+
+	pub fn with_frame_tap(mut self, frame_tap: Option<FrameTap>) -> Self {
+		self.frame_tap = frame_tap;
+		self
+	}
+
+	pub fn frame_tap(&self) -> Option<FrameTap> {
+		self.frame_tap.clone()
+	}
+
+	fn emit(&mut self, message: String) -> Poll<Option<Result<String, BoxError>>> {
+		if let Some(frame_tap) = self.frame_tap.as_mut() {
+			frame_tap.on_frame(None, &message);
+		}
+		Poll::Ready(Some(Ok(message)))
 	}
 
 	pub fn new_with_sse(reqwest_builder: RequestBuilder) -> Self {
@@ -61,6 +83,7 @@ impl WebStream {
 			partial_message: None,
 			remaining_messages: None,
 			utf8_carry: Vec::new(),
+			frame_tap: None,
 		}
 	}
 }
@@ -72,10 +95,9 @@ impl Stream for WebStream {
 		let this = self.get_mut();
 
 		// -- First, we check if we have any remaining messages to send.
-		if let Some(ref mut remaining_messages) = this.remaining_messages
-			&& let Some(msg) = remaining_messages.pop_front()
-		{
-			return Poll::Ready(Some(Ok(msg)));
+		let remaining_message = this.remaining_messages.as_mut().and_then(|msgs| msgs.pop_front());
+		if let Some(msg) = remaining_message {
+			return this.emit(msg);
 		}
 
 		// -- Then execute the web poll and processing loop
@@ -177,7 +199,7 @@ impl Stream for WebStream {
 
 						// -- If we have a first message, we have to send it.
 						if let Some(first_message) = first_message.take() {
-							return Poll::Ready(Some(Ok(first_message)));
+							return this.emit(first_message);
 						} else {
 							continue;
 						}
@@ -187,7 +209,7 @@ impl Stream for WebStream {
 						if let Some(partial) = this.partial_message.take()
 							&& !partial.is_empty()
 						{
-							return Poll::Ready(Some(Ok(partial)));
+							return this.emit(partial);
 						}
 						this.bytes_stream = None;
 					}

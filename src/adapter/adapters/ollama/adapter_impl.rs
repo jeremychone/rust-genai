@@ -194,8 +194,9 @@ impl Adapter for OllamaAdapter {
 			model_iden.clone(),
 			options_set,
 		);
+		let frame_tap = streamer.frame_tap();
 		Ok(ChatStreamResponse {
-			stream: ChatStream::from_inter_stream(streamer),
+			stream: ChatStream::from_inter_stream(streamer).with_frame_tap(frame_tap),
 			model_iden,
 		})
 	}

@@ -2,10 +2,12 @@ use crate::Headers;
 use crate::chat::CacheControl;
 use crate::chat::chat_req_response_format::ChatResponseFormat;
 use crate::chat::chat_req_tool_choice::ToolChoice;
+use crate::chat::frame_sink::{ChatFrameSink, FnSink, FrameCtx, RawFrameRef};
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ops::Deref;
+use std::sync::Arc;
 
 // Some model names have those keywors
 const PROTECTED_MODEL_NAMES: &[&str] = &["deepseek-r1-zero", "qwen3.8-max"];
@@ -43,7 +45,16 @@ pub struct ChatOptions {
 	pub capture_tool_calls: Option<bool>,
 
 	/// Capture the raw HTTP body (primarily for debugging/inspection).
+	/// Non-streaming only; available in ChatResponse::captured_raw_body.
+	/// For streaming, use [`ChatOptions::raw_frame_sink`]
 	pub capture_raw_body: Option<bool>,
+
+	/// Receives every raw provider frame as it is decoded (see [`ChatFrameSink`]).
+	///
+	/// This is the streaming counterpart of `capture_raw_body`, and the escape hatch for
+	/// provider data the normalized events do not model (e.g. Gemini `groundingMetadata`).
+	#[serde(skip)]
+	pub raw_frame_sink: Option<Arc<dyn ChatFrameSink>>,
 
 	/// Desired response format (e.g., `ChatResponseFormat::JsonMode` for OpenAI-style JSON mode).
 	///
@@ -130,10 +141,33 @@ impl ChatOptions {
 		self
 	}
 
-	/// Enables or disables capturing the raw HTTP body.
+	/// Enables or disables capturing the raw HTTP body (non-streaming).
 	pub fn with_capture_raw_body(mut self, value: bool) -> Self {
 		self.capture_raw_body = Some(value);
 		self
+	}
+
+	/// Sets the raw frame sink (streaming only), taking ownership of it.
+	///
+	/// To keep a handle on an accumulating sink, use `with_raw_frame_sink_arc` instead.
+	pub fn with_raw_frame_sink(mut self, sink: impl ChatFrameSink + 'static) -> Self {
+		self.raw_frame_sink = Some(Arc::new(sink));
+		self
+	}
+
+	/// Sets the raw frame sink from a shared handle, so the caller can read what it
+	/// accumulated once the call completes.
+	pub fn with_raw_frame_sink_arc(mut self, sink: Arc<dyn ChatFrameSink>) -> Self {
+		self.raw_frame_sink = Some(sink);
+		self
+	}
+
+	/// Sets a per-frame closure as the raw frame sink (streaming only).
+	pub fn with_raw_frame_fn<F>(self, f: F) -> Self
+	where
+		F: Fn(&FrameCtx, RawFrameRef<'_>) + Send + Sync + 'static,
+	{
+		self.with_raw_frame_sink(FnSink::new(f))
 	}
 
 	/// Sets the stop sequences.
@@ -556,6 +590,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.capture_raw_body)
 			.or_else(|| self.client.and_then(|client| client.capture_raw_body))
+	}
+
+	pub fn raw_frame_sink(&self) -> Option<Arc<dyn ChatFrameSink>> {
+		self.chat
+			.and_then(|chat| chat.raw_frame_sink.clone())
+			.or_else(|| self.client.and_then(|client| client.raw_frame_sink.clone()))
 	}
 
 	pub fn response_format(&self) -> Option<&ChatResponseFormat> {

@@ -101,6 +101,11 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
+#[tokio::test]
+async fn test_chat_stream_frame_sink_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_frame_sink_ok(MODEL).await
+}
+
 // Not supported for OLD models
 // TODO: Probably need to see if we can make it work
 // #[tokio::test]

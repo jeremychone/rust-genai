@@ -4,11 +4,13 @@
 
 mod error;
 mod event_source_stream;
+mod frame_tap;
 mod web_client;
 mod web_stream;
 
 pub(crate) use error::Result;
 pub(crate) use event_source_stream::*;
+pub(crate) use frame_tap::*;
 pub(crate) use web_client::*;
 pub(crate) use web_stream::*;
 

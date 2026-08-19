@@ -1,5 +1,6 @@
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatMessage, ContentPart, MessageContent, StopReason, ToolCall, Usage};
+use crate::webc::FrameTap;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
@@ -10,6 +11,12 @@ type InterStreamType = Pin<Box<dyn Stream<Item = crate::Result<InterStreamEvent>
 /// A stream of chat events produced by a streaming chat request.
 pub struct ChatStream {
 	inter_stream: InterStreamType,
+
+	/// Terminal hooks for the user `ChatFrameSink`.
+	/// Per-frame calls happen in the transport; `on_end` fires here, where the public
+	/// `StreamEnd` is built, and `on_error` fires on the error path. The tap latches, so
+	/// only the first of the two reaches the sink.
+	frame_tap: Option<FrameTap>,
 
 	/// OTel span state for the streaming operation (feature `otel`).
 	/// Set by `Client::exec_chat_stream` so the span covers the full stream
@@ -31,6 +38,7 @@ impl ChatStream {
 	pub(crate) fn new(inter_stream: InterStreamType) -> Self {
 		ChatStream {
 			inter_stream,
+			frame_tap: None,
 			#[cfg(feature = "otel")]
 			otel: None,
 		}
@@ -42,6 +50,13 @@ impl ChatStream {
 	{
 		let boxed_stream: InterStreamType = Box::pin(inter_stream);
 		ChatStream::new(boxed_stream)
+	}
+
+	/// Attaches the frame tap cloned from the streamer, so the terminal sink hooks fire once
+	/// the public `StreamEnd` exists (or once the stream fails).
+	pub(crate) fn with_frame_tap(mut self, frame_tap: Option<FrameTap>) -> Self {
+		self.frame_tap = frame_tap;
+		self
 	}
 
 	/// Attaches the OTel operation span, starting the time-to-first-chunk clock.
@@ -83,6 +98,13 @@ impl Stream for ChatStream {
 					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
 				};
 
+				// -- Frame sink: terminal hook, once, with the public StreamEnd.
+				if let Some(frame_tap) = this.frame_tap.as_ref()
+					&& let ChatStreamEvent::End(stream_end) = &chat_event
+				{
+					frame_tap.on_stream_end(stream_end);
+				}
+
 				// -- OTel: record time-to-first-chunk on the first content chunk, and the
 				//          captured usage/finish/content on the end event.
 				#[cfg(feature = "otel")]
@@ -105,6 +127,14 @@ impl Stream for ChatStream {
 				Poll::Ready(Some(Ok(chat_event)))
 			}
 			Poll::Ready(Some(Err(e))) => {
+				// -- Frame sink: a mid-stream failure ends the stream without an End event, so this
+				//    is the sink's only terminal notification. Streamers keep polling after most
+				//    errors, so a stream can reach here more than once, and can still reach its End
+				//    afterwards; the tap latches to keep it a single callback.
+				if let Some(frame_tap) = this.frame_tap.as_ref() {
+					frame_tap.on_error(&e);
+				}
+
 				#[cfg(feature = "otel")]
 				if let Some(otel) = this.otel.as_ref() {
 					crate::otel::span::record_error(&otel.span, &e);
@@ -337,6 +367,74 @@ impl StreamEnd {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::ModelIden;
+	use crate::adapter::AdapterKind;
+	use crate::chat::{ChatFrameSink, FrameCtx, RawFrameRef};
+	use futures::StreamExt;
+	use std::sync::Arc;
+	use std::sync::atomic::{AtomicUsize, Ordering};
+
+	#[derive(Debug, Default)]
+	struct TerminalSink {
+		ends: AtomicUsize,
+		errors: AtomicUsize,
+	}
+
+	impl ChatFrameSink for TerminalSink {
+		fn on_frame(&self, _ctx: &FrameCtx, _frame: RawFrameRef<'_>) {}
+
+		fn on_end(&self, _ctx: &FrameCtx, _end: &StreamEnd) {
+			self.ends.fetch_add(1, Ordering::Relaxed);
+		}
+
+		fn on_error(&self, _ctx: &FrameCtx, _err: &crate::Error) {
+			self.errors.fetch_add(1, Ordering::Relaxed);
+		}
+	}
+
+	fn test_model() -> ModelIden {
+		ModelIden::new(AdapterKind::OpenAI, "gpt-test")
+	}
+
+	fn chat_response_error() -> crate::Error {
+		crate::Error::ChatResponse {
+			model_iden: test_model(),
+			body: serde_json::json!({"message": "boom"}),
+		}
+	}
+
+	#[tokio::test]
+	async fn test_chat_stream_fires_a_single_terminal_sink_callback() {
+		// -- Setup & Fixtures
+		// What an OpenAI-compatible provider produces for
+		// `{"error":..}` / `{"error":..}` / `[DONE]`: the streamers do not set their `done`
+		// flag on the error path, so polling continues and the stream still reaches its End.
+		let sink = Arc::new(TerminalSink::default());
+		let inter_stream = futures::stream::iter(vec![
+			Ok(InterStreamEvent::Start),
+			Err(chat_response_error()),
+			Err(chat_response_error()),
+			Ok(InterStreamEvent::End(InterStreamEnd::default())),
+		]);
+		let frame_tap = FrameTap::new(sink.clone(), FrameCtx::new(test_model()));
+		let mut chat_stream = ChatStream::from_inter_stream(inter_stream).with_frame_tap(Some(frame_tap));
+
+		// -- Exec
+		// A caller that logs errors and keeps consuming (allowed by the `Stream` contract).
+		let mut events = 0;
+		while chat_stream.next().await.is_some() {
+			events += 1;
+		}
+
+		// -- Check
+		assert_eq!(events, 4, "the stream itself still yields every event");
+		assert_eq!(sink.errors.load(Ordering::Relaxed), 1, "on_error should fire once");
+		assert_eq!(
+			sink.ends.load(Ordering::Relaxed),
+			0,
+			"on_end should not follow on_error for the same stream"
+		);
+	}
 
 	#[test]
 	fn test_stream_end_preserves_captured_stop_reason() {

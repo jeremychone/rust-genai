@@ -80,6 +80,11 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_stream_frame_sink_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_frame_sink_ok(MODEL_FLASH_3).await
+}
+
+#[tokio::test]
 async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_capture_all_ok(MODEL_FLASH_3, None).await
 }
