@@ -1,6 +1,5 @@
 # Migration Guide: v0.6.x to v0.7.0
 
-
 ### `Error::HttpError.headers`
 
 `Error::HttpError` now includes `headers: Box<HeaderMap>` for failed streaming HTTP responses. Existing exhaustive matches and constructors must add `headers` or use `..`; retry metadata such as `retry-after` is now available.
@@ -17,6 +16,26 @@ let tool = Tool {
 ```
 
 Use `Tool::with_custom_format(...)` for OpenAI Responses `type: "custom"` tools.
+
+### `ChatOptions.raw_frame_sink`
+
+`ChatOptions` now includes `raw_frame_sink: Option<Arc<dyn ChatFrameSink>>` for observing raw stream frames across providers. Existing `ChatOptions` struct literals must add `raw_frame_sink: None` or use `..Default::default()`.
+
+```rust
+let options = ChatOptions {
+    // existing fields
+    raw_frame_sink: None,
+    ..Default::default()
+};
+```
+
+Use `ChatOptions::with_raw_frame_sink(...)`, `with_raw_frame_sink_arc(...)`, or `with_raw_frame_fn(...)` to attach sinks during streaming calls.
+
+### `ServiceTargetResolver` in `Client::all_model_names`
+
+`Client::all_model_names()` now invokes `ServiceTargetResolver` in addition to `AuthResolver` to resolve custom endpoints.
+
+Custom resolvers receive a `ModelIden` with an empty `model_name` for adapter-level requests. Implementations should handle empty model names when resolving endpoints.
 
 ### OpenAI-compatible video content
 

@@ -11,6 +11,8 @@
 - `-` ChatOptions - Allow partial deserialization without `stop_sequences`, defaulting it to an empty vector. (PR #285)
 - `+` Adapter - Add `AdapterKind::all()` to enumerate built-in adapters, excluding `Custom`. (PR #286)
 - `+` Error - Add `Error::status()` and `webc::Error::status()` accessors for HTTP status inspection. (PR #287)
+- `-` Client - Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
+- `+` Chat - Add `ChatFrameSink` and `ChatOptions::with_raw_frame_sink` / `with_raw_frame_fn` to observe raw stream frames across providers. (PR #290)
 - Anthropic:
   - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
   - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.

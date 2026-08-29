@@ -7,6 +7,7 @@ _If I forgot your PR, feel free to submit a PR_
 ## v0.7.0-beta.x
 
 - [ropoctl](https://github.com/ropoctl)
+  - [#288](https://github.com/jeremychone/rust-genai/pull/288) fix(client): apply ServiceTargetResolver when resolving adapter config
   - [#287](https://github.com/jeremychone/rust-genai/pull/287) error: `Error::status()` accessor
   - [#286](https://github.com/jeremychone/rust-genai/pull/286) adapter: `AdapterKind::all()` to enumerate the built-in adapters
   - [#285](https://github.com/jeremychone/rust-genai/pull/285) fix(chat): default `ChatOptions.stop_sequences` for partial deserialization
@@ -19,6 +20,9 @@ _If I forgot your PR, feel free to submit a PR_
   - [#268](https://github.com/jeremychone/rust-genai/pull/268) fix(anthropic): correct reasoning routing for current model names
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
+- [vagmi](https://github.com/vagmi)
+  - [#290](https://github.com/jeremychone/rust-genai/pull/290) feat(chat): stream frame observation via ChatFrameSink
+  - [#284](https://github.com/jeremychone/rust-genai/pull/284) fix(gemini): count built-in tool prompt tokens and allow mixed tools
 - [lambdabetaeta](https://github.com/lambdabetaeta)
   - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
   - [#250](https://github.com/jeremychone/rust-genai/pull/250) fix: support adaptive thinking for Claude Sonnet 5
@@ -28,8 +32,6 @@ _If I forgot your PR, feel free to submit a PR_
 - [VikashLoomba](https://github.com/VikashLoomba)
   - [#280](https://github.com/jeremychone/rust-genai/pull/280) feat(webc): expose response headers on streaming HTTP errors
   - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
-- [vagmi](https://github.com/vagmi)
-  - [#284](https://github.com/jeremychone/rust-genai/pull/284) fix(gemini): count built-in tool prompt tokens and allow mixed tools
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 
