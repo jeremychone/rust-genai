@@ -2,8 +2,34 @@
 
 ## v0.7.0-beta.x (see [genai versions](https://crates.io/crates/genai/versions))
 
-- `!` API CHANGE - `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls.
-- `!` API CHANGE - `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
+### API Breaking Changes
+
+- `!` API CHANGE: `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias.
+- `!` API CHANGE: `JsonSpec::schema_with_additional_properties_false` is removed. Provider adapters now sanitize schemas as required by their target API. `JsonSchemaDialect` and `sanitize_json_schema(...)` are available for explicit schema sanitization.
+
+### API New Properties / Variants
+
+- `!` API CHANGE: `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls.
+- `!` API CHANGE: `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
+ - `!` API CHANGE: `ChatOptions` adds the public `raw_frame_sink: Option<Arc<dyn ChatFrameSink>>` field for observing raw stream frames across providers. Downstream `ChatOptions` struct literals must add `raw_frame_sink: None` or use `..Default::default()`.
+
+### Behavior Refinement / Changes
+
+- Anthropic:
+  - `Zero` now positively disables reasoning, whereas it previously triggered adaptive thinking.
+  - Sonnet 5 sends `thinking: {"type": "disabled"}`, because thinking is on by default.
+  - Other models omit `thinking` and `output_config.effort`.
+  - Fable and Mythos omit `thinking`, because it is always on and cannot be explicitly disabled.
+  - The Anthropic `-zero` model suffix is canonical, while `-none` remains a backward-compatible alias. Both map to `Zero` and are stripped.
+- Gemini:
+  - `^` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
+- OpenAI and Bedrock:
+  - `^` Apply the `ReasoningEffort::Zero` rename to OpenAI and Bedrock adapter mappings while preserving provider-specific keyword mappings.
+ - Client:
+   - `-` Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
+
+### Additions & Fixes
+ 
 - `+` New Providers:
   - AtlasCloud - default env: `ATLASCLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://api.atlascloud.ai/v1/` (activated on the `atlascloud::` namespace) (PR #259)
   - Qwen Cloud - default env: `QWEN_CLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on the `qwen_cloud::` namespace)
@@ -11,7 +37,6 @@
 - `-` ChatOptions - Allow partial deserialization without `stop_sequences`, defaulting it to an empty vector. (PR #285)
 - `+` Adapter - Add `AdapterKind::all()` to enumerate built-in adapters, excluding `Custom`. (PR #286)
 - `+` Error - Add `Error::status()` and `webc::Error::status()` accessors for HTTP status inspection. (PR #287)
-- `-` Client - Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
 - `+` Chat - Add `ChatFrameSink` and `ChatOptions::with_raw_frame_sink` / `with_raw_frame_fn` to observe raw stream frames across providers. (PR #290)
 - Anthropic:
   - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
@@ -21,12 +46,6 @@
   - `-` Fix Anthropic streaming usage capture to treat `message_start` and `message_delta` usage as cumulative snapshots, preventing token over-counting. (PR #279)
   - `-` Fix: reuse Client WebClient for model listing. ([#249](https://github.com/jeremychone/rust-genai/pull/249))
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
-  - `!` `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. `#[serde(alias = "None")]` keeps old JSON deserializable. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias. (PR #253, #251)
-    - `Zero` now positively disables reasoning, whereas it previously triggered adaptive thinking.
-    - Sonnet 5 sends `thinking: {"type": "disabled"}`, because thinking is on by default.
-    - Other models omit `thinking` and `output_config.effort`.
-    - Fable and Mythos omit `thinking`, because it is always on and cannot be explicitly disabled.
-    - The Anthropic `-zero` model suffix is canonical, while `-none` remains a backward-compatible alias. Both map to `Zero` and are stripped.
 - OpenAI:
   - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
   - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
@@ -39,14 +58,10 @@
     - This policy applies only to native OpenAI Chat Completions and Responses requests for GPT-5.6 and later. Older OpenAI models retain legacy cache-retention behavior, and OpenAI-compatible adapters do not receive these OpenAI-specific fields.
     - Existing normalized usage continues to expose cache reads through `cached_tokens` and cache writes through `cache_creation_tokens`.
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
-  - `!` Apply the `ReasoningEffort::None` to `ReasoningEffort::Zero` rename mechanically, while preserving provider-specific keyword mappings.
 - Gemini:
   - `-` Count server-side built-in tool-use tokens in normalized prompt usage and allow mixing built-in and user-defined function tools. (PR #284)
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
-  - `!` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
-- Bedrock:
-  - `!` Apply the `ReasoningEffort::None` to `ReasoningEffort::Zero` rename mechanically, with behavior unchanged.
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:
