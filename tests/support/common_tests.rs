@@ -10,14 +10,16 @@ use crate::support::{
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
-	BinarySource, CacheControl, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart, JsonSpec,
-	ReasoningEffort, Tool, ToolResponse, Verbosity,
+	BinarySource, CacheControl, ChatFrameSink, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart,
+	FrameCtx, JsonSpec, RawFrame, RawFrameRef, ReasoningEffort, StreamEnd, Tool, ToolResponse, Verbosity,
 };
 use genai::embed::EmbedOptions;
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
 use genai::{Client, ClientConfig, ModelIden};
 use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use value_ext::JsonValueExt;
 
 // region:    --- Chat
@@ -756,6 +758,74 @@ pub async fn common_test_chat_stream_capture_all_ok(model: &str, checks: Option<
 	if contains_checks(checks, Check::REASONING_CONTENT) {
 		let _reasoning_content = reasoning_content.ok_or("Should have reasoning content")?;
 	}
+
+	Ok(())
+}
+
+/// A `ChatFrameSink` that records what it was handed, for assertions.
+#[derive(Debug, Default)]
+pub struct FrameSpy {
+	frames: Mutex<Vec<RawFrame>>,
+	stream_end_count: AtomicUsize,
+	error_count: AtomicUsize,
+}
+
+impl FrameSpy {
+	pub fn frames(&self) -> Vec<RawFrame> {
+		self.frames.lock().map(|frames| frames.clone()).unwrap_or_default()
+	}
+	pub fn stream_end_count(&self) -> usize {
+		self.stream_end_count.load(Ordering::Relaxed)
+	}
+	pub fn error_count(&self) -> usize {
+		self.error_count.load(Ordering::Relaxed)
+	}
+}
+
+impl ChatFrameSink for FrameSpy {
+	fn on_frame(&self, _ctx: &FrameCtx, frame: RawFrameRef<'_>) {
+		if let Ok(mut frames) = self.frames.lock() {
+			frames.push(frame.to_owned_frame());
+		}
+	}
+
+	fn on_end(&self, _ctx: &FrameCtx, _end: &StreamEnd) {
+		self.stream_end_count.fetch_add(1, Ordering::Relaxed);
+	}
+
+	fn on_error(&self, _ctx: &FrameCtx, _err: &genai::Error) {
+		self.error_count.fetch_add(1, Ordering::Relaxed);
+	}
+}
+
+/// Checks that a streaming call feeds the frame sink every wire frame, in order,
+/// and fires the terminal hook exactly once.
+pub async fn common_test_chat_stream_frame_sink_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let spy = Arc::new(FrameSpy::default());
+	let sink: Arc<dyn ChatFrameSink> = spy.clone();
+	let chat_options = ChatOptions::default().with_raw_frame_sink_arc(sink);
+	let client = Client::default();
+	let chat_req = seed_chat_req_simple();
+
+	// -- Exec
+	let chat_res = client.exec_chat_stream(model, chat_req.clone(), Some(&chat_options)).await?;
+	let _stream_extract = extract_stream_end(chat_res.stream).await?;
+
+	// -- Check
+	let frames = spy.frames();
+	assert!(!frames.is_empty(), "sink should have received frames");
+	assert_eq!(
+		frames.iter().map(|f| f.index).collect::<Vec<_>>(),
+		(0..frames.len() as u32).collect::<Vec<_>>(),
+		"frame indices should be contiguous from 0"
+	);
+	assert!(
+		frames.iter().any(|f| f.data.as_json().is_some()),
+		"at least one frame should have a json payload"
+	);
+	assert_eq!(spy.stream_end_count(), 1, "on_end should fire exactly once");
+	assert_eq!(spy.error_count(), 0, "on_error should not fire on a successful stream");
 
 	Ok(())
 }

@@ -58,6 +58,11 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 	common_tests::common_test_chat_stream_capture_content_ok(MODEL).await
 }
 
+#[tokio::test]
+async fn test_chat_stream_frame_sink_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_frame_sink_ok(MODEL).await
+}
+
 // /// COMMENTED FOR NOW AS OLLAMA OpenAI Compatibility Layer does not support
 // /// usage tokens when streaming. See https://github.com/ollama/ollama/issues/4448
 // #[tokio::test]

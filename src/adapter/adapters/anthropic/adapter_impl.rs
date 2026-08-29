@@ -72,7 +72,8 @@ impl Adapter for AnthropicAdapter {
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSourceStream::new(reqwest_builder);
 		let anthropic_stream = AnthropicStreamer::new(event_source, model_iden.clone(), options_set);
-		let chat_stream = ChatStream::from_inter_stream(anthropic_stream);
+		let frame_tap = anthropic_stream.frame_tap();
+		let chat_stream = ChatStream::from_inter_stream(anthropic_stream).with_frame_tap(frame_tap);
 		Ok(ChatStreamResponse {
 			model_iden,
 			stream: chat_stream,

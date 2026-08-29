@@ -1,5 +1,5 @@
 use crate::error::BoxError;
-use crate::webc::WebStream;
+use crate::webc::{FrameTap, WebStream};
 use futures::Stream;
 use reqwest::RequestBuilder;
 use std::pin::Pin;
@@ -9,6 +9,7 @@ use std::task::{Context, Poll};
 pub struct EventSourceStream {
 	inner: WebStream,
 	opened: bool,
+	frame_tap: Option<FrameTap>,
 }
 
 #[derive(Debug)]
@@ -30,7 +31,20 @@ impl EventSourceStream {
 		Self {
 			inner: WebStream::new_with_sse(reqwest_builder),
 			opened: false,
+			frame_tap: None,
 		}
+	}
+
+	/// Sets the frame tap that feeds the user `ChatFrameSink`.
+	/// No-op path when `frame_tap` is `None` (i.e., no sink configured).
+	pub fn with_frame_tap(mut self, frame_tap: Option<FrameTap>) -> Self {
+		self.frame_tap = frame_tap;
+		self
+	}
+
+	/// Clones the frame tap, for the terminal `on_end` / `on_error` hooks.
+	pub fn frame_tap(&self) -> Option<FrameTap> {
+		self.frame_tap.clone()
 	}
 }
 
@@ -52,7 +66,9 @@ impl Stream for EventSourceStream {
 
 			match nx {
 				Poll::Ready(Some(Ok(raw_event))) => {
-					let mut event = "message".to_string();
+					// `None` until an explicit `event:` line is seen; the SSE default name is
+					// applied when building the `Message`, but the tap reports what was on the wire.
+					let mut event: Option<String> = None;
 					let mut data = String::new();
 					for line in raw_event.lines() {
 						let line = line.trim();
@@ -62,7 +78,7 @@ impl Stream for EventSourceStream {
 						}
 
 						if let Some(e) = line.strip_prefix("event:") {
-							event = e.trim().to_string();
+							event = Some(e.trim().to_string());
 						} else if let Some(d) = line.strip_prefix("data:") {
 							if !data.is_empty() {
 								data.push('\n');
@@ -71,10 +87,16 @@ impl Stream for EventSourceStream {
 						}
 					}
 
+					if let Some(frame_tap) = this.frame_tap.as_mut() {
+						frame_tap.on_frame(event.as_deref(), &data);
+					}
+
 					// If no data found in this block, poll for the next one
 					if data.is_empty() {
 						continue;
 					}
+
+					let event = event.unwrap_or_else(|| "message".to_string());
 
 					return Poll::Ready(Some(Ok(Event::Message(Message { event, data }))));
 				}

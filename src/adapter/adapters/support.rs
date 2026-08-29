@@ -2,8 +2,9 @@
 //! It should be private to the `crate::adapter::adapters` module.
 
 use crate::ModelIden;
-use crate::chat::{ChatOptionsSet, Usage};
+use crate::chat::{ChatOptionsSet, FrameCtx, Usage};
 use crate::resolver::AuthData;
+use crate::webc::FrameTap;
 use crate::{Error, Result};
 
 pub fn get_api_key(auth: AuthData, model: &ModelIden) -> Result<String> {
@@ -11,6 +12,12 @@ pub fn get_api_key(auth: AuthData, model: &ModelIden) -> Result<String> {
 		model_iden: model.clone(),
 		resolver_error,
 	})
+}
+
+/// Builds the tap that feeds a user `ChatFrameSink`, when one is configured.
+pub fn new_frame_tap(model_iden: &ModelIden, options_set: &ChatOptionsSet<'_, '_>) -> Option<FrameTap> {
+	let sink = options_set.raw_frame_sink()?;
+	Some(FrameTap::new(sink, FrameCtx::new(model_iden.clone())))
 }
 
 // region:    --- StreamerChatOptions

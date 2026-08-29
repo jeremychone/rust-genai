@@ -110,6 +110,11 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_chat_stream_frame_sink_ok() -> TestResult<()> {
+	common_tests::common_test_chat_stream_frame_sink_ok(MODEL).await
+}
+
+#[tokio::test]
 #[serial(anthropic)]
 async fn test_chat_stream_capture_all_ok() -> TestResult<()> {
 	// Anthropic does not seem to support reasoning for testing
