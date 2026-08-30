@@ -76,6 +76,8 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 ## v0.7.0-beta.x on going 
 
+**BREAKING**: Now **fallible** constructors for  `genai::Client::new()?` and `ClientBuilder::build()?` (no more `Client::default()`). Sorry, but this was a necessary change for robustness.
+
 - Same quality as v0.6.x, with some new/updated features
 - **NEW: Custom Adapter** – Use `genai_n::model_name` to target a custom OpenAI-compatible endpoint.
   - Configure the endpoint with the environment variable `GENAI_{n}_ENDPOINT` and the API key with `GENAI_{n}_API_KEY`.
