@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		"Why is it red sometimes?",
 	];
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	// This is similar to sending initial system chat messages (which will be cumulative with system chat messages)

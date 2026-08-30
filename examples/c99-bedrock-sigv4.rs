@@ -41,7 +41,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
 	tracing_subscriber::fmt().with_env_filter(EnvFilter::new("genai=debug")).init();
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	// -- Example 1: Claude via Bedrock Converse + SigV4
 	println!("--- Claude on Bedrock (SigV4) ---");

@@ -76,7 +76,7 @@ async fn test_chat_stream_capture_content_ok() -> TestResult<()> {
 #[tokio::test]
 #[serial(ollama)]
 async fn test_chat_stream_reasoning_chunk_ok() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let chat_req = seed_chat_req_simple();
 
 	let chat_res = client.exec_chat_stream(MODEL_QWEN3, chat_req, None).await?;
@@ -101,7 +101,7 @@ async fn test_chat_stream_reasoning_chunk_ok() -> TestResult<()> {
 #[tokio::test]
 #[serial(ollama)]
 async fn test_chat_stream_non_empty_chunk_deepseek_ok() -> TestResult<()> {
-	let client = Client::default();
+	let client = Client::new()?;
 	let chat_req = seed_chat_req_simple();
 
 	let chat_res = client.exec_chat_stream(MODEL, chat_req, None).await?;

@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let question = "Why is the sky red? (be concise)";
 
 	// -- Build the new client with this client_config
-	let client = Client::default();
+	let client = Client::new()?;
 
 	// -- Build the chat request
 	let chat_req = ChatRequest::new(vec![ChatMessage::user(question)]);

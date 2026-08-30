@@ -9,7 +9,7 @@ const MODEL: &str = "gemini-3-pro-image-preview"; // Or other Gemini model that 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Reads GEMINI_API_KEY from environment variable by default
-	let client = Client::default();
+	let client = Client::new()?;
 
 	let prompt = "Generate a picture of a cat, cartoon style, 512x512 resolution";
 	println!("Prompt: {prompt}");

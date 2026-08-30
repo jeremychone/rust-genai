@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	);
 
 	// -- Build the new client with this adapter_config
-	let client = Client::builder().with_auth_resolver(auth_resolver).build();
+	let client = Client::builder().with_auth_resolver(auth_resolver).build()?;
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 

@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
 		.init();
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	println!("--- Model: {MODEL}");
 

@@ -39,7 +39,7 @@ pub async fn replay_client(provider: &str, scenario: &str) -> TestResult<(Client
 				})
 			},
 		))
-		.build();
+		.build()?;
 
 	Ok((client, server))
 }
@@ -66,7 +66,7 @@ pub async fn record_client(provider: &str, scenario: &str, backend_url: &str) ->
 				})
 			},
 		))
-		.build();
+		.build()?;
 
 	Ok((client, server))
 }

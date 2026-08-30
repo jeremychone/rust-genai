@@ -294,6 +294,8 @@ mod tests {
 	use super::*;
 	use crate::resolver::{AuthData, AuthResolver, Endpoint, ServiceTargetResolver};
 
+	type TestResult = core::result::Result<(), Box<dyn std::error::Error>>;
+
 	/// Build a ClientConfig bound to the given adapter, with an
 	/// auth/service-target resolver pair gated on that same adapter —
 	/// mirroring the real-world configuration shape this feature is meant
@@ -443,16 +445,18 @@ mod tests {
 	}
 
 	#[test]
-	fn bound_client_exposes_adapter_kind_via_getter() {
+	fn bound_client_exposes_adapter_kind_via_getter() -> TestResult {
 		// `Client::adapter_kind()` is the introspection getter a
 		// caller uses to read the bound provider back off a built
 		// Client (without having to carry the AdapterKind alongside
 		// it). Set path returns Some, unset path returns None.
-		let bound = crate::Client::builder().with_adapter_kind(AdapterKind::OpenAI).build();
+		let bound = crate::Client::builder().with_adapter_kind(AdapterKind::OpenAI).build()?;
 		assert_eq!(bound.adapter_kind(), Some(AdapterKind::OpenAI));
 
-		let unbound = crate::Client::default();
+		let unbound = crate::Client::new()?;
 		assert_eq!(unbound.adapter_kind(), None);
+
+		Ok(())
 	}
 }
 

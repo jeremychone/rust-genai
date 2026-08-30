@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.with_span_events(FmtSpan::CLOSE)
 		.init();
 
-	let client = Client::default();
+	let client = Client::new()?;
 	let chat_req = ChatRequest::new(vec![
 		ChatMessage::system("Answer in one short sentence."),
 		ChatMessage::user("Why is the sky blue?"),

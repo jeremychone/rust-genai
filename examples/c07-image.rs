@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
 		.init();
 
-	let client = Client::default();
+	let client = Client::new()?;
 
 	let mut chat_req = ChatRequest::default().with_system("Answer in one sentence");
 	chat_req = chat_req

@@ -21,7 +21,7 @@ and source link.";
 	let options = genai::chat::ChatOptions::default().with_capture_raw_body(true);
 	let client = genai::Client::builder()
 		.with_config(ClientConfig::default().with_chat_options(options))
-		.build();
+		.build()?;
 
 	// -- Set web search tool (enable one)
 	// Manual for google
