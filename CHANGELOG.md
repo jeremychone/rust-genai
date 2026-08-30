@@ -1,6 +1,8 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## v0.7.0-beta.x (see [v0.7.0 migration](docs/migration/migration-v_0_6_to_0_7.md) | [genai beta versions](https://crates.io/crates/genai/versions))
+## v0.7.0-beta.x
+
+(see [v0.7.0 migration](docs/migration/migration-v_0_6_to_0_7.md) | [genai beta versions](https://crates.io/crates/genai/versions))
 
 ### API Breaking Changes
 
@@ -31,12 +33,22 @@
  - Client:
    - `-` Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
 
+### New Providers
+
+- `+` **AtlasCloud**: default env `ATLASCLOUD_API_KEY`, endpoint `https://api.atlascloud.ai/v1/` (activated on `atlascloud::` namespace) (PR #259)
+- `+` **Qwen Cloud**: default env `QWEN_CLOUD_API_KEY`, endpoint `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on `qwen_cloud::` namespace)
+- `+` **Kimi**: default env `KIMI_API_KEY`, endpoint `https://api.moonshot.ai/v1/` (activated on `kimi::` namespace or `kimi-` model prefix)
+- `+` **OMLX**: default env `OMLX_API_KEY` (can be absent), endpoint `OMLX_ENDPOINT` (default `http://127.0.0.1:8000/v1/`), OpenAI adapter with chat template kwargs (activated on `omlx::` namespace or `omlx-` model prefix)
+- `+` **Custom Adapter (`genai_{n}::`)**:
+  - Generic OpenAI-compatible adapter routing for custom or self-hosted endpoints by number index `n`.
+  - Configured via environment variables `GENAI_{n}_ENDPOINT` (required) and `GENAI_{n}_API_KEY` (optional).
+  - Example (custom for omlx):
+    - Model: `genai_1::gemma-4-12B-it-8bit`
+    - Env: `GENAI_1_ENDPOINT=http://127.0.0.1:8000/v1/`
+    - Env: `GENAI_1_API_KEY=secret_key` (optional)
+
 ### Additions & Fixes
  
-- `+` New Providers:
-  - AtlasCloud - default env: `ATLASCLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://api.atlascloud.ai/v1/` (activated on the `atlascloud::` namespace) (PR #259)
-  - Qwen Cloud - default env: `QWEN_CLOUD_API_KEY`, Adapter: OpenAI, endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on the `qwen_cloud::` namespace)
-  - Kimi - default env: `KIMI_API_KEY`, Adapter: OpenAI, endpoint: `https://api.moonshot.ai/v1/` (activated on the `kimi::` namespace or `kimi` model prefix, moonshot.ai)
 - `-` ChatOptions - Allow partial deserialization without `stop_sequences`, defaulting it to an empty vector. (PR #285)
 - `+` Adapter - Add `AdapterKind::all()` to enumerate built-in adapters, excluding `Custom`. (PR #286)
 - `+` Error - Add `Error::status()` and `webc::Error::status()` accessors for HTTP status inspection. (PR #287)

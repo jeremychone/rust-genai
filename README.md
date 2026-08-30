@@ -3,8 +3,14 @@
 **A Native-Protocol Multi-AI Provider Library for Rust**
 
 ```toml
+# Current release
 genai = "0.6"
+
+# Soon to be released (first half of Sept 2026)
+genai = "0.7.0-beta"
 ```
+
+See [v0.7.0-beta](#v070-beta)
 
 <div align="center">
 
@@ -74,19 +80,23 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
-## v0.7.0-beta.x on going 
+## v0.7.0-beta
+
+**v0.7.0 release target: first half of Step 2026** - See latest [v0.7.0-beta releases](https://crates.io/crates/genai/versions)
+
+**Big release** - Many fixes, new capabilities, new providers and minimal API changes in the v0.6.x replacement (see below)
 
 **BREAKING**: Now **fallible** constructors for  `genai::Client::new()?` and `ClientBuilder::build()?` (no more `Client::default()`). Sorry, but this was a necessary change for robustness.
 
-- Same quality as v0.6.x, with some new/updated features
-- **NEW: Custom Adapter** – Use `genai_n::model_name` to target a custom OpenAI-compatible endpoint.
-  - Configure the endpoint with the environment variable `GENAI_{n}_ENDPOINT` and the API key with `GENAI_{n}_API_KEY`.
-  - The adapter uses the OpenAI protocol internally (for now, might be configurable in the future)
-  - Example: `genai_1::my-model-7b` with `GENAI_1_ENDPOINT=https://my-host/v1/` and `GENAI_1_API_KEY=sk-...`.
-- **OpenAI prompt-cache usage** - OpenAI `cache_write_tokens` values are normalized to `Usage.prompt_tokens_details.cache_creation_tokens`, alongside `cached_tokens`, for Chat Completions and Responses API usage payloads.
-- **OpenAI GPT-5.6+ prompt caching** - (see [PR #260](https://github.com/jeremychone/rust-genai/pull/260)) - Native OpenAI Chat Completions and Responses requests use explicit mode by default, implicit mode for general cache intent, and explicit content breakpoints for supported message-level cache controls. Older OpenAI models and OpenAI-compatible adapters keep their existing behavior.
+**New providers:**
+- Atlas Cloud (`atlascloud::`)
+- Qwen Cloud (`qwen_cloud::`)
+- Kimi (`kimi::`, `kimi-*`)
+- OMLX (`omlx::`, `omlx-*`)
+- Custom adapter (`genai_{n}::`) with env a `GENAI_{n}_API_KEY` / `GENAI_{n}_ENDPOINT` 
 
-(see [genai releases](https://crates.io/crates/genai/versions))
+See all in [CHANGELOG](CHANGELOG.md) and [docs/migration/migration-v_0_6_to_0_7.md](migration-v_0_6_to_0_7.md) for more `v0.7.0` upcoming changes.
+
 
 ## v0.6.x Released 🎉 
 
