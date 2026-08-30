@@ -1,25 +1,28 @@
 //! Base examples demonstrating the core capabilities of genai
+#![allow(unused)]
 
 use genai::Client;
 use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
 use genai::chat::{ChatMessage, ChatRequest};
 use tracing_subscriber::EnvFilter;
 
-const MODEL_OPENAI: &str = "gpt-5.4-mini";
+const MODEL_OPENAI: &str = "gpt-5.6-luna";
 const MODEL_ANTHROPIC: &str = "claude-haiku-4-5";
-const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-20b";
+const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-120b";
 const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
-const MODEL_GEMINI: &str = "gemini-3-flash-preview";
+const MODEL_GEMINI: &str = "gemini-3.1-flash-lite";
 const MODEL_GROQ: &str = "groq::openai/gpt-oss-20b";
-const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:2b`
 const MODEL_OLLAMA_CLOUD: &str = "ollama_cloud::gemma3:4b";
-const MODEL_XAI: &str = "grok-3-mini";
-const MODEL_DEEPSEEK: &str = "deepseek-chat";
-const MODEL_ZAI: &str = "glm-4-plus";
+const MODEL_XAI: &str = "grok-4.6";
+const MODEL_DEEPSEEK: &str = "deepseek-v4-flash";
+const MODEL_ZAI: &str = "glm-5.3-flash";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
 const MODEL_ATLASCLOUD: &str = "atlascloud::qwen/qwen3.5-flash"; // required namespace
 // or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
 const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
+// -- local models
+const MODEL_OMLX: &str = "omlx::gemma-4-12B-it-8bit";
+const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:e2b`
 
 // NOTE: These are the default environment keys for each AI Adapter Type.
 //       They can be customized; see `examples/c02-auth.rs`
@@ -28,17 +31,19 @@ const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
-	(MODEL_OLLAMA, ""),
-	(MODEL_OLLAMA_CLOUD, "OLLAMA_API_KEY"),
 	(MODEL_FIREWORKS, "FIREWORKS_API_KEY"),
 	(MODEL_TOGETHER, "TOGETHER_API_KEY"),
 	(MODEL_GROQ, "GROQ_API_KEY"),
 	(MODEL_XAI, "XAI_API_KEY"),
 	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
-	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
+	(MODEL_OLLAMA_CLOUD, "OLLAMA_API_KEY"),
+	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
 	(MODEL_ATLASCLOUD, "ATLASCLOUD_API_KEY"),
 	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
+	// -- Local models
+	// (MODEL_OMLX, ""),
+	// (MODEL_OLLAMA, ""),
 ];
 
 // NOTE: Model to AdapterKind (AI Provider) type mapping rule

@@ -190,66 +190,54 @@ For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/ada
 
 ```rust
 //! Base examples demonstrating the core capabilities of genai
+#![allow(unused)]
 
-use genai::chat::printer::{print_chat_stream, PrintChatStreamOptions};
-use genai::chat::{ChatMessage, ChatRequest};
 use genai::Client;
+use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
+use genai::chat::{ChatMessage, ChatRequest};
+use tracing_subscriber::EnvFilter;
 
-const MODEL_OPENAI: &str = "gpt-5.4-mini";
+const MODEL_OPENAI: &str = "gpt-5.6-luna";
 const MODEL_ANTHROPIC: &str = "claude-haiku-4-5";
-const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-20b";
-const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
-const MODEL_GEMINI: &str = "gemini-3-flash-preview";
-const MODEL_GROQ: &str = "groq::openai/gpt-oss-20b";
-const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:2b`
-const MODEL_OLLAMA_CLOUD: &str = "ollama_cloud::gemma3:4b";
-const MODEL_XAI: &str = "grok-3-mini";
-const MODEL_DEEPSEEK: &str = "deepseek-chat";
-const MODEL_ZAI: &str = "glm-4-plus";
-const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
-const MODEL_ATLASCLOUD: &str = "atlascloud::qwen/qwen3.5-flash"; // required namespace
-// or any publisher: "github_copilot::anthropic/claude-sonnet-4-6", "github_copilot::google/gemini-2.5-pro", "github_copilot::xai/grok-3-mini"
-const MODEL_GITHUB_COPILOT: &str = "github_copilot::openai/gpt-4.1-mini";
+const MODEL_GEMINI: &str = "gemini-3.1-flash-lite";
+const MODEL_ZAI: &str = "glm-5.3-flash";
+// -- local models
+const MODEL_OMLX: &str = "omlx::gemma-4-12B-it-8bit";
+const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:e2b`
 
-// NOTE: These are the default environment keys for each AI adapter type.
-//       They can be customized; see `examples/c02-auth.rs`.
+// NOTE: These are the default environment keys for each AI Adapter Type.
+//       They can be customized; see `examples/c02-auth.rs`
 const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
 	// -- De/activate models/providers
 	(MODEL_OPENAI, "OPENAI_API_KEY"),
 	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
 	(MODEL_GEMINI, "GEMINI_API_KEY"),
-	(MODEL_FIREWORKS, "FIREWORKS_API_KEY"),
-	(MODEL_TOGETHER, "TOGETHER_API_KEY"),
-	(MODEL_GROQ, "GROQ_API_KEY"),
-	(MODEL_XAI, "XAI_API_KEY"),
-	(MODEL_DEEPSEEK, "DEEPSEEK_API_KEY"),
-	(MODEL_OLLAMA, ""),
-	(MODEL_OLLAMA_CLOUD, "OLLAMA_API_KEY"),
 	(MODEL_ZAI, "ZAI_API_KEY"),
-	(MODEL_MOONSHOT, "MOONSHOT_API_KEY"),
-	(MODEL_BAIDU, "BAIDU_API_KEY"),
-	(MODEL_BIGMODEL, "BIGMODEL_API_KEY"),
-	(MODEL_ALIYUN, "ALIYUN_API_KEY"),
-	(MODEL_ATLASCLOUD, "ATLASCLOUD_API_KEY"),
-	(MODEL_GITHUB_COPILOT, "GITHUB_TOKEN"),
-	(MODEL_OPEN_ROUTER, "OPEN_ROUTER_API_KEY"),
+	// -- Local models
+	(MODEL_OMLX, ""),
+	(MODEL_OLLAMA, ""),
 ];
 
-// NOTE: Model to AdapterKind (AI provider) type mapping rule
-//  - starts_with "gpt"      -> OpenAI (or OpenAI Responses for gpt-5/codex/pro)
+// NOTE: Model to AdapterKind (AI Provider) type mapping rule
+//  - starts_with "gpt"      -> OpenAI
 //  - starts_with "claude"   -> Anthropic
 //  - starts_with "command"  -> Cohere
 //  - starts_with "gemini"   -> Gemini
-//  - model in Groq models    -> Groq
-//  - starts_with "glm"       -> ZAI
+//  - model in Groq models   -> Groq
+//  - starts_with "glm"      -> ZAI
 //  - starts_with "ollama_cloud::" -> OllamaCloud
 //  - starts_with "atlascloud::" -> AtlasCloud
-//  - For anything else       -> Ollama
+//  - For anything else      -> Ollama
 //
 // This can be customized; see `examples/c03-mapper.rs`
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	tracing_subscriber::fmt()
+		.with_env_filter(EnvFilter::new("genai=debug"))
+		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
+		.init();
+
 	let question = "Why is the sky red?";
 
 	let chat_req = ChatRequest::new(vec![
