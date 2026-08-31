@@ -24,7 +24,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::io::AsyncWriteExt;
 
-const MODEL: &str = "gemini-3.5-flash-lite";
+const MODEL: &str = "gemini_ix::gemini-3.5-flash-lite";
 
 /// Collects everything the grounding machinery emits that the normalized types drop.
 ///
@@ -147,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let chat_res = client.exec_chat_stream(MODEL, chat_req, Some(&options)).await?;
 	let mut stream = chat_res.stream;
 
-    // not using printer as it also prints the thought signature
+	// not using printer as it also prints the thought signature
 	let mut stdout = tokio::io::stdout();
 	let mut answer = String::new();
 

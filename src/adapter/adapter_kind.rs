@@ -3,13 +3,12 @@ use crate::adapter::Adapter as _;
 use crate::adapter::adapters;
 use crate::adapter::adapters::baidu::BAIDU_CODING_ANTHROPIC_NAMESPACE;
 use crate::adapter::adapters::baidu::BAIDU_CODING_OPENAI_NAMESPACE;
-use crate::adapter::adapters::gemini_interactions;
 use crate::adapter::adapters::zai;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
-/// Short, convenient alias for the `gemini_interactions::` namespace.
+/// Prefixing it with gemini_ix:: allows selecting the Interactions API explicitly,
 /// e.g. `gemini_ix::gemini-3.5-transcribe`
 pub const GEMINI_INTERACTIONS_SHORT_NAMESPACE: &str = "gemini_ix";
 
@@ -27,7 +26,9 @@ pub enum AdapterKind {
 	/// Gemini adapter supports gemini native protocol. e.g., support thinking budget.
 	Gemini,
 
-	/// Gemini Interactions API for newer Gemini models
+	/// Gemini Interactions API.
+	///
+	/// Opt-in only: reachable via the `gemini_ix::` namespace (or `gemini_interactions::`).
 	GeminiInteractions,
 
 	/// Anthopric native protocol as well
@@ -229,11 +230,7 @@ impl AdapterKind {
 				Ok(Self::OpenAI)
 			}
 		} else if model.starts_with("gemini") {
-			if model.starts_with(gemini_interactions::GeminiInteractionsAdapter::MODEL_PREFIX) {
-				Ok(Self::GeminiInteractions)
-			} else {
-				Ok(Self::Gemini)
-			}
+			Ok(Self::Gemini)
 		} else if model.starts_with("claude") {
 			Ok(Self::Anthropic)
 		} else if model.contains("fireworks") {

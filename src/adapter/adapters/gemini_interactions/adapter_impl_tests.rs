@@ -829,22 +829,22 @@ fn test_gemini_ix_to_chat_response_incomplete_is_max_tokens() -> Result<()> {
 #[test]
 fn test_gemini_ix_model_routing() -> Result<()> {
 	// -- Setup & Fixtures
+	// The Interactions API is opt-in only. A bare model name never selects it, so adding this
+	// adapter cannot change the protocol under an existing caller.
 	let cases = [
-		// -- Gemini 3.x goes to the Interactions API
-		("gemini-3.5-flash", AdapterKind::GeminiInteractions),
-		("gemini-3.5-transcribe", AdapterKind::GeminiInteractions),
-		("gemini-3.1-pro-preview", AdapterKind::GeminiInteractions),
-		("gemini-3-flash-preview", AdapterKind::GeminiInteractions),
-		// -- Everything else stays on generateContent
-		("gemini-2.5-flash", AdapterKind::Gemini),
-		("gemini-2.0-flash", AdapterKind::Gemini),
-		("gemini-flash-latest", AdapterKind::Gemini),
-		// Embeddings have no Interactions endpoint, and the prefix keeps them on Gemini.
-		("gemini-embedding-001", AdapterKind::Gemini),
-		// -- Namespaces force either adapter
-		("gemini::gemini-3.5-flash", AdapterKind::Gemini),
-		("gemini_interactions::gemini-2.5-flash", AdapterKind::GeminiInteractions),
+		// -- Namespaced: opts in
+		("gemini_ix::gemini-3.5-flash", AdapterKind::GeminiInteractions),
 		("gemini_ix::gemini-3.5-transcribe", AdapterKind::GeminiInteractions),
+		("gemini_ix::gemini-2.5-flash", AdapterKind::GeminiInteractions),
+		("gemini_interactions::gemini-3.5-flash", AdapterKind::GeminiInteractions),
+		// -- Bare names always stay on generateContent, Gemini 3.x included
+		("gemini-3.5-flash", AdapterKind::Gemini),
+		("gemini-3.5-transcribe", AdapterKind::Gemini),
+		("gemini-3.1-pro-preview", AdapterKind::Gemini),
+		("gemini-2.5-flash", AdapterKind::Gemini),
+		("gemini-flash-latest", AdapterKind::Gemini),
+		("gemini-embedding-001", AdapterKind::Gemini),
+		("gemini::gemini-3.5-flash", AdapterKind::Gemini),
 	];
 
 	for (model, expected) in cases {

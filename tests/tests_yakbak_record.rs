@@ -543,8 +543,8 @@ fn gemini_backend() -> String {
 }
 
 const GEMINI_MODEL: &str = "gemini-2.5-flash";
-const GEMINI_TOOL_MODEL: &str = "gemini::gemini-3.1-pro-preview";
-const GEMINI_URL_CONTEXT_MODEL: &str = "gemini::gemini-3.7-flash";
+const GEMINI_TOOL_MODEL: &str = "gemini-3.1-pro-preview";
+const GEMINI_URL_CONTEXT_MODEL: &str = "gemini-3.7-flash";
 
 #[tokio::test]
 #[ignore]

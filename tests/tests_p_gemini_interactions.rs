@@ -5,7 +5,7 @@ use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
 // This will use the GeminiInteractions adapter (auto-selected for `gemini-3*`).
-const MODEL: &str = "gemini-3.5-flash";
+const MODEL: &str = "gemini_ix::gemini-3.5-flash";
 const MODEL_NS: &str = "gemini_interactions::gemini-3.5-flash";
 // Short namespace alias.
 const MODEL_NS_SHORT: &str = "gemini_ix::gemini-3.5-flash";

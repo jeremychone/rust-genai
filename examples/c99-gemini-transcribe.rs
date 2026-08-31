@@ -18,7 +18,7 @@ use genai::Client;
 use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ContentPart};
 use serde_json::json;
 
-const MODEL: &str = "gemini-3.5-transcribe";
+const MODEL: &str = "gemini_ix::gemini-3.5-transcribe";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

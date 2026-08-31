@@ -59,9 +59,7 @@ async fn test_yakbak_gemini_url_context_stream() -> TestResult<()> {
 
 	let options = ChatOptions::default().with_capture_content(true).with_capture_usage(true);
 
-	let stream_res = client
-		.exec_chat_stream("gemini::gemini-3.7-flash", chat_req, Some(&options))
-		.await?;
+	let stream_res = client.exec_chat_stream("gemini-3.7-flash", chat_req, Some(&options)).await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 
 	let usage = extract.stream_end.captured_usage.as_ref().ok_or("Should have usage")?;
@@ -104,9 +102,7 @@ async fn test_yakbak_gemini_builtin_with_functions() -> TestResult<()> {
 		.with_capture_tool_calls(true)
 		.with_capture_usage(true);
 
-	let stream_res = client
-		.exec_chat_stream("gemini::gemini-3.7-flash", chat_req, Some(&options))
-		.await?;
+	let stream_res = client.exec_chat_stream("gemini-3.7-flash", chat_req, Some(&options)).await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 
 	// The client-side function still gets called normally with the builtins attached.
@@ -159,7 +155,7 @@ async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 		.with_capture_tool_calls(true);
 
 	let stream_res = client
-		.exec_chat_stream("gemini::gemini-3.1-pro-preview", chat_req, Some(&options))
+		.exec_chat_stream("gemini-3.1-pro-preview", chat_req, Some(&options))
 		.await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 

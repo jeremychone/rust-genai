@@ -19,7 +19,7 @@ use serde_json::json;
 use support::yakbak::replay_client;
 use support::{TestResult, extract_stream_end};
 
-const MODEL: &str = "gemini-3.5-flash";
+const MODEL: &str = "gemini_ix::gemini-3.5-flash";
 
 fn tool_request() -> ChatRequest {
 	ChatRequest::new(vec![

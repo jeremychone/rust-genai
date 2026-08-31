@@ -1,13 +1,5 @@
 //! Demonstrate the Gemini Interactions API adapter: server-side conversation state.
 //!
-//! Two things to note:
-//!   1. `gemini-3*` models resolve to this adapter automatically. Earlier Gemini models stay on
-//!      `generateContent`. Force either with `gemini_interactions::` / `gemini::`.
-//!   2. `store` defaults to `true`, following the API. That means the conversation is retained
-//!      server-side (55 days on the paid tier, 1 day on the free tier) — which is what makes
-//!      `previous_response_id` resolvable. Pass `store: Some(false)` to opt out; that also
-//!      disables continuation.
-//!
 //! Requires: GEMINI_API_KEY environment variable.
 //!
 //! Run: `GEMINI_API_KEY=... cargo run --example c13-gemini-interactions`
@@ -15,7 +7,7 @@
 use genai::Client;
 use genai::chat::ChatRequest;
 
-const MODEL: &str = "gemini-3.5-flash-lite";
+const MODEL: &str = "gemini_ix::gemini-3.5-flash-lite";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

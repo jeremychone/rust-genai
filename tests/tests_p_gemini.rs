@@ -7,13 +7,9 @@ use genai::resolver::AuthData;
 
 // "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite"
 // "gemini-2.5-flash-zero"
-// NOTE: The `gemini-3*` models below are namespaced with `gemini::` on purpose. Since the
-//       GeminiInteractions adapter landed, a bare `gemini-3*` model name resolves to the
-//       Interactions API; `gemini::` keeps these tests on the `generateContent` protocol
-//       this file is here to exercise.
-// const MODEL_GPRO_3: &str = "gemini::gemini-3-pro-preview";
-const MODEL_FLASH_3: &str = "gemini::gemini-3-flash-preview"; // pure gem, fast, cheap, and good!
-const MODEL_FLASH_LITE: &str = "gemini::gemini-3.1-flash-lite";
+// const MODEL_GPRO_3: &str = "gemini-3-pro-preview";
+const MODEL_FLASH_3: &str = "gemini-3-flash-preview"; // pure gem, fast, cheap, and good!
+const MODEL_FLASH_LITE: &str = "gemini-3.1-flash-lite";
 const MODEL_NS: &str = "gemini::gemini-3.1-flash-lite";
 
 // region:    --- Chat

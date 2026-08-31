@@ -23,7 +23,6 @@ impl GeminiInteractionsAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "GEMINI_API_KEY";
 
 	pub const API_REVISION: &str = "2026-05-20";
-	pub const MODEL_PREFIX: &str = "gemini-3";
 }
 
 /// Server-side tools, passed as a bare `{"type": "<name>"}` tag rather than a function
@@ -109,20 +108,13 @@ impl Adapter for GeminiInteractionsAdapter {
 		Endpoint::from_static(BASE_URL)
 	}
 
-	/// The Interactions API has no model-list endpoint of its own; reuse the Gemini `models`
-	/// listing and keep only what routes here.
 	async fn all_model_names(
 		kind: AdapterKind,
 		endpoint: Endpoint,
 		auth: AuthData,
 		web_client: &WebClient,
 	) -> Result<Vec<String>> {
-		let model_names = GeminiAdapter::all_model_names(kind, endpoint, auth, web_client).await?;
-
-		Ok(model_names
-			.into_iter()
-			.filter(|name| name.starts_with(Self::MODEL_PREFIX))
-			.collect())
+		GeminiAdapter::all_model_names(kind, endpoint, auth, web_client).await
 	}
 
 	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
