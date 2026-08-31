@@ -4,8 +4,13 @@ use super::*;
 use crate::ServiceTarget;
 use crate::adapter::adapters::anthropic::ant_reasoning::REASONING_HIGH;
 use crate::adapter::{Adapter, ServiceType};
-use crate::chat::{ChatMessage, ChatOptions, ChatRequest, JsonSpec, Tool, ToolChoice};
+use crate::chat::{
+	ChatMessage, ChatOptions, ChatRequest, ContentPart, JsonSpec, MessageContent, Tool, ToolCall, ToolChoice,
+	ToolResponse,
+};
 use crate::resolver::AuthData;
+use crate::webc::WebResponse;
+use reqwest::StatusCode;
 
 /// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
 /// on a model that uses the `output_config` effort API (e.g. `claude-sonnet-4-6`), both
@@ -177,6 +182,187 @@ fn test_anthropic_tool_choice_required_serialized_on_anthropic_payload() {
 		.expect("to_web_request_data should succeed");
 
 	assert_eq!(web_req.payload["tool_choice"], json!({"type": "any"}));
+}
+
+#[test]
+fn test_assistant_thinking_signature_serializes_before_tool_use() {
+	let tool_call = ToolCall {
+		call_id: "call-1".to_string(),
+		fn_name: "get_weather".to_string(),
+		fn_arguments: json!({"city": "Cairo", "unit": "C"}),
+		thought_signatures: Some(vec!["opaque-signature".to_string()]),
+	};
+	let assistant =
+		ChatMessage::assistant_tool_calls_with_thoughts(vec![tool_call.clone()], vec!["opaque-signature".to_string()])
+			.with_reasoning_content(Some("Cairo is in Africa.".to_string()));
+	let req = ChatRequest::new(vec![
+		assistant,
+		ChatMessage::from(ToolResponse::from_tool_call(&tool_call, "25 C and clear")),
+	]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		req,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("to_web_request_data should succeed");
+
+	let assistant_content = web_req.payload["messages"][0]["content"]
+		.as_array()
+		.expect("assistant content array");
+	assert_eq!(assistant_content.len(), 2);
+	assert_eq!(
+		assistant_content[0],
+		json!({
+			"type": "thinking",
+			"thinking": "Cairo is in Africa.",
+			"signature": "opaque-signature",
+		})
+	);
+	assert_eq!(assistant_content[1]["type"], "tool_use");
+	assert_eq!(web_req.payload["messages"][1]["content"][0]["type"], "tool_result");
+}
+
+#[test]
+fn test_non_stream_multiple_thinking_blocks_round_trip_without_flattening() {
+	let response = AnthropicAdapter::build_chat_response(
+		ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		WebResponse {
+			status: StatusCode::OK,
+			body: json!({
+				"model": "fixture-model",
+				"content": [
+					{"type": "thinking", "thinking": "First block.", "signature": "signature-one"},
+					{"type": "thinking", "thinking": "Second block.", "signature": "signature-two"},
+					{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {"query": "status"}}
+				],
+				"stop_reason": "tool_use",
+				"usage": {"input_tokens": 3, "output_tokens": 4}
+			}),
+		},
+	)
+	.expect("Anthropic response should parse");
+
+	assert_eq!(
+		response.reasoning_content.as_deref(),
+		Some("First block.\nSecond block.")
+	);
+	assert_eq!(
+		response.content.thought_signatures(),
+		vec!["signature-one", "signature-two"]
+	);
+	assert_eq!(
+		response.content.reasoning_contents(),
+		vec!["First block.", "Second block."]
+	);
+	let tool_call = response.tool_calls()[0].clone();
+	assert_eq!(
+		tool_call.thought_signatures.as_deref(),
+		Some(["signature-one".to_string(), "signature-two".to_string()].as_slice())
+	);
+
+	let assistant = response
+		.into_assistant_message_for_tool_use()
+		.expect("assistant tool-use message");
+	assert_eq!(assistant.content.reasoning_contents().len(), 2);
+
+	let request = ChatRequest::new(vec![
+		assistant,
+		ChatMessage::from(ToolResponse::new("call-1", "available")),
+	]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		request,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("continuation request should serialize");
+	let content = web_req.payload["messages"][0]["content"]
+		.as_array()
+		.expect("assistant content array");
+	assert_eq!(content.len(), 3);
+	assert_eq!(
+		content[0],
+		json!({"type": "thinking", "thinking": "First block.", "signature": "signature-one"})
+	);
+	assert_eq!(
+		content[1],
+		json!({"type": "thinking", "thinking": "Second block.", "signature": "signature-two"})
+	);
+	assert_eq!(content[2]["type"], "tool_use");
+}
+
+/// Unpaired reasoning/signature metadata must not fail the request. Pairing by position
+/// would sign the wrong text, so the thinking blocks are dropped and the rest of the
+/// message is still sent.
+#[test]
+fn test_assistant_unpaired_thinking_metadata_is_dropped() {
+	fn serialize(parts: Vec<ContentPart>) -> Value {
+		let assistant = ChatMessage::assistant(MessageContent::from_parts(parts));
+		let req = ChatRequest::new(vec![assistant, ChatMessage::from(ToolResponse::new("call-1", "clear"))]);
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		};
+		AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			req,
+			ChatOptionsSet::default().with_chat_options(None),
+		)
+		.expect("unpaired thinking metadata should still serialize")
+		.payload
+	}
+
+	fn tool_call() -> ContentPart {
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call-1".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: None,
+		})
+	}
+
+	// -- A signature with no reasoning text to sign.
+	let payload = serialize(vec![
+		ContentPart::ThoughtSignature("unpaired-signature".to_string()),
+		tool_call(),
+	]);
+	let content = payload["messages"][0]["content"].as_array().expect("assistant content array");
+	assert_eq!(content.len(), 1);
+	assert_eq!(content[0]["type"], "tool_use");
+
+	// -- Reasoning carried over from a provider that does not sign it (OpenAI, DeepSeek, ...).
+	let payload = serialize(vec![
+		ContentPart::ReasoningContent("unsigned reasoning".to_string()),
+		tool_call(),
+	]);
+	let content = payload["messages"][0]["content"].as_array().expect("assistant content array");
+	assert_eq!(content.len(), 1);
+	assert_eq!(content[0]["type"], "tool_use");
+
+	// -- Counts differ, so position pairing would sign the wrong text.
+	let payload = serialize(vec![
+		ContentPart::ReasoningContent("First block.".to_string()),
+		ContentPart::ReasoningContent("Second block.".to_string()),
+		ContentPart::ThoughtSignature("signature-two".to_string()),
+		tool_call(),
+	]);
+	let content = payload["messages"][0]["content"].as_array().expect("assistant content array");
+	assert_eq!(content.len(), 1);
+	assert_eq!(content[0]["type"], "tool_use");
 }
 
 /// A `cache_control` set on a `Tool` must be serialized onto that tool in the
