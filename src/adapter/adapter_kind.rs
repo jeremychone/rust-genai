@@ -3,10 +3,15 @@ use crate::adapter::Adapter as _;
 use crate::adapter::adapters;
 use crate::adapter::adapters::baidu::BAIDU_CODING_ANTHROPIC_NAMESPACE;
 use crate::adapter::adapters::baidu::BAIDU_CODING_OPENAI_NAMESPACE;
+use crate::adapter::adapters::gemini_interactions;
 use crate::adapter::adapters::zai;
 use crate::{ModelName, Result};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
+
+/// Short, convenient alias for the `gemini_interactions::` namespace.
+/// e.g. `gemini_ix::gemini-3.5-transcribe`
+pub const GEMINI_INTERACTIONS_SHORT_NAMESPACE: &str = "gemini_ix";
 
 /// AdapterKind is an enum that represents the different types of adapters that can be used to interact with the API.
 ///
@@ -21,6 +26,9 @@ pub enum AdapterKind {
 
 	/// Gemini adapter supports gemini native protocol. e.g., support thinking budget.
 	Gemini,
+
+	/// Gemini Interactions API for newer Gemini models
+	GeminiInteractions,
 
 	/// Anthopric native protocol as well
 	Anthropic,
@@ -132,36 +140,37 @@ pub enum AdapterKind {
 
 // The single source of truth for the string maps: one row per variant.
 adapter_kind_str_maps! {
-	OpenAI        => "OpenAI",        "openai",         adapters::all_adapters::OpenAIAdapter;
-	OpenAIResp    => "OpenAIResp",    "openai_resp",    adapters::all_adapters::OpenAIRespAdapter;
-	Gemini        => "Gemini",        "gemini",         adapters::all_adapters::GeminiAdapter;
-	Anthropic     => "Anthropic",     "anthropic",      adapters::all_adapters::AnthropicAdapter;
-	Fireworks     => "Fireworks",     "fireworks",      adapters::all_adapters::FireworksAdapter;
-	Together      => "Together",      "together",       adapters::all_adapters::TogetherAdapter;
-	Groq          => "Groq",          "groq",           adapters::all_adapters::GroqAdapter;
-	Aihubmix      => "Aihubmix",      "aihubmix",       adapters::all_adapters::AihubmixAdapter;
-	Kimi          => "Kimi",          "kimi",           adapters::all_adapters::KimiAdapter;
-	Mimo          => "Mimo",          "mimo",           adapters::all_adapters::MimoAdapter;
-	Moonshot      => "Moonshot",      "moonshot",       adapters::all_adapters::MoonshotAdapter;
-	Nebius        => "Nebius",        "nebius",         adapters::all_adapters::NebiusAdapter;
-	Xai           => "Xai",           "xai",            adapters::all_adapters::XaiAdapter;
-	DeepSeek      => "DeepSeek",      "deepseek",       adapters::all_adapters::DeepSeekAdapter;
-	Zai           => "Zai",           "zai",            adapters::all_adapters::ZaiAdapter;
-	BigModel      => "BigModel",      "bigmodel",       adapters::all_adapters::BigModelAdapter;
-	Aliyun        => "Aliyun",        "aliyun",         adapters::all_adapters::AliyunAdapter;
-	QwenCloud     => "QwenCloud",     "qwen_cloud",     adapters::all_adapters::QwenCloudAdapter;
-	Baidu         => "Baidu",         "baidu",          adapters::all_adapters::BaiduAdapter;
-	Cohere        => "Cohere",        "cohere",         adapters::all_adapters::CohereAdapter;
-	Ollama        => "Ollama",        "ollama",         adapters::all_adapters::OllamaAdapter;
-	OllamaCloud   => "OllamaCloud",   "ollama_cloud",   adapters::all_adapters::OllamaCloudAdapter;
-	Omlx          => "Omlx",          "omlx",           adapters::all_adapters::OmlxAdapter;
-	Vertex        => "Vertex",        "vertex",         adapters::all_adapters::VertexAdapter;
-	GithubCopilot => "GithubCopilot", "github_copilot", adapters::all_adapters::GithubCopilotAdapter;
-	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::all_adapters::OpenCodeGoAdapter;
-	BedrockApi    => "BedrockApi",    "bedrock_api",    adapters::all_adapters::BedrockApiAdapter;
-	OpenRouter    => "OpenRouter",    "open_router",    adapters::all_adapters::OpenRouterAdapter;
-	AtlasCloud    => "AtlasCloud",    "atlascloud",     adapters::all_adapters::AtlasCloudAdapter;
-	MiniMax       => "MiniMax",       "minimax",        adapters::all_adapters::MiniMaxAdapter;
+	OpenAI             => "OpenAI",             "openai",              adapters::all_adapters::OpenAIAdapter;
+	OpenAIResp         => "OpenAIResp",         "openai_resp",         adapters::all_adapters::OpenAIRespAdapter;
+	Gemini             => "Gemini",             "gemini",              adapters::all_adapters::GeminiAdapter;
+	GeminiInteractions => "GeminiInteractions", "gemini_interactions", adapters::all_adapters::GeminiInteractionsAdapter;
+	Anthropic          => "Anthropic",          "anthropic",           adapters::all_adapters::AnthropicAdapter;
+	Fireworks          => "Fireworks",          "fireworks",           adapters::all_adapters::FireworksAdapter;
+	Together           => "Together",           "together",            adapters::all_adapters::TogetherAdapter;
+	Groq               => "Groq",               "groq",                adapters::all_adapters::GroqAdapter;
+	Aihubmix           => "Aihubmix",           "aihubmix",            adapters::all_adapters::AihubmixAdapter;
+	Kimi               => "Kimi",               "kimi",                adapters::all_adapters::KimiAdapter;
+	Mimo               => "Mimo",               "mimo",                adapters::all_adapters::MimoAdapter;
+	Moonshot           => "Moonshot",           "moonshot",            adapters::all_adapters::MoonshotAdapter;
+	Nebius             => "Nebius",             "nebius",              adapters::all_adapters::NebiusAdapter;
+	Xai                => "Xai",                "xai",                 adapters::all_adapters::XaiAdapter;
+	DeepSeek           => "DeepSeek",           "deepseek",            adapters::all_adapters::DeepSeekAdapter;
+	Zai                => "Zai",                "zai",                 adapters::all_adapters::ZaiAdapter;
+	BigModel           => "BigModel",           "bigmodel",            adapters::all_adapters::BigModelAdapter;
+	Aliyun             => "Aliyun",             "aliyun",              adapters::all_adapters::AliyunAdapter;
+	QwenCloud          => "QwenCloud",          "qwen_cloud",          adapters::all_adapters::QwenCloudAdapter;
+	Baidu              => "Baidu",              "baidu",               adapters::all_adapters::BaiduAdapter;
+	Cohere             => "Cohere",             "cohere",              adapters::all_adapters::CohereAdapter;
+	Ollama             => "Ollama",             "ollama",              adapters::all_adapters::OllamaAdapter;
+	OllamaCloud        => "OllamaCloud",        "ollama_cloud",        adapters::all_adapters::OllamaCloudAdapter;
+	Omlx               => "Omlx",               "omlx",                adapters::all_adapters::OmlxAdapter;
+	Vertex             => "Vertex",             "vertex",              adapters::all_adapters::VertexAdapter;
+	GithubCopilot      => "GithubCopilot",      "github_copilot",      adapters::all_adapters::GithubCopilotAdapter;
+	OpenCodeGo         => "OpenCodeGo",         "opencode_go",         adapters::all_adapters::OpenCodeGoAdapter;
+	BedrockApi         => "BedrockApi",         "bedrock_api",         adapters::all_adapters::BedrockApiAdapter;
+	OpenRouter         => "OpenRouter",         "open_router",         adapters::all_adapters::OpenRouterAdapter;
+	AtlasCloud         => "AtlasCloud",         "atlascloud",          adapters::all_adapters::AtlasCloudAdapter;
+	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
 // endregion: --- str & default_key_env_name impl (via macro)
@@ -220,7 +229,11 @@ impl AdapterKind {
 				Ok(Self::OpenAI)
 			}
 		} else if model.starts_with("gemini") {
-			Ok(Self::Gemini)
+			if model.starts_with(gemini_interactions::GeminiInteractionsAdapter::MODEL_PREFIX) {
+				Ok(Self::GeminiInteractions)
+			} else {
+				Ok(Self::Gemini)
+			}
 		} else if model.starts_with("claude") {
 			Ok(Self::Anthropic)
 		} else if model.contains("fireworks") {
@@ -262,7 +275,9 @@ impl AdapterKind {
 			Some(adapter)
 		}
 		// -- Second, custom namespaces
-		else if namespace == zai::ZAI_CODING_NAMESPACE {
+		else if namespace == GEMINI_INTERACTIONS_SHORT_NAMESPACE {
+			Some(Self::GeminiInteractions)
+		} else if namespace == zai::ZAI_CODING_NAMESPACE {
 			Some(Self::Zai)
 		} else if namespace == BAIDU_CODING_OPENAI_NAMESPACE || namespace == BAIDU_CODING_ANTHROPIC_NAMESPACE {
 			Some(Self::Baidu)
