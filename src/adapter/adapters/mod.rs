@@ -9,7 +9,7 @@ pub(super) mod cohere;
 pub(super) mod custom;
 pub(super) mod fireworks;
 pub(super) mod gemini;
-pub(super) mod gemini_interactions;
+pub(super) mod gemini_ix;
 pub(super) mod github_copilot;
 pub(super) mod ollama;
 pub(super) mod ollama_cloud;

@@ -15,7 +15,7 @@
 //! Run: `GEMINI_API_KEY=... cargo run --example c99-gemini-search-citations`
 
 use futures::StreamExt;
-use genai::adapter::gemini_interactions::{EnrichedEvent, GroundingToolCount, UrlCitation};
+use genai::adapter::gemini_ix::{EnrichedEvent, GroundingToolCount, UrlCitation};
 use genai::chat::{ChatFrameSink, ChatOptions, ChatRequest, ChatStreamEvent, FrameCtx, RawFrameRef, Tool, ToolName};
 use genai::{Client, Error};
 use std::collections::BTreeMap;
