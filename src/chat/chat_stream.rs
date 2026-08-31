@@ -346,6 +346,11 @@ impl StreamEnd {
 	/// Convenience: build an assistant message for a tool-use handoff that places
 	/// thought signatures (if any) before tool calls. Returns None if no tool calls
 	/// were captured.
+	///
+	/// Signed reasoning is only present when both `capture_tool_calls` and
+	/// `capture_reasoning_content` were enabled. With only the former, the message carries the
+	/// tool calls but no thinking blocks, which Anthropic rejects for an extended-thinking
+	/// continuation.
 	pub fn into_assistant_message_for_tool_use(self) -> Option<ChatMessage> {
 		let content = self.captured_content?;
 		if content.tool_calls().is_empty() {

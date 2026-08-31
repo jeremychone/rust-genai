@@ -32,14 +32,6 @@ pub enum Error {
 	#[display("Content type not supported for model '{model_iden}'.\nCause: {cause}")]
 	MessageContentTypeNotSupported { model_iden: ModelIden, cause: &'static str },
 
-	#[display(
-		"Anthropic assistant thinking blocks require one reasoning value per thought signature (reasoning={reasoning_count}, signatures={signature_count})."
-	)]
-	AnthropicThinkingBlockMismatch {
-		reasoning_count: usize,
-		signature_count: usize,
-	},
-
 	#[display("JSON mode requested but no instruction/prompt provided.")]
 	JsonModeWithoutInstruction,
 

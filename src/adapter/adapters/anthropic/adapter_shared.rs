@@ -11,7 +11,7 @@ use crate::chat::{
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
-use crate::{Error, Headers, ModelIden};
+use crate::{Headers, ModelIden};
 use serde_json::{Map, Value, json};
 use tracing::warn;
 use value_ext::JsonValueExt;
@@ -270,23 +270,33 @@ impl AnthropicAdapter {
 						thought_signatures = mirrored;
 					}
 
-					if reasoning_contents.len() != thought_signatures.len() {
-						return Err(Error::AnthropicThinkingBlockMismatch {
-							reasoning_count: reasoning_contents.len(),
-							signature_count: thought_signatures.len(),
-						});
+					// Anthropic only accepts a thinking block when it carries both its reasoning
+					// text and the matching signature, so the two lists must line up one-to-one.
+					//
+					// They can legitimately fail to line up: a conversation carried over from a
+					// provider that returns unsigned reasoning (OpenAI, DeepSeek, ...), or an
+					// assistant message built by hand with `.with_reasoning_content(..)`. Pairing
+					// by position anyway would sign the wrong text, which Anthropic rejects, so
+					// drop the thinking blocks and send the rest of the message instead.
+					if reasoning_contents.len() == thought_signatures.len() {
+						// Anthropic requires every signed thinking block before text/tool-use blocks.
+						values.extend(reasoning_contents.into_iter().zip(thought_signatures).map(
+							|(thinking, signature)| {
+								json!({
+									"type": "thinking",
+									"thinking": thinking,
+									"signature": signature,
+								})
+							},
+						));
+					} else if !reasoning_contents.is_empty() || !thought_signatures.is_empty() {
+						tracing::warn!(
+							reasoning_count = reasoning_contents.len(),
+							signature_count = thought_signatures.len(),
+							"anthropic - assistant message has unpaired reasoning content and thought signatures; \
+							 omitting thinking blocks from this message"
+						);
 					}
-
-					// Anthropic requires every signed thinking block before text/tool-use blocks.
-					values.extend(reasoning_contents.into_iter().zip(thought_signatures).map(
-						|(thinking, signature)| {
-							json!({
-								"type": "thinking",
-								"thinking": thinking,
-								"signature": signature,
-							})
-						},
-					));
 
 					for part in other_parts {
 						match part {

@@ -303,39 +303,66 @@ fn test_non_stream_multiple_thinking_blocks_round_trip_without_flattening() {
 	assert_eq!(content[2]["type"], "tool_use");
 }
 
+/// Unpaired reasoning/signature metadata must not fail the request. Pairing by position
+/// would sign the wrong text, so the thinking blocks are dropped and the rest of the
+/// message is still sent.
 #[test]
-fn test_assistant_thinking_requires_reasoning_signature_pairs() {
-	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
-		ContentPart::ThoughtSignature("unpaired-signature".to_string()),
+fn test_assistant_unpaired_thinking_metadata_is_dropped() {
+	fn serialize(parts: Vec<ContentPart>) -> Value {
+		let assistant = ChatMessage::assistant(MessageContent::from_parts(parts));
+		let req = ChatRequest::new(vec![assistant, ChatMessage::from(ToolResponse::new("call-1", "clear"))]);
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		};
+		AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			req,
+			ChatOptionsSet::default().with_chat_options(None),
+		)
+		.expect("unpaired thinking metadata should still serialize")
+		.payload
+	}
+
+	fn tool_call() -> ContentPart {
 		ContentPart::ToolCall(ToolCall {
 			call_id: "call-1".to_string(),
 			fn_name: "get_weather".to_string(),
 			fn_arguments: json!({}),
 			thought_signatures: None,
-		}),
-	]));
-	let req = ChatRequest::new(vec![assistant, ChatMessage::from(ToolResponse::new("call-1", "clear"))]);
-	let target = ServiceTarget {
-		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
-		auth: AuthData::from_single("test-key"),
-		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
-	};
+		})
+	}
 
-	let err = AnthropicAdapter::to_web_request_data(
-		target,
-		ServiceType::Chat,
-		req,
-		ChatOptionsSet::default().with_chat_options(None),
-	)
-	.expect_err("unpaired thinking metadata should fail");
+	// -- A signature with no reasoning text to sign.
+	let payload = serialize(vec![
+		ContentPart::ThoughtSignature("unpaired-signature".to_string()),
+		tool_call(),
+	]);
+	let content = payload["messages"][0]["content"].as_array().expect("assistant content array");
+	assert_eq!(content.len(), 1);
+	assert_eq!(content[0]["type"], "tool_use");
 
-	assert!(matches!(
-		err,
-		Error::AnthropicThinkingBlockMismatch {
-			reasoning_count: 0,
-			signature_count: 1,
-		}
-	));
+	// -- Reasoning carried over from a provider that does not sign it (OpenAI, DeepSeek, ...).
+	let payload = serialize(vec![
+		ContentPart::ReasoningContent("unsigned reasoning".to_string()),
+		tool_call(),
+	]);
+	let content = payload["messages"][0]["content"].as_array().expect("assistant content array");
+	assert_eq!(content.len(), 1);
+	assert_eq!(content[0]["type"], "tool_use");
+
+	// -- Counts differ, so position pairing would sign the wrong text.
+	let payload = serialize(vec![
+		ContentPart::ReasoningContent("First block.".to_string()),
+		ContentPart::ReasoningContent("Second block.".to_string()),
+		ContentPart::ThoughtSignature("signature-two".to_string()),
+		tool_call(),
+	]);
+	let content = payload["messages"][0]["content"].as_array().expect("assistant content array");
+	assert_eq!(content.len(), 1);
+	assert_eq!(content[0]["type"], "tool_use");
 }
 
 /// A `cache_control` set on a `Tool` must be serialized onto that tool in the

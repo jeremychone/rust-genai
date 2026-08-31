@@ -22,6 +22,8 @@ pub struct AnthropicStreamer {
 	captured_thought_blocks: Vec<InterStreamThoughtBlock>,
 	in_progress_block: InProgressBlock,
 	pending_events: VecDeque<InterStreamEvent>,
+	/// Ensures the unreplayable-thinking warning is emitted at most once per stream.
+	warned_unreplayable_thinking: bool,
 }
 
 enum InProgressBlock {
@@ -49,27 +51,17 @@ impl ThinkingBlock {
 		}
 	}
 
+	/// Append one `signature_delta` chunk.
+	///
+	/// Anthropic sends a block signature as `content_block_start.content_block.signature`
+	/// (which seeds this buffer) followed by zero or more `signature_delta` chunks that
+	/// concatenate. Signatures are opaque base64 blobs, so this must stay a plain append:
+	/// any attempt to detect resends or overlapping chunks can match by coincidence and
+	/// silently corrupt the signature, which Anthropic then rejects.
 	fn append_signature_delta(&mut self, delta: &str) {
-		let Some(signature) = &mut self.signature else {
-			return;
-		};
-		if delta.is_empty() || signature.ends_with(delta) || signature.starts_with(delta) {
-			return;
+		if let Some(signature) = &mut self.signature {
+			signature.push_str(delta);
 		}
-		if delta.starts_with(signature.as_str()) {
-			*signature = delta.to_string();
-			return;
-		}
-
-		let overlap = (1..=signature.len().min(delta.len()))
-			.rev()
-			.find(|&len| {
-				signature.is_char_boundary(signature.len() - len)
-					&& delta.is_char_boundary(len)
-					&& signature.ends_with(&delta[..len])
-			})
-			.unwrap_or(0);
-		signature.push_str(&delta[overlap..]);
 	}
 
 	fn into_thought_block(self) -> Option<InterStreamThoughtBlock> {
@@ -93,6 +85,7 @@ impl AnthropicStreamer {
 			captured_thought_blocks: Vec::new(),
 			in_progress_block: InProgressBlock::Text,
 			pending_events: VecDeque::new(),
+			warned_unreplayable_thinking: false,
 		}
 	}
 
@@ -161,6 +154,21 @@ impl futures::Stream for AnthropicStreamer {
 									// Callers replaying a signed assistant turn must set
 									// `capture_reasoning_content`, otherwise Anthropic rejects the
 									// continuation.
+									// A signature is only replayable together with the reasoning it signs, so
+									// capturing tool calls alone silently yields a continuation Anthropic
+									// rejects. Surface that once rather than failing later at the provider.
+									if self.options.capture_tool_calls
+										&& !self.options.capture_reasoning_content
+										&& !self.warned_unreplayable_thinking
+									{
+										self.warned_unreplayable_thinking = true;
+										tracing::warn!(
+											"anthropic - thinking block received with capture_tool_calls but not \
+											 capture_reasoning_content; thought signatures will not be captured and \
+											 the tool continuation will be missing its thinking blocks"
+										);
+									}
+
 									let capture_block = self.options.capture_reasoning_content;
 									let captured_reasoning = capture_block.then_some(thinking.clone());
 									let captured_signature = capture_block.then(|| signature.clone());
@@ -506,16 +514,13 @@ mod tests {
 
 	#[test]
 	fn start_and_delta_signature_variants_form_one_logical_signature() {
+		// A start-only signature is kept as-is.
 		assert_eq!(signature("start-only", &[]).as_deref(), Some("start-only"));
+		// A non-empty start seeds the buffer and later deltas append to it.
 		assert_eq!(signature("signed-", &["suffix"]).as_deref(), Some("signed-suffix"));
-		assert_eq!(signature("complete", &["complete"]).as_deref(), Some("complete"));
-		assert_eq!(
-			signature("prefix", &["prefix-and-rest"]).as_deref(),
-			Some("prefix-and-rest")
-		);
-		assert_eq!(
-			signature("", &["part", "partial", "partial-signature"]).as_deref(),
-			Some("partial-signature")
-		);
+		// Chunks concatenate verbatim, including when a chunk repeats earlier bytes.
+		// Signatures are opaque base64, so no resend/overlap collapsing is applied.
+		assert_eq!(signature("ab", &["ab"]).as_deref(), Some("abab"));
+		assert_eq!(signature("", &["QUJD", "QUJD"]).as_deref(), Some("QUJDQUJD"));
 	}
 }

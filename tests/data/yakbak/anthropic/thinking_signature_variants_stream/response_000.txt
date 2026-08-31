@@ -17,7 +17,7 @@ event:content_block_delta
 data:{"type":"content_block_delta","index":1,"delta":{"type":"thinking_delta","thinking":"block."}}
 
 event:content_block_delta
-data:{"type":"content_block_delta","index":1,"delta":{"type":"signature_delta","signature":"opaque-prefix-complete"}}
+data:{"type":"content_block_delta","index":1,"delta":{"type":"signature_delta","signature":"complete"}}
 
 event:content_block_stop
 data:{"type":"content_block_stop","index":1}

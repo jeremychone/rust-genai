@@ -567,9 +567,11 @@ async fn test_yakbak_anthropic_thinking_signature_variants_preserve_block_pairs(
 		.await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
 
+	// Chunks are the raw wire values (block-start signatures and `signature_delta`s),
+	// whereas the captured signatures below are the assembled per-block values.
 	assert_eq!(
 		extract.thought_signature_chunks,
-		["opaque-start-only", "opaque-prefix-", "opaque-prefix-complete"]
+		["opaque-start-only", "opaque-prefix-", "complete"]
 	);
 	assert_eq!(extract.reasoning_content.as_deref(), Some("First block.Second block."));
 	assert_eq!(
