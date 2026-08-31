@@ -82,9 +82,30 @@ JSON Schema handling for OpenAI and Anthropic structured outputs and strict tool
 ### Anthropic and Gemini reasoning effort behavior
 
 - Anthropic: `ReasoningEffort::Zero` positively disables reasoning. Sonnet 5 sends `thinking: {"type": "disabled"}`. Fable and Mythos omit thinking since it is always active.
+- Anthropic signed thinking: When continuing an extended-thinking conversation with tool use, signed thinking blocks are now preserved across turns. If an assistant message contains unpaired reasoning text and signatures (for example, across provider handoffs), thinking blocks are safely omitted with a warning.
 - Gemini: `ReasoningEffort::Zero` maps to a thinking budget of `0`.
 
 ## Additive Features
+
+### Declarative provider configuration on `ClientBuilder`
+
+`ClientBuilder::append_provider_config` allows configuring per-adapter static endpoints and credentials without writing custom `AuthResolver` or `ServiceTargetResolver` closures:
+
+```rust
+let client = Client::builder()
+    .append_provider_config(
+        AdapterKind::OpenAI,
+        (Endpoint::from_static("https://gateway.internal/v1/"), AuthData::from_env("GATEWAY_KEY")),
+    )
+    .append_provider_config(AdapterKind::Ollama, Endpoint::from_static("http://localhost:11434/v1/"))
+    .build()?;
+```
+
+Configuration precedence is: built-in adapter defaults, then `append_provider_config`, then dynamic resolvers.
+
+### `ChatResponse::into_assistant_message_for_tool_use`
+
+`ChatResponse` now provides `into_assistant_message_for_tool_use()`, matching `StreamEnd::into_assistant_message_for_tool_use()`. This helper retains provider continuation metadata (such as signed thinking blocks and thought signatures) when constructing the assistant message for a tool continuation.
 
 ### OpenAI-compatible video content
 

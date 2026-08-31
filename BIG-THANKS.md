@@ -7,10 +7,12 @@ _If I forgot your PR, feel free to submit a PR_
 ## v0.7.0-beta.x
 
 - [ropoctl](https://github.com/ropoctl)
+  - [#289](https://github.com/jeremychone/rust-genai/pull/289) feat(client): ClientBuilder::append_provider_config for per-adapter endpoint/auth
   - [#288](https://github.com/jeremychone/rust-genai/pull/288) fix(client): apply ServiceTargetResolver when resolving adapter config
   - [#287](https://github.com/jeremychone/rust-genai/pull/287) error: `Error::status()` accessor
   - [#286](https://github.com/jeremychone/rust-genai/pull/286) adapter: `AdapterKind::all()` to enumerate the built-in adapters
   - [#285](https://github.com/jeremychone/rust-genai/pull/285) fix(chat): default `ChatOptions.stop_sequences` for partial deserialization
+  - [#275](https://github.com/jeremychone/rust-genai/pull/275) fix(anthropic): preserve signed thinking across tool turns
   - [#266](https://github.com/jeremychone/rust-genai/pull/266) feat(openai_resp): freeform custom tools with grammar-constrained input
   - [#263](https://github.com/jeremychone/rust-genai/pull/263) feat(schema): sanitize JSON Schema per adapter
   - [#257](https://github.com/jeremychone/rust-genai/pull/257) feat(gemini): forward JSON Schema raw via responseJsonSchema / parametersJsonSchema

@@ -12,11 +12,12 @@
 - `!` API CHANGE: `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias.
 - `!` API CHANGE: `JsonSpec::schema_with_additional_properties_false` is removed. Provider adapters now sanitize schemas as required by their target API. `JsonSchemaDialect` and `sanitize_json_schema(...)` are available for explicit schema sanitization.
 
-### API New Properties / Variants
+### API Additions & New Properties / Variants
 
 - `!` API CHANGE: `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls.
 - `!` API CHANGE: `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
- - `!` API CHANGE: `ChatOptions` adds the public `raw_frame_sink: Option<Arc<dyn ChatFrameSink>>` field for observing raw stream frames across providers. Downstream `ChatOptions` struct literals must add `raw_frame_sink: None` or use `..Default::default()`.
+- `!` API CHANGE: `ChatOptions` adds the public `raw_frame_sink: Option<Arc<dyn ChatFrameSink>>` field for observing raw stream frames across providers. Downstream `ChatOptions` struct literals must add `raw_frame_sink: None` or use `..Default::default()`.
+- `+` Add `ClientBuilder::append_provider_config`, `ClientConfig::append_provider_config`, and `ClientConfig::provider_config` to configure per-adapter endpoint and auth targets declaratively without custom resolver closures. (PR #289)
 
 ### Behavior Refinement / Changes
 
@@ -26,12 +27,13 @@
   - Other models omit `thinking` and `output_config.effort`.
   - Fable and Mythos omit `thinking`, because it is always on and cannot be explicitly disabled.
   - The Anthropic `-zero` model suffix is canonical, while `-none` remains a backward-compatible alias. Both map to `Zero` and are stripped.
+  - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. Rebuilds thinking blocks ahead of text and tool calls, adds `ChatResponse::into_assistant_message_for_tool_use`, and safely omits unpaired thinking blocks. (PR #275)
 - Gemini:
   - `^` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
 - OpenAI and Bedrock:
   - `^` Apply the `ReasoningEffort::Zero` rename to OpenAI and Bedrock adapter mappings while preserving provider-specific keyword mappings.
- - Client:
-   - `-` Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
+- Client:
+  - `-` Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
 
 ### New Providers
 
@@ -61,6 +63,7 @@
   - `-` Fix Anthropic streaming usage capture to treat `message_start` and `message_delta` usage as cumulative snapshots, preventing token over-counting. (PR #279)
   - `-` Fix: reuse Client WebClient for model listing. ([#249](https://github.com/jeremychone/rust-genai/pull/249))
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
+  - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. (PR #275)
 - OpenAI:
   - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
   - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
