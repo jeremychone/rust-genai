@@ -140,7 +140,7 @@ adapter_kind_str_maps! {
 	OpenAI             => "OpenAI",             "openai",              adapters::all_adapters::OpenAIAdapter;
 	OpenAIResp         => "OpenAIResp",         "openai_resp",         adapters::all_adapters::OpenAIRespAdapter;
 	Gemini             => "Gemini",             "gemini",              adapters::all_adapters::GeminiAdapter;
-	GeminiIx => "GeminiIx", "gemini_ix", adapters::all_adapters::GeminiIxAdapter;
+	GeminiIx           => "GeminiIx",           "gemini_ix",           adapters::all_adapters::GeminiIxAdapter;
 	Anthropic          => "Anthropic",          "anthropic",           adapters::all_adapters::AnthropicAdapter;
 	Fireworks          => "Fireworks",          "fireworks",           adapters::all_adapters::FireworksAdapter;
 	Together           => "Together",           "together",            adapters::all_adapters::TogetherAdapter;

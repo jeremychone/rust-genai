@@ -23,6 +23,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
 - [vagmi](https://github.com/vagmi)
+  - [#293](https://github.com/jeremychone/rust-genai/pull/293) feat(adapter): Gemini Interactions API adapter (`gemini_ix::`)
   - [#290](https://github.com/jeremychone/rust-genai/pull/290) feat(chat): stream frame observation via ChatFrameSink
   - [#284](https://github.com/jeremychone/rust-genai/pull/284) fix(gemini): count built-in tool prompt tokens and allow mixed tools
 - [lambdabetaeta](https://github.com/lambdabetaeta)

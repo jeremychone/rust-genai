@@ -48,6 +48,10 @@
     - Model: `genai_1::gemma-4-12B-it-8bit`
     - Env: `GENAI_1_ENDPOINT=http://127.0.0.1:8000/v1/`
     - Env: `GENAI_1_API_KEY=secret_key` (optional)
+- `+` **Gemini Interactions API (`gemini_ix::`)**: default env `GEMINI_API_KEY`, endpoint `https://generativelanguage.googleapis.com/v1beta/` (activated on `gemini_ix::` namespace) (PR #293)
+  - Opt-in adapter for Google Gemini Interactions API supporting server-side conversation state (`previous_response_id` and `store`).
+  - Full streaming and non-streaming support for function calling, thought signatures, media and binary inputs, and structured JSON output.
+  - Exposes `genai::adapter::gemini_ix` helper types (`EnrichedEvent`, `UrlCitation`, `GroundingToolCount`) for decoding search grounding citations and server-side tool metadata via `ChatFrameSink`.
 
 ### Additions & Fixes
  

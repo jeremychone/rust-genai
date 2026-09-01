@@ -7,8 +7,6 @@ use genai::resolver::AuthData;
 // The Interactions API is opt-in, so every model name here carries the `gemini_ix::` prefix.
 const MODEL: &str = "gemini_ix::gemini-3.5-flash";
 const MODEL_NS: &str = "gemini_ix::gemini-3.5-flash";
-// Short namespace alias.
-const MODEL_NS_SHORT: &str = "gemini_ix::gemini-3.5-flash";
 
 // region:    --- Provider Specific
 
@@ -16,7 +14,6 @@ const MODEL_NS_SHORT: &str = "gemini_ix::gemini-3.5-flash";
 async fn test_gemini_ix_routing_ok() -> TestResult<()> {
 	// -- Exec & Check
 	assert_eq!(AdapterKind::from_model(MODEL)?, AdapterKind::GeminiIx);
-	assert_eq!(AdapterKind::from_model(MODEL_NS_SHORT)?, AdapterKind::GeminiIx);
 	assert_eq!(AdapterKind::from_model("gemini-2.5-flash")?, AdapterKind::Gemini);
 	// The escape hatch for anyone who wants `generateContent` for a Gemini 3 model.
 	assert_eq!(
@@ -92,11 +89,6 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_chat_namespaced_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
-}
-
-#[tokio::test]
-async fn test_chat_namespaced_short_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL_NS_SHORT, None).await
 }
 
 #[tokio::test]
