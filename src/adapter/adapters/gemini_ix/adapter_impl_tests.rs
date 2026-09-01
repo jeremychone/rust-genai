@@ -1,4 +1,4 @@
-use super::GeminiInteractionsAdapter;
+use super::GeminiIxAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest, ChatResponseFormat, ChatRole, ContentPart, JsonSpec,
@@ -43,7 +43,7 @@ fn test_gemini_ix_base_payload_and_headers() -> Result<()> {
 		"headers: {headers:?}"
 	);
 	assert!(
-		headers.contains(&("Api-Revision", GeminiInteractionsAdapter::API_REVISION)),
+		headers.contains(&("Api-Revision", GeminiIxAdapter::API_REVISION)),
 		"the Api-Revision header pins the steps schema; headers: {headers:?}"
 	);
 
@@ -833,10 +833,10 @@ fn test_gemini_ix_model_routing() -> Result<()> {
 	// adapter cannot change the protocol under an existing caller.
 	let cases = [
 		// -- Namespaced: opts in
-		("gemini_ix::gemini-3.5-flash", AdapterKind::GeminiInteractions),
-		("gemini_ix::gemini-3.5-transcribe", AdapterKind::GeminiInteractions),
-		("gemini_ix::gemini-2.5-flash", AdapterKind::GeminiInteractions),
-		("gemini_interactions::gemini-3.5-flash", AdapterKind::GeminiInteractions),
+		("gemini_ix::gemini-3.5-flash", AdapterKind::GeminiIx),
+		("gemini_ix::gemini-3.5-transcribe", AdapterKind::GeminiIx),
+		("gemini_ix::gemini-2.5-flash", AdapterKind::GeminiIx),
+		("gemini_interactions::gemini-3.5-flash", AdapterKind::GeminiIx),
 		// -- Bare names always stay on generateContent, Gemini 3.x included
 		("gemini-3.5-flash", AdapterKind::Gemini),
 		("gemini-3.5-transcribe", AdapterKind::Gemini),
@@ -858,8 +858,8 @@ fn test_gemini_ix_model_routing() -> Result<()> {
 #[test]
 fn test_gemini_ix_embeddings_are_not_supported() -> Result<()> {
 	// -- Exec
-	let res = GeminiInteractionsAdapter::get_service_url(
-		&ModelIden::new(AdapterKind::GeminiInteractions, MODEL),
+	let res = GeminiIxAdapter::get_service_url(
+		&ModelIden::new(AdapterKind::GeminiIx, MODEL),
 		ServiceType::Embed,
 		Endpoint::from_static("https://generativelanguage.googleapis.com/v1beta/"),
 	);
@@ -884,9 +884,9 @@ fn support_request(
 ) -> Result<WebRequestData> {
 	let options_set = ChatOptionsSet::default().with_chat_options(chat_options.as_ref());
 
-	let request = GeminiInteractionsAdapter::to_web_request_data(
+	let request = GeminiIxAdapter::to_web_request_data(
 		ServiceTarget {
-			model: ModelIden::new(AdapterKind::GeminiInteractions, MODEL),
+			model: ModelIden::new(AdapterKind::GeminiIx, MODEL),
 			auth: AuthData::from_single("test-key"),
 			endpoint: Endpoint::from_static("https://generativelanguage.googleapis.com/v1beta/"),
 		},
@@ -899,8 +899,8 @@ fn support_request(
 }
 
 fn support_response(body: Value) -> Result<crate::chat::ChatResponse> {
-	let chat_res = GeminiInteractionsAdapter::to_chat_response(
-		ModelIden::new(AdapterKind::GeminiInteractions, MODEL),
+	let chat_res = GeminiIxAdapter::to_chat_response(
+		ModelIden::new(AdapterKind::GeminiIx, MODEL),
 		WebResponse {
 			status: reqwest::StatusCode::OK,
 			body,

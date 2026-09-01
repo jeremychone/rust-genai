@@ -29,7 +29,7 @@ pub enum AdapterKind {
 	/// Gemini Interactions API.
 	///
 	/// Opt-in only: reachable via the `gemini_ix::` namespace (or `gemini_interactions::`).
-	GeminiInteractions,
+	GeminiIx,
 
 	/// Anthopric native protocol as well
 	Anthropic,
@@ -144,7 +144,7 @@ adapter_kind_str_maps! {
 	OpenAI             => "OpenAI",             "openai",              adapters::all_adapters::OpenAIAdapter;
 	OpenAIResp         => "OpenAIResp",         "openai_resp",         adapters::all_adapters::OpenAIRespAdapter;
 	Gemini             => "Gemini",             "gemini",              adapters::all_adapters::GeminiAdapter;
-	GeminiInteractions => "GeminiInteractions", "gemini_interactions", adapters::all_adapters::GeminiInteractionsAdapter;
+	GeminiIx => "GeminiInteractions", "gemini_interactions", adapters::all_adapters::GeminiIxAdapter;
 	Anthropic          => "Anthropic",          "anthropic",           adapters::all_adapters::AnthropicAdapter;
 	Fireworks          => "Fireworks",          "fireworks",           adapters::all_adapters::FireworksAdapter;
 	Together           => "Together",           "together",            adapters::all_adapters::TogetherAdapter;
@@ -273,7 +273,7 @@ impl AdapterKind {
 		}
 		// -- Second, custom namespaces
 		else if namespace == GEMINI_INTERACTIONS_SHORT_NAMESPACE {
-			Some(Self::GeminiInteractions)
+			Some(Self::GeminiIx)
 		} else if namespace == zai::ZAI_CODING_NAMESPACE {
 			Some(Self::Zai)
 		} else if namespace == BAIDU_CODING_OPENAI_NAMESPACE || namespace == BAIDU_CODING_ANTHROPIC_NAMESPACE {

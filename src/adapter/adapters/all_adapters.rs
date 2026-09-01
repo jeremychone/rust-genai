@@ -13,7 +13,7 @@ use crate::impl_pass_through_adapter;
 pub use super::anthropic::AnthropicAdapter;
 pub use super::cohere::CohereAdapter;
 pub use super::gemini::GeminiAdapter;
-pub use super::gemini_ix::GeminiInteractionsAdapter;
+pub use super::gemini_ix::GeminiIxAdapter;
 pub use super::ollama::OllamaAdapter;
 pub use super::openai::OpenAIAdapter;
 pub use super::openai_resp::OpenAIRespAdapter;

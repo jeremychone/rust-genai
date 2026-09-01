@@ -15,10 +15,10 @@ const MODEL_NS_SHORT: &str = "gemini_ix::gemini-3.5-flash";
 #[tokio::test]
 async fn test_gemini_ix_routing_ok() -> TestResult<()> {
 	// -- Exec & Check
-	assert_eq!(AdapterKind::from_model(MODEL)?, AdapterKind::GeminiInteractions);
+	assert_eq!(AdapterKind::from_model(MODEL)?, AdapterKind::GeminiIx);
 	assert_eq!(
 		AdapterKind::from_model(MODEL_NS_SHORT)?,
-		AdapterKind::GeminiInteractions
+		AdapterKind::GeminiIx
 	);
 	assert_eq!(AdapterKind::from_model("gemini-2.5-flash")?, AdapterKind::Gemini);
 	// The escape hatch for anyone who wants `generateContent` for a Gemini 3 model.
@@ -209,7 +209,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
 	// The listing is the Gemini `models` endpoint, filtered to what routes here.
-	common_tests::common_test_list_models(AdapterKind::GeminiInteractions, "gemini-3.1-flash-lite").await
+	common_tests::common_test_list_models(AdapterKind::GeminiIx, "gemini-3.1-flash-lite").await
 }
 
 // endregion: --- List

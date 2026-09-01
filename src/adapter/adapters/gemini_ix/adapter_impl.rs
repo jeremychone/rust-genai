@@ -17,9 +17,9 @@ use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 use value_ext::JsonValueExt;
 
-pub struct GeminiInteractionsAdapter;
+pub struct GeminiIxAdapter;
 
-impl GeminiInteractionsAdapter {
+impl GeminiIxAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "GEMINI_API_KEY";
 
 	pub const API_REVISION: &str = "2026-05-20";
@@ -96,7 +96,7 @@ fn ix_thinking_level(reasoning_effort: Option<&ReasoningEffort>) -> Option<&'sta
 	}
 }
 
-impl Adapter for GeminiInteractionsAdapter {
+impl Adapter for GeminiIxAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
 
 	fn default_auth(_kind: AdapterKind) -> AuthData {
@@ -134,7 +134,7 @@ impl Adapter for GeminiInteractionsAdapter {
 				Ok(full_url.to_string())
 			}
 			ServiceType::Embed => Err(Error::AdapterNotSupported {
-				adapter_kind: AdapterKind::GeminiInteractions,
+				adapter_kind: AdapterKind::GeminiIx,
 				feature: "embeddings".to_string(),
 			}),
 		}
@@ -351,7 +351,7 @@ impl Adapter for GeminiInteractionsAdapter {
 		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
 		Err(Error::AdapterNotSupported {
-			adapter_kind: AdapterKind::GeminiInteractions,
+			adapter_kind: AdapterKind::GeminiIx,
 			feature: "embeddings".to_string(),
 		})
 	}
@@ -362,14 +362,14 @@ impl Adapter for GeminiInteractionsAdapter {
 		_options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::embed::EmbedResponse> {
 		Err(Error::AdapterNotSupported {
-			adapter_kind: AdapterKind::GeminiInteractions,
+			adapter_kind: AdapterKind::GeminiIx,
 			feature: "embeddings".to_string(),
 		})
 	}
 }
 
 /// Support functions
-impl GeminiInteractionsAdapter {
+impl GeminiIxAdapter {
 	fn into_ix_input_steps(
 		model_iden: &ModelIden,
 		messages: Vec<ChatMessage>,

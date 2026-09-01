@@ -31,8 +31,8 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<Gemini Adapter>];
 				$body
 			}
-			crate::adapter::AdapterKind::GeminiInteractions => {
-				type A = crate::adapter::adapters::all_adapters::[<GeminiInteractions Adapter>];
+			crate::adapter::AdapterKind::GeminiIx => {
+				type A = crate::adapter::adapters::all_adapters::[<GeminiIx Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Anthropic => {
