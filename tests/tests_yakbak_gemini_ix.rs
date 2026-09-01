@@ -1,6 +1,6 @@
 //! Replay integration tests for the Gemini Interactions adapter.
 //!
-//! These use pre-recorded cassettes from `tests/data/yakbak/gemini_interactions/` and lock in the
+//! These use pre-recorded cassettes from `tests/data/yakbak/gemini_ix/` and lock in the
 //! parts of the protocol that are bespoke to this adapter — and, in two cases, that the API
 //! reference documents incorrectly (both were found only by calling the live API):
 //!
@@ -46,7 +46,7 @@ fn tool_request() -> ChatRequest {
 /// no `steps` at all.
 #[tokio::test]
 async fn test_yakbak_gemini_ix_tool_stream() -> TestResult<()> {
-	let (client, _server) = replay_client("gemini_interactions", "tool_stream").await?;
+	let (client, _server) = replay_client("gemini_ix", "tool_stream").await?;
 
 	let options = ChatOptions::default()
 		.with_capture_content(true)
@@ -109,7 +109,7 @@ async fn test_yakbak_gemini_ix_tool_stream() -> TestResult<()> {
 /// thought step and the `function_result.name` were both worked out.
 #[tokio::test]
 async fn test_yakbak_gemini_ix_tool_full_flow() -> TestResult<()> {
-	let (client, _server) = replay_client("gemini_interactions", "tool_full_flow").await?;
+	let (client, _server) = replay_client("gemini_ix", "tool_full_flow").await?;
 
 	let chat_req = tool_request();
 
@@ -155,7 +155,7 @@ async fn test_yakbak_gemini_ix_tool_full_flow() -> TestResult<()> {
 /// the previous interaction id; the transcript never leaves the server.
 #[tokio::test]
 async fn test_yakbak_gemini_ix_stateful_session() -> TestResult<()> {
-	let (client, _server) = replay_client("gemini_interactions", "stateful_session").await?;
+	let (client, _server) = replay_client("gemini_ix", "stateful_session").await?;
 
 	// -- Turn 1: `store` defaults to true; set explicitly so the test states its own requirement.
 	let chat_req = ChatRequest::from_user("My favorite language is Rust. Reply with just 'noted'.").with_store(true);

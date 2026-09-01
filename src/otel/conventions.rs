@@ -118,7 +118,7 @@ pub fn provider_name(adapter_kind: AdapterKind) -> &'static str {
 	match adapter_kind {
 		AdapterKind::OpenAI | AdapterKind::OpenAIResp => "openai",
 		AdapterKind::Anthropic => "anthropic",
-		AdapterKind::Gemini | AdapterKind::GeminiInteractions => "gcp.gemini",
+		AdapterKind::Gemini | AdapterKind::GeminiIx => "gcp.gemini",
 		AdapterKind::Vertex => "gcp.vertex_ai",
 		AdapterKind::BedrockApi => "aws.bedrock",
 		#[cfg(feature = "bedrock-sigv4")]

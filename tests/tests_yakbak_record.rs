@@ -11,8 +11,8 @@
 //! # Record only Gemini scenarios:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini
 //!
-//! # Record only Gemini Interactions scenarios:
-//! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_interactions
+//! # Record only Gemini Ix scenarios:
+//! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_ix
 //!
 //! # Record only OpenAI scenarios:
 //! OPENAI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_openai
@@ -789,9 +789,9 @@ async fn record_ollama_cloud_simple_stream() -> TestResult<()> {
 	Ok(())
 }
 
-// region:    --- Gemini Interactions
+// region:    --- Gemini Ix
 
-const GEMINI_IX_MODEL: &str = "gemini-3.5-flash";
+const GEMINI_IX_MODEL: &str = "gemini_ix::gemini-3.5-flash";
 
 /// Shared seed for the tool scenarios: a reasoning-heavy prompt so the model emits a `thought`
 /// step (and its signature) alongside the `function_call`.
@@ -821,8 +821,8 @@ fn gemini_ix_tool_request() -> ChatRequest {
 /// `interaction.completed` carries no steps at all, so nothing can be recovered at the end.
 #[tokio::test]
 #[ignore]
-async fn record_gemini_interactions_tool_stream() -> TestResult<()> {
-	let (client, mut server) = record_client("gemini_interactions", "tool_stream", &gemini_backend()).await?;
+async fn record_gemini_ix_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini_ix", "tool_stream", &gemini_backend()).await?;
 
 	let options = ChatOptions::default()
 		.with_capture_content(true)
@@ -853,8 +853,8 @@ async fn record_gemini_interactions_tool_stream() -> TestResult<()> {
 /// is required even though the schema marks it optional.
 #[tokio::test]
 #[ignore]
-async fn record_gemini_interactions_tool_full_flow() -> TestResult<()> {
-	let (client, mut server) = record_client("gemini_interactions", "tool_full_flow", &gemini_backend()).await?;
+async fn record_gemini_ix_tool_full_flow() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini_ix", "tool_full_flow", &gemini_backend()).await?;
 
 	let chat_req = gemini_ix_tool_request();
 
@@ -888,8 +888,8 @@ async fn record_gemini_interactions_tool_full_flow() -> TestResult<()> {
 /// Also captures the `store: true` response shape, which is the only one carrying an `id`.
 #[tokio::test]
 #[ignore]
-async fn record_gemini_interactions_stateful_session() -> TestResult<()> {
-	let (client, mut server) = record_client("gemini_interactions", "stateful_session", &gemini_backend()).await?;
+async fn record_gemini_ix_stateful_session() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini_ix", "stateful_session", &gemini_backend()).await?;
 
 	// -- Turn 1: `store` must be explicit — the adapter never sets it implicitly.
 	let chat_req = ChatRequest::from_user("My favorite language is Rust. Reply with just 'noted'.").with_store(true);
@@ -908,4 +908,4 @@ async fn record_gemini_interactions_stateful_session() -> TestResult<()> {
 	Ok(())
 }
 
-// endregion: --- Gemini Interactions
+// endregion: --- Gemini Ix

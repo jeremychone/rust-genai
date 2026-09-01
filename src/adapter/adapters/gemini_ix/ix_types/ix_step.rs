@@ -42,7 +42,7 @@ impl IxContent {
 		let IxMedia { mime_type, data, uri } = media;
 
 		let Some(mime_type) = mime_type else {
-			tracing::warn!("GeminiInteractions - media content block without a mime_type (skipping)");
+			tracing::warn!("GeminiIx - media content block without a mime_type (skipping)");
 			return None;
 		};
 
@@ -50,7 +50,7 @@ impl IxContent {
 			(Some(data), _) => Some(ContentPart::Binary(Binary::from_base64(mime_type, data, None))),
 			(None, Some(uri)) => Some(ContentPart::Binary(Binary::from_url(mime_type, uri, None))),
 			(None, None) => {
-				tracing::warn!("GeminiInteractions - media content block with neither `data` nor `uri` (skipping)");
+				tracing::warn!("GeminiIx - media content block with neither `data` nor `uri` (skipping)");
 				None
 			}
 		}

@@ -7,12 +7,12 @@
 //!   They never become a `ToolCall` and are charged
 //! - **Citations.** `ContentPart::Text` is a plain `String`; there is nowhere to attach the
 //!   `url_citation` annotations. Gemini API mandates that we need to cite sources
-//!    as per their terms-of-service
+//!   as per their terms-of-service
 //! - **Grounding billing counts**, Usage does not have fields for server tool calls
 //!
 //!
 //! ```no_run
-//! use genai::adapter::gemini_interactions::EnrichedEvent;
+//! use genai::adapter::gemini_ix::EnrichedEvent;
 //! use genai::chat::{ChatFrameSink, FrameCtx, RawFrameRef};
 //!
 //! struct Sink;

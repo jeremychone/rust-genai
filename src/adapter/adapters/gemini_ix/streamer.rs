@@ -13,7 +13,7 @@ use std::task::{Context, Poll};
 /// SSE streamer for the Gemini Interactions API.
 ///
 /// DOC: <https://ai.google.dev/gemini-api/docs/interactions/streaming>
-pub struct GeminiInteractionsStreamer {
+pub struct GeminiIxStreamer {
 	inner: EventSourceStream,
 	options: StreamerOptions,
 	done: bool,
@@ -94,7 +94,7 @@ enum IxDelta {
 	Other,
 }
 
-impl GeminiInteractionsStreamer {
+impl GeminiIxStreamer {
 	pub fn new(inner: EventSourceStream, model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		let frame_tap = new_frame_tap(&model_iden, &options_set);
 
@@ -127,7 +127,7 @@ impl GeminiInteractionsStreamer {
 	}
 }
 
-impl futures::Stream for GeminiInteractionsStreamer {
+impl futures::Stream for GeminiIxStreamer {
 	type Item = Result<InterStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -152,7 +152,7 @@ impl futures::Stream for GeminiInteractionsStreamer {
 						Ok(stream_event) => stream_event,
 						Err(serde_error) => {
 							tracing::warn!(
-								"GeminiInteractionsStreamer - fail to parse event (skipping). Cause: {serde_error}. Data: {}",
+								"GeminiIxStreamer - fail to parse event (skipping). Cause: {serde_error}. Data: {}",
 								message.data
 							);
 							continue;
@@ -249,7 +249,7 @@ impl futures::Stream for GeminiInteractionsStreamer {
 							} else {
 								serde_json::from_str(&args_buffer).unwrap_or_else(|serde_error| {
 									tracing::warn!(
-										"GeminiInteractionsStreamer - fail to parse tool call arguments for '{}'. \
+										"GeminiIxStreamer - fail to parse tool call arguments for '{}'. \
 										 Cause: {serde_error}. Passing through as a string.",
 										tool_call.fn_name
 									);

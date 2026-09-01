@@ -1,4 +1,4 @@
-use super::GeminiInteractionsStreamer;
+use super::GeminiIxStreamer;
 use super::ix_types::{IxInteraction, ix_status_to_stop_reason};
 use crate::adapter::adapters::gemini::GeminiAdapter;
 use crate::adapter::adapters::support::get_api_key;
@@ -88,7 +88,7 @@ fn ix_thinking_level(reasoning_effort: Option<&ReasoningEffort>) -> Option<&'sta
 		ReasoningEffort::High | ReasoningEffort::XHigh | ReasoningEffort::Max => Some("high"),
 		ReasoningEffort::Budget(budget) => {
 			tracing::warn!(
-				"GeminiInteractions - ReasoningEffort::Budget({budget}) is not supported by the Interactions API \
+				"GeminiIx - ReasoningEffort::Budget({budget}) is not supported by the Interactions API \
 				 (it exposes discrete `thinking_level` values only)"
 			);
 			Some("medium")
@@ -284,7 +284,7 @@ impl Adapter for GeminiIxAdapter {
 		};
 
 		if let Some(error_message) = interaction.error_message() {
-			tracing::warn!("GeminiInteractions - interaction reported errors: {error_message}");
+			tracing::warn!("GeminiIx - interaction reported errors: {error_message}");
 		}
 
 		// -- Capture the usage
@@ -335,7 +335,7 @@ impl Adapter for GeminiIxAdapter {
 	) -> Result<ChatStreamResponse> {
 		let event_source = EventSourceStream::new(reqwest_builder);
 
-		let ix_stream = GeminiInteractionsStreamer::new(event_source, model_iden.clone(), options_set);
+		let ix_stream = GeminiIxStreamer::new(event_source, model_iden.clone(), options_set);
 		let frame_tap = ix_stream.frame_tap();
 		let chat_stream = ChatStream::from_inter_stream(ix_stream).with_frame_tap(frame_tap);
 

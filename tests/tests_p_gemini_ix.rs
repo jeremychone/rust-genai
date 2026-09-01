@@ -4,9 +4,9 @@ use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-// This will use the GeminiInteractions adapter (auto-selected for `gemini-3*`).
+// The Interactions API is opt-in, so every model name here carries the `gemini_ix::` prefix.
 const MODEL: &str = "gemini_ix::gemini-3.5-flash";
-const MODEL_NS: &str = "gemini_interactions::gemini-3.5-flash";
+const MODEL_NS: &str = "gemini_ix::gemini-3.5-flash";
 // Short namespace alias.
 const MODEL_NS_SHORT: &str = "gemini_ix::gemini-3.5-flash";
 
@@ -16,10 +16,7 @@ const MODEL_NS_SHORT: &str = "gemini_ix::gemini-3.5-flash";
 async fn test_gemini_ix_routing_ok() -> TestResult<()> {
 	// -- Exec & Check
 	assert_eq!(AdapterKind::from_model(MODEL)?, AdapterKind::GeminiIx);
-	assert_eq!(
-		AdapterKind::from_model(MODEL_NS_SHORT)?,
-		AdapterKind::GeminiIx
-	);
+	assert_eq!(AdapterKind::from_model(MODEL_NS_SHORT)?, AdapterKind::GeminiIx);
 	assert_eq!(AdapterKind::from_model("gemini-2.5-flash")?, AdapterKind::Gemini);
 	// The escape hatch for anyone who wants `generateContent` for a Gemini 3 model.
 	assert_eq!(

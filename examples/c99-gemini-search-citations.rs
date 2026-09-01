@@ -1,6 +1,6 @@
 //! Use `ChatFrameSSink` to capture the raw frames and decode them with `EnrichedEvent::from_frame`.
 //!
-//! `EnrichedEvent::from_frame` (in `genai::adapter::gemini_interactions`) decodes a raw frame ,
+//! `EnrichedEvent::from_frame` (in `genai::adapter::gemini_ix`) decodes a raw frame
 //! so a client does not have to hand-write JSON pointer walks.
 //!
 //! A `ChatFrameSink` sees every frame as it decodes, so this example runs in two phases. The

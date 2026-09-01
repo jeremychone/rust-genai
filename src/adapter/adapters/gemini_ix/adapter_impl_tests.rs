@@ -836,7 +836,7 @@ fn test_gemini_ix_model_routing() -> Result<()> {
 		("gemini_ix::gemini-3.5-flash", AdapterKind::GeminiIx),
 		("gemini_ix::gemini-3.5-transcribe", AdapterKind::GeminiIx),
 		("gemini_ix::gemini-2.5-flash", AdapterKind::GeminiIx),
-		("gemini_interactions::gemini-3.5-flash", AdapterKind::GeminiIx),
+		("gemini_interactions::gemini-3.5-flash", AdapterKind::Gemini),
 		// -- Bare names always stay on generateContent, Gemini 3.x included
 		("gemini-3.5-flash", AdapterKind::Gemini),
 		("gemini-3.5-transcribe", AdapterKind::Gemini),
