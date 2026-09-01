@@ -11,6 +11,9 @@
 //! # Record only Gemini scenarios:
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini
 //!
+//! # Record only Gemini Ix scenarios:
+//! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_ix
+//!
 //! # Record only OpenAI scenarios:
 //! OPENAI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_openai
 //!
@@ -785,3 +788,124 @@ async fn record_ollama_cloud_simple_stream() -> TestResult<()> {
 	server.shutdown().await;
 	Ok(())
 }
+
+// region:    --- Gemini Ix
+
+const GEMINI_IX_MODEL: &str = "gemini_ix::gemini-3.5-flash";
+
+/// Shared seed for the tool scenarios: a reasoning-heavy prompt so the model emits a `thought`
+/// step (and its signature) alongside the `function_call`.
+fn gemini_ix_tool_request() -> ChatRequest {
+	ChatRequest::new(vec![
+		ChatMessage::system("You are a thoughtful assistant. Always reason carefully before invoking tools."),
+		ChatMessage::user(
+			"Of these three cities — Berlin, Cairo, Paris — exactly one is in Africa. \
+			 Reason carefully about which one, then call get_weather for that city in Celsius.",
+		),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city":    { "type": "string", "description": "The city name" },
+			"country": { "type": "string", "description": "The country" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})))
+}
+
+/// Streaming tool call. This is the cassette with the most bespoke logic behind it: the
+/// Interactions stream delivers a function call across three event types — `step.start` carries
+/// the name and id, `step.delta`/`arguments_delta` streams the arguments as a partial JSON
+/// *string* that must be accumulated, and `step.stop` is where the call can finally be assembled.
+/// `interaction.completed` carries no steps at all, so nothing can be recovered at the end.
+#[tokio::test]
+#[ignore]
+async fn record_gemini_ix_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini_ix", "tool_stream", &gemini_backend()).await?;
+
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	let stream_res = client
+		.exec_chat_stream(GEMINI_IX_MODEL, gemini_ix_tool_request(), Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	eprintln!(
+		"[record] Tool stream: reasoning={} bytes, signatures={}, tool_calls={}, response_id={:?}",
+		extract.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		extract.thought_signature_chunks.len(),
+		extract.stream_end.captured_tool_calls().map(|c| c.len()).unwrap_or(0),
+		extract.stream_end.captured_response_id,
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+/// Two-turn tool round trip, non-streaming. Locks in the two request-shaping rules that the API
+/// reference does not state and that both returned a bare 400 until they were found:
+/// a replayed `function_call` must be preceded by its `thought` step, and `function_result.name`
+/// is required even though the schema marks it optional.
+#[tokio::test]
+#[ignore]
+async fn record_gemini_ix_tool_full_flow() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini_ix", "tool_full_flow", &gemini_backend()).await?;
+
+	let chat_req = gemini_ix_tool_request();
+
+	// -- Turn 1: get the tool call (and the thought signature riding on it).
+	let chat_res = client.exec_chat(GEMINI_IX_MODEL, chat_req.clone(), None).await?;
+	let tool_calls = chat_res.into_tool_calls();
+	let first_tool_call = tool_calls.first().ok_or("turn 1 should have called get_weather")?;
+	eprintln!(
+		"[record] Turn 1: tool_calls={}, signatures_on_first_call={:?}",
+		tool_calls.len(),
+		first_tool_call.thought_signatures.as_ref().map(Vec::len),
+	);
+
+	// -- Turn 2: answer it. `ToolResponse::new` carries no fn_name on purpose — the adapter has
+	//    to recover the name from the matching function_call.
+	let tool_response = ToolResponse::new(
+		&first_tool_call.call_id,
+		r#"{"weather": "Sunny", "temperature": "32C"}"#,
+	);
+	let chat_req = chat_req.append_message(tool_calls.clone()).append_message(tool_response);
+
+	let chat_res = client.exec_chat(GEMINI_IX_MODEL, chat_req, None).await?;
+	eprintln!("[record] Turn 2: {:?}", chat_res.first_text());
+
+	server.shutdown().await;
+	Ok(())
+}
+
+/// Two turns of server-side history — the reason this adapter exists. Turn 2 sends only the new
+/// message plus the previous interaction id; the transcript never leaves the server.
+/// Also captures the `store: true` response shape, which is the only one carrying an `id`.
+#[tokio::test]
+#[ignore]
+async fn record_gemini_ix_stateful_session() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini_ix", "stateful_session", &gemini_backend()).await?;
+
+	// -- Turn 1: `store` must be explicit — the adapter never sets it implicitly.
+	let chat_req = ChatRequest::from_user("My favorite language is Rust. Reply with just 'noted'.").with_store(true);
+	let res_1 = client.exec_chat(GEMINI_IX_MODEL, chat_req, None).await?;
+	let interaction_id = res_1.response_id.clone().ok_or("a stored interaction should have an id")?;
+	eprintln!("[record] Turn 1: {:?} id={interaction_id}", res_1.first_text());
+
+	// -- Turn 2: no history resent.
+	let chat_req = ChatRequest::from_user("What is my favorite language?")
+		.with_previous_response_id(&interaction_id)
+		.with_store(true);
+	let res_2 = client.exec_chat(GEMINI_IX_MODEL, chat_req, None).await?;
+	eprintln!("[record] Turn 2: {:?}", res_2.first_text());
+
+	server.shutdown().await;
+	Ok(())
+}
+
+// endregion: --- Gemini Ix

@@ -24,6 +24,10 @@ pub(crate) use dispatcher::*;
 
 pub use adapter_kind::*;
 
+pub mod gemini_ix {
+	pub use super::adapters::gemini_ix::{EnrichedEvent, GroundingToolCount, UrlCitation};
+}
+
 // -- Crate modules
 pub(crate) mod inter_stream;
 

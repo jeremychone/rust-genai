@@ -22,6 +22,11 @@ pub enum AdapterKind {
 	/// Gemini adapter supports gemini native protocol. e.g., support thinking budget.
 	Gemini,
 
+	/// Gemini Interactions API.
+	///
+	/// Opt-in only: reachable via the `gemini_ix::` namespace (or `gemini_interactions::`).
+	GeminiIx,
+
 	/// Anthopric native protocol as well
 	Anthropic,
 
@@ -132,36 +137,37 @@ pub enum AdapterKind {
 
 // The single source of truth for the string maps: one row per variant.
 adapter_kind_str_maps! {
-	OpenAI        => "OpenAI",        "openai",         adapters::all_adapters::OpenAIAdapter;
-	OpenAIResp    => "OpenAIResp",    "openai_resp",    adapters::all_adapters::OpenAIRespAdapter;
-	Gemini        => "Gemini",        "gemini",         adapters::all_adapters::GeminiAdapter;
-	Anthropic     => "Anthropic",     "anthropic",      adapters::all_adapters::AnthropicAdapter;
-	Fireworks     => "Fireworks",     "fireworks",      adapters::all_adapters::FireworksAdapter;
-	Together      => "Together",      "together",       adapters::all_adapters::TogetherAdapter;
-	Groq          => "Groq",          "groq",           adapters::all_adapters::GroqAdapter;
-	Aihubmix      => "Aihubmix",      "aihubmix",       adapters::all_adapters::AihubmixAdapter;
-	Kimi          => "Kimi",          "kimi",           adapters::all_adapters::KimiAdapter;
-	Mimo          => "Mimo",          "mimo",           adapters::all_adapters::MimoAdapter;
-	Moonshot      => "Moonshot",      "moonshot",       adapters::all_adapters::MoonshotAdapter;
-	Nebius        => "Nebius",        "nebius",         adapters::all_adapters::NebiusAdapter;
-	Xai           => "Xai",           "xai",            adapters::all_adapters::XaiAdapter;
-	DeepSeek      => "DeepSeek",      "deepseek",       adapters::all_adapters::DeepSeekAdapter;
-	Zai           => "Zai",           "zai",            adapters::all_adapters::ZaiAdapter;
-	BigModel      => "BigModel",      "bigmodel",       adapters::all_adapters::BigModelAdapter;
-	Aliyun        => "Aliyun",        "aliyun",         adapters::all_adapters::AliyunAdapter;
-	QwenCloud     => "QwenCloud",     "qwen_cloud",     adapters::all_adapters::QwenCloudAdapter;
-	Baidu         => "Baidu",         "baidu",          adapters::all_adapters::BaiduAdapter;
-	Cohere        => "Cohere",        "cohere",         adapters::all_adapters::CohereAdapter;
-	Ollama        => "Ollama",        "ollama",         adapters::all_adapters::OllamaAdapter;
-	OllamaCloud   => "OllamaCloud",   "ollama_cloud",   adapters::all_adapters::OllamaCloudAdapter;
-	Omlx          => "Omlx",          "omlx",           adapters::all_adapters::OmlxAdapter;
-	Vertex        => "Vertex",        "vertex",         adapters::all_adapters::VertexAdapter;
-	GithubCopilot => "GithubCopilot", "github_copilot", adapters::all_adapters::GithubCopilotAdapter;
-	OpenCodeGo    => "OpenCodeGo",    "opencode_go",    adapters::all_adapters::OpenCodeGoAdapter;
-	BedrockApi    => "BedrockApi",    "bedrock_api",    adapters::all_adapters::BedrockApiAdapter;
-	OpenRouter    => "OpenRouter",    "open_router",    adapters::all_adapters::OpenRouterAdapter;
-	AtlasCloud    => "AtlasCloud",    "atlascloud",     adapters::all_adapters::AtlasCloudAdapter;
-	MiniMax       => "MiniMax",       "minimax",        adapters::all_adapters::MiniMaxAdapter;
+	OpenAI             => "OpenAI",             "openai",              adapters::all_adapters::OpenAIAdapter;
+	OpenAIResp         => "OpenAIResp",         "openai_resp",         adapters::all_adapters::OpenAIRespAdapter;
+	Gemini             => "Gemini",             "gemini",              adapters::all_adapters::GeminiAdapter;
+	GeminiIx => "GeminiIx", "gemini_ix", adapters::all_adapters::GeminiIxAdapter;
+	Anthropic          => "Anthropic",          "anthropic",           adapters::all_adapters::AnthropicAdapter;
+	Fireworks          => "Fireworks",          "fireworks",           adapters::all_adapters::FireworksAdapter;
+	Together           => "Together",           "together",            adapters::all_adapters::TogetherAdapter;
+	Groq               => "Groq",               "groq",                adapters::all_adapters::GroqAdapter;
+	Aihubmix           => "Aihubmix",           "aihubmix",            adapters::all_adapters::AihubmixAdapter;
+	Kimi               => "Kimi",               "kimi",                adapters::all_adapters::KimiAdapter;
+	Mimo               => "Mimo",               "mimo",                adapters::all_adapters::MimoAdapter;
+	Moonshot           => "Moonshot",           "moonshot",            adapters::all_adapters::MoonshotAdapter;
+	Nebius             => "Nebius",             "nebius",              adapters::all_adapters::NebiusAdapter;
+	Xai                => "Xai",                "xai",                 adapters::all_adapters::XaiAdapter;
+	DeepSeek           => "DeepSeek",           "deepseek",            adapters::all_adapters::DeepSeekAdapter;
+	Zai                => "Zai",                "zai",                 adapters::all_adapters::ZaiAdapter;
+	BigModel           => "BigModel",           "bigmodel",            adapters::all_adapters::BigModelAdapter;
+	Aliyun             => "Aliyun",             "aliyun",              adapters::all_adapters::AliyunAdapter;
+	QwenCloud          => "QwenCloud",          "qwen_cloud",          adapters::all_adapters::QwenCloudAdapter;
+	Baidu              => "Baidu",              "baidu",               adapters::all_adapters::BaiduAdapter;
+	Cohere             => "Cohere",             "cohere",              adapters::all_adapters::CohereAdapter;
+	Ollama             => "Ollama",             "ollama",              adapters::all_adapters::OllamaAdapter;
+	OllamaCloud        => "OllamaCloud",        "ollama_cloud",        adapters::all_adapters::OllamaCloudAdapter;
+	Omlx               => "Omlx",               "omlx",                adapters::all_adapters::OmlxAdapter;
+	Vertex             => "Vertex",             "vertex",              adapters::all_adapters::VertexAdapter;
+	GithubCopilot      => "GithubCopilot",      "github_copilot",      adapters::all_adapters::GithubCopilotAdapter;
+	OpenCodeGo         => "OpenCodeGo",         "opencode_go",         adapters::all_adapters::OpenCodeGoAdapter;
+	BedrockApi         => "BedrockApi",         "bedrock_api",         adapters::all_adapters::BedrockApiAdapter;
+	OpenRouter         => "OpenRouter",         "open_router",         adapters::all_adapters::OpenRouterAdapter;
+	AtlasCloud         => "AtlasCloud",         "atlascloud",          adapters::all_adapters::AtlasCloudAdapter;
+	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
 // endregion: --- str & default_key_env_name impl (via macro)

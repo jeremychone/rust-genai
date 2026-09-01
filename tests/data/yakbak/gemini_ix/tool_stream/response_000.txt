@@ -1,0 +1,30 @@
+event: interaction.created
+data: {"interaction":{"id":"","status":"in_progress","object":"interaction","model":"gemini-3.5-flash"},"event_type":"interaction.created"}
+
+event: interaction.status_update
+data: {"interaction_id":"","status":"in_progress","event_type":"interaction.status_update"}
+
+event: step.start
+data: {"index":0,"step":{"type":"thought"},"event_type":"step.start"}
+
+event: step.delta
+data: {"index":0,"delta":{"signature":"EqQICqEIARFNMg+SR4XvTYrvStA09Wo/5FIKrREJ5kAngj7dsVRHEsENB82rxkuZv7XoYiRcnPDplfEOBk/U958HQbjyPIdTOuJwMSM4TcPEnPtWH2uHXzplHADxAFII3RXQyPQ2zKqTveh0KJHr/E8s27y8ebgutNXR4qczV4mfsv7k8UeDmUZP48F9QMka6Rwh7d+tIlId0Vt1YoddS+QRubDxlJ0bdcypS9OTJtK5h/zT9u6HwvifKhKl/SzL+sxWBHii+WUOsEMjKV/fJpiiTt1PxhpTNGLOt5/h98/9MVbZM9yYV2AD4OaqC5g9n1d61PuHRkStxFRv4Z83Ro9Vbws1fxSztLB+M3Q5PsFYIrKEPK2Mf1YAvGrGEiokHVUX7mCScI+IRWeJklMJqRBBCqOB1lQB8lrf0NRuKkH4m0RW1TqHDEgEpw01NB5lFUb8mcFCK1vx/0b7MzS80XkUHVZ5PwgBMLaH8naOATWw3blLx31oKoT6R1JRKixCYEOAk1myy4unnym/KOmBXyQkroJYEs+C4PwW4Qic+/dobjid/cDzLiLnNhRcUc1tma/svmx2NS74ZGdpy6WOMP+1v7nAX9Q2N4OXlBu1F4C4YExYbhXQ+Qo2ActmXQeqXxt9uGO662Uq2D7MmceuGuFGSSiIA5ZMAwDRiEToGNLrwSm/OEtZZGSD8qPU3zpyvBatr+LAFcyt5vAjfonukuYqgtzZ4DaPZXRZNfFmc+6lDRKgZCBfL8f4TncTXgAAGuld5Vi5gltEe+7MhE4pUcgocajJAp/5BXZVWa9SQCqBuSkyx6AEbRoTlEsb1FgYLNSs2qXm+McEF6XPr9jbxqzvv+DZfXcCpW1vrt9+JuHvQuxuXhpusoJqzI3c4FCR69Dlv1Hf07FZy+yNm38dEUXl8/HcK4Gl2s47nMHBHqYWahuIKQ3J3Ce7DnrYByii2nJXN2W/6bjjsPDCLfJZBKOvlag0bczrZZfCzf0O2b7PRmMK7YxT3NxQGo7IsnfKqPcOCxiv9cNWx2XJE1aonzTwHCJmbRbQj1aTifXqgn4ZsrpRL02rYOdYic517L+J7OeLbo/9ovbaKkr+B6DMOc7sTUGrj5kWFKTZIung/GRXDOsy/6Yy1Btv84w7ueVDLxfU8Sw9DhqiedtQ607xbade8+AeKEtXVJlXlUGIfzOUplgGUTae/5acuuiofOAjjzj+NmeAUuST8XI0lVrNd9dPTmIV9vJp4jD4ponjvN0gLaHl77wdDtOckLHpREqDwkfysyd0ARmwpAI/bCFbFBgkzCpXcwwVajRxl7hdCgJgfO2mXevH56dy719AQOoI4Ct+qO4djGVTGyht4GsSGwAVCXFrMS2SKbdKNpFZ72JPvjsuUYfuZ+5LMahv7QsslwlPvGkRKg==","type":"thought_signature"},"event_type":"step.delta"}
+
+event: step.stop
+data: {"index":0,"event_type":"step.stop"}
+
+event: step.start
+data: {"index":1,"step":{"id":"call_63237","type":"function_call","name":"get_weather","arguments":{}},"event_type":"step.start"}
+
+event: step.delta
+data: {"index":1,"delta":{"arguments":"{\"city\":\"Cairo\",\"unit\":\"C\",\"country\":\"Egypt\"}","type":"arguments_delta"},"event_type":"step.delta"}
+
+event: step.stop
+data: {"index":1,"event_type":"step.stop"}
+
+event: interaction.completed
+data: {"interaction":{"id":"","status":"requires_action","usage":{"total_tokens":384,"total_input_tokens":136,"input_tokens_by_modality":[{"modality":"text","tokens":136}],"total_cached_tokens":0,"total_output_tokens":28,"total_tool_use_tokens":0,"total_thought_tokens":220,"raw_prompt_token":175},"created":"2026-08-31T16:53:12Z","updated":"2026-08-31T16:53:12Z","service_tier":"standard","object":"interaction","model":"gemini-3.5-flash"},"event_type":"interaction.completed"}
+
+event: done
+data: [DONE]
+
