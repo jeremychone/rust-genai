@@ -156,7 +156,7 @@ See [BIG-THANKS](BIG-THANKS.md) for contributors
 By default, the library resolves the `AdapterKind` (AI provider) based on the model name prefix:
 
 - **OpenAI**: `gpt-*` (most), `o1-*`, `o3-*`, `o4-*`, `chatgpt-*`, `codex-*`
-- **OpenAI Responses**: `gpt-5-*`, `gpt-*` (containing `codex` or `pro`)
+- **OpenAI Responses**: `gpt-5-*`, `gpt-6-*`, `gpt-*` (containing `codex` or `pro`)
 - **Anthropic**: `claude-*`
 - **Gemini**: `gemini-*`
 - **xAI**: `grok-*`

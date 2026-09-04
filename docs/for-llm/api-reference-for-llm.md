@@ -639,7 +639,7 @@ Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `f
 ## Model Resolution Nuances
 
 - **Auto-detection** (updated in v0.6.0, `AdapterKind::from_model`):
-  - `gpt-*` (except `gpt-oss`), `o1*`, `o3*`, `o4*`, `chatgpt*`, `codex*`, `text-embedding*` -> `OpenAI` (or `OpenAIResp` for `gpt-5` and other models with `codex` or `pro` in name).
+  - `gpt-*` (except `gpt-oss`), `o1*`, `o3*`, `o4*`, `chatgpt*`, `codex*`, `text-embedding*` -> `OpenAI` (or `OpenAIResp` for `gpt-5`, `gpt-6`, and other models with `codex` or `pro` in name).
   - `gemini*` -> `Gemini`.
   - `claude*` -> `Anthropic`.
   - Contains `"fireworks"` -> `Fireworks`.

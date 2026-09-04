@@ -344,9 +344,15 @@ mod tests {
 		assert_eq!(AdapterKind::from_model("gpt-oss-120b")?, AdapterKind::Ollama);
 
 		// Explicit namespaces
-		assert_eq!(AdapterKind::from_model("openai_resp::gpt-4o-mini")?, AdapterKind::OpenAIResp);
+		assert_eq!(
+			AdapterKind::from_model("openai_resp::gpt-4o-mini")?,
+			AdapterKind::OpenAIResp
+		);
 		assert_eq!(AdapterKind::from_model("openai::gpt-6-astra")?, AdapterKind::OpenAI);
-		assert_eq!(AdapterKind::from_model("anthropic::claude-sonnet-4-5")?, AdapterKind::Anthropic);
+		assert_eq!(
+			AdapterKind::from_model("anthropic::claude-sonnet-4-5")?,
+			AdapterKind::Anthropic
+		);
 
 		Ok(())
 	}
