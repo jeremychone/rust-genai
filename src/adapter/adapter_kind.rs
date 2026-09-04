@@ -3,6 +3,7 @@ use crate::adapter::Adapter as _;
 use crate::adapter::adapters;
 use crate::adapter::adapters::baidu::BAIDU_CODING_ANTHROPIC_NAMESPACE;
 use crate::adapter::adapters::baidu::BAIDU_CODING_OPENAI_NAMESPACE;
+use crate::adapter::adapters::openai::OpenAIModel;
 use crate::adapter::adapters::zai;
 use crate::{ModelName, Result};
 use derive_more::Display;
@@ -218,9 +219,8 @@ impl AdapterKind {
 			|| model.starts_with("text-embedding")
 		// migh be a little generic on this one
 		{
-			if model.starts_with("gpt-5")
-				|| (model.starts_with("gpt") && (model.contains("codex") || model.contains("pro")))
-			{
+			let openai_model = OpenAIModel::from(model);
+			if openai_model.is_resp_model() {
 				Ok(Self::OpenAIResp)
 			} else {
 				Ok(Self::OpenAI)
@@ -317,6 +317,36 @@ mod tests {
 	fn test_adapter_kind_all_excludes_custom() -> Result<()> {
 		// -- Check
 		assert!(!AdapterKind::all().iter().any(|kind| matches!(kind, AdapterKind::Custom(_))));
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_adapter_kind_from_model_openai_routing() -> Result<()> {
+		// -- Exec & Check
+		// Models routing to OpenAIResp
+		assert_eq!(AdapterKind::from_model("gpt-6-astra")?, AdapterKind::OpenAIResp);
+		assert_eq!(AdapterKind::from_model("gpt-5")?, AdapterKind::OpenAIResp);
+		assert_eq!(AdapterKind::from_model("gpt-5-mini")?, AdapterKind::OpenAIResp);
+		assert_eq!(AdapterKind::from_model("gpt-4o-codex")?, AdapterKind::OpenAIResp);
+		assert_eq!(AdapterKind::from_model("gpt-4o-pro")?, AdapterKind::OpenAIResp);
+
+		// Models routing to OpenAI
+		assert_eq!(AdapterKind::from_model("gpt-4o-mini")?, AdapterKind::OpenAI);
+		assert_eq!(AdapterKind::from_model("gpt-4-0613")?, AdapterKind::OpenAI);
+		assert_eq!(AdapterKind::from_model("chatgpt-4o-latest")?, AdapterKind::OpenAI);
+		assert_eq!(AdapterKind::from_model("codex-cushman-001")?, AdapterKind::OpenAI);
+		assert_eq!(AdapterKind::from_model("o3-mini")?, AdapterKind::OpenAI);
+		assert_eq!(AdapterKind::from_model("o1-preview")?, AdapterKind::OpenAI);
+		assert_eq!(AdapterKind::from_model("text-embedding-3-small")?, AdapterKind::OpenAI);
+
+		// Fallback to Ollama
+		assert_eq!(AdapterKind::from_model("gpt-oss-120b")?, AdapterKind::Ollama);
+
+		// Explicit namespaces
+		assert_eq!(AdapterKind::from_model("openai_resp::gpt-4o-mini")?, AdapterKind::OpenAIResp);
+		assert_eq!(AdapterKind::from_model("openai::gpt-6-astra")?, AdapterKind::OpenAI);
+		assert_eq!(AdapterKind::from_model("anthropic::claude-sonnet-4-5")?, AdapterKind::Anthropic);
 
 		Ok(())
 	}
