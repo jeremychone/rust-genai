@@ -3,7 +3,7 @@ mod support;
 use crate::support::{TestResult, common_tests, seed_chat_req_simple};
 use genai::Client;
 use genai::adapter::AdapterKind;
-use genai::chat::ChatStreamEvent;
+use genai::chat::{ChatOptions, ChatStreamEvent, ReasoningEffort};
 use genai::resolver::AuthData;
 use serial_test::serial;
 use tokio_stream::StreamExt;
@@ -139,6 +139,29 @@ async fn test_chat_stream_non_empty_chunk_deepseek_ok() -> TestResult<()> {
 // }
 
 // endregion: --- Chat Stream Tests
+
+// region:    --- Reasoning Effort
+
+/// qwen3 accepts `think` as a boolean. `ReasoningEffort::Zero` maps to `think: false` (disabled),
+/// while the default run has thinking enabled (see test_chat_stream_reasoning_chunk_ok).
+#[tokio::test]
+#[serial(ollama)]
+async fn test_chat_reasoning_effort_zero_disables_thinking_ok() -> TestResult<()> {
+	let client = Client::new()?;
+	let chat_req = seed_chat_req_simple();
+	let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+
+	let chat_res = client.exec_chat(MODEL_QWEN3, chat_req, Some(&options)).await?;
+
+	assert!(
+		chat_res.reasoning_content.is_none(),
+		"reasoning_content should be absent when reasoning is disabled (ReasoningEffort::Zero)"
+	);
+
+	Ok(())
+}
+
+// endregion: --- Reasoning Effort
 
 // region:    --- Resolver Tests
 
