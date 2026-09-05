@@ -179,6 +179,88 @@ fn test_no_reasoning_content_when_absent() -> Result<()> {
 	Ok(())
 }
 
+/// OpenRouter needs `reasoning_details` back verbatim and in order for a
+/// multi-turn tool round trip to keep the model's continuity token: a signed
+/// or encrypted block cannot be rebuilt from the plaintext. The entries the
+/// response path captured as `Custom` parts go out again as the same array,
+/// beside the plaintext `reasoning_content` echo.
+#[test]
+fn test_reasoning_details_echoed_verbatim_on_assistant_message() -> Result<()> {
+	// -- Setup & Fixtures
+	let signed = json!({
+		"type": "reasoning.text",
+		"text": "Read the file first.",
+		"signature": "sig-1",
+		"format": "anthropic-claude-v1",
+		"index": 0
+	});
+	let encrypted = json!({
+		"type": "reasoning.encrypted",
+		"data": "opaque-bytes",
+		"format": "openai-responses-v1",
+		"index": 1
+	});
+	let tool_call = ToolCall {
+		call_id: "call_1".to_string(),
+		fn_name: "read_file".to_string(),
+		fn_arguments: json!({"path": "/runbook"}),
+		thought_signatures: None,
+	};
+	let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::from_custom(signed.clone(), None),
+		ContentPart::from_custom(encrypted.clone(), None),
+		ContentPart::ReasoningContent("Read the file first.".to_string()),
+		ContentPart::ToolCall(tool_call),
+	]));
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Read /runbook."), assistant_msg]);
+
+	// -- Exec
+	let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req, None)?;
+
+	// -- Check
+	let assistant_json = parts
+		.messages
+		.get(1)
+		.ok_or_else(|| std::io::Error::other("assistant message should be present"))?;
+	assert_eq!(
+		assistant_json["reasoning_details"],
+		json!([signed, encrypted]),
+		"every entry, verbatim, in order"
+	);
+	assert_eq!(
+		assistant_json["reasoning_content"], "Read the file first.",
+		"the plaintext echo stays beside it"
+	);
+	assert_eq!(assistant_json["tool_calls"][0]["id"], "call_1");
+
+	Ok(())
+}
+
+/// A `Custom` part that is not a reasoning block stays ignored on this wire,
+/// as before: only entries whose `type` starts with `reasoning.` are echoed.
+#[test]
+fn test_custom_parts_that_are_not_reasoning_blocks_are_not_echoed() -> Result<()> {
+	// -- Setup & Fixtures
+	let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::from_custom(json!({"type": "server_tool_use", "id": "srv_1"}), None),
+		ContentPart::Text("Done.".to_string()),
+	]));
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Hi"), assistant_msg]);
+
+	// -- Exec
+	let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req, None)?;
+
+	// -- Check
+	let assistant_json = parts
+		.messages
+		.get(1)
+		.ok_or_else(|| std::io::Error::other("assistant message should be present"))?;
+	assert!(assistant_json.get("reasoning_details").is_none());
+	assert_eq!(assistant_json["content"], "Done.");
+
+	Ok(())
+}
+
 #[test]
 fn test_gpt_5_6_chat_completion_defaults_to_explicit_cache_mode() -> Result<()> {
 	// -- Setup & Fixtures
