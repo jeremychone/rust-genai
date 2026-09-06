@@ -862,3 +862,59 @@ fn build_characterization_payload(model_name: &str, reasoning_effort: Option<Rea
 }
 
 // endregion: --- Support
+
+/// Anthropic reports the thinking share of `output_tokens` as
+/// `usage.output_tokens_details.thinking_tokens`. It must land in
+/// `completion_tokens_details.reasoning_tokens` — the field the OpenAI and Gemini
+/// adapters already fill — with `completion_tokens` untouched, since Anthropic's
+/// `output_tokens` already includes the thinking share.
+#[test]
+fn test_non_stream_usage_maps_thinking_tokens_to_reasoning_tokens() {
+	let response = AnthropicAdapter::build_chat_response(
+		ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		WebResponse {
+			status: StatusCode::OK,
+			body: json!({
+				"model": "fixture-model",
+				"content": [{"type": "text", "text": "301"}],
+				"stop_reason": "end_turn",
+				"usage": {
+					"input_tokens": 485,
+					"output_tokens": 189,
+					"output_tokens_details": {"thinking_tokens": 182}
+				}
+			}),
+		},
+	)
+	.expect("Anthropic response should parse");
+
+	let details = response
+		.usage
+		.completion_tokens_details
+		.expect("the thinking share is reported");
+	assert_eq!(details.reasoning_tokens, Some(182));
+	assert_eq!(response.usage.completion_tokens, Some(189));
+	assert_eq!(response.usage.prompt_tokens, Some(485));
+}
+
+/// Without `output_tokens_details`, nothing is invented: the details stay `None`
+/// rather than becoming a zero.
+#[test]
+fn test_non_stream_usage_without_thinking_share_has_no_completion_details() {
+	let response = AnthropicAdapter::build_chat_response(
+		ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		WebResponse {
+			status: StatusCode::OK,
+			body: json!({
+				"model": "fixture-model",
+				"content": [{"type": "text", "text": "ok"}],
+				"stop_reason": "end_turn",
+				"usage": {"input_tokens": 3, "output_tokens": 4}
+			}),
+		},
+	)
+	.expect("Anthropic response should parse");
+
+	assert!(response.usage.completion_tokens_details.is_none());
+	assert_eq!(response.usage.completion_tokens, Some(4));
+}

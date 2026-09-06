@@ -6,8 +6,9 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
-	ChatResponseFormat, ChatRole, ContentPart, JsonSchemaDialect, MessageContent, PromptTokensDetails, ReasoningEffort,
-	StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, Usage, sanitize_json_schema,
+	ChatResponseFormat, ChatRole, CompletionTokensDetails, ContentPart, JsonSchemaDialect, MessageContent,
+	PromptTokensDetails, ReasoningEffort, StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, Usage,
+	sanitize_json_schema,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
@@ -69,6 +70,16 @@ impl AnthropicAdapter {
 		let cache_creation_input_tokens: i32 = usage_value.x_take("cache_creation_input_tokens").unwrap_or(0);
 		let cache_read_input_tokens: i32 = usage_value.x_take("cache_read_input_tokens").unwrap_or(0);
 		let completion_tokens: i32 = usage_value.x_take("output_tokens").ok().unwrap_or(0);
+		// Anthropic reports the thinking share of `output_tokens` as
+		// `output_tokens_details.thinking_tokens` (adaptive thinking). It maps to
+		// `completion_tokens_details.reasoning_tokens`, the field the OpenAI and Gemini
+		// adapters fill, so the split reads the same across adapters. `output_tokens`
+		// already includes it, so `completion_tokens` needs no normalization.
+		let thinking_tokens = usage_value
+			.get("output_tokens_details")
+			.and_then(|details| details.get("thinking_tokens"))
+			.and_then(Value::as_i64)
+			.map(|tokens| tokens as i32);
 
 		// Parse cache_creation breakdown if present (TTL-specific breakdown)
 		let cache_creation_details = usage_value.get("cache_creation").and_then(parse_cache_creation_details);
@@ -98,8 +109,12 @@ impl AnthropicAdapter {
 			prompt_tokens_details,
 
 			completion_tokens: Some(completion_tokens),
-			// for now, None for Anthropic
-			completion_tokens_details: None,
+			completion_tokens_details: thinking_tokens.map(|reasoning_tokens| CompletionTokensDetails {
+				accepted_prediction_tokens: None,
+				rejected_prediction_tokens: None,
+				reasoning_tokens: Some(reasoning_tokens),
+				audio_tokens: None,
+			}),
 
 			total_tokens: Some(total_tokens),
 		}
