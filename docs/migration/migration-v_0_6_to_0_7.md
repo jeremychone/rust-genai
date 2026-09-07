@@ -85,6 +85,29 @@ JSON Schema handling for OpenAI and Anthropic structured outputs and strict tool
 - Anthropic signed thinking: When continuing an extended-thinking conversation with tool use, signed thinking blocks are now preserved across turns. If an assistant message contains unpaired reasoning text and signatures (for example, across provider handoffs), thinking blocks are safely omitted with a warning.
 - Gemini: `ReasoningEffort::Zero` maps to a thinking budget of `0`.
 
+### Gemini thought signature order and tool call mirroring
+
+Gemini thought signatures now preserve wire order in `MessageContent` parts instead of hoisting all signatures to the front of the content.
+
+- Each function call mirrors its own signature in `ToolCall.thought_signatures`, rather than the first call carrying every signature.
+- On request encoding, `ToolCall.thought_signatures` is honored if no signature part precedes the call.
+- Signatures are embedded directly into their corresponding text or tool-call parts as returned by the API.
+
+### Anthropic thinking tokens in usage
+
+Anthropic non-streaming token usage now maps `output_tokens_details.thinking_tokens` to `completion_tokens_details.reasoning_tokens`. Callers inspecting `Usage.completion_tokens_details` will now observe the thinking token count, matching the convention used by the OpenAI and Gemini adapters. `completion_tokens` remains unchanged because Anthropic already includes thinking tokens in `output_tokens`.
+
+### OpenRouter reasoning details in OpenAI adapter
+
+The OpenAI adapter now captures OpenRouter's `reasoning_details` (signed text, encrypted content, and summaries) as `ContentPart::Custom` parts on the non-streaming path.
+
+When sending subsequent requests, `Custom` parts whose type begins with `reasoning.` are echoed verbatim back to OpenRouter in `reasoning_details`, preserving provider continuity across multi-turn tool calling.
+
+### Streaming event preservation and error propagation
+
+- OpenAI Responses: Streaming `error` events are now surfaced as `Error::ChatResponse` with the provider error payload, cleanly terminating the stream.
+- Bedrock: The Bedrock streamer now queues and delivers all events decoded from initial frames, ensuring text deltas or tool-call chunks emitted in the same frame as stream start are not dropped.
+
 ## Additive Features
 
 ### Declarative provider configuration on `ClientBuilder`

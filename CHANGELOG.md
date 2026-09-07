@@ -28,9 +28,9 @@
   - Fable and Mythos omit `thinking`, because it is always on and cannot be explicitly disabled.
   - The Anthropic `-zero` model suffix is canonical, while `-none` remains a backward-compatible alias. Both map to `Zero` and are stripped.
   - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. Rebuilds thinking blocks ahead of text and tool calls, adds `ChatResponse::into_assistant_message_for_tool_use`, and safely omits unpaired thinking blocks. (PR #275)
-  - `-` Map `usage.output_tokens_details.thinking_tokens` to `completion_tokens_details.reasoning_tokens` on the non-streaming path, so the thinking share of `output_tokens` reads the same way as for the OpenAI and Gemini adapters; `completion_tokens` is unchanged, since Anthropic's `output_tokens` already includes it.
+  - `-` Map `usage.output_tokens_details.thinking_tokens` to `completion_tokens_details.reasoning_tokens` on the non-streaming path, so the thinking share of `output_tokens` reads the same way as for the OpenAI and Gemini adapters; `completion_tokens` is unchanged, since Anthropic's `output_tokens` already includes it. (PR #303)
 - Gemini:
-  - `-` Keep a `thoughtSignature` next to the part it arrived on. The response keeps wire order instead of hoisting every signature to the front (consecutive text parts still merge), each function call mirrors its own signature in `thought_signatures` rather than the first call carrying all of them, and on the way back a signature is embedded in the text or `functionCall` part it precedes, with `ToolCall.thought_signatures` honoured when no signature part precedes the call. Fixes a two-call turn whose second call lost its signature and whose first call carried the wrong one, and a text-plus-call turn whose signature moved onto the text.
+  - `-` Keep a `thoughtSignature` next to the part it arrived on. The response keeps wire order instead of hoisting every signature to the front (consecutive text parts still merge), each function call mirrors its own signature in `thought_signatures` rather than the first call carrying all of them, and on the way back a signature is embedded in the text or `functionCall` part it precedes, with `ToolCall.thought_signatures` honoured when no signature part precedes the call. Fixes a two-call turn whose second call lost its signature and whose first call carried the wrong one, and a text-plus-call turn whose signature moved onto the text. (PR #302)
   - `^` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
 - OpenAI and Bedrock:
   - `^` Apply the `ReasoningEffort::Zero` rename to OpenAI and Bedrock adapter mappings while preserving provider-specific keyword mappings.
@@ -72,7 +72,7 @@
   - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. (PR #275)
 - OpenAI:
   - `-` Propagate Responses API streaming `error` events as `genai::Error::ChatResponse` and cleanly terminate the stream. (PR #296)
-  - `+` Capture OpenRouter's `reasoning_details` (signed, encrypted and summary reasoning blocks) as `Custom` parts on the non-streaming path and echo them verbatim, in order, on assistant messages, so a multi-turn tool round trip through OpenRouter keeps the model's continuity token; `reasoning_content` is still echoed beside them.
+  - `+` Capture OpenRouter's `reasoning_details` (signed, encrypted and summary reasoning blocks) as `Custom` parts on the non-streaming path and echo them verbatim, in order, on assistant messages, so a multi-turn tool round trip through OpenRouter keeps the model's continuity token; `reasoning_content` is still echoed beside them. (PR #301)
   - `+` Route GPT-6 models (such as `gpt-6-astra`) to the OpenAI Responses API adapter.
   - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
   - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
@@ -89,6 +89,8 @@
   - `-` Count server-side built-in tool-use tokens in normalized prompt usage and allow mixing built-in and user-defined function tools. (PR #284)
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
+- Bedrock:
+  - `-` Fix Bedrock streamer to queue and preserve frame events after `Start`, preventing dropped text deltas or tool-call chunks from the initial frame. (PR #297)
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:

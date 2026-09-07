@@ -26,6 +26,13 @@ _If I forgot your PR, feel free to submit a PR_
   - [#293](https://github.com/jeremychone/rust-genai/pull/293) feat(adapter): Gemini Interactions API adapter (`gemini_ix::`)
   - [#290](https://github.com/jeremychone/rust-genai/pull/290) feat(chat): stream frame observation via ChatFrameSink
   - [#284](https://github.com/jeremychone/rust-genai/pull/284) fix(gemini): count built-in tool prompt tokens and allow mixed tools
+- [bricef](https://github.com/bricef)
+  - [#303](https://github.com/jeremychone/rust-genai/pull/303) fix(anthropic): map output_tokens_details.thinking_tokens to completion_tokens_details.reasoning_tokens
+  - [#302](https://github.com/jeremychone/rust-genai/pull/302) fix(gemini): keep a thoughtSignature next to the part it arrived on
+  - [#301](https://github.com/jeremychone/rust-genai/pull/301) fix(openai): capture OpenRouter's reasoning_details and echo them on assistant messages
+- [emecii](https://github.com/emecii)
+  - [#297](https://github.com/jeremychone/rust-genai/pull/297) fix(bedrock): preserve frame events after start
+  - [#296](https://github.com/jeremychone/rust-genai/pull/296) fix(openai_resp): propagate streaming error events
 - [lambdabetaeta](https://github.com/lambdabetaeta)
   - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
   - [#250](https://github.com/jeremychone/rust-genai/pull/250) fix: support adaptive thinking for Claude Sonnet 5
@@ -35,8 +42,6 @@ _If I forgot your PR, feel free to submit a PR_
 - [VikashLoomba](https://github.com/VikashLoomba)
   - [#280](https://github.com/jeremychone/rust-genai/pull/280) feat(webc): expose response headers on streaming HTTP errors
   - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
-- [emecii](https://github.com/emecii)
-  - [#296](https://github.com/jeremychone/rust-genai/pull/296) fix(openai_resp): propagate streaming error events
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 

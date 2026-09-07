@@ -348,11 +348,7 @@ fn resolve_components(name: &str, base_offset: usize) -> ResolvedComponents {
 	(None, None, None, None)
 }
 
-type VersionAndVariant = (
-	Option<f64>,
-	Option<(usize, usize)>,
-	Option<(usize, usize)>,
-);
+type VersionAndVariant = (Option<f64>, Option<(usize, usize)>, Option<(usize, usize)>);
 
 fn parse_version_and_variant(remainder: &str, remainder_offset: usize) -> VersionAndVariant {
 	if remainder.is_empty() {
