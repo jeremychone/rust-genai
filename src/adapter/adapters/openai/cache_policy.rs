@@ -1,3 +1,4 @@
+use super::OpenAIModel;
 use crate::adapter::AdapterKind;
 use crate::chat::{CacheControl, ChatOptionsSet, ChatRequest};
 use crate::resolver::Endpoint;
@@ -14,24 +15,8 @@ pub(crate) struct OpenAiPromptCachePolicy {
 	pub(crate) controlled_message_count: usize,
 }
 
-pub(crate) fn is_gpt_5_6_or_later(model_name: &str) -> bool {
-	let Some(version_and_suffix) = model_name.strip_prefix("gpt-") else {
-		return false;
-	};
-
-	let version = version_and_suffix
-		.split_once('-')
-		.map_or(version_and_suffix, |(version, _)| version);
-	let mut components = version.split('.');
-
-	let Some(major) = components.next().and_then(|value| value.parse::<u32>().ok()) else {
-		return false;
-	};
-	let Some(minor) = components.next().and_then(|value| value.parse::<u32>().ok()) else {
-		return false;
-	};
-
-	major > 5 || major == 5 && minor >= 6
+pub(crate) fn requires_explicit_cache(model_name: &str) -> bool {
+	OpenAIModel::from(model_name).requires_explicit_cache()
 }
 
 pub(crate) fn openai_prompt_cache_ttl(_cache_control: &CacheControl) -> &'static str {
@@ -55,7 +40,7 @@ pub(crate) fn openai_prompt_cache_policy(
 	options: &ChatOptionsSet<'_, '_>,
 	_protocol: OpenAiProtocol,
 ) -> Option<OpenAiPromptCachePolicy> {
-	if !matches!(adapter_kind, AdapterKind::OpenAI | AdapterKind::OpenAIResp) || !is_gpt_5_6_or_later(model_name) {
+	if !matches!(adapter_kind, AdapterKind::OpenAI | AdapterKind::OpenAIResp) || !requires_explicit_cache(model_name) {
 		return None;
 	}
 
@@ -114,21 +99,23 @@ mod tests {
 	use crate::chat::{ChatMessage, ChatOptions, Tool};
 
 	#[test]
-	fn test_adapter_adapters_openai_is_gpt_5_6_or_later() -> Result<()> {
-		assert!(is_gpt_5_6_or_later("gpt-5.6"));
-		assert!(is_gpt_5_6_or_later("gpt-5.6-mini"));
-		assert!(is_gpt_5_6_or_later("gpt-5.6-preview"));
-		assert!(is_gpt_5_6_or_later("gpt-5.10"));
-		assert!(is_gpt_5_6_or_later("gpt-6.0"));
+	fn test_adapter_adapters_openai_requires_explicit_cache() -> Result<()> {
+		assert!(requires_explicit_cache("gpt-5.6"));
+		assert!(requires_explicit_cache("gpt-5.6-mini"));
+		assert!(requires_explicit_cache("gpt-5.6-preview"));
+		assert!(requires_explicit_cache("gpt-5.10"));
+		assert!(requires_explicit_cache("gpt-6"));
+		assert!(requires_explicit_cache("gpt-6-astra"));
+		assert!(requires_explicit_cache("gpt-6.0"));
 		Ok(())
 	}
 
 	#[test]
-	fn test_adapter_adapters_openai_is_gpt_5_6_or_later_rejects_older_names() -> Result<()> {
-		assert!(!is_gpt_5_6_or_later("gpt-5.5"));
-		assert!(!is_gpt_5_6_or_later("gpt-5"));
-		assert!(!is_gpt_5_6_or_later("gpt-4.1"));
-		assert!(!is_gpt_5_6_or_later("claude-sonnet-4-6"));
+	fn test_adapter_adapters_openai_requires_explicit_cache_rejects_older_names() -> Result<()> {
+		assert!(!requires_explicit_cache("gpt-5.5"));
+		assert!(!requires_explicit_cache("gpt-5"));
+		assert!(!requires_explicit_cache("gpt-4.1"));
+		assert!(!requires_explicit_cache("claude-sonnet-4-6"));
 		Ok(())
 	}
 

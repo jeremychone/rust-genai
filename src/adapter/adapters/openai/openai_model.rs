@@ -14,6 +14,7 @@ pub(in crate::adapter) struct OpenAIModel {
 	model_name: ModelName,
 	family: Option<(usize, usize)>,
 	version: Option<f64>,
+	version_range: Option<(usize, usize)>,
 	variant: Option<(usize, usize)>,
 	snapshot: Option<(usize, usize)>,
 }
@@ -31,6 +32,7 @@ impl OpenAIModel {
 				model_name,
 				family: None,
 				version: None,
+				version_range: None,
 				variant: None,
 				snapshot: None,
 			};
@@ -49,12 +51,13 @@ impl OpenAIModel {
 		let (trimmed_name, snapshot) = extract_snapshot(trimmed_name, base_offset);
 
 		// 3. Resolve family, version, and variant.
-		let (family, version, variant) = resolve_components(trimmed_name, base_offset);
+		let (family, version, version_range, variant) = resolve_components(trimmed_name, base_offset);
 
 		Self {
 			model_name,
 			family,
 			version,
+			version_range,
 			variant,
 			snapshot,
 		}
@@ -77,6 +80,11 @@ impl OpenAIModel {
 	/// Return the numeric version if present (e.g., `4.0`, `4.1`, `5.0`, `6.0`).
 	pub fn version(&self) -> Option<f64> {
 		self.version
+	}
+
+	/// Return the unparsed version substring if present (e.g., `"4"`, `"4.1"`, `"5.6"`, `"5.10"`, `"6"`).
+	pub fn version_str(&self) -> Option<&str> {
+		self.version_range.map(|(start, end)| &self.model_name.as_str()[start..end])
 	}
 
 	/// Return the model variant (e.g., `"astra"`, `"mini"`, `"4o-mini"`).
@@ -102,6 +110,30 @@ impl OpenAIModel {
 			}
 		}
 		false
+	}
+
+	/// Check whether this model requires explicit prompt caching (GPT-5.6 and later).
+	///
+	/// For GPT-5.6 and above, automatic caching is enabled by default with surcharges,
+	/// so the adapter defaults to explicit caching mode.
+	pub fn requires_explicit_cache(&self) -> bool {
+		if self.family() != Some("gpt") {
+			return false;
+		}
+
+		if let Some(version_str) = self.version_str() {
+			let mut parts = version_str.split('.');
+			let major = parts.next().and_then(|p| p.parse::<u32>().ok());
+			let minor = parts.next().and_then(|p| p.parse::<u32>().ok());
+
+			match (major, minor) {
+				(Some(major), Some(minor)) => major > 5 || (major == 5 && minor >= 6),
+				(Some(major), None) => major > 5,
+				_ => false,
+			}
+		} else {
+			false
+		}
 	}
 }
 
@@ -215,7 +247,12 @@ fn extract_snapshot(name: &str, base_offset: usize) -> (&str, Option<(usize, usi
 	(name, None)
 }
 
-type ResolvedComponents = (Option<(usize, usize)>, Option<f64>, Option<(usize, usize)>);
+type ResolvedComponents = (
+	Option<(usize, usize)>,
+	Option<f64>,
+	Option<(usize, usize)>,
+	Option<(usize, usize)>,
+);
 
 fn resolve_components(name: &str, base_offset: usize) -> ResolvedComponents {
 	// Family 1: gpt-oss
@@ -232,7 +269,7 @@ fn resolve_components(name: &str, base_offset: usize) -> ResolvedComponents {
 		} else {
 			None
 		};
-		return (Some(fam_range), None, variant_range);
+		return (Some(fam_range), None, None, variant_range);
 	}
 
 	// Family 2: o[n] (e.g. o1, o3, o4)
@@ -253,7 +290,7 @@ fn resolve_components(name: &str, base_offset: usize) -> ResolvedComponents {
 			} else {
 				None
 			};
-			return (Some(fam_range), None, variant_range);
+			return (Some(fam_range), None, None, variant_range);
 		}
 	}
 
@@ -265,22 +302,22 @@ fn resolve_components(name: &str, base_offset: usize) -> ResolvedComponents {
 		} else {
 			(rest, 7)
 		};
-		let (version, variant) = parse_version_and_variant(rem_str, base_offset + rem_offset);
-		return (Some(fam_range), version, variant);
+		let (version, version_range, variant) = parse_version_and_variant(rem_str, base_offset + rem_offset);
+		return (Some(fam_range), version, version_range, variant);
 	}
 
 	// Family 4: gpt
 	if let Some(rest) = name.strip_prefix("gpt-") {
 		let fam_range = (base_offset, base_offset + 3);
-		let (version, variant) = parse_version_and_variant(rest, base_offset + 4);
-		return (Some(fam_range), version, variant);
+		let (version, version_range, variant) = parse_version_and_variant(rest, base_offset + 4);
+		return (Some(fam_range), version, version_range, variant);
 	} else if name == "gpt" {
 		let fam_range = (base_offset, base_offset + 3);
-		return (Some(fam_range), None, None);
+		return (Some(fam_range), None, None, None);
 	} else if name.starts_with("gpt") && name.len() > 3 && name.as_bytes()[3].is_ascii_digit() {
 		let fam_range = (base_offset, base_offset + 3);
-		let (version, variant) = parse_version_and_variant(&name[3..], base_offset + 3);
-		return (Some(fam_range), version, variant);
+		let (version, version_range, variant) = parse_version_and_variant(&name[3..], base_offset + 3);
+		return (Some(fam_range), version, version_range, variant);
 	}
 
 	// Family 5: Legacy completion and embedding models
@@ -303,16 +340,23 @@ fn resolve_components(name: &str, base_offset: usize) -> ResolvedComponents {
 	for &(prefix, len) in LEGACY_PREFIXES {
 		if name.starts_with(prefix) {
 			let fam_range = (base_offset, base_offset + len);
-			return (Some(fam_range), None, None);
+
+			return (Some(fam_range), None, None, None);
 		}
 	}
 
-	(None, None, None)
+	(None, None, None, None)
 }
 
-fn parse_version_and_variant(remainder: &str, remainder_offset: usize) -> (Option<f64>, Option<(usize, usize)>) {
+type VersionAndVariant = (
+	Option<f64>,
+	Option<(usize, usize)>,
+	Option<(usize, usize)>,
+);
+
+fn parse_version_and_variant(remainder: &str, remainder_offset: usize) -> VersionAndVariant {
 	if remainder.is_empty() {
-		return (None, None);
+		return (None, None, None);
 	}
 
 	let first_hyphen_idx = remainder.find('-');
@@ -323,6 +367,7 @@ fn parse_version_and_variant(remainder: &str, remainder_offset: usize) -> (Optio
 
 	if is_numeric_token(first_token) {
 		let version = first_token.parse::<f64>().ok();
+		let ver_range = Some((remainder_offset, remainder_offset + first_token.len()));
 		let variant = if let Some(rest) = token_remainder
 			&& !rest.is_empty()
 			&& let Some(idx) = first_hyphen_idx
@@ -333,11 +378,11 @@ fn parse_version_and_variant(remainder: &str, remainder_offset: usize) -> (Optio
 		} else {
 			None
 		};
-		(version, variant)
+		(version, ver_range, variant)
 	} else {
 		let var_start = remainder_offset;
 		let var_end = remainder_offset + remainder.len();
-		(None, Some((var_start, var_end)))
+		(None, None, Some((var_start, var_end)))
 	}
 }
 
@@ -545,6 +590,31 @@ mod tests {
 		assert!(gpt4o_pro.is_resp_model());
 		assert!(!codex_standalone.is_resp_model());
 		assert!(!chatgpt_latest.is_resp_model());
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_adapter_openai_model_requires_explicit_cache() -> Result<()> {
+		// -- Setup & Fixtures
+		let gpt6 = OpenAIModel::from("gpt-6");
+		let gpt6_astra = OpenAIModel::from("gpt-6-astra");
+		let gpt5_6 = OpenAIModel::from("gpt-5.6");
+		let gpt5_10 = OpenAIModel::from("gpt-5.10");
+		let gpt5_5 = OpenAIModel::from("gpt-5.5");
+		let gpt5 = OpenAIModel::from("gpt-5");
+		let gpt4o = OpenAIModel::from("gpt-4o");
+		let namespaced_gpt6 = OpenAIModel::from("openai::gpt-6-astra");
+
+		// -- Exec & Check
+		assert!(gpt6.requires_explicit_cache());
+		assert!(gpt6_astra.requires_explicit_cache());
+		assert!(gpt5_6.requires_explicit_cache());
+		assert!(gpt5_10.requires_explicit_cache());
+		assert!(!gpt5_5.requires_explicit_cache());
+		assert!(!gpt5.requires_explicit_cache());
+		assert!(!gpt4o.requires_explicit_cache());
+		assert!(namespaced_gpt6.requires_explicit_cache());
 
 		Ok(())
 	}

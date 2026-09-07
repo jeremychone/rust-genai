@@ -206,6 +206,32 @@ fn test_gpt_5_6_chat_completion_defaults_to_explicit_cache_mode() -> Result<()> 
 }
 
 #[test]
+fn test_gpt_6_chat_completion_defaults_to_explicit_cache_mode() -> Result<()> {
+	// -- Setup & Fixtures
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::OpenAI, "gpt-6-astra"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: Endpoint::from_static("https://api.openai.com/v1/"),
+	};
+
+	// -- Exec
+	let web_req = OpenAIAdapter::util_to_web_request_data(
+		target,
+		crate::adapter::ServiceType::Chat,
+		ChatRequest::from_user("hello"),
+		ChatOptionsSet::default(),
+		None,
+	)?;
+
+	// -- Check
+	assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
+	assert!(web_req.payload["prompt_cache_options"].get("ttl").is_none());
+	assert!(web_req.payload["messages"][0]["content"]["prompt_cache_breakpoint"].is_null());
+
+	Ok(())
+}
+
+#[test]
 fn test_gpt_5_6_chat_completion_cache_key_uses_api_default_mode() -> Result<()> {
 	// -- Setup & Fixtures
 	let target = ServiceTarget {

@@ -1,6 +1,6 @@
 //! This is support implementation of the OpenAI Adapter which can also be called by other OpenAI Adapter Variants
 
-use super::cache_policy::{OpenAiPromptCachePolicy, OpenAiProtocol, is_gpt_5_6_or_later, openai_prompt_cache_policy};
+use super::cache_policy::{OpenAiPromptCachePolicy, OpenAiProtocol, openai_prompt_cache_policy, requires_explicit_cache};
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::support::get_api_key;
@@ -236,7 +236,7 @@ impl OpenAIAdapter {
 		if let Some(prompt_cache_key) = options_set.prompt_cache_key() {
 			payload.x_insert("prompt_cache_key", prompt_cache_key)?;
 		}
-		if !is_gpt_5_6_or_later(model_name)
+		if !requires_explicit_cache(model_name)
 			&& let Some(cache_control) = options_set.cache_control()
 		{
 			let prompt_cache_retention = match cache_control {
