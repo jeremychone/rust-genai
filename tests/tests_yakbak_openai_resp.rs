@@ -5,6 +5,7 @@
 
 mod support;
 
+use futures::StreamExt;
 use genai::chat::*;
 use serde_json::json;
 use support::yakbak::replay_client;
@@ -524,4 +525,62 @@ eof_line: "*** End of File" LF
 				"definition": apply_patch_grammar,
 			})),
 	)
+}
+
+// Protocol fixtures, not live recordings. The first uses the exact error object
+// from https://developers.openai.com/api/reference/resources/responses/streaming-events/#error.
+// The second adds a preceding delta, nullable code, non-null param, and a trailing
+// delta to verify that a provider error terminates the stream.
+#[tokio::test]
+async fn test_yakbak_openai_resp_stream_error() -> TestResult<()> {
+	check_stream_error("stream_error", false).await
+}
+
+#[tokio::test]
+async fn test_yakbak_openai_resp_stream_error_after_delta() -> TestResult<()> {
+	check_stream_error("stream_error_after_delta", true).await
+}
+
+async fn check_stream_error(scenario: &str, partial: bool) -> TestResult<()> {
+	for capture in [false, true] {
+		let (client, _server) = replay_client("openai_resp", scenario).await?;
+		let options = ChatOptions::default().with_capture_content(capture);
+		let mut stream = client
+			.exec_chat_stream(
+				"openai_resp::gpt-5.4-mini",
+				ChatRequest::new(vec![ChatMessage::user("Hello")]),
+				Some(&options),
+			)
+			.await?
+			.stream;
+		assert!(matches!(stream.next().await, Some(Ok(ChatStreamEvent::Start))));
+		if partial {
+			assert!(matches!(
+				stream.next().await,
+				Some(Ok(ChatStreamEvent::Chunk(chunk))) if chunk.content == "Partial answer"
+			));
+		}
+		match stream.next().await {
+			Some(Err(genai::Error::ChatResponse { model_iden, body })) => {
+				assert_eq!(model_iden.adapter_kind, genai::adapter::AdapterKind::OpenAIResp);
+				assert_eq!(
+					body,
+					json!({
+						"type": "error",
+						"code": if partial { None } else { Some("ERR_SOMETHING") },
+						"message": "Something went wrong",
+						"param": if partial { Some("input") } else { None },
+						"sequence_number": if partial { 2 } else { 1 },
+					})
+				);
+			}
+			other => panic!("expected provider error, got {other:?}"),
+		}
+		assert!(
+			stream.next().await.is_none(),
+			"no success End or further chunks after error"
+		);
+		assert!(stream.next().await.is_none());
+	}
+	Ok(())
 }

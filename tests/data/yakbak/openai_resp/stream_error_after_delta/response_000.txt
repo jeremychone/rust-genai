@@ -1,0 +1,9 @@
+event: response.output_text.delta
+data: {"type": "response.output_text.delta", "item_id": "msg_test", "output_index": 0, "content_index": 0, "delta": "Partial answer", "sequence_number": 1}
+
+event: error
+data: {"type": "error", "code": null, "message": "Something went wrong", "param": "input", "sequence_number": 2}
+
+event: response.output_text.delta
+data: {"type": "response.output_text.delta", "item_id": "msg_test", "output_index": 0, "content_index": 0, "delta": "must not escape", "sequence_number": 3}
+

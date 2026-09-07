@@ -113,6 +113,9 @@ enum RespStreamEvent {
 	#[serde(rename = "response.incomplete")]
 	ResponseIncomplete { response: RespResponse },
 
+	#[serde(rename = "error")]
+	Error,
+
 	#[serde(other)]
 	Unknown,
 }
@@ -405,6 +408,21 @@ impl futures::Stream for OpenAIRespStreamer {
 							};
 
 							return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
+						}
+
+						RespStreamEvent::Error => {
+							self.done = true;
+							// Unlike response.failed, this event carries the error fields
+							// directly. Preserve the whole payload for callers.
+							let body =
+								serde_json::from_str(&message.data).map_err(|serde_error| Error::StreamParse {
+									model_iden: self.options.model_iden.clone(),
+									serde_error,
+								})?;
+							return Poll::Ready(Some(Err(Error::ChatResponse {
+								model_iden: self.options.model_iden.clone(),
+								body,
+							})));
 						}
 
 						RespStreamEvent::Unknown => {
