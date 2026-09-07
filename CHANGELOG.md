@@ -29,6 +29,7 @@
   - The Anthropic `-zero` model suffix is canonical, while `-none` remains a backward-compatible alias. Both map to `Zero` and are stripped.
   - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. Rebuilds thinking blocks ahead of text and tool calls, adds `ChatResponse::into_assistant_message_for_tool_use`, and safely omits unpaired thinking blocks. (PR #275)
 - Gemini:
+  - `-` Keep a `thoughtSignature` next to the part it arrived on. The response keeps wire order instead of hoisting every signature to the front (consecutive text parts still merge), each function call mirrors its own signature in `thought_signatures` rather than the first call carrying all of them, and on the way back a signature is embedded in the text or `functionCall` part it precedes, with `ToolCall.thought_signatures` honoured when no signature part precedes the call. Fixes a two-call turn whose second call lost its signature and whose first call carried the wrong one, and a text-plus-call turn whose signature moved onto the text.
   - `^` Map `ReasoningEffort::Zero` to a budget of `0`, which might be rejected by the provider on some models.
 - OpenAI and Bedrock:
   - `^` Apply the `ReasoningEffort::Zero` rename to OpenAI and Bedrock adapter mappings while preserving provider-specific keyword mappings.
