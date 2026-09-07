@@ -6,7 +6,8 @@ use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, ReasoningEffort, ToolChoice, Usage,
+	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, CustomPart, ReasoningEffort,
+	ToolChoice, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebClient;
@@ -417,6 +418,7 @@ impl OpenAIAdapter {
 					let mut texts: Vec<String> = Vec::new();
 					let mut tool_calls: Vec<Value> = Vec::new();
 					let mut reasoning_parts: Vec<String> = Vec::new();
+					let mut reasoning_details: Vec<Value> = Vec::new();
 					for part in msg.content {
 						match part {
 							ContentPart::Text(text) => texts.push(text),
@@ -438,7 +440,13 @@ impl OpenAIAdapter {
 							ContentPart::Binary(_) => (),
 							ContentPart::ToolResponse(_) => (),
 							ContentPart::ThoughtSignature(_) => {}
-							// Custom are ignored for this logic
+							// OpenRouter's reasoning blocks, captured verbatim by the response path,
+							// go back verbatim: a signed or encrypted block cannot be rebuilt from
+							// the plaintext, and the gateway requires the original sequence.
+							ContentPart::Custom(custom) if is_reasoning_detail(&custom) => {
+								reasoning_details.push(custom.data)
+							}
+							// Other Custom parts are ignored for this logic
 							ContentPart::Custom(_) => {}
 						}
 					}
@@ -461,6 +469,12 @@ impl OpenAIAdapter {
 					//       but we join defensively in case multiple parts are present.
 					if !reasoning_parts.is_empty() {
 						message.x_insert("reasoning_content", reasoning_parts.join("\n"))?;
+					}
+					// Echo reasoning_details back for OpenRouter, which needs the provider's
+					// signed/encrypted blocks — not just the plaintext — to keep a model's
+					// continuity across a tool round trip. Both fields may be present at once.
+					if !reasoning_details.is_empty() {
+						message.x_insert("reasoning_details", reasoning_details)?;
 					}
 					messages.push(message);
 				}
@@ -618,3 +632,9 @@ fn apply_chat_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _
 mod tests;
 
 // endregion: --- Tests
+
+/// Is this `Custom` part one of OpenRouter's `reasoning_details` entries
+/// (`reasoning.text`, `reasoning.encrypted`, `reasoning.summary`, …)?
+fn is_reasoning_detail(custom: &CustomPart) -> bool {
+	custom.typ().is_some_and(|typ| typ.starts_with("reasoning."))
+}
