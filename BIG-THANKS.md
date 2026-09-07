@@ -35,6 +35,8 @@ _If I forgot your PR, feel free to submit a PR_
 - [VikashLoomba](https://github.com/VikashLoomba)
   - [#280](https://github.com/jeremychone/rust-genai/pull/280) feat(webc): expose response headers on streaming HTTP errors
   - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
+- [emecii](https://github.com/emecii)
+  - [#296](https://github.com/jeremychone/rust-genai/pull/296) fix(openai_resp): propagate streaming error events
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 

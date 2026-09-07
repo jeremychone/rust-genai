@@ -12,7 +12,7 @@
 - `!` API CHANGE: `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias.
 - `!` API CHANGE: `JsonSpec::schema_with_additional_properties_false` is removed. Provider adapters now sanitize schemas as required by their target API. `JsonSchemaDialect` and `sanitize_json_schema(...)` are available for explicit schema sanitization.
 
-### API Additions & New Properties / Variants
+### API Minor Changes (New Properties / Variants)
 
 - `!` API CHANGE: `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls.
 - `!` API CHANGE: `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
@@ -69,6 +69,7 @@
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
   - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. (PR #275)
 - OpenAI:
+  - `-` Propagate Responses API streaming `error` events as `genai::Error::ChatResponse` and cleanly terminate the stream. (PR #296)
   - `+` Route GPT-6 models (such as `gpt-6-astra`) to the OpenAI Responses API adapter.
   - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
   - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
