@@ -23,6 +23,7 @@ use crate::{Error, ModelIden, Result};
 use bytes::{Buf, BytesMut};
 use futures::Stream;
 use serde_json::{Map, Value};
+use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -36,6 +37,7 @@ pub(super) struct BedrockStreamer {
 	buf: BytesMut,
 	options: StreamerOptions,
 	captured_data: StreamerCapturedData,
+	pending_events: VecDeque<InterStreamEvent>,
 	done: bool,
 	emitted_start: bool,
 	in_progress_tool: Option<ToolCallAccumulator>,
@@ -63,6 +65,7 @@ impl BedrockStreamer {
 			buf: BytesMut::with_capacity(8 * 1024),
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: StreamerCapturedData::default(),
+			pending_events: VecDeque::new(),
 			done: false,
 			emitted_start: false,
 			in_progress_tool: None,
@@ -284,6 +287,10 @@ impl Stream for BedrockStreamer {
 	type Item = Result<InterStreamEvent>;
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+		if let Some(event) = self.pending_events.pop_front() {
+			return Poll::Ready(Some(Ok(event)));
+		}
+
 		if self.done {
 			return Poll::Ready(None);
 		}
@@ -295,22 +302,14 @@ impl Stream for BedrockStreamer {
 					// Detect terminal events BEFORE handling so we can emit End after.
 					let is_message_stop = frame.headers.get(":event-type").map(|s| s.as_str()) == Some("messageStop");
 					let events = self.handle_frame(frame)?;
-					if let Some(first) = events.into_iter().next() {
-						// For simplicity we emit one InterStreamEvent per poll. Since handle_frame
-						// sometimes produces 2 (Start + body), we need to surface both; the Start
-						// gets emitted first on the next poll.
-						//
-						// Implementation shortcut: emitted_start tracking ensures we only emit Start
-						// once and the caller will re-poll for subsequent events from the same frame.
-						// If we produced >1 event, we emitted Start for the first time; the second
-						// event is lost in this simplified path.
-						//
-						// TODO: proper multi-event-per-frame queueing.
-						return Poll::Ready(Some(Ok(first)));
-					}
+					self.pending_events.extend(events);
 					if is_message_stop {
 						self.done = true;
-						return Poll::Ready(Some(Ok(self.finalize_end())));
+						let end = self.finalize_end();
+						self.pending_events.push_back(end);
+					}
+					if let Some(event) = self.pending_events.pop_front() {
+						return Poll::Ready(Some(Ok(event)));
 					}
 					// No events produced; loop to parse more frames or pull more bytes.
 					continue;
@@ -437,6 +436,7 @@ fn parse_stream_usage(mut value: Value) -> Usage {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use futures::StreamExt;
 
 	/// Test only needs a valid ModelIden; the AdapterKind doesn't affect parser behavior.
 	fn test_model_iden() -> crate::ModelIden {
@@ -496,5 +496,45 @@ mod tests {
 		let mut streamer = BedrockStreamer::new(inner, model_iden, Default::default());
 		streamer.buf.extend_from_slice(&[0u8; 10]); // <12, not enough for prelude
 		assert!(streamer.try_parse_frame().expect("ok").is_none());
+	}
+
+	#[tokio::test]
+	async fn emits_text_delta_after_start_from_same_frame() {
+		let frame = build_frame(
+			"contentBlockDelta",
+			br#"{"delta":{"text":"hello"},"contentBlockIndex":0}"#,
+		);
+		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
+			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(frame))]));
+		let events = BedrockStreamer::new(inner, test_model_iden(), Default::default())
+			.collect::<Vec<_>>()
+			.await;
+
+		assert!(matches!(events[0], Ok(InterStreamEvent::Start)));
+		assert!(matches!(events[1], Ok(InterStreamEvent::Chunk(ref text)) if text == "hello"));
+		assert!(matches!(events[2], Ok(InterStreamEvent::End(_))));
+		assert_eq!(events.len(), 3);
+	}
+
+	#[tokio::test]
+	async fn emits_tool_call_after_start_from_same_frame() {
+		let frame = build_frame(
+			"contentBlockStart",
+			br#"{"start":{"toolUse":{"toolUseId":"call_1","name":"weather"}},"contentBlockIndex":0}"#,
+		);
+		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
+			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(frame))]));
+		let events = BedrockStreamer::new(inner, test_model_iden(), Default::default())
+			.collect::<Vec<_>>()
+			.await;
+
+		assert!(matches!(events[0], Ok(InterStreamEvent::Start)));
+		assert!(matches!(
+			events[1],
+			Ok(InterStreamEvent::ToolCallChunk(ToolCall { ref call_id, ref fn_name, .. }))
+				if call_id == "call_1" && fn_name == "weather"
+		));
+		assert!(matches!(events[2], Ok(InterStreamEvent::End(_))));
+		assert_eq!(events.len(), 3);
 	}
 }
