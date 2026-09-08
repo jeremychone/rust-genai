@@ -464,20 +464,28 @@ impl futures::Stream for OpenAIRespStreamer {
 
 #[cfg(test)]
 mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
+
 	use super::*;
 
 	#[test]
-	fn recognizes_custom_tool_input_delta_events() {
-		let event: RespStreamEvent = serde_json::from_value(serde_json::json!({
+	fn recognizes_custom_tool_input_delta_events() -> Result<()> {
+		// -- Setup & Fixtures
+		let json_val = serde_json::json!({
 			"type": "response.custom_tool_call_input.delta",
 			"output_index": 3,
 			"delta": "*** Begin Patch\n",
-		}))
-		.unwrap();
+		});
+
+		// -- Exec
+		let event: RespStreamEvent = serde_json::from_value(json_val)?;
+
+		// -- Check
 		assert!(matches!(
 			event,
 			RespStreamEvent::CustomToolCallInputDelta { output_index: 3, delta }
 				if delta == "*** Begin Patch\n"
 		));
+		Ok(())
 	}
 }

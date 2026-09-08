@@ -543,6 +543,7 @@ async fn test_yakbak_openai_resp_stream_error_after_delta() -> TestResult<()> {
 
 async fn check_stream_error(scenario: &str, partial: bool) -> TestResult<()> {
 	for capture in [false, true] {
+		// -- Setup client and stream
 		let (client, _server) = replay_client("openai_resp", scenario).await?;
 		let options = ChatOptions::default().with_capture_content(capture);
 		let mut stream = client
@@ -553,6 +554,8 @@ async fn check_stream_error(scenario: &str, partial: bool) -> TestResult<()> {
 			)
 			.await?
 			.stream;
+
+		// -- Verify start and partial chunks
 		assert!(matches!(stream.next().await, Some(Ok(ChatStreamEvent::Start))));
 		if partial {
 			assert!(matches!(
@@ -560,6 +563,8 @@ async fn check_stream_error(scenario: &str, partial: bool) -> TestResult<()> {
 				Some(Ok(ChatStreamEvent::Chunk(chunk))) if chunk.content == "Partial answer"
 			));
 		}
+
+		// -- Verify error response
 		match stream.next().await {
 			Some(Err(genai::Error::ChatResponse { model_iden, body })) => {
 				assert_eq!(model_iden.adapter_kind, genai::adapter::AdapterKind::OpenAIResp);
@@ -574,8 +579,10 @@ async fn check_stream_error(scenario: &str, partial: bool) -> TestResult<()> {
 					})
 				);
 			}
-			other => panic!("expected provider error, got {other:?}"),
+			other => return Err(format!("expected provider error, got {other:?}").into()),
 		}
+
+		// -- Verify stream termination
 		assert!(
 			stream.next().await.is_none(),
 			"no success End or further chunks after error"
