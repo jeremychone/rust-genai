@@ -81,44 +81,93 @@ impl BedrockStreamer {
 	/// Try to pull one complete event-stream frame from `self.buf` and return its
 	/// decoded payload (event-type + JSON), or None if the buffer doesn't yet contain a full frame.
 	fn try_parse_frame(&mut self) -> Result<Option<DecodedFrame>> {
+		// -- Check prelude buffer length
 		if self.buf.len() < 12 {
 			return Ok(None);
 		}
 
-		let total_len = u32::from_be_bytes(self.buf[0..4].try_into().unwrap()) as usize;
-		let headers_len = u32::from_be_bytes(self.buf[4..8].try_into().unwrap()) as usize;
+		// -- Parse frame lengths
+		let total_len = u32::from_be_bytes(
+			self.buf
+				.get(0..4)
+				.and_then(|s| <[u8; 4]>::try_from(s).ok())
+				.ok_or_else(|| self.frame_err("failed to read frame total_len".into()))?,
+		) as usize;
 
+		let headers_len = u32::from_be_bytes(
+			self.buf
+				.get(4..8)
+				.and_then(|s| <[u8; 4]>::try_from(s).ok())
+				.ok_or_else(|| self.frame_err("failed to read frame headers_len".into()))?,
+		) as usize;
+
+		// -- Validate lengths and buffer bounds
 		if !(16..=16 * 1024 * 1024).contains(&total_len) {
 			return Err(self.frame_err(format!("invalid event-stream total_len: {total_len}")));
+		}
+
+		if headers_len > total_len.saturating_sub(16) {
+			return Err(self.frame_err(format!(
+				"invalid event-stream headers_len: {headers_len} exceeds maximum allowed for total_len {total_len}"
+			)));
 		}
 
 		if self.buf.len() < total_len {
 			return Ok(None);
 		}
 
-		// Validate prelude CRC
-		let prelude_crc = u32::from_be_bytes(self.buf[8..12].try_into().unwrap());
-		let prelude_actual = crc32(&self.buf[0..8]);
+		// -- Validate prelude CRC
+		let prelude_crc = u32::from_be_bytes(
+			self.buf
+				.get(8..12)
+				.and_then(|s| <[u8; 4]>::try_from(s).ok())
+				.ok_or_else(|| self.frame_err("failed to read prelude CRC".into()))?,
+		);
+
+		let prelude_slice = self
+			.buf
+			.get(0..8)
+			.ok_or_else(|| self.frame_err("failed to read prelude slice for CRC".into()))?;
+		let prelude_actual = crc32(prelude_slice);
 		if prelude_crc != prelude_actual {
 			return Err(self.frame_err(format!("prelude CRC mismatch: {prelude_crc} != {prelude_actual}")));
 		}
 
-		// Validate message CRC
-		let msg_crc = u32::from_be_bytes(self.buf[total_len - 4..total_len].try_into().unwrap());
-		let msg_actual = crc32(&self.buf[0..total_len - 4]);
+		// -- Validate message CRC
+		let msg_crc_start = total_len.saturating_sub(4);
+		let msg_crc = u32::from_be_bytes(
+			self.buf
+				.get(msg_crc_start..total_len)
+				.and_then(|s| <[u8; 4]>::try_from(s).ok())
+				.ok_or_else(|| self.frame_err("failed to read message CRC".into()))?,
+		);
+		let msg_slice = self
+			.buf
+			.get(0..msg_crc_start)
+			.ok_or_else(|| self.frame_err("failed to read message slice for CRC".into()))?;
+		let msg_actual = crc32(msg_slice);
 		if msg_crc != msg_actual {
 			return Err(self.frame_err(format!("message CRC mismatch: {msg_crc} != {msg_actual}")));
 		}
 
+		// -- Extract headers and payload
 		let headers_start = 12;
 		let headers_end = headers_start + headers_len;
 		let payload_end = total_len - 4;
 
-		let headers = parse_headers(&self.buf[headers_start..headers_end])
-			.map_err(|e| self.frame_err(format!("header parse: {e}")))?;
-		let payload = self.buf[headers_end..payload_end].to_vec();
+		let headers_slice = self
+			.buf
+			.get(headers_start..headers_end)
+			.ok_or_else(|| self.frame_err("failed to slice frame headers".into()))?;
+		let payload_slice = self
+			.buf
+			.get(headers_end..payload_end)
+			.ok_or_else(|| self.frame_err("failed to slice frame payload".into()))?;
 
-		// Advance past the frame
+		let headers = parse_headers(headers_slice).map_err(|e| self.frame_err(format!("header parse: {e}")))?;
+		let payload = payload_slice.to_vec();
+
+		// -- Advance buffer past frame
 		self.buf.advance(total_len);
 
 		Ok(Some(DecodedFrame { headers, payload }))
@@ -373,7 +422,8 @@ fn crc32(bytes: &[u8]) -> u32 {
 	let mut c: u32 = 0xFFFF_FFFF;
 	for &b in bytes {
 		let idx = ((c ^ b as u32) & 0xFF) as usize;
-		c = table[idx] ^ (c >> 8);
+		let entry = table.get(idx).copied().unwrap_or_default();
+		c = entry ^ (c >> 8);
 	}
 	c ^ 0xFFFF_FFFF
 }
@@ -384,32 +434,48 @@ fn parse_headers(mut raw: &[u8]) -> std::result::Result<std::collections::HashMa
 		if raw.is_empty() {
 			break;
 		}
-		let name_len = raw[0] as usize;
-		raw = &raw[1..];
+
+		// -- Parse header name
+		let name_len = *raw.first().ok_or("header name length missing")? as usize;
+		let after_name_len = raw.get(1..).ok_or("header name truncated")?;
+		raw = after_name_len;
 		if raw.len() < name_len + 1 {
 			return Err("header name truncated".into());
 		}
-		let name = std::str::from_utf8(&raw[..name_len])
+		let name_slice = raw.get(..name_len).ok_or("header name slice truncated")?;
+		let name = std::str::from_utf8(name_slice)
 			.map_err(|e| format!("header name utf8: {e}"))?
 			.to_string();
-		raw = &raw[name_len..];
-		let value_type = raw[0];
-		raw = &raw[1..];
+		let after_name = raw.get(name_len..).ok_or("header value missing")?;
+		raw = after_name;
 
+		// -- Parse header value type
+		let value_type = *raw.first().ok_or("header value type missing")?;
+		let after_type = raw.get(1..).ok_or("header value payload missing")?;
+		raw = after_type;
+
+		// -- Parse header value
 		// type 7 = string (value_len u16 + bytes). Others we skip.
 		if value_type == 7 {
 			if raw.len() < 2 {
 				return Err("header value length truncated".into());
 			}
-			let value_len = u16::from_be_bytes([raw[0], raw[1]]) as usize;
-			raw = &raw[2..];
+			let value_len_bytes = raw
+				.get(0..2)
+				.and_then(|s| <[u8; 2]>::try_from(s).ok())
+				.ok_or("header value length truncated")?;
+			let value_len = u16::from_be_bytes(value_len_bytes) as usize;
+			let after_val_len = raw.get(2..).ok_or("header value truncated")?;
+			raw = after_val_len;
 			if raw.len() < value_len {
 				return Err("header value truncated".into());
 			}
-			let value = std::str::from_utf8(&raw[..value_len])
+			let value_slice = raw.get(..value_len).ok_or("header value slice truncated")?;
+			let value = std::str::from_utf8(value_slice)
 				.map_err(|e| format!("header value utf8: {e}"))?
 				.to_string();
-			raw = &raw[value_len..];
+			let after_val = raw.get(value_len..).ok_or("header payload advance failed")?;
+			raw = after_val;
 			out.insert(name, value);
 		} else {
 			// For simplicity, skip non-string headers by consuming the rest (not strictly correct
@@ -435,6 +501,8 @@ fn parse_stream_usage(mut value: Value) -> Usage {
 
 #[cfg(test)]
 mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
+
 	use super::*;
 	use futures::StreamExt;
 
@@ -445,6 +513,7 @@ mod tests {
 
 	/// Build a minimal valid event-stream frame with the given headers and payload.
 	fn build_frame(event_type: &str, payload: &[u8]) -> Vec<u8> {
+		// -- Build headers
 		// Headers: :event-type (string type 7) = event_type
 		// Format per header: name_len u8 | name | type u8 | value_len u16 | value
 		let mut headers = Vec::new();
@@ -458,10 +527,11 @@ mod tests {
 		let headers_len = headers.len() as u32;
 		let total_len = 12 + headers_len + payload.len() as u32 + 4;
 
+		// -- Build frame
 		let mut frame = Vec::new();
 		frame.extend_from_slice(&total_len.to_be_bytes());
 		frame.extend_from_slice(&headers_len.to_be_bytes());
-		let prelude_crc = super::crc32(&frame[..8]);
+		let prelude_crc = super::crc32(frame.get(..8).unwrap_or_default());
 		frame.extend_from_slice(&prelude_crc.to_be_bytes());
 		frame.extend_from_slice(&headers);
 		frame.extend_from_slice(payload);
@@ -471,7 +541,8 @@ mod tests {
 	}
 
 	#[test]
-	fn parses_single_delta_frame() {
+	fn parses_single_delta_frame() -> Result<()> {
+		// -- Setup & Fixtures
 		let payload = br#"{"delta":{"text":"hello"},"contentBlockIndex":0}"#;
 		let frame = build_frame("contentBlockDelta", payload);
 
@@ -481,60 +552,98 @@ mod tests {
 		let mut streamer = BedrockStreamer::new(inner, model_iden, Default::default());
 		streamer.buf.extend_from_slice(&frame);
 
-		let decoded = streamer.try_parse_frame().expect("parse ok").expect("frame present");
+		// -- Exec
+		let decoded = streamer.try_parse_frame()?.ok_or("frame present")?;
+
+		// -- Check
 		assert_eq!(
 			decoded.headers.get(":event-type").map(String::as_str),
 			Some("contentBlockDelta")
 		);
 		assert_eq!(decoded.payload, payload);
+		Ok(())
 	}
 
 	#[test]
-	fn partial_frame_returns_none() {
+	fn partial_frame_returns_none() -> Result<()> {
+		// -- Setup & Fixtures
 		let model_iden = test_model_iden();
 		let inner: Pin<Box<dyn Stream<Item = _> + Send>> = Box::pin(futures::stream::empty());
 		let mut streamer = BedrockStreamer::new(inner, model_iden, Default::default());
 		streamer.buf.extend_from_slice(&[0u8; 10]); // <12, not enough for prelude
-		assert!(streamer.try_parse_frame().expect("ok").is_none());
+
+		// -- Exec & Check
+		assert!(streamer.try_parse_frame()?.is_none());
+		Ok(())
+	}
+
+	#[test]
+	fn invalid_headers_len_returns_error() -> Result<()> {
+		// -- Setup & Fixtures
+		let mut frame = Vec::new();
+		frame.extend_from_slice(&20u32.to_be_bytes());
+		frame.extend_from_slice(&10u32.to_be_bytes());
+		let prelude_crc = super::crc32(frame.get(..8).unwrap_or_default());
+		frame.extend_from_slice(&prelude_crc.to_be_bytes());
+		frame.extend_from_slice(&[0u8; 8]);
+
+		let model_iden = test_model_iden();
+		let inner: Pin<Box<dyn Stream<Item = _> + Send>> = Box::pin(futures::stream::empty());
+		let mut streamer = BedrockStreamer::new(inner, model_iden, Default::default());
+		streamer.buf.extend_from_slice(&frame);
+
+		// -- Exec & Check
+		assert!(streamer.try_parse_frame().is_err());
+		Ok(())
 	}
 
 	#[tokio::test]
-	async fn emits_text_delta_after_start_from_same_frame() {
+	async fn emits_text_delta_after_start_from_same_frame() -> Result<()> {
+		// -- Setup & Fixtures
 		let frame = build_frame(
 			"contentBlockDelta",
 			br#"{"delta":{"text":"hello"},"contentBlockIndex":0}"#,
 		);
 		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
 			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(frame))]));
+
+		// -- Exec
 		let events = BedrockStreamer::new(inner, test_model_iden(), Default::default())
 			.collect::<Vec<_>>()
 			.await;
 
-		assert!(matches!(events[0], Ok(InterStreamEvent::Start)));
-		assert!(matches!(events[1], Ok(InterStreamEvent::Chunk(ref text)) if text == "hello"));
-		assert!(matches!(events[2], Ok(InterStreamEvent::End(_))));
+		// -- Check
+		assert!(matches!(events.first(), Some(Ok(InterStreamEvent::Start))));
+		assert!(matches!(events.get(1), Some(Ok(InterStreamEvent::Chunk(text))) if text == "hello"));
+		assert!(matches!(events.get(2), Some(Ok(InterStreamEvent::End(_)))));
 		assert_eq!(events.len(), 3);
+		Ok(())
 	}
 
 	#[tokio::test]
-	async fn emits_tool_call_after_start_from_same_frame() {
+	async fn emits_tool_call_after_start_from_same_frame() -> Result<()> {
+		// -- Setup & Fixtures
 		let frame = build_frame(
 			"contentBlockStart",
 			br#"{"start":{"toolUse":{"toolUseId":"call_1","name":"weather"}},"contentBlockIndex":0}"#,
 		);
 		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
 			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(frame))]));
+
+		// -- Exec
 		let events = BedrockStreamer::new(inner, test_model_iden(), Default::default())
 			.collect::<Vec<_>>()
 			.await;
 
-		assert!(matches!(events[0], Ok(InterStreamEvent::Start)));
+		// -- Check
+		assert!(matches!(events.first(), Some(Ok(InterStreamEvent::Start))));
 		assert!(matches!(
-			events[1],
-			Ok(InterStreamEvent::ToolCallChunk(ToolCall { ref call_id, ref fn_name, .. }))
+			events.get(1),
+			Some(Ok(InterStreamEvent::ToolCallChunk(ToolCall { call_id, fn_name, .. })))
 				if call_id == "call_1" && fn_name == "weather"
 		));
-		assert!(matches!(events[2], Ok(InterStreamEvent::End(_))));
+		assert!(matches!(events.get(2), Some(Ok(InterStreamEvent::End(_)))));
 		assert_eq!(events.len(), 3);
+		Ok(())
 	}
 }
