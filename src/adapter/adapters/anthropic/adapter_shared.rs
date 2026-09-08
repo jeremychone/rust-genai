@@ -79,7 +79,8 @@ impl AnthropicAdapter {
 			.get("output_tokens_details")
 			.and_then(|details| details.get("thinking_tokens"))
 			.and_then(Value::as_i64)
-			.map(|tokens| tokens as i32);
+			.map(|tokens| tokens as i32)
+			.filter(|&tokens| tokens > 0);
 
 		// Parse cache_creation breakdown if present (TTL-specific breakdown)
 		let cache_creation_details = usage_value.get("cache_creation").and_then(parse_cache_creation_details);

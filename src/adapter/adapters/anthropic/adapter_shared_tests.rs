@@ -918,3 +918,30 @@ fn test_non_stream_usage_without_thinking_share_has_no_completion_details() {
 	assert!(response.usage.completion_tokens_details.is_none());
 	assert_eq!(response.usage.completion_tokens, Some(4));
 }
+
+#[test]
+fn test_non_stream_usage_zero_thinking_tokens_is_none() -> Result<()> {
+	// -- Setup & Fixtures
+	let response = AnthropicAdapter::build_chat_response(
+		ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		WebResponse {
+			status: StatusCode::OK,
+			body: json!({
+				"model": "fixture-model",
+				"content": [{"type": "text", "text": "ok"}],
+				"stop_reason": "end_turn",
+				"usage": {
+					"input_tokens": 10,
+					"output_tokens": 5,
+					"output_tokens_details": {"thinking_tokens": 0}
+				}
+			}),
+		},
+	)?;
+
+	// -- Exec & Check
+	assert!(response.usage.completion_tokens_details.is_none());
+	assert_eq!(response.usage.completion_tokens, Some(5));
+
+	Ok(())
+}
