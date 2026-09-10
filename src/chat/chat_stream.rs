@@ -241,8 +241,8 @@ impl From<InterStreamEnd> for StreamEnd {
 			.filter_map(|part| part.as_thought_signature().map(str::to_string))
 			.collect::<Vec<_>>();
 		if !mirrored_signatures.is_empty() {
-			// Also attach thoughts to the first tool call so that
-			// ChatMessage::from(Vec<ToolCall>) can auto-prepend them.
+			// Also attach thoughts to the first tool call so callers that retain only
+			// captured tool calls can still preserve the provider continuation data.
 			if let Some(tool_calls) = captured_tool_calls.as_mut()
 				&& let Some(first_call) = tool_calls.first_mut()
 			{

@@ -172,15 +172,12 @@ pub enum ChatRole {
 // region:    --- Froms
 
 /// Creates an assistant message containing the provided tool calls.
+///
+/// Thought signatures remain attached to their respective calls. Use
+/// [`ChatMessage::assistant_tool_calls_with_thoughts`] when the signatures are
+/// separate turn-level content that should precede the calls.
 impl From<Vec<ToolCall>> for ChatMessage {
 	fn from(tool_calls: Vec<ToolCall>) -> Self {
-		if let Some(first) = tool_calls.first()
-			&& let Some(thoughts) = &first.thought_signatures
-		{
-			let mut parts: Vec<ContentPart> = thoughts.iter().cloned().map(ContentPart::ThoughtSignature).collect();
-			parts.extend(tool_calls.into_iter().map(ContentPart::ToolCall));
-			return ChatMessage::assistant(MessageContent::from_parts(parts));
-		}
 		Self {
 			role: ChatRole::Assistant,
 			content: MessageContent::from(tool_calls),
@@ -202,3 +199,108 @@ impl From<Vec<ToolResponse>> for ChatMessage {
 }
 
 // endregion: --- Froms
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType};
+	use crate::chat::{ChatOptionsSet, ChatRequest};
+	use crate::resolver::AuthData;
+	use crate::{ModelIden, ServiceTarget};
+	use serde_json::json;
+
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
+
+	fn signed_tool_calls() -> Vec<ToolCall> {
+		vec![
+			ToolCall {
+				call_id: "call-1".to_string(),
+				fn_name: "first".to_string(),
+				fn_arguments: json!({}),
+				thought_signatures: Some(vec!["sig-1a".to_string(), "sig-1b".to_string()]),
+			},
+			ToolCall {
+				call_id: "call-2".to_string(),
+				fn_name: "second".to_string(),
+				fn_arguments: json!({}),
+				thought_signatures: Some(vec!["sig-2".to_string()]),
+			},
+		]
+	}
+
+	#[test]
+	fn from_tool_calls_keeps_signatures_on_their_calls() {
+		let message = ChatMessage::from(signed_tool_calls());
+		let parts = message.content.parts();
+
+		assert_eq!(parts.len(), 2);
+		assert!(matches!(
+			&parts[0],
+			ContentPart::ToolCall(call)
+				if call.thought_signatures.as_deref()
+					== Some(["sig-1a".to_string(), "sig-1b".to_string()].as_slice())
+		));
+		assert!(matches!(
+			&parts[1],
+			ContentPart::ToolCall(call)
+				if call.thought_signatures.as_deref() == Some(["sig-2".to_string()].as_slice())
+		));
+	}
+
+	#[test]
+	fn from_tool_calls_does_not_duplicate_openai_reasoning_items() -> Result<()> {
+		let adapter_kind = AdapterKind::OpenAIResp;
+		let target = ServiceTarget {
+			model: ModelIden::new(adapter_kind, "gpt-5.6"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: AdapterDispatcher::default_endpoint(adapter_kind),
+		};
+		let request = ChatRequest::new(vec![ChatMessage::user("go"), ChatMessage::from(signed_tool_calls())]);
+
+		let web_request =
+			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())?;
+		let input = web_request.payload["input"].as_array().ok_or("input should be an array")?;
+		let signatures = input
+			.iter()
+			.filter(|item| item["type"] == "reasoning")
+			.filter_map(|item| item["encrypted_content"].as_str())
+			.collect::<Vec<_>>();
+
+		assert_eq!(signatures, ["sig-1a", "sig-1b", "sig-2"]);
+		Ok(())
+	}
+
+	#[test]
+	fn from_tool_calls_keeps_gemini_signatures_with_their_calls() -> Result<()> {
+		let adapter_kind = AdapterKind::Gemini;
+		let target = ServiceTarget {
+			model: ModelIden::new(adapter_kind, "gemini-3-pro"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: AdapterDispatcher::default_endpoint(adapter_kind),
+		};
+		let request = ChatRequest::new(vec![ChatMessage::user("go"), ChatMessage::from(signed_tool_calls())]);
+
+		let web_request =
+			AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())?;
+		let contents = web_request.payload["contents"]
+			.as_array()
+			.ok_or("contents should be an array")?;
+		let model_turn = contents
+			.iter()
+			.find(|content| content["role"] == "model")
+			.ok_or("model turn should be present")?;
+		let parts = model_turn["parts"].as_array().ok_or("parts should be an array")?;
+		let rendered = parts
+			.iter()
+			.map(|part| {
+				(
+					part["functionCall"]["name"].as_str().unwrap_or("-"),
+					part["thoughtSignature"].as_str().unwrap_or("-"),
+				)
+			})
+			.collect::<Vec<_>>();
+
+		assert_eq!(rendered, [("first", "sig-1a"), ("second", "sig-2")]);
+		Ok(())
+	}
+}
