@@ -68,7 +68,7 @@ impl Adapter for BedrockSigv4Adapter {
 		// 1. Resolve credentials, refreshing them when they are close to expiring.
 		let cached = tokio_block_on(get_credentials())?;
 
-		// 2. Determine region. Respect custom endpoint from ServiceTargetResolver.
+		// 2. Align the default endpoint with the region we sign for.
 		let endpoint = override_endpoint_region(endpoint, cached_region(&cached));
 
 		// 3. Build the Converse JSON payload.
@@ -129,12 +129,12 @@ impl Adapter for BedrockSigv4Adapter {
 	}
 }
 
-/// If the Endpoint's base URL is the default template with a placeholder region, substitute the
-/// cached region. If the user supplied a custom endpoint, leave it alone.
-fn override_endpoint_region(endpoint: Endpoint, cached_region: &str) -> Endpoint {
-	let base = endpoint.base_url();
-	if base.contains("bedrock-runtime..amazonaws.com") || base == "https://bedrock-runtime..amazonaws.com/" {
-		Endpoint::from_owned(BedrockSigv4Adapter::endpoint_for_region(cached_region))
+/// Rebuilds the default endpoint for the region we sign for (which may come from
+/// `~/.aws/config`); a user-supplied endpoint is left alone.
+fn override_endpoint_region(endpoint: Endpoint, signed_region: &str) -> Endpoint {
+	let env_default = BedrockSigv4Adapter::endpoint_for_region(&BedrockSigv4Adapter::resolve_region());
+	if endpoint.base_url() == env_default {
+		Endpoint::from_owned(BedrockSigv4Adapter::endpoint_for_region(signed_region))
 	} else {
 		endpoint
 	}
@@ -144,4 +144,52 @@ fn override_endpoint_region(endpoint: Endpoint, cached_region: &str) -> Endpoint
 /// blocks the calling worker thread.
 fn tokio_block_on<F: std::future::Future>(fut: F) -> F::Output {
 	tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(fut))
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	/// A region that differs from the ambient `AWS_REGION`, to keep the test deterministic.
+	fn region_different_from_env() -> &'static str {
+		if BedrockSigv4Adapter::resolve_region() == "eu-west-1" {
+			"us-west-2"
+		} else {
+			"eu-west-1"
+		}
+	}
+
+	/// The URL must target the region we sign for, else the signature carries one region while
+	/// the Host header points at another (`SignatureDoesNotMatch`).
+	#[test]
+	fn request_url_targets_the_region_we_sign_for() {
+		let signing_region = region_different_from_env();
+		let model = ModelIden::new(
+			AdapterKind::BedrockSigv4,
+			"us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+		);
+
+		let endpoint = BedrockSigv4Adapter::default_endpoint(AdapterKind::BedrockSigv4);
+		let endpoint = override_endpoint_region(endpoint, signing_region);
+		let url = BedrockSigv4Adapter::get_service_url(&model, ServiceType::Chat, endpoint)
+			.expect("the Bedrock Converse URL should build");
+
+		assert!(
+			url.contains(&format!("bedrock-runtime.{signing_region}.amazonaws.com")),
+			"request URL region != signing region; SigV4 would fail with SignatureDoesNotMatch. \
+			 signing_region={signing_region} url={url}"
+		);
+	}
+
+	/// A user-supplied endpoint must not be rewritten.
+	#[test]
+	fn user_supplied_endpoint_is_left_alone() {
+		let custom = Endpoint::from_static("https://vpce-0123.bedrock-runtime.eu-west-1.vpce.amazonaws.com/");
+		let endpoint = override_endpoint_region(custom, "us-east-1");
+
+		assert_eq!(
+			endpoint.base_url(),
+			"https://vpce-0123.bedrock-runtime.eu-west-1.vpce.amazonaws.com/"
+		);
+	}
 }
