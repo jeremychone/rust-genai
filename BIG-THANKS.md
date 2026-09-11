@@ -43,6 +43,8 @@ _If I forgot your PR, feel free to submit a PR_
 - [VikashLoomba](https://github.com/VikashLoomba)
   - [#280](https://github.com/jeremychone/rust-genai/pull/280) feat(webc): expose response headers on streaming HTTP errors
   - [#278](https://github.com/jeremychone/rust-genai/pull/278) fix(otel): cover `CacheBreakpointNoEligibleContent` in `error.type` derivation
+- [wdwind](https://github.com/wdwind)
+  - [#308](https://github.com/jeremychone/rust-genai/pull/308) fix(bedrock): refresh SigV4 credentials before expiry, accept `AWS_BEARER_TOKEN_BEDROCK`, and sign for the region the request URL targets
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 
@@ -57,6 +59,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#271](https://github.com/jeremychone/rust-genai/pull/271) map Anthropic ping events to `ChatStreamEvent::Heartbeat`
 - [CristiC0](https://github.com/CristiC0)
   - [#279](https://github.com/jeremychone/rust-genai/pull/279) fix(anthropic): align stream usage capture with new Anthropic API behaviour
+
 
 ## v0.6.0..0.6.x
 

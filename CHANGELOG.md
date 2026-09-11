@@ -93,6 +93,9 @@
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
 - Bedrock:
   - `-` Fix Bedrock streamer to queue and preserve frame events after `Start`, preventing dropped text deltas or tool-call chunks from the initial frame. (PR #297)
+  - `-` Refresh SigV4 credentials before they expire instead of caching the first `provide_credentials()` snapshot for the life of the process, mirroring the AWS SDK identity cache (10s early refresh, 15-minute default TTL, deduplicated refreshes, jitter), so long-lived processes stop failing with signature errors. (PR #308)
+  - `-` Accept `AWS_BEARER_TOKEN_BEDROCK` as a fallback for `BEDROCK_API_KEY` in the `bedrock_api` adapter, with an empty value falling through to the next candidate; an explicit `AuthData` is still used as-is. (PR #308)
+  - `-` Build the `bedrock_sigv4` request URL for the region that is signed, fixing `SignatureDoesNotMatch` when the region comes from `~/.aws/config` or IMDS; user-supplied endpoints (VPC endpoint, proxy, gateway) are left untouched. (PR #308)
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:
