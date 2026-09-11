@@ -19,6 +19,8 @@ See [v0.7.0-beta](#v070-beta)
 
 </div>
 
+[v0.7.0-beta](#v070-beta) | [v0.6.x](#v06x-released-) | [Key Features](#key-features) | [Providers](#model-to-adapter-resolution) | [Examples](#examples) | [Chat Options](#chatoptions) | [Usage](#usage) | [TLS Backends](#tls-backends) | [Contribution](#contribution)
+
 `genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
 Over 200+ LLM models, 26+ LLM providers out of the box, including **Ollama** for local execution.
@@ -82,20 +84,30 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 ## v0.7.0-beta
 
-**v0.7.0 release target: first half of Step 2026** - See latest [v0.7.0-beta releases](https://crates.io/crates/genai/versions)
+**v0.7.0 release target: first half of Sept 2026**. See latest [v0.7.0-beta releases](https://crates.io/crates/genai/versions).
 
-**Big release** - Many fixes, new capabilities, new providers and minimal API changes in the v0.6.x replacement (see below)
+**Big release**: Many fixes, new capabilities, new providers, and minimal API changes.
 
-**BREAKING**: Now **fallible** constructors for  `genai::Client::new()?` and `ClientBuilder::build()?` (no more `Client::default()`). Sorry, but this was a necessary change for robustness.
+**Key Breaking Changes:**
 
-**New providers:**
-- Atlas Cloud (`atlascloud::`)
-- Qwen Cloud (`qwen_cloud::`)
-- Kimi (`kimi::`, `kimi-*`)
-- OMLX (`omlx::`, `omlx-*`)
-- Custom adapter (`genai_{n}::`) with env a `GENAI_{n}_API_KEY` / `GENAI_{n}_ENDPOINT` 
+- Fallible client initialization: `Client::new()?` and `ClientBuilder::build()?` return `Result<Client>` (no more `Client::default()`).
+- `ReasoningEffort::Zero` replaces `ReasoningEffort::None` (`"zero"` keyword, `"none"` backward-compatible alias).
 
-See all in [CHANGELOG](CHANGELOG.md) and [docs/migration/migration-v_0_6_to_0_7.md](migration-v_0_6_to_0_7.md) for more `v0.7.0` upcoming changes.
+**New Providers & Adapters:**
+
+- Gemini Interactions API (`gemini_ix::`): stateful conversation sessions (`previous_response_id`, `store`).
+- Atlas Cloud (`atlascloud::`), Qwen Cloud (`qwen_cloud::`), Kimi (`kimi::`, `kimi-*`), OMLX (`omlx::`, `omlx-*`).
+- Custom adapter (`genai_{n}::`): generic OpenAI-compatible routing via `GENAI_{n}_ENDPOINT` and `GENAI_{n}_API_KEY`.
+
+**Key Capabilities & Improvements:**
+
+- Declarative provider config via `ClientBuilder::append_provider_config` and `ClientConfig::append_provider_config`.
+- Stream frame inspection via `ChatFrameSink` and `ChatOptions::with_raw_frame_sink`.
+- Thought signature and signed thinking block preservation across tool turns (Anthropic, Gemini, OpenRouter).
+- Anthropic prompt caching on tools (`Tool::with_cache_control`) and SSE heartbeat events (`ChatStreamEvent::Heartbeat`).
+- OpenTelemetry GenAI semantic conventions instrumentation behind the `otel` feature flag.
+
+See all in [CHANGELOG](CHANGELOG.md) and [v0.7.0 migration guide](docs/migration/migration-v_0_6_to_0_7.md) for more details.
 
 
 ## v0.6.x Released 🎉 
@@ -395,6 +407,22 @@ let client = genai::Client::builder()
 ```
 
 If you set `default-features = false` on `genai` without enabling a TLS feature, add `reqwest` with a TLS feature directly to your own `Cargo.toml` (or use the `rustls-no-provider` path and install a `CryptoProvider`) — otherwise HTTPS requests fail at runtime.
+
+## Contribution
+
+Contributions are welcome. To keep review fast and the codebase consistent, please follow these guidelines.
+
+- Keep your PR focused on one problem or one enhancement, or on very closely related changes. Small, focused PRs are easier to review and faster to merge.
+
+- This crate follows a zero-panic approach, so avoid `.unwrap()`, `.expect(...)`, and similar panic-prone calls in the production code path, and avoid array indexing with `[]` as much as possible.
+    - For now, `.unwrap()` and `.expect(...)` are tolerated in tests and examples, but they should be avoided going forward and will be changed soon. Favor `.ok_or("...")?` and other non-panicking alternatives.
+
+- When changing a provider or adapter implementation behavior, updating or adding a Yakbak cassette is appreciated when it makes sense.
+
+- Using AI is completely fine, as long as you fully review and control the end result before submitting the PR.
+    - Concise, to-the-point description.
+    - Clean and focused code.
+    - Emoticonless, especially in code.
 
 ## Links
 
