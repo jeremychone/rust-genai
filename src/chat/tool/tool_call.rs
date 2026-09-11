@@ -15,14 +15,12 @@ pub struct ToolCall {
 	/// Kept as `serde_json::Value` so callers can deserialize into their own types.
 	pub fn_arguments: Value,
 
-	/// Convenience mirror of the canonical `ContentPart::ThoughtSignature` values that
-	/// should precede tool calls in the assistant turn.
+	/// Thought signatures associated with this tool call.
 	///
-	/// When present on the first tool call in a batch, `ChatMessage::from(Vec<ToolCall>)`
-	/// will automatically include these as leading `ThoughtSignature` parts in the
-	/// assistant message content. This enables simple continuations like:
-	/// `append_message(tool_calls).append_message(tool_response)` without having to
-	/// manually inject thoughts.
+	/// `ChatMessage::from(Vec<ToolCall>)` preserves these on each call so adapters can
+	/// serialize them with the corresponding tool invocation. For turn-level signatures
+	/// that should precede all calls as `ContentPart::ThoughtSignature` values, use
+	/// `ChatMessage::assistant_tool_calls_with_thoughts`.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub thought_signatures: Option<Vec<String>>,
 }

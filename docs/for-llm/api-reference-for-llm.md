@@ -221,7 +221,7 @@ Stateful OpenAI Responses session support is available through `previous_respons
 - `with_reasoning_content(reasoning: Option<String>)`: Appends `ContentPart::ReasoningContent` when provided. Since v0.6.0.
 - `assistant_tool_calls_with_thoughts(calls, thoughts)`: For continuing tool exchanges where thoughts must precede tool calls. Since v0.6.0.
 - `size()`: Approximate in-memory size in bytes.
-- `From<Vec<ToolCall>>`: Creates assistant message with tool calls (auto-prepends thoughts if present on first call). Updated in v0.6.0 for thought-signature tool handoff support.
+- `From<Vec<ToolCall>>`: Creates an assistant message with tool calls, preserving thought signatures on their respective calls. Use `assistant_tool_calls_with_thoughts(...)` for separate turn-level signatures that must precede the calls.
 - `From<ToolResponse>`: Creates tool-role message.
 - `From<Vec<ToolResponse>>`: Creates a tool-role multipart message.
 
