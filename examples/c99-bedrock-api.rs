@@ -4,10 +4,13 @@
 //! and no extra dependencies pulled in. It authenticates with a Bedrock API key passed in the
 //! `Authorization: Bearer` header.
 //!
-//! Required env vars:
-//!   - BEDROCK_API_KEY: a Bedrock API key (see
+//! Required env var — either of these names works:
+//!   - BEDROCK_API_KEY, OR
+//!   - AWS_BEARER_TOKEN_BEDROCK (the name AWS documents, see
 //!     https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html)
-//!   - AWS_REGION (optional): defaults to `us-east-1`. Model availability varies by region.
+//!
+//! Optional:
+//!   - AWS_REGION: defaults to `us-east-1`. Model availability varies by region.
 //!
 //! Run with: `cargo run --example c99-bedrock-api`
 
@@ -25,8 +28,8 @@ const NOVA_MODEL: &str = "bedrock_api::global.amazon.nova-2-lite-v1:0";
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 	tracing_subscriber::fmt().with_env_filter(EnvFilter::new("genai=debug")).init();
 
-	if std::env::var("BEDROCK_API_KEY").is_err() {
-		println!("Set BEDROCK_API_KEY to run this example.");
+	if std::env::var("BEDROCK_API_KEY").is_err() && std::env::var("AWS_BEARER_TOKEN_BEDROCK").is_err() {
+		println!("Set BEDROCK_API_KEY (or AWS_BEARER_TOKEN_BEDROCK) to run this example.");
 		return Ok(());
 	}
 
