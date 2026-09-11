@@ -5,7 +5,7 @@
 //!
 //! Credentials come from the AWS default chain: environment variables, shared credentials file,
 //! SSO session, IMDS, or an assumed role. No `API key` is needed — set up AWS credentials the
-//! same way you would for the AWS CLI.
+//! same way you would for the AWS CLI. Temporary credentials are refreshed before they expire.
 //!
 //! Run with: `cargo run --example c99-bedrock-sigv4 --features bedrock-sigv4`
 //!

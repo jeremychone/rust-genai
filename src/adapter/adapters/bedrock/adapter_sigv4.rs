@@ -65,7 +65,7 @@ impl Adapter for BedrockSigv4Adapter {
 			model,
 		} = target;
 
-		// 1. Resolve credentials (cached). Only truly async on the first call per process.
+		// 1. Resolve credentials, refreshing them when they are close to expiring.
 		let cached = tokio_block_on(get_credentials())?;
 
 		// 2. Determine region. Respect custom endpoint from ServiceTargetResolver.
@@ -140,8 +140,8 @@ fn override_endpoint_region(endpoint: Endpoint, cached_region: &str) -> Endpoint
 	}
 }
 
-/// Synchronously run a future on the current Tokio runtime. The adapter trait is sync; the
-/// credential cache only blocks on the very first call per process.
+/// Run a future to completion on the current Tokio runtime; the adapter trait is sync, so this
+/// blocks the calling worker thread.
 fn tokio_block_on<F: std::future::Future>(fut: F) -> F::Output {
 	tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(fut))
 }
