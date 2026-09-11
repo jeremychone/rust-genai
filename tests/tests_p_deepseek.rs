@@ -4,9 +4,9 @@ use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
-// "deepseek-v4-flash" "deepseek-v4-pro"  Note: deepseek-chat and deepseek-reasoner will be deprecrated from deepseek
-const MODEL: &str = "deepseek-v4-flash";
-const MODEL_NS: &str = "deepseek::deepseek-v4-pro";
+// "deepseek-flash" "deepseek-v4-pro"  Note: deepseek-chat and deepseek-reasoner will be deprecrated from deepseek
+const MODEL: &str = "deepseek-flash"; // now this is the new deepseek v4.1 flash
+const MODEL_NS: &str = "deepseek::deepseek-v4-pro"; // kind of legacy now (use deepseek-flash per deepseek recommendation)
 
 // region:    --- Chat
 
@@ -100,7 +100,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::DeepSeek, "deepseek-v4-flash").await
+	common_tests::common_test_list_models(AdapterKind::DeepSeek, "deepseek-flash").await
 }
 
 // endregion: --- List
