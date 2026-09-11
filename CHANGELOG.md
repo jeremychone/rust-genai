@@ -21,6 +21,8 @@
 
 ### Behavior Refinement / Changes
 
+- Chat:
+  - `-` Preserve each tool call's thought signatures when converting `Vec<ToolCall>` into an assistant message, avoiding duplicate OpenAI Responses reasoning items and incorrect Gemini signature pairing. ([#306](https://github.com/jeremychone/rust-genai/issues/306)) (PR #307)
 - Anthropic:
   - `Zero` now positively disables reasoning, whereas it previously triggered adaptive thinking.
   - Sonnet 5 sends `thinking: {"type": "disabled"}`, because thinking is on by default.
@@ -57,7 +59,6 @@
 
 ### Additions & Fixes
 
-- `-` Chat - Preserve each tool call's thought signatures when converting `Vec<ToolCall>` into an assistant message, avoiding duplicate OpenAI Responses reasoning items and incorrect Gemini signature pairing. ([#306](https://github.com/jeremychone/rust-genai/issues/306))
 - `-` ChatOptions - Allow partial deserialization without `stop_sequences`, defaulting it to an empty vector. (PR #285)
 - `+` Adapter - Add `AdapterKind::all()` to enumerate built-in adapters, excluding `Custom`. (PR #286)
 - `+` Error - Add `Error::status()` and `webc::Error::status()` accessors for HTTP status inspection. (PR #287)

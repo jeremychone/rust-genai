@@ -31,6 +31,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#302](https://github.com/jeremychone/rust-genai/pull/302) fix(gemini): keep a thoughtSignature next to the part it arrived on
   - [#301](https://github.com/jeremychone/rust-genai/pull/301) fix(openai): capture OpenRouter's reasoning_details and echo them on assistant messages
 - [emecii](https://github.com/emecii)
+  - [#307](https://github.com/jeremychone/rust-genai/pull/307) fix(chat): preserve per-call thought signatures
   - [#297](https://github.com/jeremychone/rust-genai/pull/297) fix(bedrock): preserve frame events after start
   - [#296](https://github.com/jeremychone/rust-genai/pull/296) fix(openai_resp): propagate streaming error events
 - [lambdabetaeta](https://github.com/lambdabetaeta)
