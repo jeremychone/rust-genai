@@ -6,7 +6,9 @@
 //! See: https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys.html
 
 use crate::adapter::adapters::bedrock::converse::{build_converse_payload, parse_converse_response};
-use crate::adapter::adapters::bedrock::shared::{BEDROCK_RUNTIME_HOST_PREFIX, async_stream_bytes, build_service_url};
+use crate::adapter::adapters::bedrock::shared::{
+	BEDROCK_RUNTIME_HOST_PREFIX, DEFAULT_REGION, async_stream_bytes, build_service_url, region_from_env,
+};
 use crate::adapter::adapters::bedrock::streamer::BedrockStreamer;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -55,9 +57,7 @@ impl BedrockApiAdapter {
 	}
 
 	fn resolve_region() -> String {
-		std::env::var("AWS_REGION")
-			.or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
-			.unwrap_or_else(|_| "us-east-1".to_string())
+		region_from_env().unwrap_or_else(|| DEFAULT_REGION.to_string())
 	}
 
 	fn endpoint_for_region(region: &str) -> String {

@@ -9,6 +9,16 @@ use reqwest::RequestBuilder;
 /// prefix and `.amazonaws.com`.
 pub(super) const BEDROCK_RUNTIME_HOST_PREFIX: &str = "bedrock-runtime";
 
+/// Region used when neither `aws-config` nor the environment provides one.
+pub(super) const DEFAULT_REGION: &str = "us-east-1";
+
+/// Region from the environment: `AWS_REGION`, else `AWS_DEFAULT_REGION`.
+pub(super) fn region_from_env() -> Option<String> {
+	std::env::var("AWS_REGION")
+		.ok()
+		.or_else(|| std::env::var("AWS_DEFAULT_REGION").ok())
+}
+
 /// Curated snapshot of model IDs. Dynamic listing requires the `bedrock` (control plane) API,
 /// not `bedrock-runtime`, so we return a hard-coded list here.
 pub(super) fn curated_model_names() -> Vec<String> {

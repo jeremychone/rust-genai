@@ -106,7 +106,8 @@ pub enum AdapterKind {
 	BedrockApi,
 
 	/// AWS Bedrock Converse API, authenticated via SigV4 + the AWS credential chain
-	/// (env, profile, SSO, IMDS, AssumeRole).
+	/// (env, profile, SSO, IMDS, AssumeRole). `AuthData` carries an AWS profile name
+	/// (`Key`/`FromEnv`/`MultiKeys`); `None` follows `AWS_PROFILE`, else `default`.
 	/// Namespace: `bedrock_sigv4::anthropic.claude-sonnet-4-5-20250929-v1:0`.
 	/// Requires the `bedrock-sigv4` Cargo feature.
 	#[cfg(feature = "bedrock-sigv4")]
