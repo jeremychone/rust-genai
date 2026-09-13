@@ -424,6 +424,9 @@ Contributions are welcome. To keep review fast and the codebase consistent, plea
     - Clean and focused code.
     - Emoticonless, especially in code.
 
+- Do not update `CHANGELOG.md`, `BIG-THANKS.md`, or the migration docs under `docs/migration/` in your PR. The maintainer handles those in a single pass so the formatting, wording, and ordering stay consistent across releases. Describe the change in your PR instead, and call out anything user-visible or breaking so it can be captured accurately.
+  - If CHANGELOG.md or migration files are erroneous, submitting a PR to rectify them is a good approach.
+
 ## Links
 
 - crates.io: [crates.io/crates/genai](https://crates.io/crates/genai)

@@ -38,6 +38,8 @@
   - `^` Apply the `ReasoningEffort::Zero` rename to OpenAI and Bedrock adapter mappings while preserving provider-specific keyword mappings.
 - Client:
   - `-` Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
+- Bedrock:
+  - `^` `bedrock_sigv4` now reads `AuthData` as an AWS profile name, rather than ignoring it; a shared `AuthResolver` that returns a non-profile value for every adapter now triggers a profile lookup. (PR #310)
 
 ### New Providers
 
@@ -96,10 +98,12 @@
   - `-` Refresh SigV4 credentials before they expire instead of caching the first `provide_credentials()` snapshot for the life of the process, mirroring the AWS SDK identity cache (10s early refresh, 15-minute default TTL, deduplicated refreshes, jitter), so long-lived processes stop failing with signature errors. (PR #308)
   - `-` Accept `AWS_BEARER_TOKEN_BEDROCK` as a fallback for `BEDROCK_API_KEY` in the `bedrock_api` adapter, with an empty value falling through to the next candidate; an explicit `AuthData` is still used as-is. (PR #308)
   - `-` Build the `bedrock_sigv4` request URL for the region that is signed, fixing `SignatureDoesNotMatch` when the region comes from `~/.aws/config` or IMDS; user-supplied endpoints (VPC endpoint, proxy, gateway) are left untouched. (PR #308)
+  - `+` Select the AWS profile per client in `bedrock_sigv4` via `AuthData` (`Key("<profile>")`, `FromEnv("<VAR>")`, or `MultiKeys({ "profile": "<name>" })`); `None` or a blank value keeps the ambient chain (`AWS_PROFILE`, else `default`). The credential cache is now per profile, each keeping its own provider, region, and credentials, refreshed before expiry; same-profile concurrent refreshes are no longer deduplicated, since the lock is not held across a fetch (one profile's slow fetch does not block another). (PR #310)
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:
   - `-` Fix `otel` feature compilation, by covering the `CacheBreakpointNoEligibleContent` error variant in the `error.type` derivation (broken since v0.7.0-beta.18).
+  - `-` Cover `Error::ClientBuildFail` in the `error.type` derivation, fixing `otel` compilation when `bedrock-sigv4` is enabled. (PR #310)
   - `+` Add optional OpenTelemetry GenAI semantic-convention instrumentation behind the new `otel` feature, off by default, using a pure `tracing` bridge with no extra dependencies.
     - Auto-instruments `exec_chat`, `exec_chat_stream`, and `exec_embed` as `gen_ai.*` spans, including operation, provider, request params, server address/port, usage tokens, finish reasons, response id/model, streaming time-to-first-chunk, and `error.type`. Prompt and response content capture is opt-in via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`. Adds opt-in `genai::otel` helpers for agent, workflow, and tool spans, plus the evaluation-result event. Export by wiring `tracing-opentelemetry` in the application. See `docs/otel.md` and `examples/c12-otel.rs`.
 

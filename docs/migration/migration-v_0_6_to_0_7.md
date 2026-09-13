@@ -108,6 +108,20 @@ When sending subsequent requests, `Custom` parts whose type begins with `reasoni
 - OpenAI Responses: Streaming `error` events are now surfaced as `Error::ChatResponse` with the provider error payload, cleanly terminating the stream.
 - Bedrock: The Bedrock streamer now queues and delivers all events decoded from initial frames, ensuring text deltas or tool-call chunks emitted in the same frame as stream start are not dropped.
 
+### `bedrock_sigv4` reads `AuthData` as an AWS profile
+
+The `bedrock_sigv4` adapter now interprets the resolved `AuthData` as an AWS profile name, so a caller can pick the account per client:
+
+```rust
+let dev = Client::builder()
+    .append_provider_config(AdapterKind::BedrockSigv4, AuthData::Key("dev".to_string()))
+    .build()?;
+```
+
+`Key("<profile>")`, `FromEnv("<VAR>")`, and `MultiKeys({ "profile": "<name>" })` are all supported. `None` or a blank value keeps the ambient chain (`AWS_PROFILE`, else `default`), and `RequestOverride` is unchanged. Credentials are now cached per profile, so each profile keeps its own provider, region, and credentials.
+
+Previously this adapter ignored `AuthData` and resolved the profile once per process, so a shared `AuthResolver` that returns a non-profile value for every adapter now triggers a profile lookup here.
+
 ## Additive Features
 
 ### Declarative provider configuration on `ClientBuilder`

@@ -6,9 +6,12 @@
 //! [`profile_from_auth`]); `AuthData::None` follows `AWS_PROFILE`, else `default`.
 //!
 //! The cache mirrors the AWS SDK's identity cache: expire `REFRESH_BUFFER` early, fall back to
-//! `DEFAULT_EXPIRATION` when no expiry is reported, deduplicate concurrent refreshes, and jitter
-//! to avoid lockstep. Without it, a long-lived process would keep signing with credentials that
-//! expired an hour after start-up (`provide_credentials()` returns a frozen snapshot).
+//! `DEFAULT_EXPIRATION` when no expiry is reported, and jitter to avoid lockstep.
+//!
+//! Unlike the SDK, concurrent refreshes for the same profile are not deduplicated;
+//! the lock is never held across a fetch, so one profile's slow fetch does not block another.
+//! Without the cache, a long-lived process would keep signing with credentials that expired an hour after start-up
+//! (`provide_credentials()` returns a frozen snapshot).
 
 use super::shared::{DEFAULT_REGION, region_from_env};
 use crate::Headers;
