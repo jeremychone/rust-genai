@@ -199,6 +199,20 @@ impl Error {
 			_ => None,
 		}
 	}
+
+	/// Response headers returned with a failed HTTP status, when available.
+	///
+	/// This is the companion to [`Error::status`]. It lets callers implement
+	/// their own retry policy while honoring provider headers such as
+	/// `retry-after`, `retry-after-ms`, and `x-should-retry` without matching
+	/// internal error variants.
+	pub fn headers(&self) -> Option<&HeaderMap> {
+		match self {
+			Error::HttpError { headers, .. } => Some(headers),
+			Error::WebModelCall { webc_error, .. } | Error::WebAdapterCall { webc_error, .. } => webc_error.headers(),
+			_ => None,
+		}
+	}
 }
 
 // region:    --- Error Boilerplate
@@ -221,7 +235,7 @@ mod tests {
 	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
 
 	use super::*;
-	use reqwest::header::HeaderMap;
+	use reqwest::header::{HeaderMap, HeaderValue, RETRY_AFTER};
 
 	fn webc_status_error(status: u16) -> webc::Error {
 		webc::Error::ResponseFailedStatus {
@@ -298,6 +312,57 @@ mod tests {
 
 		// -- Exec & Check
 		assert_eq!(error.status(), None);
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_error_headers_from_web_model_call() -> Result<()> {
+		let mut headers = HeaderMap::new();
+		headers.insert(RETRY_AFTER, HeaderValue::from_static("7"));
+		let error = Error::WebModelCall {
+			model_iden: ModelIden::new(AdapterKind::OpenAI, "gpt-4o"),
+			webc_error: webc::Error::ResponseFailedStatus {
+				status: StatusCode::TOO_MANY_REQUESTS,
+				body: "body".to_string(),
+				headers: Box::new(headers),
+			},
+		};
+
+		assert_eq!(
+			error.headers().and_then(|headers| headers.get(RETRY_AFTER)),
+			Some(&HeaderValue::from_static("7"))
+		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_error_headers_from_http_error() -> Result<()> {
+		let mut headers = HeaderMap::new();
+		headers.insert(RETRY_AFTER, HeaderValue::from_static("11"));
+		let error = Error::HttpError {
+			status: StatusCode::SERVICE_UNAVAILABLE,
+			canonical_reason: "Service Unavailable".to_string(),
+			body: "body".to_string(),
+			headers: Box::new(headers),
+		};
+
+		assert_eq!(
+			error.headers().and_then(|headers| headers.get(RETRY_AFTER)),
+			Some(&HeaderValue::from_static("11"))
+		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_error_headers_none_without_a_response() -> Result<()> {
+		let error = Error::NoAuthData {
+			model_iden: ModelIden::new(AdapterKind::OpenAI, "gpt-4o"),
+		};
+
+		assert!(error.headers().is_none());
 
 		Ok(())
 	}
