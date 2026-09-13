@@ -38,7 +38,7 @@ genai (crate root / lib.rs)
   - `vertex` (since v0.6.0) is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
   - `opencode_go` (since v0.6.0) is a curated open coding model proxy with dual-protocol routing via the `opencode_go::` namespace. Uses `OPENCODE_GO_API_KEY`.
   - `bedrock_api` (since v0.6.0) is AWS Bedrock Converse API, authenticated with a simple Bearer token from `BEDROCK_API_KEY`. Use via the `bedrock_api::` namespace.
-  - `bedrock_sigv4` (since v0.6.0) is AWS Bedrock Converse API, authenticated via SigV4 + standard AWS credential chain. Requires the `bedrock-sigv4` feature. Use via the `bedrock_sigv4::` namespace.
+  - `bedrock_sigv4` (since v0.6.0) is AWS Bedrock Converse API, authenticated via SigV4 + standard AWS credential chain. The AWS profile is selectable per client via `AuthData`; otherwise `AWS_PROFILE`, else `default`. Requires the `bedrock-sigv4` feature. Use via the `bedrock_sigv4::` namespace.
   - `open_router` (since v0.6.0) is OpenRouter OpenAI-compatible gateway. Uses `OPEN_ROUTER_API_KEY`. Use via the `open_router::` namespace.
   - `baidu` (since v0.6.0) is Baidu's OpenAI/Anthropic compatible proxies.
   - `aliyun` (since v0.6.0) is Aliyun's namespace-only OpenAI-compatible service.
@@ -575,6 +575,10 @@ Resolution order is `ModelMapper` -> `AuthResolver` -> adapter default endpoint 
 - `MultiKeys(HashMap<String, String>)`: Multiple credential pieces (adapter-specific, not yet used).
 - **Constructors**: `from_env(env_name)`, `from_single(value)`, `from_multi(data)`.
 - `single_key_value()`: Resolves to a single key string (reads env if `FromEnv`).
+- Adapter-specific semantics:
+  - `bedrock_sigv4`: the value is an AWS profile name (e.g. `dev`), not an API key; the credentials come from the AWS chain.
+    - Forms: `Key("<profile>")`, `FromEnv("<VAR>")`, or `MultiKeys({ "profile": "<name>" })`.
+    - Default: `None` or blank → `AWS_PROFILE`, else `default`; each profile caches its own credentials.
 
 ### `AuthResolver`
 

@@ -8,8 +8,10 @@
 //!
 //! * `BedrockSigv4Adapter` — opt-in via the `bedrock-sigv4` Cargo feature. Full AWS credential
 //!   chain + SigV4 request signing via `aws-config` and `aws-sigv4`. Best for workloads that
-//!   already use AWS credentials (env, profile, SSO, IMDS, AssumeRole). Pulls in the AWS SDK
-//!   smithy/hyper dep tree. Temporary credentials are refreshed before they expire.
+//!   already use AWS credentials (env, profile, SSO, IMDS, AssumeRole). `AuthData` carries an AWS
+//!   profile name (`Key`/`FromEnv`/`MultiKeys`; `None` follows `AWS_PROFILE`, else `default`), and
+//!   each profile caches its own credentials and region. Temporary credentials are refreshed before
+//!   they expire.
 //!
 //! Both adapters use the Converse API which normalizes chat requests across Bedrock's
 //! publishers (Anthropic, Amazon Nova, Meta Llama, Mistral, Cohere, AI21).
