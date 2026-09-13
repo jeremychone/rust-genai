@@ -3,8 +3,10 @@
 //! Requires the `bedrock-sigv4` Cargo feature.
 
 use crate::adapter::adapters::bedrock::converse::{build_converse_payload, parse_converse_response};
-use crate::adapter::adapters::bedrock::shared::{BEDROCK_RUNTIME_HOST_PREFIX, async_stream_bytes, build_service_url};
-use crate::adapter::adapters::bedrock::sigv4::{cached_region, get_credentials, sign_request};
+use crate::adapter::adapters::bedrock::shared::{
+	BEDROCK_RUNTIME_HOST_PREFIX, DEFAULT_REGION, async_stream_bytes, build_service_url, region_from_env,
+};
+use crate::adapter::adapters::bedrock::sigv4::{get_credentials, profile_from_auth, sign_request};
 use crate::adapter::adapters::bedrock::streamer::BedrockStreamer;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
@@ -17,9 +19,7 @@ pub struct BedrockSigv4Adapter;
 
 impl BedrockSigv4Adapter {
 	fn resolve_region() -> String {
-		std::env::var("AWS_REGION")
-			.or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
-			.unwrap_or_else(|_| "us-east-1".to_string())
+		region_from_env().unwrap_or_else(|| DEFAULT_REGION.to_string())
 	}
 
 	pub(super) fn endpoint_for_region(region: &str) -> String {
@@ -36,7 +36,8 @@ impl Adapter for BedrockSigv4Adapter {
 	}
 
 	fn default_auth(_kind: AdapterKind) -> AuthData {
-		// Credentials come from the AWS default chain at request time.
+		// Credentials come from the AWS chain at request time; a profile can be selected per client
+		// via `ProviderConfig`/`AuthData`, which reaches us as `ServiceTarget::auth`.
 		AuthData::None
 	}
 
@@ -59,17 +60,14 @@ impl Adapter for BedrockSigv4Adapter {
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let ServiceTarget {
-			endpoint,
-			auth: _,
-			model,
-		} = target;
+		let ServiceTarget { endpoint, auth, model } = target;
 
-		// 1. Resolve credentials, refreshing them when they are close to expiring.
-		let cached = tokio_block_on(get_credentials())?;
+		// 1. Resolve the selected AWS profile (if any) and its credentials, refreshing if needed.
+		let profile = profile_from_auth(&auth)?;
+		let cached = tokio_block_on(get_credentials(profile.as_deref()))?;
 
 		// 2. Align the default endpoint with the region we sign for.
-		let endpoint = override_endpoint_region(endpoint, cached_region(&cached));
+		let endpoint = override_endpoint_region(endpoint, &cached.region);
 
 		// 3. Build the Converse JSON payload.
 		let payload = build_converse_payload(&model, chat_req, options_set)?;
@@ -79,7 +77,7 @@ impl Adapter for BedrockSigv4Adapter {
 
 		// 5. Sign the request — we serialize the body for the payload hash.
 		let body_bytes = serde_json::to_vec(&payload)?;
-		let headers = sign_request(&cached.creds, cached_region(&cached), &url, &body_bytes)?;
+		let headers = sign_request(&cached.creds, &cached.region, &url, &body_bytes)?;
 
 		Ok(WebRequestData { url, headers, payload })
 	}

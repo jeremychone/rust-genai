@@ -52,6 +52,7 @@ pub fn error_type(error: &Error) -> String {
 		Error::CacheBreakpointNoEligibleContent { .. } => "cache_breakpoint_no_eligible_content".to_string(),
 
 		// -- Internals / externals
+		Error::ClientBuildFail { .. } => "client_build_fail".to_string(),
 		Error::Internal(_) => "internal".to_string(),
 		Error::JsonValueExt(_) => "json_value_ext".to_string(),
 		Error::SerdeJson(_) => "serde_json".to_string(),
@@ -127,6 +128,16 @@ mod tests {
 		assert_eq!(
 			error_type(&Error::JsonModeWithoutInstruction),
 			"json_mode_without_instruction"
+		);
+	}
+
+	#[test]
+	fn test_otel_error_type_client_build_fail() {
+		assert_eq!(
+			error_type(&Error::ClientBuildFail {
+				cause: "boom".to_string()
+			}),
+			"client_build_fail"
 		);
 	}
 }

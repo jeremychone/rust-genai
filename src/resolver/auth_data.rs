@@ -3,6 +3,10 @@ use crate::resolver::{Error, Result};
 use std::collections::HashMap;
 
 /// `AuthData` specifies either how or the key itself for an authentication resolver call.
+///
+/// The value is adapter-specific: most adapters read it as an API key, whereas `bedrock_sigv4`
+/// (the `bedrock-sigv4` feature) reads it as an AWS profile name, since its credentials come from
+/// the AWS chain instead.
 #[derive(Clone)]
 pub enum AuthData {
 	/// Specify the environment name to get the key value from.
@@ -18,8 +22,7 @@ pub enum AuthData {
 	},
 
 	/// The key names/values when a credential has multiple pieces of credential information.
-	/// This will be adapter-specific.
-	/// NOTE: Not used yet.
+	/// This will be adapter-specific; `bedrock_sigv4` expects a `profile` entry.
 	MultiKeys(HashMap<String, String>),
 
 	None,
