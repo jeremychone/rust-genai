@@ -99,6 +99,8 @@
   - `-` Accept `AWS_BEARER_TOKEN_BEDROCK` as a fallback for `BEDROCK_API_KEY` in the `bedrock_api` adapter, with an empty value falling through to the next candidate; an explicit `AuthData` is still used as-is. (PR #308)
   - `-` Build the `bedrock_sigv4` request URL for the region that is signed, fixing `SignatureDoesNotMatch` when the region comes from `~/.aws/config` or IMDS; user-supplied endpoints (VPC endpoint, proxy, gateway) are left untouched. (PR #308)
   - `+` Select the AWS profile per client in `bedrock_sigv4` via `AuthData` (`Key("<profile>")`, `FromEnv("<VAR>")`, or `MultiKeys({ "profile": "<name>" })`); `None` or a blank value keeps the ambient chain (`AWS_PROFILE`, else `default`). The credential cache is now per profile, each keeping its own provider, region, and credentials, refreshed before expiry; same-profile concurrent refreshes are no longer deduplicated, since the lock is not held across a fetch (one profile's slow fetch does not block another). (PR #310)
+- Ollama:
+  - `-` Emit every event-bearing field of an NDJSON line instead of only the first, so fields sharing a line (e.g., `thinking` + `content`), every tool call of a line, and every line of a web chunk are no longer dropped. Events are buffered in stream order and drained before polling the inner stream, and the queued `End` event preserves the final `done` line's events, `done_reason`, and usage captures. (PR #311)
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
 - OpenTelemetry:

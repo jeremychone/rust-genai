@@ -46,6 +46,8 @@ _If I forgot your PR, feel free to submit a PR_
 - [wdwind](https://github.com/wdwind)
   - [#310](https://github.com/jeremychone/rust-genai/pull/310) feat(bedrock_sigv4): select the AWS profile per client via `AuthData`
   - [#308](https://github.com/jeremychone/rust-genai/pull/308) fix(bedrock): refresh SigV4 credentials before expiry, accept `AWS_BEARER_TOKEN_BEDROCK`, and sign for the region the request URL targets
+- [dmfs](https://github.com/dmfs)
+  - [#311](https://github.com/jeremychone/rust-genai/pull/311) fix(ollama): emit every event of an ndjson line instead of dropping the extras
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 

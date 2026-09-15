@@ -439,8 +439,7 @@ mod tests {
 		// -- Setup & Fixtures
 		let chunks = vec![format!(
 			"{}\n{}",
-			r#"{"message":{"thinking":"reasoning"}}"#,
-			r#"{"message":{"content":"answer"}}"#
+			r#"{"message":{"thinking":"reasoning"}}"#, r#"{"message":{"content":"answer"}}"#
 		)];
 
 		// -- Exec
