@@ -6,7 +6,7 @@ use genai::{adapter::AdapterKind, resolver::AuthData};
 // const MODEL: &str = "fireworks::qwen3-coder-480b-a35b-instruct";
 // const MODEL: &str = "fireworks::gpt-oss-120b";
 const MODEL: &str = "accounts/fireworks/models/gpt-oss-120b";
-const MODEL_NS: &str = "fireworks::deepseek-v4-pro";
+const MODEL_NS: &str = "fireworks::deepseek-v4p1-flash";
 const MODEL_IMAGE: &str = "fireworks::kimi-k3";
 
 // region:    --- Chat
