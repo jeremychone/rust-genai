@@ -9,8 +9,14 @@ use serde_json::Value;
 use std::ops::Deref;
 use std::sync::Arc;
 
-// Some model names have those keywors
-const PROTECTED_MODEL_NAMES: &[&str] = &["deepseek-r1-zero", "qwen3.8-max"];
+// Some model names have the reasoning effort suffix as their names.
+// For now, needs to be full model name
+const PROTECTED_MODEL_NAMES: &[&str] = &[
+	"deepseek-r1-zero",
+	"qwen3.8-max",
+	"qwen3p8-max",
+	"accounts/fireworks/models/qwen3p8-max",
+];
 
 /// Options considered by all `Client::exec_*` chat calls.
 ///

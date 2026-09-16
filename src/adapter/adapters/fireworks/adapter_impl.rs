@@ -1,11 +1,18 @@
-use crate::ModelIden;
 use crate::adapter::adapters::openai::{OpenAIAdapter, ToWebRequestDataOptions};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{WebClient, WebResponse};
+use crate::{ModelIden, ModelName};
 use crate::{Result, ServiceTarget};
 use reqwest::RequestBuilder;
+
+const CTX_MAX_DEFAULT: u32 = 512_000;
+
+// NOTE: Meta muse-glimmer-30b, have max tokens of `131072` but this seems to include prompt,
+//       and will throw error if the sum of the two exceed that limit.
+//       So, here, we put at 68k (not perfect, but until we find a better solution)
+const CTX_MAX_DEFAULT_MUSE: u32 = 68_000;
 
 /// The Fireworks API is mostly compatible with the OpenAI API.
 ///
@@ -68,8 +75,9 @@ impl Adapter for FireworksAdapter {
 		//       See: https://fireworks.ai/docs/faq-new/models-inference/what-are-the-maximum-completion-token-limits-for-models-and-can-they-be-increase
 		// NOTE: The `genai` strategy is to set a large max_tokens value, letting the model enforce its own lower limit by default to avoid unpleasant and confusing surprises.
 		//       Users can use [`ChatOptions`] to specify a specific max_tokens value.
+		// NOTE: Some models, like the muse-glimmer-30b, requires to have strict max token, so, we have the get_default_max_token now.
 		let custom = ToWebRequestDataOptions {
-			default_max_tokens: Some(512_000), // large enough
+			default_max_tokens: Some(get_default_max_token(&target.model.model_name)),
 			..Default::default()
 		};
 
@@ -106,5 +114,13 @@ impl Adapter for FireworksAdapter {
 		options_set: crate::embed::EmbedOptionsSet<'_, '_>,
 	) -> Result<crate::embed::EmbedResponse> {
 		OpenAIAdapter::to_embed_response(model_iden, web_response, options_set)
+	}
+}
+
+fn get_default_max_token(model: &ModelName) -> u32 {
+	if model.contains("muse-glimmer-30b") {
+		CTX_MAX_DEFAULT_MUSE
+	} else {
+		CTX_MAX_DEFAULT
 	}
 }

@@ -1,0 +1,6 @@
+{"model":"qwen3","created_at":"2026-09-16T12:00:00.000000000Z","message":{"role":"assistant","content":""},"done":false}
+{"model":"qwen3","created_at":"2026-09-16T12:00:00.100000000Z","message":{"role":"assistant","thinking":"The sky is blue due to Rayleigh scattering. ","content":"Rayleigh"},"done":false}
+{"model":"qwen3","created_at":"2026-09-16T12:00:00.200000000Z","message":{"role":"assistant","content":" scattering dominates the sky."},"done":false}
+{"model":"qwen3","created_at":"2026-09-16T12:00:00.300000000Z","message":{"role":"assistant","content":" Let me check the weather.","tool_calls":[{"id":"call_a","function":{"name":"get_weather","arguments":{"city":"Paris"}}}]},"done":false}
+{"model":"qwen3","created_at":"2026-09-16T12:00:00.400000000Z","message":{"role":"assistant","content":"","tool_calls":[{"id":"call_b","function":{"name":"get_weather","arguments":{"city":"Berlin"}}},{"id":"call_c","function":{"name":"get_time","arguments":{}}}]},"done":false}
+{"model":"qwen3","created_at":"2026-09-16T12:00:00.500000000Z","message":{"role":"assistant","content":""},"done":true,"done_reason":"stop","total_duration":123456789,"prompt_eval_count":21,"eval_count":40}
