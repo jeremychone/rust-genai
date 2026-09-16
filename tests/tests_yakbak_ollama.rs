@@ -14,6 +14,7 @@ use genai::chat::*;
 use serde_json::json;
 use support::yakbak::replay_client;
 use support::{TestResult, extract_stream_end};
+use tokio_stream::StreamExt;
 
 // -- Expected from the cassette (tests/data/yakbak/ollama/ndjson_multi_event_stream)
 const EXPECTED_REASONING: &str = "The sky is blue due to Rayleigh scattering. ";
@@ -86,8 +87,6 @@ async fn test_yakbak_ollama_ndjson_multi_event_stream() -> TestResult<()> {
 #[tokio::test]
 async fn test_yakbak_ollama_ndjson_multi_event_order() -> TestResult<()> {
 	// -- Setup & Fixtures
-	use tokio_stream::StreamExt;
-
 	let (client, _server) = replay_client("ollama", "ndjson_multi_event_stream").await?;
 
 	let chat_req = ChatRequest::from_user("Why is the sky blue? And what is the weather in Paris?");
@@ -100,7 +99,10 @@ async fn test_yakbak_ollama_ndjson_multi_event_order() -> TestResult<()> {
 	let mut stream = stream_res.stream;
 
 	let mut labels = Vec::new();
-	while let Some(Ok(event)) = stream.next().await {
+	while let Some(event) = stream.next().await {
+		// Surface stream errors instead of ending the loop on them, so a mid-stream
+		// failure is reported with its actual error rather than a truncated sequence.
+		let event = event?;
 		match event {
 			ChatStreamEvent::Chunk(c) => labels.push(format!("chunk:{}", c.content)),
 			ChatStreamEvent::ReasoningChunk(c) => labels.push(format!("reasoning:{}", c.content)),
