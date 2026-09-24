@@ -10,8 +10,12 @@ use crate::resolver::{AuthData, Endpoint};
 use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use reqwest::RequestBuilder;
+use serde::Serialize;
 use serde_json::{Value, json};
+use std::collections::HashSet;
 use value_ext::JsonValueExt;
+
+const SKIP_THOUGHT_SIGNATURE_VALIDATOR: &str = "skip_thought_signature_validator";
 
 pub struct GeminiAdapter;
 
@@ -21,8 +25,7 @@ pub(in crate::adapter) const REASONING_MEDIUM: u32 = 8000;
 pub(in crate::adapter) const REASONING_HIGH: u32 = 24000;
 
 /// Important
-/// - For now Low and Minimal aare the same for geminia
-/// -
+/// - For now Low and Minimal are the same for gemini
 fn insert_gemini_thinking_budget_value(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
 	// -- for now, match minimal to Low (because zero is not supported by 2.5 pro)
 	let budget = match effort {
@@ -189,18 +192,13 @@ impl Adapter for GeminiAdapter {
 		} = gemini_response;
 		let stop_reason = stop_reason.map(StopReason::from);
 
-		// Parts keep the order the API returned them in, and a thought signature
-		// stays immediately before the part it arrived on: Gemini attaches a
-		// signature to a specific function-call (or text) part and wants it back
-		// on that same part, so hoisting every signature to the front lost which
-		// part each belonged to, and a turn with two calls came back with both
-		// signatures on the first. Each call also mirrors its own signature in
-		// `thought_signatures`. Consecutive text parts still merge into one, as
-		// before; thought summaries go to `reasoning_content`.
+		// Parts keep the order the API returned them in, and a thought signature sits
+		// immediately before the part it arrived on (a call also mirrors its own in
+		// `thought_signatures`). Consecutive text parts merge into one; thought summaries
+		// go to `reasoning_content`.
 		let mut parts: Vec<ContentPart> = Vec::new();
 		let mut reasoning_text = String::new();
 		let mut text_buffer = String::new();
-		let mut pending_signature: Option<String> = None;
 
 		fn flush_text(text_buffer: &mut String, parts: &mut Vec<ContentPart>) {
 			if !text_buffer.is_empty() {
@@ -208,46 +206,32 @@ impl Adapter for GeminiAdapter {
 			}
 		}
 
-		for g_item in gemini_content {
-			match g_item {
-				GeminiChatContent::ThoughtSignature(signature) => {
+		for GeminiPart {
+			data,
+			thought_signature,
+		} in gemini_content
+		{
+			if let GeminiPartData::Reasoning(reasoning) = &data {
+				reasoning_text.push_str(reasoning);
+			}
+			if let Some(signature) = thought_signature {
+				flush_text(&mut text_buffer, &mut parts);
+				parts.push(ContentPart::ThoughtSignature(signature));
+			}
+			match data {
+				GeminiPartData::Text(text) => text_buffer.push_str(&text),
+				GeminiPartData::ToolCall(tool_call) => {
 					flush_text(&mut text_buffer, &mut parts);
-					if let Some(previous) = pending_signature.replace(signature) {
-						// Two signatures with nothing between them: keep both, in order.
-						parts.push(ContentPart::ThoughtSignature(previous));
-					}
-				}
-				GeminiChatContent::Text(text) => {
-					if let Some(signature) = pending_signature.take() {
-						flush_text(&mut text_buffer, &mut parts);
-						parts.push(ContentPart::ThoughtSignature(signature));
-					}
-					text_buffer.push_str(&text);
-				}
-				GeminiChatContent::ToolCall(mut tool_call) => {
-					flush_text(&mut text_buffer, &mut parts);
-					if let Some(signature) = pending_signature.take() {
-						// Mirrored on the call as well, so a turn rebuilt from its tool
-						// calls alone still carries it.
-						tool_call.thought_signatures = Some(vec![signature.clone()]);
-						parts.push(ContentPart::ThoughtSignature(signature));
-					}
 					parts.push(ContentPart::ToolCall(tool_call));
 				}
-				GeminiChatContent::Binary(binary) => {
+				GeminiPartData::Binary(binary) => {
 					flush_text(&mut text_buffer, &mut parts);
-					if let Some(signature) = pending_signature.take() {
-						parts.push(ContentPart::ThoughtSignature(signature));
-					}
 					parts.push(ContentPart::Binary(binary));
 				}
-				GeminiChatContent::Reasoning(reasoning) => reasoning_text.push_str(&reasoning),
+				GeminiPartData::Reasoning(_) => {}
 			}
 		}
 		flush_text(&mut text_buffer, &mut parts);
-		if let Some(signature) = pending_signature {
-			parts.push(ContentPart::ThoughtSignature(signature));
-		}
 		let content = MessageContent::from_parts(parts);
 
 		Ok(ChatResponse {
@@ -312,7 +296,7 @@ impl GeminiAdapter {
 			});
 		}
 
-		let mut content: Vec<GeminiChatContent> = Vec::new();
+		let mut content: Vec<GeminiPart> = Vec::new();
 
 		// Extract usage before content/parts so it is available even in
 		// usage-only tail frames (finishReason + usageMetadata but no content).
@@ -351,50 +335,46 @@ impl GeminiAdapter {
 
 		let mut tool_call_counter: usize = 0;
 		for mut part in parts {
-			// Each Gemini response part may contain one or more of:
-			// thoughtSignature, thought+text (reasoning), functionCall, text.
-			// We extract them in priority order.
+			let thought_signature = take_string(&mut part, "thoughtSignature");
+			let is_thought = take_bool(&mut part, "thought");
 
-			// -- Thought signature (Gemini 3+) or legacy thought boolean
-			if let Some(sig) = take_string(&mut part, "thoughtSignature") {
-				content.push(GeminiChatContent::ThoughtSignature(sig));
-			} else if take_bool(&mut part, "thought") {
-				// Legacy: `thought: true` + `text` = reasoning content
-				if let Some(reasoning) = take_string(&mut part, "text") {
-					content.push(GeminiChatContent::Reasoning(reasoning));
-				}
-			}
-
-			// -- Function call
-			if let Ok(fc) = part.x_take::<Value>("functionCall") {
+			let data = if let Ok(fc) = part.x_take::<Value>("functionCall") {
 				let fn_name: String = fc.x_get("name").unwrap_or_default();
 				// Gemini omits call_id; synthesize a unique one to avoid
 				// collisions when the same tool is called multiple times.
 				let call_id: String = fc.x_get("id").unwrap_or(format!("call#{}#{}", fn_name, tool_call_counter));
 				tool_call_counter += 1;
-				content.push(GeminiChatContent::ToolCall(ToolCall {
+				GeminiPartData::ToolCall(ToolCall {
 					call_id,
 					fn_name,
 					fn_arguments: fc.x_get("args").unwrap_or(Value::Null),
-					thought_signatures: None,
-				}));
-			}
-
-			// -- Plain text
-			if let Some(text) = take_string(&mut part, "text") {
-				content.push(GeminiChatContent::Text(text));
-			}
-
-			// -- Capture eventual inlineData (Image)
-			if let Ok(inline_data) = part.x_take::<Value>("inlineData") {
-				// Note: Gemini may send inline data in multiple parts, but for now, we will treat each part as a separate binary content. We can consider concatenating them if needed in the future.
-				if let Ok(mime_type) = inline_data.x_get::<String>("mimeType")
-					&& let Ok(data) = inline_data.x_get::<String>("data")
-				{
-					let binary = Binary::from_base64(mime_type, data, None);
-					content.push(GeminiChatContent::Binary(binary));
+					thought_signatures: thought_signature.clone().map(|signature| vec![signature]),
+				})
+			} else if let Some(text) = take_string(&mut part, "text") {
+				if is_thought {
+					GeminiPartData::Reasoning(text)
+				} else {
+					GeminiPartData::Text(text)
 				}
-			}
+			} else if let Ok(inline_data) = part.x_take::<Value>("inlineData")
+				&& let Ok(mime_type) = inline_data.x_get::<String>("mimeType")
+				&& let Ok(data) = inline_data.x_get::<String>("data")
+			{
+				// Note: Gemini may send inline data in multiple parts, but for now, 
+                // we will treat each part as a separate binary content. 
+                // We can consider concatenating them if needed in the future.
+				GeminiPartData::Binary(Binary::from_base64(mime_type, data, None))
+			} else if thought_signature.is_some() {
+				// A signature-only part (seen as an empty-text part in streams).
+				GeminiPartData::Text(String::new())
+			} else {
+				continue;
+			};
+
+			content.push(GeminiPart {
+				data,
+				thought_signature,
+			});
 		}
 		let stop_reason: Option<String> = body.x_take("/candidates/0/finishReason").ok();
 
@@ -702,89 +682,10 @@ impl GeminiAdapter {
 					contents.push(json!({"role": "user", "parts": parts_values}));
 				}
 				ChatRole::Assistant => {
-					let mut parts_values: Vec<Value> = Vec::new();
-					let mut pending_thought: Option<String> = None;
-					let mut is_first_tool_call = true;
-
-					for part in msg.content {
-						match part {
-							ContentPart::Text(text) => {
-								// A signature rides the part it precedes, in the same Part object —
-								// the shape the API returned it in.
-								let mut part_obj = serde_json::Map::new();
-								part_obj.insert("text".to_string(), json!(text));
-								if let Some(thought) = pending_thought.take() {
-									part_obj.insert("thoughtSignature".to_string(), json!(thought));
-								}
-								parts_values.push(Value::Object(part_obj));
-							}
-							ContentPart::ToolCall(tool_call) => {
-								let mut part_obj = serde_json::Map::new();
-								part_obj.insert(
-									"functionCall".to_string(),
-									json!({
-										"name": tool_call.fn_name,
-										"args": tool_call.fn_arguments,
-									}),
-								);
-
-								match pending_thought.take() {
-									Some(thought) => {
-										// Inject thoughtSignature alongside functionCall in the same Part object
-										part_obj.insert("thoughtSignature".to_string(), json!(thought));
-									}
-									None => {
-										if let Some(mirrored) =
-											tool_call.thought_signatures.as_ref().and_then(|s| s.first())
-										{
-											// No signature part preceded this call, but the call carries its own
-											// (the mirror the response path sets): send that.
-											part_obj.insert("thoughtSignature".to_string(), json!(mirrored));
-										} else {
-											// For Gemini 3 models, if there haven't been any thoughts, and this is
-											// still the first tool call, we are required to inject a special flag.
-											// See: https://ai.google.dev/gemini-api/docs/thought-signatures#faqs
-											let is_gemini_3 = model_iden.model_name.contains("gemini-3");
-											if is_gemini_3 && is_first_tool_call {
-												part_obj.insert(
-													"thoughtSignature".to_string(),
-													json!("skip_thought_signature_validator"),
-												);
-											}
-										}
-									}
-								}
-
-								parts_values.push(Value::Object(part_obj));
-								is_first_tool_call = false;
-							}
-							ContentPart::ThoughtSignature(thought) => {
-								if let Some(prev_thought) = pending_thought.take() {
-									parts_values.push(json!({"thoughtSignature": prev_thought}));
-								}
-								pending_thought = Some(thought);
-							}
-							// Ignore unsupported parts for Assistant role
-							ContentPart::Binary(_) => {
-								if let Some(thought) = pending_thought.take() {
-									parts_values.push(json!({"thoughtSignature": thought}));
-								}
-							}
-							ContentPart::ToolResponse(_) => {
-								if let Some(thought) = pending_thought.take() {
-									parts_values.push(json!({"thoughtSignature": thought}));
-								}
-							}
-							ContentPart::ReasoningContent(_) => {}
-							// Custom are ignored for this logic
-							ContentPart::Custom(_) => {}
-						}
-					}
-					if let Some(thought) = pending_thought {
-						parts_values.push(json!({"thoughtSignature": thought}));
-					}
-					if !parts_values.is_empty() {
-						contents.push(json!({"role": "model", "parts": parts_values}));
+					let is_gemini_3 = model_iden.model_name.contains("gemini-3");
+					let parts = GeminiModelPart::from_assistant_content(msg.content, is_gemini_3);
+					if !parts.is_empty() {
+						contents.push(json!({"role": "model", "parts": serde_json::to_value(parts)?}));
 					}
 				}
 				ChatRole::Tool => {
@@ -954,19 +855,92 @@ pub enum GeminiTool {
 	User(Value),
 }
 
-/// FIXME: need to be Vec<GeminiChatContent>
 pub(in crate::adapter) struct GeminiChatResponse {
-	pub content: Vec<GeminiChatContent>,
+	pub content: Vec<GeminiPart>,
 	pub usage: Usage,
 	pub stop_reason: Option<String>,
 }
 
-pub(in crate::adapter) enum GeminiChatContent {
+pub(in crate::adapter) struct GeminiPart {
+	pub data: GeminiPartData,
+	pub thought_signature: Option<String>,
+}
+
+pub(in crate::adapter) enum GeminiPartData {
 	Text(String),
 	Binary(Binary),
+	/// Also mirrors its own signature in `ToolCall.thought_signatures`.
 	ToolCall(ToolCall),
 	Reasoning(String),
-	ThoughtSignature(String),
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GeminiModelPart {
+	#[serde(flatten)]
+	data: GeminiModelPartData,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	thought_signature: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+enum GeminiModelPartData {
+	Text(String),
+	FunctionCall { name: String, args: Value },
+}
+
+impl GeminiModelPart {
+	fn from_assistant_content(content: MessageContent, is_gemini_3: bool) -> Vec<Self> {
+		let call_signatures: HashSet<String> = content
+			.tool_calls()
+			.into_iter()
+			.filter_map(|call| call.thought_signatures.clone())
+			.flatten()
+			.collect();
+
+		let mut parts: Vec<Self> = Vec::new();
+		let mut pending_signature: Option<String> = None;
+		let mut is_first_call = true;
+
+		for part in content {
+			match part {
+				ContentPart::ThoughtSignature(signature) if call_signatures.contains(&signature) => {}
+				ContentPart::ThoughtSignature(signature) => pending_signature = Some(signature),
+				ContentPart::Text(text) => parts.push(Self {
+					data: GeminiModelPartData::Text(text),
+					thought_signature: pending_signature.take(),
+				}),
+				ContentPart::ToolCall(call) => {
+					// For Gemini 3 models, the first call of a turn must carry a signature; when there
+					// is none, the API accepts this placeholder.
+					// See: https://ai.google.dev/gemini-api/docs/thought-signatures#faqs
+					let thought_signature = call
+						.thought_signatures
+						.and_then(|signatures| signatures.into_iter().next())
+						.or_else(|| pending_signature.take())
+						.or_else(|| {
+							(is_gemini_3 && is_first_call).then(|| SKIP_THOUGHT_SIGNATURE_VALIDATOR.to_string())
+						});
+					parts.push(Self {
+						data: GeminiModelPartData::FunctionCall {
+							name: call.fn_name,
+							args: call.fn_arguments,
+						},
+						thought_signature,
+					});
+					is_first_call = false;
+				}
+				// Not replayed in a model turn.
+				ContentPart::Binary(_)
+				| ContentPart::ToolResponse(_)
+				| ContentPart::ReasoningContent(_)
+				| ContentPart::Custom(_) => {}
+			}
+		}
+
+		parts
+	}
 }
 
 pub(in crate::adapter) struct GeminiChatRequestParts {
@@ -1298,12 +1272,9 @@ mod tests {
 		let tool_calls: Vec<_> = response
 			.content
 			.into_iter()
-			.filter_map(|c| {
-				if let GeminiChatContent::ToolCall(tc) = c {
-					Some(tc)
-				} else {
-					None
-				}
+			.filter_map(|part| match part.data {
+				GeminiPartData::ToolCall(tc) => Some(tc),
+				_ => None,
 			})
 			.collect();
 		assert_eq!(tool_calls.len(), 2);
@@ -1596,4 +1567,107 @@ mod tests {
 	}
 
 	// endregion: --- thought signatures stay with their part
+
+	// region:    --- Thought signature placement
+
+	fn signed_call(name: &str, signature: Option<&str>) -> ToolCall {
+		ToolCall {
+			call_id: format!("call#{name}#0"),
+			fn_name: name.to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: signature.map(|s| vec![s.to_string()]),
+		}
+	}
+
+	fn model_parts(parts: Vec<ContentPart>) -> Vec<Value> {
+		let chat_req =
+			ChatRequest::from_user("hi").append_message(ChatMessage::assistant(MessageContent::from_parts(parts)));
+		let payload = build_payload(chat_req, &ChatOptions::default());
+		let contents = payload["contents"].as_array().unwrap();
+		let model = contents.iter().find(|c| c["role"] == "model").expect("model turn");
+		model["parts"].as_array().unwrap().clone()
+	}
+
+	/// Every part carries data; the signature is only ever a field of one.
+	fn assert_no_bare_signatures(parts: &[Value]) {
+		for part in parts {
+			assert!(
+				part.get("text").is_some() || part.get("functionCall").is_some(),
+				"part without data sent: {part}"
+			);
+		}
+	}
+
+	/// The reported bug: two free signatures before a call. The newer one rides the call and
+	/// nothing is sent bare.
+	#[test]
+	fn free_signatures_before_a_call_are_not_sent_bare() {
+		let parts = model_parts(vec![
+			ContentPart::ThoughtSignature("sig-1".to_string()),
+			ContentPart::ThoughtSignature("sig-2".to_string()),
+			ContentPart::ToolCall(signed_call("get_weather", None)),
+		]);
+
+		assert_no_bare_signatures(&parts);
+		assert_eq!(parts.len(), 1);
+		assert_eq!(parts[0]["thoughtSignature"], "sig-2");
+	}
+
+	#[test]
+	fn streamed_shape_puts_each_signature_on_its_part() {
+		let parts = model_parts(vec![
+			ContentPart::ThoughtSignature("sig-t".to_string()),
+			ContentPart::ThoughtSignature("sig-a".to_string()),
+			ContentPart::ThoughtSignature("sig-b".to_string()),
+			ContentPart::Text("Reading both.".to_string()),
+			ContentPart::ToolCall(signed_call("read_a", Some("sig-a"))),
+			ContentPart::ToolCall(signed_call("read_b", Some("sig-b"))),
+		]);
+
+		assert_no_bare_signatures(&parts);
+		let signatures: Vec<&str> = parts.iter().map(|p| p["thoughtSignature"].as_str().unwrap_or("-")).collect();
+		assert_eq!(signatures, ["sig-t", "sig-a", "sig-b"]);
+	}
+
+	#[test]
+	fn trailing_signature_is_dropped() {
+		let parts = model_parts(vec![
+			ContentPart::Text("Hmm.".to_string()),
+			ContentPart::ThoughtSignature("sig-1".to_string()),
+		]);
+
+		assert_eq!(parts, [json!({"text": "Hmm."})]);
+	}
+
+	#[test]
+	fn unsigned_first_call_gets_the_validator_placeholder() {
+		let parts = model_parts(vec![
+			ContentPart::ToolCall(signed_call("a", None)),
+			ContentPart::ToolCall(signed_call("b", None)),
+		]);
+
+		assert_eq!(parts[0]["thoughtSignature"], SKIP_THOUGHT_SIGNATURE_VALIDATOR);
+		assert!(parts[1].get("thoughtSignature").is_none());
+	}
+
+	#[test]
+	fn parser_keeps_a_signature_only_part_as_empty_text() {
+		let body = json!({"candidates": [{"content": {"parts": [
+			{"thoughtSignature": "sig-t"},
+			{"functionCall": {"name": "read_file", "args": {}}, "thoughtSignature": "sig-a"}
+		]}}]});
+		let response = GeminiAdapter::body_to_gemini_chat_response(&gemini_3(), body).unwrap();
+
+		let [first, second] = response.content.as_slice() else {
+			panic!("expected two parts");
+		};
+		assert!(matches!(&first.data, GeminiPartData::Text(text) if text.is_empty()));
+		assert_eq!(first.thought_signature.as_deref(), Some("sig-t"));
+		let GeminiPartData::ToolCall(call) = &second.data else {
+			panic!("expected a call");
+		};
+		assert_eq!(call.thought_signatures.as_deref(), Some(&["sig-a".to_string()][..]));
+	}
+
+	// endregion: --- Thought signature placement
 }

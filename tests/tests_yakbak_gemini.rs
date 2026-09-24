@@ -202,3 +202,83 @@ async fn test_yakbak_gemini_tool_stream() -> TestResult<()> {
 
 	Ok(())
 }
+
+/// Streamed multi-turn tool loop where the first tool call fails and the model retries.
+/// Recorded against the live API, which accepted every turn genai rebuilt from the stream's
+/// captured content (a call's signature on the call, the text's on the text, none sent bare).
+#[tokio::test]
+async fn test_yakbak_gemini_multi_turn_thought_signatures() -> TestResult<()> {
+	let (client, _server) = replay_client("gemini", "multi_turn_thought_signatures").await?;
+
+	let mut chat_req = ChatRequest::new(vec![
+		ChatMessage::system(
+			"Use the get_weather tool for weather questions. Before every tool call, tell the user in one \
+			 short sentence what you are about to do. If a tool call fails, say so and retry.",
+		),
+		ChatMessage::user("Which of Berlin, Cairo, and Paris is in Africa? Get its current weather in Celsius."),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city":    { "type": "string", "description": "The city name" },
+			"country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})));
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::High)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true);
+
+	// -- Turns 1 and 2: a sentence, then a call. The first call's result is an error.
+	let tool_results = [
+		r#"{"error": "Upstream weather service timed out. Retry the same request."}"#,
+		r#"{"weather": "Sunny", "temperature": "32", "unit": "C"}"#,
+	];
+	for (turn, result) in tool_results.into_iter().enumerate() {
+		let stream_res = client
+			.exec_chat_stream("gemini-3.8-flash", chat_req.clone(), Some(&options))
+			.await?;
+		let extract = extract_stream_end(stream_res.stream).await?;
+		let content = extract.stream_end.captured_content.ok_or("each turn should capture content")?;
+
+		assert!(
+			content.first_text().is_some_and(|text| !text.is_empty()),
+			"turn {turn}: sentence before the call"
+		);
+		let tool_calls = content.tool_calls();
+		assert_eq!(tool_calls.len(), 1, "turn {turn}: one call");
+		let call = tool_calls[0];
+		assert_eq!(call.fn_name, "get_weather");
+		assert_eq!(call.fn_arguments["city"], "Cairo");
+
+		// The signature arrived on the functionCall part, so the call carries exactly that one,
+		// and it's also among the captured signature parts.
+		let signatures = content.thought_signatures();
+		assert_eq!(signatures.len(), 1, "turn {turn}: one signature");
+		assert_eq!(
+			call.thought_signatures.as_deref(),
+			Some(&[signatures[0].to_string()][..]),
+			"turn {turn}: the call keeps its own signature"
+		);
+
+		let call_id = call.call_id.clone();
+		chat_req = chat_req
+			.append_message(ChatMessage::assistant(content))
+			.append_message(ToolResponse::new(call_id, result));
+	}
+
+	// -- Turn 3: the answer. Its signature arrived on a final empty-text chunk.
+	let stream_res = client.exec_chat_stream("gemini-3.8-flash", chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+	let content = extract.stream_end.captured_content.ok_or("the answer should capture content")?;
+	assert!(content.tool_calls().is_empty(), "no further calls");
+	assert_eq!(content.thought_signatures().len(), 1, "the text signature is captured");
+	let answer = content.first_text().ok_or("should answer")?;
+	assert!(answer.contains("Cairo"), "should name the African city: {answer}");
+	assert!(answer.contains("32"), "should use the successful tool result: {answer}");
+
+	Ok(())
+}

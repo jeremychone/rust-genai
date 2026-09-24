@@ -684,6 +684,77 @@ async fn record_gemini_builtin_with_functions() -> TestResult<()> {
 	Ok(())
 }
 
+const GEMINI_MULTI_TURN_MODEL: &str = "gemini-3.8-flash";
+
+/// Streamed multi-turn tool loop where the first tool call fails. Each assistant turn is rebuilt
+/// from the stream's captured content (signatures at the front, calls carrying their own) and sent
+/// back, so the API validates the signatures genai returns on every turn after the first.
+#[tokio::test]
+#[ignore]
+async fn record_gemini_multi_turn_thought_signatures() -> TestResult<()> {
+	let (client, mut server) = record_client("gemini", "multi_turn_thought_signatures", &gemini_backend()).await?;
+
+	let mut chat_req = ChatRequest::new(vec![
+		ChatMessage::system(
+			"Use the get_weather tool for weather questions. Before every tool call, tell the user in one \
+			 short sentence what you are about to do. If a tool call fails, say so and retry.",
+		),
+		ChatMessage::user("Which of Berlin, Cairo, and Paris is in Africa? Get its current weather in Celsius."),
+	])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city":    { "type": "string", "description": "The city name" },
+			"country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code" },
+			"unit":    { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})));
+	let options = ChatOptions::default()
+		.with_reasoning_effort(ReasoningEffort::High)
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true);
+
+	let mut calls_answered = 0;
+	for turn in 1..=5 {
+		let stream_res = client
+			.exec_chat_stream(GEMINI_MULTI_TURN_MODEL, chat_req.clone(), Some(&options))
+			.await?;
+		let extract = extract_stream_end(stream_res.stream).await?;
+		let content = extract.stream_end.captured_content.ok_or("each turn should capture content")?;
+
+		let tool_calls: Vec<ToolCall> = content.tool_calls().into_iter().cloned().collect();
+		eprintln!(
+			"[record] Turn {turn}: signatures={} calls={:?} text={:?}",
+			content.thought_signatures().len(),
+			tool_calls
+				.iter()
+				.map(|call| (&call.fn_name, call.thought_signatures.as_ref().map(Vec::len)))
+				.collect::<Vec<_>>(),
+			content.first_text().map(|text| &text[..text.len().min(80)]),
+		);
+		if tool_calls.is_empty() {
+			break;
+		}
+
+		chat_req = chat_req.append_message(ChatMessage::assistant(content));
+		for call in tool_calls {
+			// The first call fails, so the next turn is a retry after an error.
+			let result = if calls_answered == 0 {
+				r#"{"error": "Upstream weather service timed out. Retry the same request."}"#
+			} else {
+				r#"{"weather": "Sunny", "temperature": "32", "unit": "C"}"#
+			};
+			chat_req = chat_req.append_message(ToolResponse::new(call.call_id, result));
+			calls_answered += 1;
+		}
+	}
+
+	server.shutdown().await;
+	Ok(())
+}
+
 fn github_copilot_backend() -> String {
 	std::env::var("GITHUB_COPILOT_BASE_URL").unwrap_or_else(|_| "https://models.github.ai/inference/".to_string())
 }
