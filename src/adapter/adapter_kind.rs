@@ -123,6 +123,11 @@ pub enum AdapterKind {
 	/// Uses `ATLASCLOUD_API_KEY`.
 	AtlasCloud,
 
+	/// Requesty: OpenAI-compatible gateway for many providers (OpenAI, Anthropic, Google, etc.).
+	/// Namespace: `requesty::openai/gpt-4o-mini`, `requesty::anthropic/claude-sonnet-4-5`.
+	/// Uses `REQUESTY_API_KEY`.
+	Requesty,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -169,6 +174,7 @@ adapter_kind_str_maps! {
 	BedrockApi         => "BedrockApi",         "bedrock_api",         adapters::all_adapters::BedrockApiAdapter;
 	OpenRouter         => "OpenRouter",         "open_router",         adapters::all_adapters::OpenRouterAdapter;
 	AtlasCloud         => "AtlasCloud",         "atlascloud",          adapters::all_adapters::AtlasCloudAdapter;
+	Requesty           => "Requesty",           "requesty",            adapters::all_adapters::RequestyAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 

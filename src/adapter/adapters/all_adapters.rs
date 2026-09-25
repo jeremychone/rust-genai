@@ -191,6 +191,16 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- Requesty
+pub struct RequestyAdapter;
+impl_pass_through_adapter!(
+	name: RequestyAdapter,
+	kind: AdapterKind::Requesty,
+	key_env: Some("REQUESTY_API_KEY"),
+	endpoint: "https://router.requesty.ai/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(

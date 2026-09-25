@@ -23,9 +23,9 @@ See [v0.7.0-beta](#v070-beta)
 
 `genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-Over 200+ LLM models, 26+ LLM providers out of the box, including **Ollama** for local execution.
+Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `atlascloud`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `atlascloud`, `xai`
 
 
 Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
@@ -203,6 +203,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `opencode_go::minimax-m2.5` (Forces **OpenCode Go** adapter)
 - `bedrock_api::anthropic.claude-v2` (Forces **AWS Bedrock** adapter)
 - `open_router::google/gemini-2.0-flash-001` (Forces **OpenRouter** adapter)
+- `requesty::openai/gpt-4o-mini` (Forces **Requesty** adapter)
 - `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
