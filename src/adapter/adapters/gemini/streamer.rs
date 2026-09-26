@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use super::GeminiChatContent;
+use super::{GeminiPart, GeminiPartData};
 
 use std::collections::VecDeque;
 
@@ -127,17 +127,22 @@ impl futures::Stream for GeminiStreamer {
 					let mut stream_text_content: String = String::new();
 					let mut stream_reasoning_content: Option<String> = None;
 					let mut stream_tool_calls: Vec<ToolCall> = Vec::new();
-					let mut stream_thought: Option<String> = None;
+					let mut stream_thoughts: Vec<String> = Vec::new();
 
-					for g_content_item in content {
-						match g_content_item {
-							GeminiChatContent::Reasoning(reasoning) => stream_reasoning_content = Some(reasoning),
-							GeminiChatContent::Text(text) => stream_text_content.push_str(&text),
-							GeminiChatContent::Binary(_) => {
+					for GeminiPart {
+						data,
+						thought_signature,
+					} in content
+					{
+						stream_thoughts.extend(thought_signature);
+						match data {
+							GeminiPartData::Reasoning(reasoning) => stream_reasoning_content = Some(reasoning),
+							GeminiPartData::Text(text) => stream_text_content.push_str(&text),
+							GeminiPartData::Binary(_) => {
 								// For now, we do not stream binary content.
 							}
-							GeminiChatContent::ToolCall(tool_call) => stream_tool_calls.push(tool_call),
-							GeminiChatContent::ThoughtSignature(thought) => stream_thought = Some(thought),
+							// Carries its own signature in `thought_signatures`.
+							GeminiPartData::ToolCall(tool_call) => stream_tool_calls.push(tool_call),
 						}
 					}
 
@@ -149,11 +154,11 @@ impl futures::Stream for GeminiStreamer {
 
 					// -- Queue Events. Priority: Thought -> Reasoning -> Text -> ToolCall
 
-					if let Some(thought) = stream_thought {
-						match self.captured_data.thought_signatures {
-							Some(ref mut thoughts) => thoughts.push(thought.clone()),
-							None => self.captured_data.thought_signatures = Some(vec![thought.clone()]),
-						}
+					for thought in stream_thoughts {
+						self.captured_data
+							.thought_signatures
+							.get_or_insert_with(Vec::new)
+							.push(thought.clone());
 						self.pending_events.push_back(InterStreamEvent::ThoughtSignatureChunk(thought));
 					}
 

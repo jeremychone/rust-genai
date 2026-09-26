@@ -246,7 +246,7 @@ impl From<InterStreamEnd> for StreamEnd {
 			if let Some(tool_calls) = captured_tool_calls.as_mut()
 				&& let Some(first_call) = tool_calls.first_mut()
 			{
-				first_call.thought_signatures = Some(mirrored_signatures);
+				first_call.thought_signatures.get_or_insert(mirrored_signatures);
 			}
 		}
 
@@ -476,6 +476,32 @@ mod tests {
 		assert_eq!(
 			tool_call.thought_signatures.as_ref().expect("signature mirror"),
 			&vec!["opaque-signature".to_string()]
+		);
+	}
+
+	#[test]
+	fn stream_end_keeps_a_signature_the_call_already_carries() {
+		let inter_end = InterStreamEnd {
+			captured_thought_signatures: Some(vec!["sig-t".to_string(), "sig-a".to_string()]),
+			captured_tool_calls: Some(vec![ToolCall {
+				call_id: "call-1".to_string(),
+				fn_name: "lookup".to_string(),
+				fn_arguments: serde_json::json!({}),
+				thought_signatures: Some(vec!["sig-a".to_string()]),
+			}]),
+			..Default::default()
+		};
+
+		let end = StreamEnd::from(inter_end);
+
+		let tool_call = end.captured_tool_calls().expect("tool calls")[0];
+		assert_eq!(
+			tool_call.thought_signatures.as_deref(),
+			Some(&["sig-a".to_string()][..])
+		);
+		assert_eq!(
+			end.captured_thought_signatures().expect("signatures"),
+			["sig-t", "sig-a"]
 		);
 	}
 }
