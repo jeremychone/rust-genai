@@ -3,7 +3,7 @@
 use super::OllamaAdapter;
 use crate::Headers;
 use crate::adapter::AdapterKind;
-use crate::chat::{Binary, BinarySource, ChatRequest, ContentPart, Tool, ToolName, Usage};
+use crate::chat::{Binary, BinarySource, ChatRequest, ContentPart, PromptTokensDetails, Tool, ToolName, Usage};
 use crate::resolver::Endpoint;
 use crate::webc::WebClient;
 use crate::{Error, Result};
@@ -46,6 +46,10 @@ impl OllamaAdapter {
 
 	pub(in crate::adapter::adapters) fn into_usage(body: &mut Value) -> Usage {
 		let prompt_tokens = body.x_take::<i32>("prompt_eval_count").ok();
+		// `prompt_eval_cached_count` is the subset of the prompt tokens served
+		// from the KV cache; `prompt_eval_count` remains the full input count.
+		// Ref: https://docs.ollama.com/api/usage
+		let cached_tokens = body.x_take::<i32>("prompt_eval_cached_count").ok().filter(|v| *v > 0);
 		let completion_tokens = body.x_take::<i32>("eval_count").ok();
 		let total_tokens = match (prompt_tokens, completion_tokens) {
 			(Some(p), Some(c)) => Some(p + c),
@@ -54,6 +58,10 @@ impl OllamaAdapter {
 
 		Usage {
 			prompt_tokens,
+			prompt_tokens_details: cached_tokens.map(|n| PromptTokensDetails {
+				cached_tokens: Some(n),
+				..Default::default()
+			}),
 			completion_tokens,
 			total_tokens,
 			..Default::default()
@@ -166,3 +174,86 @@ pub(in crate::adapter::adapters) struct OllamaRequestParts {
 	pub messages: Vec<Value>,
 	pub tools: Option<Vec<Value>>,
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_into_usage_with_cached_tokens() {
+		// -- Setup & Fixtures
+		let mut body = json!({
+			"model": "qwen3",
+			"done": true,
+			"done_reason": "stop",
+			"prompt_eval_count": 21,
+			"prompt_eval_cached_count": 17,
+			"eval_count": 40
+		});
+
+		// -- Exec
+		let usage = OllamaAdapter::into_usage(&mut body);
+
+		// -- Check
+		assert_eq!(
+			usage.prompt_tokens,
+			Some(21),
+			"prompt_eval_count is the full input count"
+		);
+		assert_eq!(usage.completion_tokens, Some(40));
+		assert_eq!(usage.total_tokens, Some(61));
+		let details = usage.prompt_tokens_details.expect("details should be set");
+		assert_eq!(details.cached_tokens, Some(17));
+		assert_eq!(details.cache_creation_tokens, None);
+		assert!(details.cache_creation_details.is_none());
+		assert_eq!(details.audio_tokens, None);
+	}
+
+	#[test]
+	fn test_into_usage_without_cached_field_has_no_details() {
+		// -- Setup & Fixtures
+		let mut body = json!({
+			"model": "qwen3",
+			"done": true,
+			"prompt_eval_count": 21,
+			"eval_count": 40
+		});
+
+		// -- Exec
+		let usage = OllamaAdapter::into_usage(&mut body);
+
+		// -- Check
+		assert_eq!(usage.prompt_tokens, Some(21));
+		assert!(
+			usage.prompt_tokens_details.is_none(),
+			"no cached field means no details"
+		);
+	}
+
+	#[test]
+	fn test_into_usage_zero_cached_tokens_yields_no_details() {
+		// -- Setup & Fixtures
+		// A cached count of 0 is normalized away (zero-as-none), like other adapters.
+		let mut body = json!({
+			"model": "qwen3",
+			"done": true,
+			"prompt_eval_count": 21,
+			"prompt_eval_cached_count": 0,
+			"eval_count": 40
+		});
+
+		// -- Exec
+		let usage = OllamaAdapter::into_usage(&mut body);
+
+		// -- Check
+		assert_eq!(usage.prompt_tokens, Some(21));
+		assert!(
+			usage.prompt_tokens_details.is_none(),
+			"cached count 0 must not produce details"
+		);
+	}
+}
+
+// End of Tests

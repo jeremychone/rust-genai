@@ -1,6 +1,6 @@
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, PromptTokensDetails, StopReason, ToolCall, Usage};
 use crate::error::BoxError;
 use crate::webc::WebStream;
 use crate::{Error, ModelIden, Result};
@@ -136,6 +136,10 @@ impl<S> OllamaStreamer<S> {
 
 			if self.options.capture_usage {
 				let prompt_tokens = data.x_get::<i32>("/prompt_eval_count").ok();
+				// `prompt_eval_cached_count` is the subset of the prompt tokens read
+				// from the KV cache; `prompt_eval_count` is the full input count.
+				// Ref: https://docs.ollama.com/api/usage
+				let cached_tokens = data.x_get::<i32>("/prompt_eval_cached_count").ok().filter(|v| *v > 0);
 				let completion_tokens = data.x_get::<i32>("/eval_count").ok();
 				let total_tokens = match (prompt_tokens, completion_tokens) {
 					(Some(p), Some(c)) => Some(p + c),
@@ -144,6 +148,10 @@ impl<S> OllamaStreamer<S> {
 
 				self.captured_data.usage = Some(Usage {
 					prompt_tokens,
+					prompt_tokens_details: cached_tokens.map(|n| PromptTokensDetails {
+						cached_tokens: Some(n),
+						..Default::default()
+					}),
 					completion_tokens,
 					total_tokens,
 					..Default::default()
@@ -400,7 +408,7 @@ mod tests {
 
 		// One final line carrying the last reasoning, the last content token,
 		// two tool calls, and the done payload.
-		let chunks = vec![r#"{"message":{"thinking":"final check. ","content":"Answer. ","tool_calls":[{"function":{"name":"get_weather","arguments":{"city":"Paris"}},"id":"call_a"},{"function":{"name":"get_time","arguments":{}},"id":"call_b"}]},"done":true,"done_reason":"stop","prompt_eval_count":10,"eval_count":20}"#.to_string()];
+		let chunks = vec![r#"{"message":{"thinking":"final check. ","content":"Answer. ","tool_calls":[{"function":{"name":"get_weather","arguments":{"city":"Paris"}},"id":"call_a"},{"function":{"name":"get_time","arguments":{}},"id":"call_b"}]},"done":true,"done_reason":"stop","prompt_eval_count":10,"prompt_eval_cached_count":6,"eval_count":20}"#.to_string()];
 
 		// -- Exec
 		let events = support_collect_events(support_streamer(chunks, options_set)).await?;
@@ -428,6 +436,10 @@ mod tests {
 		let usage = end.captured_usage.as_ref().expect("usage should be captured");
 		assert_eq!(usage.prompt_tokens, Some(10));
 		assert_eq!(usage.completion_tokens, Some(20));
+		assert_eq!(
+			usage.prompt_tokens_details.as_ref().and_then(|d| d.cached_tokens),
+			Some(6)
+		);
 		assert_eq!(usage.total_tokens, Some(30));
 
 		Ok(())

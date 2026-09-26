@@ -7,6 +7,12 @@
 //! surface — in stream order — through the full HTTP → WebStream (ndjson
 //! splitting) → OllamaStreamer path, which the streamer's inline unit tests
 //! bypass.
+//!
+//! The `cached_usage` / `cached_usage_stream` cassettes are regression fixtures
+//! for the `prompt_eval_cached_count` → `Usage.prompt_tokens_details.cached_tokens`
+//! normalization (https://docs.ollama.com/api/usage), covering the non-streaming
+//! and streaming usage paths end-to-end. They were captured live via curl from
+//! a local Ollama `llama3.2:3b` on 2026-09-25.
 
 mod support;
 
@@ -71,6 +77,81 @@ async fn test_yakbak_ollama_ndjson_multi_event_stream() -> TestResult<()> {
 	assert_eq!(usage.prompt_tokens, Some(21));
 	assert_eq!(usage.completion_tokens, Some(40));
 	assert_eq!(usage.total_tokens, Some(61));
+
+	Ok(())
+}
+
+/// The final done line's `prompt_eval_cached_count` (tokens read from the KV
+/// cache) must surface as `Usage.prompt_tokens_details.cached_tokens`, while
+/// `prompt_tokens` remains the full input count (`prompt_eval_count`).
+/// Ref: https://docs.ollama.com/api/usage
+/// Cassette: captured live via curl from a local Ollama `llama3.2:3b` on 2026-09-25.
+#[tokio::test]
+async fn test_yakbak_ollama_cached_usage_stream() -> TestResult<()> {
+	// -- Setup & Fixtures
+	let (client, _server) = replay_client("ollama", "cached_usage_stream").await?;
+
+	let chat_req = ChatRequest::from_user("Say hello.");
+	let options = ChatOptions::default().with_capture_usage(true);
+
+	// -- Exec
+	let stream_res = client.exec_chat_stream("ollama::llama3.2:3b", chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	// -- Check
+	let usage = extract.stream_end.captured_usage.as_ref().ok_or("usage should be captured")?;
+	assert_eq!(
+		usage.prompt_tokens,
+		Some(28),
+		"prompt_eval_count is the full input count"
+	);
+	assert_eq!(usage.completion_tokens, Some(3));
+	assert_eq!(usage.total_tokens, Some(31));
+
+	let details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("prompt_tokens_details should be captured")?;
+	assert_eq!(details.cached_tokens, Some(27));
+
+	Ok(())
+}
+
+/// Same normalization through the non-streaming path (`OllamaAdapter::into_usage`):
+/// `prompt_eval_cached_count` → `prompt_tokens_details.cached_tokens`.
+/// Cassette: captured live via curl from a local Ollama `llama3.2:3b` on 2026-09-25.
+#[tokio::test]
+async fn test_yakbak_ollama_cached_usage_non_stream() -> TestResult<()> {
+	// -- Setup & Fixtures
+	let (client, _server) = replay_client("ollama", "cached_usage").await?;
+
+	let chat_req = ChatRequest::from_user("Say hello.");
+
+	// -- Exec
+	let chat_res = client.exec_chat("ollama::llama3.2:3b", chat_req, None).await?;
+
+	// -- Check
+	assert_eq!(
+		chat_res.first_text(),
+		Some("Hello! It's nice to meet you. Is there something I can help you with or would you like to chat?")
+	);
+	assert_eq!(chat_res.stop_reason, Some(StopReason::Completed("stop".to_string())));
+
+	let usage = &chat_res.usage;
+	assert_eq!(
+		usage.prompt_tokens,
+		Some(28),
+		"prompt_eval_count is the full input count"
+	);
+	assert_eq!(usage.completion_tokens, Some(25));
+	assert_eq!(usage.total_tokens, Some(53));
+
+	let details = usage
+		.prompt_tokens_details
+		.as_ref()
+		.ok_or("prompt_tokens_details should be set")?;
+	assert_eq!(details.cached_tokens, Some(27));
+	assert_eq!(details.cache_creation_tokens, None);
 
 	Ok(())
 }
