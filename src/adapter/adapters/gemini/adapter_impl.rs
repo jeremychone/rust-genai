@@ -360,9 +360,9 @@ impl GeminiAdapter {
 				&& let Ok(mime_type) = inline_data.x_get::<String>("mimeType")
 				&& let Ok(data) = inline_data.x_get::<String>("data")
 			{
-				// Note: Gemini may send inline data in multiple parts, but for now, 
-                // we will treat each part as a separate binary content. 
-                // We can consider concatenating them if needed in the future.
+				// Note: Gemini may send inline data in multiple parts, but for now,
+				// we will treat each part as a separate binary content.
+				// We can consider concatenating them if needed in the future.
 				GeminiPartData::Binary(Binary::from_base64(mime_type, data, None))
 			} else if thought_signature.is_some() {
 				// A signature-only part (seen as an empty-text part in streams).

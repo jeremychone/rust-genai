@@ -44,6 +44,7 @@
 ### New Providers
 
 - `+` **AtlasCloud**: default env `ATLASCLOUD_API_KEY`, endpoint `https://api.atlascloud.ai/v1/` (activated on `atlascloud::` namespace) (PR #259)
+- `+` **Requesty**: OpenAI-compatible gateway, default env `REQUESTY_API_KEY`, endpoint `https://router.requesty.ai/v1/` (activated on `requesty::` namespace) (PR #317)
 - `+` **Qwen Cloud**: default env `QWEN_CLOUD_API_KEY`, endpoint `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on `qwen_cloud::` namespace)
 - `+` **Kimi**: default env `KIMI_API_KEY`, endpoint `https://api.moonshot.ai/v1/` (activated on `kimi::` namespace or `kimi-` model prefix)
 - `+` **OMLX**: default env `OMLX_API_KEY` (can be absent), endpoint `OMLX_ENDPOINT` (default `http://127.0.0.1:8000/v1/`), OpenAI adapter with chat template kwargs (activated on `omlx::` namespace or `omlx-` model prefix)
@@ -90,6 +91,7 @@
     - Existing normalized usage continues to expose cache reads through `cached_tokens` and cache writes through `cache_creation_tokens`.
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
 - Gemini:
+  - `-` Send all accumulated thought signatures with their corresponding parts on multi-turn tool calls. (PR #316)
   - `-` Count server-side built-in tool-use tokens in normalized prompt usage and allow mixing built-in and user-defined function tools. (PR #284)
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
@@ -100,6 +102,7 @@
   - `-` Build the `bedrock_sigv4` request URL for the region that is signed, fixing `SignatureDoesNotMatch` when the region comes from `~/.aws/config` or IMDS; user-supplied endpoints (VPC endpoint, proxy, gateway) are left untouched. (PR #308)
   - `+` Select the AWS profile per client in `bedrock_sigv4` via `AuthData` (`Key("<profile>")`, `FromEnv("<VAR>")`, or `MultiKeys({ "profile": "<name>" })`); `None` or a blank value keeps the ambient chain (`AWS_PROFILE`, else `default`). The credential cache is now per profile, each keeping its own provider, region, and credentials, refreshed before expiry; same-profile concurrent refreshes are no longer deduplicated, since the lock is not held across a fetch (one profile's slow fetch does not block another). (PR #310)
 - Ollama:
+  - `^` Map `prompt_eval_cached_count` to `Usage.prompt_tokens_details.cached_tokens` in streaming and non-streaming usage. (PR #318)
   - `+` Map `ChatOptions::reasoning_effort` to Ollama's top-level `think` body param: `Zero` -> `false`, `Minimal`/`Low` -> `"low"`, `Medium` -> `"medium"`, `High` -> `"high"`, `XHigh`/`Max` -> `"max"`, `Budget(_)` -> `true` (model default level); the param is omitted when unset. (PR #312)
   - `-` Emit every event-bearing field of an NDJSON line instead of only the first, so fields sharing a line (e.g., `thinking` + `content`), every tool call of a line, and every line of a web chunk are no longer dropped. Events are buffered in stream order and drained before polling the inner stream, and the queued `End` event preserves the final `done` line's events, `done_reason`, and usage captures. (PR #311)
 - Cross-provider adapters:

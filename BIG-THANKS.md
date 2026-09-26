@@ -23,6 +23,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
 - [vagmi](https://github.com/vagmi)
+  - [#316](https://github.com/jeremychone/rust-genai/pull/316) fix(gemini): send all previous thought signatures on multi-turn tool calls
   - [#293](https://github.com/jeremychone/rust-genai/pull/293) feat(adapter): Gemini Interactions API adapter (`gemini_ix::`)
   - [#290](https://github.com/jeremychone/rust-genai/pull/290) feat(chat): stream frame observation via ChatFrameSink
   - [#284](https://github.com/jeremychone/rust-genai/pull/284) fix(gemini): count built-in tool prompt tokens and allow mixed tools
@@ -47,8 +48,11 @@ _If I forgot your PR, feel free to submit a PR_
   - [#310](https://github.com/jeremychone/rust-genai/pull/310) feat(bedrock_sigv4): select the AWS profile per client via `AuthData`
   - [#308](https://github.com/jeremychone/rust-genai/pull/308) fix(bedrock): refresh SigV4 credentials before expiry, accept `AWS_BEARER_TOKEN_BEDROCK`, and sign for the region the request URL targets
 - [dmfs](https://github.com/dmfs)
+  - [#318](https://github.com/jeremychone/rust-genai/pull/318) ollama: map `prompt_eval_cached_count` to cached-token usage
   - [#312](https://github.com/jeremychone/rust-genai/pull/312) feat(ollama): map ReasoningEffort to the think body param
   - [#311](https://github.com/jeremychone/rust-genai/pull/311) fix(ollama): emit every event of an ndjson line instead of dropping the extras
+- [Thibaultjaigu](https://github.com/Thibaultjaigu)
+  - [#317](https://github.com/jeremychone/rust-genai/pull/317) feat(adapter): add Requesty OpenAI-compatible adapter
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 
