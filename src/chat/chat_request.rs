@@ -1,10 +1,12 @@
 use crate::chat::{ChatMessage, ChatRole, StreamEnd, Tool, ToolCall, ToolResponse};
 use crate::support;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 // region:    --- ChatRequest
 
 /// A provider-neutral chat request containing conversation messages and available tools.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
 	/// The initial system content of the request.

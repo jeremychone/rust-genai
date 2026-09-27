@@ -1,9 +1,11 @@
 use crate::Result;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::path::Path;
 use std::sync::Arc;
 
 /// Binary payload attached to a message (e.g., image or PDF).
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Binary {
 	/// MIME type, such as "image/png" or "application/pdf".

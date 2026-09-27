@@ -17,6 +17,7 @@ use crate::ModelIden;
 use crate::chat::StreamEnd;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 // region:    --- RawFrame
@@ -24,6 +25,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 /// An owned provider frame, as produced by [`RawFrameRef::to_owned_frame`].
 ///
 /// Only materialized when a sink asks for it; the library never builds these on its own.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawFrame {
 	/// 0-based ordinal within the stream.

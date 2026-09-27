@@ -1,6 +1,7 @@
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 
 /// Preferred response format for `ChatRequest` (structured output).
 /// Only applied when the provider supports it.
@@ -18,6 +19,7 @@ pub enum ChatResponseFormat {
 }
 
 /// JSON specification used to enforce structured output.
+#[skip_serializing_none]
 #[derive(Debug, Clone, From, Serialize, Deserialize)]
 pub struct JsonSpec {
 	/// Specification name (primarily used by OpenAI).

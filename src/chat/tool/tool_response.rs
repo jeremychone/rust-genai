@@ -1,7 +1,9 @@
 use super::ToolCall;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 /// Response produced by a tool invocation, paired with the originating tool call ID.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolResponse {
 	/// Identifier of the originating tool call.

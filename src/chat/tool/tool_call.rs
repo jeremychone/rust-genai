@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 
 /// The tool call function name and arguments sent back by the LLM.
 /// Represents a single function/tool invocation emitted by the model.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCall {
 	/// Stable identifier for this tool call (used to correlate tool responses).
