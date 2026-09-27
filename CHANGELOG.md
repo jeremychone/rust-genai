@@ -11,6 +11,7 @@
   - This eliminates internal `.expect(...)` panics during HTTP client initialization, aligning with genai's zero-panic strategy. (PR #292)
 - `!` API CHANGE: `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias.
 - `!` API CHANGE: `JsonSpec::schema_with_additional_properties_false` is removed. Provider adapters now sanitize schemas as required by their target API. `JsonSchemaDialect` and `sanitize_json_schema(...)` are available for explicit schema sanitization.
+- `!` API CHANGE: When serializing genai types to json, Optional fields with `None` are now omitted from JSON instead of serialized as `null`. ([migration guide](docs/migration/migration-v_0_6_to_0_7.md) | [merged PR search](https://github.com/jeremychone/rust-genai/pulls?q=is%3Apr+is%3Amerged+in%3Atitle+%22types+json+serialization+now+skip+none%22))
 
 ### API Minor Changes (New Properties / Variants)
 

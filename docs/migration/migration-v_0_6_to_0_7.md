@@ -67,6 +67,20 @@ let options = ChatOptions {
 
 Use `ChatOptions::with_raw_frame_sink(...)`, `with_raw_frame_sink_arc(...)`, or `with_raw_frame_fn(...)` to attach sinks during streaming calls.
 
+### Optional fields omitted during JSON serialization
+
+Optional fields whose value is `None` are now omitted from JSON serialization instead of being serialized as `null`. This affects:
+
+- Chat and request/response types: `Binary`, `ChatMessage`, `MessageOptions`, `ChatOptions`, `ChatRequest`, `ChatResponse`, `JsonSpec`, `RawFrame`, and `StreamEnd`.
+
+- Tool types: `Tool`, `ToolCall`, `ToolResponse`, and `WebSearchConfig`.
+
+- Usage types: `Usage`, `PromptTokensDetails`, `CompletionTokensDetails`, `CacheCreationDetails`, and `IxUsage`.
+
+- OpenAI Responses types: `RespResponse`, `RespUsage`, `InputTokensDetails`, and `OutputTokensDetails`.
+
+Consumers that distinguish an omitted property from one set to `null` may need to adjust. See the [merged PR search](https://github.com/jeremychone/rust-genai/pulls?q=is%3Apr+is%3Amerged+in%3Atitle+%22types+json+serialization+now+skip+none%22).
+
 ## Behavior Refinement / Changes
 
 ### `ServiceTargetResolver` in `Client::all_model_names`
