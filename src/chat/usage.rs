@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 
 /// Normalized token usage across providers (OpenAI-compatible).
 ///
@@ -10,7 +10,6 @@ use serde_with::{serde_as, skip_serializing_none};
 /// - Gemini: `candidatesTokenCount` excludes "thoughts" (reasoning) tokens. We normalize:
 ///   `completion_tokens = candidatesTokenCount + thoughts_token_count`, and
 ///   `completion_tokens_details.reasoning_tokens = thoughts_token_count`.
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Usage {
@@ -41,7 +40,6 @@ impl Usage {
 }
 
 /// Breakdown of cache creation tokens by TTL.
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CacheCreationDetails {
@@ -60,7 +58,6 @@ impl CacheCreationDetails {
 	}
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PromptTokensDetails {
@@ -88,7 +85,6 @@ impl PromptTokensDetails {
 	}
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompletionTokensDetails {

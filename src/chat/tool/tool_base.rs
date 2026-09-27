@@ -2,9 +2,11 @@ use super::{ToolConfig, ToolName};
 use crate::chat::CacheControl;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
 /// Tool metadata used for function calling by LLMs.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tool {
 	/// Normalized tool identifier.
 	/// Example: `ToolName::Custom("get_weather".to_string())`.

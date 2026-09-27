@@ -1,8 +1,10 @@
 use crate::chat::{ContentPart, MessageContent, ToolCall, ToolResponse};
 use derive_more::From;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 /// A chat message with a role, multipart content, and optional per-message settings.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
 	/// The message role.
@@ -103,8 +105,9 @@ impl ChatMessage {
 
 // region:    --- MessageOptions
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, From)]
 /// Per-message options (e.g., cache control).
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, From)]
 pub struct MessageOptions {
 	#[from]
 	/// Per-provider cache behavior hint.
@@ -210,6 +213,19 @@ mod tests {
 	use serde_json::json;
 
 	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
+
+	#[test]
+	fn test_chat_chat_message_options_none_is_omitted() -> Result<()> {
+		// -- Setup & Fixtures
+		let message = ChatMessage::user("hello");
+
+		// -- Exec
+		let serialized = serde_json::to_value(message)?;
+
+		// -- Check
+		assert!(serialized.get("options").is_none());
+		Ok(())
+	}
 
 	fn signed_tool_calls() -> Vec<ToolCall> {
 		vec![

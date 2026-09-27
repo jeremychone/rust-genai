@@ -1,6 +1,6 @@
 use crate::chat::{CompletionTokensDetails, PromptTokensDetails, Usage};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 
 /// Normalized token usage across providers (OpenAI-compatible).
 ///
@@ -11,7 +11,6 @@ use serde_with::{serde_as, skip_serializing_none};
 /// - Gemini: `candidatesTokenCount` excludes "thoughts" (reasoning) tokens. We normalize:
 ///   `output_tokens = candidatesTokenCount + thoughts_token_count`, and
 ///   `output_tokens_details.reasoning_tokens = thoughts_token_count`.
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct RespUsage {
@@ -41,7 +40,6 @@ impl RespUsage {
 	}
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InputTokensDetails {
@@ -63,7 +61,6 @@ impl InputTokensDetails {
 	}
 }
 
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct OutputTokensDetails {

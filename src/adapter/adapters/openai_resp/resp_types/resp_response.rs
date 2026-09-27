@@ -1,13 +1,12 @@
 use super::RespUsage;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 
 /// DOC: https://platform.openai.com/docs/api-reference/responses/object
 ///
 /// NOTE: Not all OpenAI Responses Response properties have been set in this struct.
 ///       Mostly what is needed for the Chat Completion compatibility.
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct RespResponse {

@@ -6,6 +6,7 @@ use crate::chat::frame_sink::{ChatFrameSink, FnSink, FrameCtx, RawFrameRef};
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_with::skip_serializing_none;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -22,6 +23,7 @@ const PROTECTED_MODEL_NAMES: &[&str] = &[
 ///
 /// A default can be set on the `Client` during builder configuration.
 /// Per-call options take precedence over client defaults.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatOptions {
 	/// Sampling temperature (if supported by the provider).

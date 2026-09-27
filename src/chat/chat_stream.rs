@@ -3,6 +3,7 @@ use crate::chat::{ChatMessage, ContentPart, MessageContent, StopReason, ToolCall
 use crate::webc::FrameTap;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -193,6 +194,7 @@ pub struct ToolChunk {
 }
 
 /// Terminal event data with optionally captured usage and content.
+#[skip_serializing_none]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StreamEnd {
 	/// Captured usage if `ChatOptions.capture_usage` is enabled.

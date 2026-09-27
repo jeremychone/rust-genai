@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 /// Configuration for the built-in web search tool.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WebSearchConfig {
 	/// Maximum number of web fetches allowed per request.

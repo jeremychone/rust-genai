@@ -1,11 +1,10 @@
 use crate::chat::{CompletionTokensDetails, PromptTokensDetails, Usage};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 
 /// Token usage as reported by the Interactions API.
 ///
 /// DOC: <https://ai.google.dev/api/interactions#Resource:Interaction> (`usage`)
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct IxUsage {

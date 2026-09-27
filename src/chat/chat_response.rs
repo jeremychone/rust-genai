@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 use crate::ModelIden;
 use crate::chat::{ChatMessage, ChatStream, MessageContent, ToolCall, Usage};
@@ -97,6 +98,7 @@ impl std::fmt::Display for StopReason {
 // region:    --- ChatResponse
 
 /// Response returned by a non-streaming chat request.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
 	/// Message content returned by the assistant.
