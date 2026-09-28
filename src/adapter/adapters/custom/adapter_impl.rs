@@ -3,9 +3,9 @@ use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
+use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{WebClient, WebResponse};
 use crate::{Result, ServiceTarget};
-use reqwest::RequestBuilder;
 
 /// The OpenRouter API is compatible with the OpenAI API.
 /// NOTE: This adapter is activated for namespaced model names (e.g., `open_router::openai/gpt-4.1`)

@@ -3,9 +3,9 @@ use crate::ModelIden;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStream, ChatStreamResponse};
 use crate::resolver::{AuthData, Endpoint};
+use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Result, ServiceTarget};
-use reqwest::RequestBuilder;
 
 pub struct AnthropicAdapter;
 
