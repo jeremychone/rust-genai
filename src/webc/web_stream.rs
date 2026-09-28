@@ -1,7 +1,6 @@
+use crate::webc::{StreamRequest as RequestBuilder, StreamResponse as Response};
 use bytes::Bytes;
-use futures::stream::TryStreamExt;
 use futures::{Future, Stream};
-use reqwest::{RequestBuilder, Response};
 use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -129,7 +128,7 @@ impl Stream for WebStream {
 							this.response_future = Some(Box::pin(error_future));
 							continue;
 						}
-						let bytes_stream = response.bytes_stream().map_err(|e| Box::new(e) as BoxError);
+						let bytes_stream = response.bytes_stream();
 						this.bytes_stream = Some(Box::pin(bytes_stream));
 						this.response_future = None;
 					}
@@ -218,7 +217,7 @@ impl Stream for WebStream {
 			}
 
 			if let Some(reqwest_builder) = this.reqwest_builder.take() {
-				let fut = async move { reqwest_builder.send().await.map_err(|e| Box::new(e) as BoxError) };
+				let fut = async move { reqwest_builder.send().await };
 				this.response_future = Some(Box::pin(fut));
 				continue;
 			}

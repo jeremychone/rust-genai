@@ -222,6 +222,14 @@ impl Client {
 						webc_error,
 					})?;
 
+			let defaults = self.config().chat_options();
+			let header_timeout = options
+				.and_then(|o| o.stream_header_timeout)
+				.or_else(|| defaults.and_then(|o| o.stream_header_timeout));
+			let read_timeout = options
+				.and_then(|o| o.stream_read_timeout)
+				.or_else(|| defaults.and_then(|o| o.stream_read_timeout));
+			let reqwest_builder = crate::webc::StreamRequest::new(reqwest_builder, header_timeout, read_timeout);
 			let res = AdapterDispatcher::to_chat_stream(model, reqwest_builder, options_set)?;
 
 			Ok(res)

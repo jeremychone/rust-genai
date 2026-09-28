@@ -40,6 +40,18 @@ pub struct ChatOptions {
 	pub stop_sequences: Vec<String>,
 
 	// -- Stream Options
+	/// Maximum wait for streaming HTTP response headers, including connection setup.
+	/// Defaults to no additional limit. Per-call values override client defaults.
+	/// This transport setting is never sent to the provider.
+	#[serde(skip)]
+	pub stream_header_timeout: Option<std::time::Duration>,
+
+	/// Maximum wait for each raw streaming body chunk, including error bodies.
+	/// Heartbeats and partial frames reset this wait before event parsing.
+	/// This is not an overall response deadline. Defaults to no additional limit.
+	#[serde(skip)]
+	pub stream_read_timeout: Option<std::time::Duration>,
+
 	/// (streaming) Capture usage metadata; available in `StreamEnd.captured_usage`.
 	pub capture_usage: Option<bool>,
 
@@ -107,6 +119,18 @@ pub struct ChatOptions {
 
 /// Chainable Setters
 impl ChatOptions {
+	/// Sets the streaming response-header wait, independently of body reads.
+	pub fn with_stream_header_timeout(mut self, value: std::time::Duration) -> Self {
+		self.stream_header_timeout = Some(value);
+		self
+	}
+
+	/// Sets the maximum wait for each raw streaming response body chunk.
+	pub fn with_stream_read_timeout(mut self, value: std::time::Duration) -> Self {
+		self.stream_read_timeout = Some(value);
+		self
+	}
+
 	/// Sets the sampling temperature.
 	pub fn with_temperature(mut self, value: f64) -> Self {
 		self.temperature = Some(value);

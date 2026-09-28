@@ -2,8 +2,8 @@
 
 use crate::adapter::{AdapterKind, ServiceType};
 use crate::resolver::Endpoint;
+use crate::webc::StreamRequest as RequestBuilder;
 use crate::{Error, ModelIden, Result};
-use reqwest::RequestBuilder;
 
 /// The hostname prefix for the Bedrock runtime endpoint. Regions are interpolated between this
 /// prefix and `.amazonaws.com`.
@@ -95,12 +95,8 @@ fn async_stream_once(
 		crate::error::BoxError,
 	>,
 > + Send {
-	use futures::StreamExt;
 	futures::stream::once(async move {
-		let resp = reqwest_builder
-			.send()
-			.await
-			.map_err(|e| Box::new(e) as crate::error::BoxError)?;
+		let resp = reqwest_builder.send().await?;
 		let status = resp.status();
 		if !status.is_success() {
 			// Capture the headers while the response is still in hand
@@ -116,9 +112,7 @@ fn async_stream_once(
 			return Err(Box::new(err) as crate::error::BoxError);
 		}
 		let bytes: futures::stream::BoxStream<'static, std::result::Result<bytes::Bytes, crate::error::BoxError>> =
-			resp.bytes_stream()
-				.map(|r| r.map_err(|e| Box::new(e) as crate::error::BoxError))
-				.boxed();
+			resp.bytes_stream();
 		Ok(bytes)
 	})
 }

@@ -29,7 +29,7 @@ async fn test_web_stream_http_error_captures_headers() -> Result<()> {
 	);
 	let url = support_spawn_one_shot_http_server(raw_response).await?;
 	let reqwest_builder = reqwest::Client::new().post(&url).json(&serde_json::json!({"stream": true}));
-	let mut web_stream = WebStream::new_with_sse(reqwest_builder);
+	let mut web_stream = WebStream::new_with_sse(RequestBuilder::new(reqwest_builder, None, None));
 
 	// -- Exec
 	let first_item = web_stream.next().await.ok_or("Should have a first stream item")?;
@@ -83,7 +83,8 @@ async fn test_web_stream_sse_frame_tap_taps_all_blocks() -> Result<()> {
 	let (sink, frame_tap) = support_new_frame_tap();
 
 	let reqwest_builder = reqwest::Client::new().post(&url);
-	let mut event_source = EventSourceStream::new(reqwest_builder).with_frame_tap(Some(frame_tap));
+	let mut event_source =
+		EventSourceStream::new(RequestBuilder::new(reqwest_builder, None, None)).with_frame_tap(Some(frame_tap));
 
 	// -- Exec
 	let mut messages: Vec<Message> = Vec::new();
@@ -134,7 +135,8 @@ async fn test_web_stream_delimited_frame_tap_taps_each_line() -> Result<()> {
 	let (sink, frame_tap) = support_new_frame_tap();
 
 	let reqwest_builder = reqwest::Client::new().post(&url);
-	let mut web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n").with_frame_tap(Some(frame_tap));
+	let mut web_stream = WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n")
+		.with_frame_tap(Some(frame_tap));
 
 	// -- Exec
 	let mut messages: Vec<String> = Vec::new();
@@ -172,7 +174,8 @@ async fn test_web_stream_no_sink_leaves_transport_untapped() -> Result<()> {
 	let url = support_spawn_one_shot_http_server(raw_response).await?;
 
 	let reqwest_builder = reqwest::Client::new().post(&url);
-	let mut web_stream = WebStream::new_with_delimiter(reqwest_builder, "\n").with_frame_tap(None);
+	let mut web_stream =
+		WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n").with_frame_tap(None);
 
 	// -- Exec
 	let mut messages: Vec<String> = Vec::new();

@@ -7,9 +7,9 @@ use crate::chat::{
 	StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, ToolResponse, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
+use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
-use reqwest::RequestBuilder;
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::HashSet;
