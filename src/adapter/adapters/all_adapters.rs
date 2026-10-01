@@ -201,6 +201,16 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- API Route
+pub struct ApiRouteAdapter;
+impl_pass_through_adapter!(
+	name: ApiRouteAdapter,
+	kind: AdapterKind::ApiRoute,
+	key_env: Some("API_ROUTE_API_KEY"),
+	endpoint: "https://global.api-route.com/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(
