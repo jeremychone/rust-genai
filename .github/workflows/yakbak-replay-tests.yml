@@ -29,6 +29,9 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Run library unit tests
+        run: cargo test --lib
+
       - name: Run OpenAI replay tests
         run: cargo test --test tests_yakbak_openai_resp
 

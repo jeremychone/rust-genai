@@ -131,6 +131,70 @@ impl OpenAIStreamer {
 			tool_call
 		}
 	}
+	/// Finalize once, after [DONE] or clean EOF with an explicit finish reason.
+	fn finish(&mut self) -> InterStreamEvent {
+		self.done = true;
+
+		// -- Build the usage and captured_content
+		// TODO: Needs to clarify wh for usage we do not adopt the same strategy from captured content below
+		let captured_usage = if self.options.capture_usage {
+			self.captured_data.usage.take()
+		} else {
+			None
+		};
+
+		// -- Process the captured_tool_calls
+		// NOTE: here we attempt to parse the `fn_arguments` if it is string, because it means that it was accumulated
+		let captured_tool_calls = if let Some(tools_calls) = self.captured_data.tool_calls.take() {
+			let tools_calls: Vec<ToolCall> = tools_calls
+				.into_iter()
+				.map(|tool_call| {
+					// extrat
+					let ToolCall {
+						call_id,
+						fn_name,
+						fn_arguments,
+						..
+					} = tool_call;
+					// parse fn_arguments if needed
+					let fn_arguments = match fn_arguments {
+						Value::String(fn_arguments_string) => {
+							// NOTE: Here we are resilient for now, if we cannot parse, just return the original String
+							match serde_json::from_str::<Value>(&fn_arguments_string) {
+								Ok(fn_arguments) => fn_arguments,
+								Err(_) => Value::String(fn_arguments_string),
+							}
+						}
+						_ => fn_arguments,
+					};
+
+					ToolCall {
+						call_id,
+						fn_name,
+						fn_arguments,
+						thought_signatures: None,
+					}
+				})
+				.collect();
+			Some(tools_calls)
+		} else {
+			None
+		};
+
+		// Return the internal stream end
+		let inter_stream_end = InterStreamEnd {
+			captured_usage,
+			captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
+			captured_text_content: self.captured_data.content.take(),
+			captured_reasoning_content: self.captured_data.reasoning_content.take(),
+			captured_tool_calls,
+			captured_thought_signatures: None,
+			captured_thought_blocks: None,
+			captured_response_id: None,
+		};
+
+		InterStreamEvent::End(inter_stream_end)
+	}
 }
 
 impl futures::Stream for OpenAIStreamer {
@@ -149,67 +213,7 @@ impl futures::Stream for OpenAIStreamer {
 					// -- End Message
 					// According to OpenAI Spec, this is the end message
 					if message.data == "[DONE]" {
-						self.done = true;
-
-						// -- Build the usage and captured_content
-						// TODO: Needs to clarify wh for usage we do not adopt the same strategy from captured content below
-						let captured_usage = if self.options.capture_usage {
-							self.captured_data.usage.take()
-						} else {
-							None
-						};
-
-						// -- Process the captured_tool_calls
-						// NOTE: here we attempt to parse the `fn_arguments` if it is string, because it means that it was accumulated
-						let captured_tool_calls = if let Some(tools_calls) = self.captured_data.tool_calls.take() {
-							let tools_calls: Vec<ToolCall> = tools_calls
-								.into_iter()
-								.map(|tool_call| {
-									// extrat
-									let ToolCall {
-										call_id,
-										fn_name,
-										fn_arguments,
-										..
-									} = tool_call;
-									// parse fn_arguments if needed
-									let fn_arguments = match fn_arguments {
-										Value::String(fn_arguments_string) => {
-											// NOTE: Here we are resilient for now, if we cannot parse, just return the original String
-											match serde_json::from_str::<Value>(&fn_arguments_string) {
-												Ok(fn_arguments) => fn_arguments,
-												Err(_) => Value::String(fn_arguments_string),
-											}
-										}
-										_ => fn_arguments,
-									};
-
-									ToolCall {
-										call_id,
-										fn_name,
-										fn_arguments,
-										thought_signatures: None,
-									}
-								})
-								.collect();
-							Some(tools_calls)
-						} else {
-							None
-						};
-
-						// Return the internal stream end
-						let inter_stream_end = InterStreamEnd {
-							captured_usage,
-							captured_stop_reason: self.captured_data.stop_reason.take().map(StopReason::from),
-							captured_text_content: self.captured_data.content.take(),
-							captured_reasoning_content: self.captured_data.reasoning_content.take(),
-							captured_tool_calls,
-							captured_thought_signatures: None,
-							captured_thought_blocks: None,
-							captured_response_id: None,
-						};
-
-						return Poll::Ready(Some(Ok(InterStreamEvent::End(inter_stream_end))));
+						return Poll::Ready(Some(Ok(self.finish())));
 					}
 
 					// -- Other Content Messages
@@ -408,6 +412,36 @@ impl futures::Stream for OpenAIStreamer {
 					})));
 				}
 				None => {
+					// Some compatible providers close after finish_reason without [DONE].
+					// Do not finish early: a usage tail or a transport error may still follow.
+					let reason = self.captured_data.stop_reason.clone().map(StopReason::from);
+					if let Some(reason) = reason.filter(|r| !matches!(r, StopReason::Other(_))) {
+						// A declared completion cannot make incomplete tool arguments safe.
+						// Preserve length/filter reasons so callers can report the real failure.
+						if !matches!(reason, StopReason::MaxTokens(_) | StopReason::ContentFilter(_)) {
+							let calls = self.captured_data.tool_calls.as_deref().unwrap_or_default();
+							let invalid = calls.iter().any(|call| {
+								let valid_args = match &call.fn_arguments {
+									Value::String(args) => {
+										serde_json::from_str::<Value>(args).is_ok_and(|v| v.is_object())
+									}
+									args => args.is_object(),
+								};
+								call.call_id.is_empty() || call.fn_name.is_empty() || !valid_args
+							}) || (self.options.capture_tool_calls
+								&& matches!(reason, StopReason::ToolCall(_))
+								&& calls.is_empty());
+							if invalid {
+								self.done = true;
+								return Poll::Ready(Some(Err(Error::ChatResponse {
+									model_iden: self.options.model_iden.clone(),
+									body: serde_json::json!({"error": "stream ended with incomplete tool calls"}),
+								})));
+							}
+						}
+						return Poll::Ready(Some(Ok(self.finish())));
+					}
+					self.done = true;
 					return Poll::Ready(None);
 				}
 			}
@@ -518,3 +552,7 @@ mod tests {
 		assert_eq!(message_data["usage"]["prompt_tokens"], 11);
 	}
 }
+
+#[cfg(test)]
+#[path = "streamer_eof_tests.rs"]
+mod eof_tests;
