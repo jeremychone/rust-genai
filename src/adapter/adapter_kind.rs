@@ -128,6 +128,11 @@ pub enum AdapterKind {
 	/// Uses `REQUESTY_API_KEY`.
 	Requesty,
 
+	/// API Route: OpenAI-compatible gateway, selected via the `api_route::` namespace.
+	/// Examples: `api_route::gpt-6.1-sol`, `api_route::claude-fable-5-1`.
+	/// Uses `API_ROUTE_API_KEY`.
+	ApiRoute,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -175,6 +180,7 @@ adapter_kind_str_maps! {
 	OpenRouter         => "OpenRouter",         "open_router",         adapters::all_adapters::OpenRouterAdapter;
 	AtlasCloud         => "AtlasCloud",         "atlascloud",          adapters::all_adapters::AtlasCloudAdapter;
 	Requesty           => "Requesty",           "requesty",            adapters::all_adapters::RequestyAdapter;
+	ApiRoute           => "ApiRoute",           "api_route",           adapters::all_adapters::ApiRouteAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 

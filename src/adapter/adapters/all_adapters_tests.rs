@@ -1,4 +1,5 @@
 use super::{DeepSeekAdapter, OllamaAdapter};
+use crate::adapter::AdapterDispatcher;
 use crate::adapter::{Adapter, AdapterKind, ServiceType};
 use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ReasoningEffort};
 use crate::resolver::{AuthData, Endpoint};
@@ -6,6 +7,36 @@ use crate::{ModelIden, ServiceTarget};
 use serde_json::Value;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
+
+#[test]
+fn test_api_route_dispatch_preserves_model_and_uses_gateway_endpoint() -> Result<()> {
+	for model_name in ["gpt-6.1-sol", "claude-fable-5-1", "vendor/model-id"] {
+		let namespaced = format!("api_route::{model_name}");
+		let kind = AdapterKind::from_model(&namespaced)?;
+		assert_eq!(kind, AdapterKind::ApiRoute);
+		assert_eq!(kind.default_key_env_name(), Some("API_ROUTE_API_KEY"));
+		let request = AdapterDispatcher::to_web_request_data(
+			ServiceTarget {
+				model: ModelIden::new(kind, namespaced),
+				auth: AuthData::from_single("test-route-key"),
+				endpoint: AdapterDispatcher::default_endpoint(kind),
+			},
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			ChatOptionsSet::default(),
+		)?;
+		assert_eq!(request.url, "https://global.api-route.com/v1/chat/completions");
+		assert_eq!(request.payload["model"], model_name);
+		assert!(
+			request.headers.iter().any(|(name, value)| {
+				name.eq_ignore_ascii_case("authorization") && value == "Bearer test-route-key"
+			})
+		);
+	}
+	// Unqualified model IDs keep their existing native-provider routing.
+	assert_eq!(AdapterKind::from_model("claude-fable-5-1")?, AdapterKind::Anthropic);
+	Ok(())
+}
 
 // region:    --- DeepSeek
 
