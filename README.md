@@ -25,7 +25,7 @@ See [v0.7.0-beta](#v070-beta)
 
 Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `atlascloud`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `atlascloud`, `xai`
 
 
 Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
@@ -205,6 +205,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `open_router::google/gemini-2.0-flash-001` (Forces **OpenRouter** adapter)
 - `requesty::openai/gpt-4o-mini` (Forces **Requesty** adapter)
 - `api_route::gpt-6.1-sol` or `api_route::claude-fable-5-1` (Forces **API Route** adapter)
+- `heabsy::qwen38` (Forces **Heabsy** adapter)
 - `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
@@ -212,6 +213,11 @@ For [API Route](https://www.api-route.com), create a key in its dashboard and se
 `API_ROUTE_API_KEY`. The `api_route::` namespace routes Chat Completions to
 `https://global.api-route.com/v1/` and sends the model ID after `::` unchanged.
 Use a model available to your key; see the [setup guide](https://www.api-route.com/docs/quickstart).
+
+For [Heabsy](https://heabsy.com/platform), get an API key in the Heabsy console (accounts are opened
+on request) and set `HEABSY_API_KEY`. The `heabsy::` namespace routes Chat Completions to
+`https://api.heabsy.com/v1/` and sends the model ID after `::` unchanged. Embeddings are not
+supported; see the [model catalog](https://heabsy.com/models) for model IDs.
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
