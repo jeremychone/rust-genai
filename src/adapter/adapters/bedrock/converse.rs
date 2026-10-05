@@ -78,13 +78,22 @@ pub(super) fn build_converse_payload(
 
 	// inferenceConfig
 	let mut inference: Map<String, Value> = Map::new();
-	let max_tokens = resolve_max_tokens(model_name, &options_set);
-	inference.insert("maxTokens".to_string(), json!(max_tokens));
-	if let Some(temperature) = options_set.temperature() {
-		inference.insert("temperature".to_string(), json!(temperature));
-	}
-	if let Some(top_p) = options_set.top_p() {
-		inference.insert("topP".to_string(), json!(top_p));
+	if nova_high_effort(publisher, options_set.reasoning_effort()) {
+		// Nova rejects maxTokens, temperature and topP alongside high reasoning effort.
+		if options_set.max_tokens().is_some() || options_set.temperature().is_some() || options_set.top_p().is_some() {
+			warn!(
+				"Bedrock Nova: max_tokens, temperature and top_p are not allowed with high reasoning effort; omitting them"
+			);
+		}
+	} else {
+		let max_tokens = resolve_max_tokens(model_name, &options_set);
+		inference.insert("maxTokens".to_string(), json!(max_tokens));
+		if let Some(temperature) = options_set.temperature() {
+			inference.insert("temperature".to_string(), json!(temperature));
+		}
+		if let Some(top_p) = options_set.top_p() {
+			inference.insert("topP".to_string(), json!(top_p));
+		}
 	}
 	if !options_set.stop_sequences().is_empty() {
 		inference.insert("stopSequences".to_string(), json!(options_set.stop_sequences()));
@@ -270,14 +279,12 @@ fn publisher_additional_fields(publisher: BedrockPublisher, effort: &ReasoningEf
 			}))
 		}
 		BedrockPublisher::AmazonNova => {
-			// Nova surfaces reasoning via inferenceConfig.reasoningConfig today; when a user explicitly sets
-			// ReasoningEffort, opt in.
-			match effort {
-				ReasoningEffort::Zero => None,
-				_ => Some(json!({
-					"inferenceConfig": { "reasoningConfig": { "type": "enabled" } }
-				})),
-			}
+			// Nova 2 takes `reasoningConfig { type, maxReasoningEffort }` (required when enabled).
+			let reasoning_config = match nova_reasoning_effort(effort) {
+				Some(level) => json!({ "type": "enabled", "maxReasoningEffort": level }),
+				None => json!({ "type": "disabled" }),
+			};
+			Some(json!({ "inferenceConfig": { "reasoningConfig": reasoning_config } }))
 		}
 		BedrockPublisher::OpenAI => {
 			// Passed through to the OpenAI Responses API, which takes `reasoning.effort`.
@@ -290,6 +297,23 @@ fn publisher_additional_fields(publisher: BedrockPublisher, effort: &ReasoningEf
 		}
 		BedrockPublisher::Other => None,
 	}
+}
+
+/// Nova's `maxReasoningEffort` for a genai effort, or `None` for reasoning off.
+fn nova_reasoning_effort(effort: &ReasoningEffort) -> Option<&'static str> {
+	match effort {
+		ReasoningEffort::Zero => None,
+		ReasoningEffort::Minimal | ReasoningEffort::Low => Some("low"),
+		ReasoningEffort::Medium => Some("medium"),
+		ReasoningEffort::High | ReasoningEffort::XHigh | ReasoningEffort::Max => Some("high"),
+		ReasoningEffort::Budget(n) if *n <= 1024 => Some("low"),
+		ReasoningEffort::Budget(n) if *n <= 8000 => Some("medium"),
+		ReasoningEffort::Budget(_) => Some("high"),
+	}
+}
+
+fn nova_high_effort(publisher: BedrockPublisher, effort: Option<&ReasoningEffort>) -> bool {
+	matches!(publisher, BedrockPublisher::AmazonNova) && effort.and_then(nova_reasoning_effort) == Some("high")
 }
 
 struct ConverseRequestParts {
@@ -652,6 +676,57 @@ mod tests {
 		assert_eq!(
 			payload["additionalModelRequestFields"]["thinking"]["budget_tokens"],
 			1024
+		);
+		Ok(())
+	}
+
+	#[test]
+	fn nova_gets_a_reasoning_effort_level() -> Result<()> {
+		// -- Setup & Fixtures
+		let chat_req = || ChatRequest::new(vec![ChatMessage::user("hi")]);
+		let medium = ChatOptions::default()
+			.with_reasoning_effort(ReasoningEffort::Medium)
+			.with_temperature(0.5);
+		let zero = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+
+		// -- Exec
+		let medium = payload_for("us.amazon.nova-2-lite-v1:0", chat_req(), &medium)?;
+		let zero = payload_for("us.amazon.nova-2-lite-v1:0", chat_req(), &zero)?;
+
+		// -- Check
+		assert_eq!(
+			medium["additionalModelRequestFields"],
+			json!({ "inferenceConfig": { "reasoningConfig": { "type": "enabled", "maxReasoningEffort": "medium" } } })
+		);
+		assert_eq!(
+			medium["inferenceConfig"],
+			json!({ "maxTokens": 5000, "temperature": 0.5 })
+		);
+		assert_eq!(
+			zero["additionalModelRequestFields"],
+			json!({ "inferenceConfig": { "reasoningConfig": { "type": "disabled" } } })
+		);
+		Ok(())
+	}
+
+	#[test]
+	fn nova_high_effort_drops_sampling_settings() -> Result<()> {
+		// -- Setup & Fixtures
+		let options = ChatOptions::default()
+			.with_reasoning_effort(ReasoningEffort::High)
+			.with_max_tokens(4000)
+			.with_temperature(0.5)
+			.with_top_p(0.9);
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("hi")]);
+
+		// -- Exec
+		let payload = payload_for("amazon.nova-2-lite-v1:0", chat_req, &options)?;
+
+		// -- Check
+		assert_eq!(payload["inferenceConfig"], json!({}));
+		assert_eq!(
+			payload["additionalModelRequestFields"]["inferenceConfig"]["reasoningConfig"]["maxReasoningEffort"],
+			"high"
 		);
 		Ok(())
 	}

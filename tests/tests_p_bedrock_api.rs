@@ -9,12 +9,15 @@
 mod support;
 
 use crate::support::{TestResult, common_tests};
+use genai::chat::ReasoningEffort;
 use serial_test::serial;
 
 // Cross-region inference profile: newer models are only reachable through one.
 const MODEL: &str = "bedrock_api::global.openai.gpt-5.6-terra";
 // Bare (non-profile) id, to exercise publisher detection without a geography prefix.
 const MODEL_BARE: &str = "bedrock_api::amazon.nova-lite-v1:0";
+// Nova 2 reasons with `reasoningConfig.maxReasoningEffort`.
+const MODEL_NOVA_2: &str = "bedrock_api::us.amazon.nova-2-lite-v1:0";
 
 // region:    --- Chat
 
@@ -28,6 +31,20 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[serial(bedrock_api)]
 async fn test_chat_bare_model_id_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_BARE, None).await
+}
+
+/// Nova 2 needs `maxReasoningEffort` whenever reasoning is enabled.
+#[tokio::test]
+#[serial(bedrock_api)]
+async fn test_chat_reasoning_nova_medium_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL_NOVA_2, ReasoningEffort::Medium, None).await
+}
+
+/// High effort: Nova rejects maxTokens, temperature and topP alongside it.
+#[tokio::test]
+#[serial(bedrock_api)]
+async fn test_chat_reasoning_nova_high_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL_NOVA_2, ReasoningEffort::High, None).await
 }
 
 // endregion: --- Chat
