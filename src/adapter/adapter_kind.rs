@@ -133,6 +133,11 @@ pub enum AdapterKind {
 	/// Uses `API_ROUTE_API_KEY`.
 	ApiRoute,
 
+	/// Heabsy: OpenAI-compatible inference API for open models, selected via the `heabsy::` namespace.
+	/// Example: `heabsy::qwen38`. Website: <https://heabsy.com/platform>.
+	/// Uses `HEABSY_API_KEY`. Embeddings are not supported.
+	Heabsy,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -181,6 +186,7 @@ adapter_kind_str_maps! {
 	AtlasCloud         => "AtlasCloud",         "atlascloud",          adapters::all_adapters::AtlasCloudAdapter;
 	Requesty           => "Requesty",           "requesty",            adapters::all_adapters::RequestyAdapter;
 	ApiRoute           => "ApiRoute",           "api_route",           adapters::all_adapters::ApiRouteAdapter;
+	Heabsy             => "Heabsy",             "heabsy",              adapters::all_adapters::HeabsyAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
