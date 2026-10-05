@@ -190,6 +190,91 @@ async fn test_web_stream_no_sink_leaves_transport_untapped() -> Result<()> {
 	Ok(())
 }
 
+#[tokio::test]
+async fn test_web_stream_utf8_split_character() -> Result<()> {
+	// -- Setup & Fixtures
+	let reqwest_builder = reqwest::Client::new().get("http://127.0.0.1/");
+	let mut web_stream =
+		WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
+	web_stream.reqwest_builder = None;
+	web_stream.bytes_stream = Some(Box::pin(futures::stream::iter([
+		Ok::<_, BoxError>(Bytes::from_static(b"caf\xc3")),
+		Ok::<_, BoxError>(Bytes::from_static(b"\xa9\n")),
+	])));
+
+	// -- Exec
+	let message = web_stream.next().await.ok_or("Should have a decoded message")?;
+	let message = message.map_err(|err| err.to_string())?;
+	let end = web_stream.next().await;
+
+	// -- Check
+	assert_eq!(message, "caf\u{e9}");
+	assert!(end.is_none());
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_web_stream_utf8_invalid_bytes() -> Result<()> {
+	// -- Setup & Fixtures
+	let reqwest_builder = reqwest::Client::new().get("http://127.0.0.1/");
+	let mut web_stream =
+		WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
+	web_stream.reqwest_builder = None;
+	web_stream.bytes_stream = Some(Box::pin(futures::stream::iter([
+		Ok::<_, BoxError>(Bytes::from_static(b"caf\xc3")),
+		Ok::<_, BoxError>(Bytes::from_static(b"\xff\n")),
+		Ok::<_, BoxError>(Bytes::from_static(b"more\n")),
+	])));
+
+	// -- Exec
+	let item = web_stream.next().await.ok_or("Should have an error item")?;
+	let end = web_stream.next().await;
+
+	// -- Check
+	let error = item.err().ok_or("Invalid UTF-8 should return an error")?;
+	let error = error
+		.downcast_ref::<std::string::FromUtf8Error>()
+		.ok_or("Invalid UTF-8 should retain the original bytes in FromUtf8Error")?;
+	assert_eq!(error.as_bytes(), b"caf\xc3\xff\n");
+	assert_eq!(error.utf8_error().valid_up_to(), 3);
+	assert_eq!(error.utf8_error().error_len(), Some(1));
+	assert!(end.is_none(), "invalid UTF-8 should end the stream");
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_web_stream_utf8_truncated_at_end() -> Result<()> {
+	// -- Setup & Fixtures
+	let reqwest_builder = reqwest::Client::new().get("http://127.0.0.1/");
+	let mut web_stream =
+		WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
+	web_stream.reqwest_builder = None;
+	web_stream.bytes_stream = Some(Box::pin(futures::stream::iter([Ok::<_, BoxError>(
+		Bytes::from_static(b"ok\ncaf\xc3"),
+	)])));
+
+	// -- Exec
+	let first = web_stream.next().await.ok_or("Should have a first message")?;
+	let first = first.map_err(|err| err.to_string())?;
+	let item = web_stream.next().await.ok_or("Should have an error item")?;
+	let end = web_stream.next().await;
+
+	// -- Check
+	assert_eq!(first, "ok");
+	let error = item.err().ok_or("Truncated UTF-8 at end should return an error")?;
+	let error = error
+		.downcast_ref::<std::string::FromUtf8Error>()
+		.ok_or("Truncated UTF-8 should retain the undelivered bytes in FromUtf8Error")?;
+	assert_eq!(error.as_bytes(), b"caf\xc3");
+	assert_eq!(error.utf8_error().valid_up_to(), 3);
+	assert_eq!(error.utf8_error().error_len(), None);
+	assert!(end.is_none(), "stream should end after the truncation error");
+
+	Ok(())
+}
+
 // region:    --- Support
 
 /// Spawns a one-shot HTTP server that answers the first request with the given raw HTTP response.
