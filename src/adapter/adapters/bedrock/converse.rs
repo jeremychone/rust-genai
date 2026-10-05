@@ -20,28 +20,28 @@ use value_ext::JsonValueExt;
 pub(super) enum BedrockPublisher {
 	Anthropic,
 	AmazonNova,
+	OpenAI,
 	Other,
 }
 
+const INFERENCE_PROFILE_PREFIXES: &[&str] = &["us", "us-gov", "eu", "apac", "au", "ca", "jp", "in", "global"];
+
 impl BedrockPublisher {
 	/// Model IDs are of the form `<publisher>.<model>...` or
-	/// `<region>.<publisher>.<model>...` (cross-region inference profiles).
+	/// `<geo>.<publisher>.<model>...` (cross-region inference profiles).
 	pub(super) fn from_model_id(model_id: &str) -> Self {
-		// Strip an optional leading "us."/"eu."/"apac." inference-profile prefix so we can
-		// match the real publisher segment.
-		let tail = model_id.split_once('.').map(|(_, rest)| rest).unwrap_or(model_id);
-		let publisher_segment = tail.split_once('.').map(|(p, _)| p).unwrap_or(tail);
-
-		// For non-profile IDs, the leading segment IS the publisher.
-		let publisher = if publisher_segment.is_empty() {
-			model_id.split_once('.').map(|(p, _)| p).unwrap_or(model_id)
+		let mut segments = model_id.split('.');
+		let first = segments.next().unwrap_or_default();
+		let publisher = if INFERENCE_PROFILE_PREFIXES.contains(&first) {
+			segments.next().unwrap_or_default()
 		} else {
-			publisher_segment
+			first
 		};
 
 		match publisher {
 			"anthropic" => Self::Anthropic,
 			"amazon" => Self::AmazonNova, // Nova models; Titan would also hit this
+			"openai" => Self::OpenAI,
 			_ => Self::Other,
 		}
 	}
@@ -121,6 +121,7 @@ pub(super) fn parse_converse_response(model_iden: ModelIden, web_response: WebRe
 
 	let mut content: MessageContent = MessageContent::default();
 	let mut reasoning_content: Vec<String> = Vec::new();
+	let mut thought_signatures: Vec<String> = Vec::new();
 
 	for mut item in content_items {
 		// Each item has exactly one field indicating block type.
@@ -137,14 +138,34 @@ pub(super) fn parse_converse_response(model_iden: ModelIden, web_response: WebRe
 				thought_signatures: None,
 			}));
 		} else if let Ok(mut reasoning) = item.x_take::<Value>("reasoningContent") {
-			// Converse reasoning block: { reasoningText: { text, signature? } }
-			if let Ok(text) = reasoning.x_take::<String>("/reasoningText/text") {
+			// Converse reasoning block: `{ reasoningText: { text, signature? } }` or
+			// `{ redactedContent: <base64> }`. Signed and redacted blocks are kept as content
+			// parts so the turn can be replayed (see `assistant_content_to_converse_blocks`).
+			if let Ok(redacted) = reasoning.x_take::<String>("redactedContent") {
+				thought_signatures.push(redacted.clone());
+				content.push(ContentPart::ThoughtSignature(redacted));
+			} else if let Ok(text) = reasoning.x_take::<String>("/reasoningText/text") {
+				if let Ok(signature) = reasoning.x_take::<String>("/reasoningText/signature") {
+					thought_signatures.push(signature.clone());
+					content.push(ContentPart::ThoughtSignature(signature));
+					content.push(ContentPart::ReasoningContent(text.clone()));
+				}
 				reasoning_content.push(text);
 			}
 		} else {
 			// Unknown block type — preserve as custom for forward-compat.
 			content.push(ContentPart::from_custom(item, Some(model_iden.clone())));
 		}
+	}
+
+	// Mirror the signatures onto the first tool call, as the streaming `StreamEnd` does, for
+	// callers that only keep the tool calls.
+	if !thought_signatures.is_empty()
+		&& let Some(tool_call) = content.iter_mut().find_map(|part| match part {
+			ContentPart::ToolCall(tool_call) => Some(tool_call),
+			_ => None,
+		}) {
+		tool_call.thought_signatures = Some(thought_signatures);
 	}
 
 	let reasoning_content = if reasoning_content.is_empty() {
@@ -175,7 +196,7 @@ pub(super) fn normalize_stop_reason(converse_reason: &str) -> &str {
 	converse_reason
 }
 
-fn parse_usage(mut usage_value: Value) -> Usage {
+pub(super) fn parse_usage(mut usage_value: Value) -> Usage {
 	let input_tokens: i32 = usage_value.x_take("inputTokens").ok().unwrap_or(0);
 	let output_tokens: i32 = usage_value.x_take("outputTokens").ok().unwrap_or(0);
 	let total_tokens: i32 = usage_value.x_take("totalTokens").ok().unwrap_or(input_tokens + output_tokens);
@@ -224,6 +245,8 @@ fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
 				}
 			}
 			BedrockPublisher::AmazonNova => 5000,
+			// Reasoning tokens count against the output budget.
+			BedrockPublisher::OpenAI => 16384,
 			BedrockPublisher::Other => 4096,
 		}
 	})
@@ -255,6 +278,15 @@ fn publisher_additional_fields(publisher: BedrockPublisher, effort: &ReasoningEf
 					"inferenceConfig": { "reasoningConfig": { "type": "enabled" } }
 				})),
 			}
+		}
+		BedrockPublisher::OpenAI => {
+			// Passed through to the OpenAI Responses API, which takes `reasoning.effort`.
+			// `reasoning.summary` is rejected on Bedrock, so reasoning only comes back encrypted.
+			let effort = match effort {
+				ReasoningEffort::Zero => "none",
+				other => other.as_keyword()?,
+			};
+			Some(json!({ "reasoning": { "effort": effort } }))
 		}
 		BedrockPublisher::Other => None,
 	}
@@ -326,11 +358,12 @@ fn into_converse_request_parts(chat_req: ChatRequest) -> Result<ConverseRequestP
 
 fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 	let mut blocks = Vec::new();
+	let mut document_names: Vec<String> = Vec::new();
 	for part in content {
 		match part {
 			ContentPart::Text(text) => blocks.push(json!({ "text": text })),
 			ContentPart::Binary(binary) => {
-				if let Some(block) = binary_to_converse_block(binary) {
+				if let Some(block) = binary_to_converse_block(binary, &mut document_names) {
 					blocks.push(block);
 				}
 			}
@@ -352,9 +385,48 @@ fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 	blocks
 }
 
+/// Assistant turns replay their reasoning blocks ahead of `toolUse`, so the model continues from
+/// its own reasoning after a tool result. Parts arrive as `StreamEnd::captured_content` /
+/// `parse_converse_response` lay them out: a `ThoughtSignature` immediately followed by its
+/// `ReasoningContent` is a signed `reasoningText` block, and a lone `ThoughtSignature` is a
+/// `redactedContent` blob. Unsigned reasoning text can't be replayed and is dropped. When the
+/// content carries no signatures, the ones mirrored onto the first tool call are used.
 fn assistant_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
-	let mut blocks = Vec::new();
-	for part in content {
+	let mut reasoning_blocks: Vec<Value> = Vec::new();
+	let mut other_parts: Vec<ContentPart> = Vec::new();
+	let mut parts = content.into_iter().peekable();
+	while let Some(part) = parts.next() {
+		match part {
+			ContentPart::ThoughtSignature(signature) => {
+				if let Some(ContentPart::ReasoningContent(_)) = parts.peek()
+					&& let Some(ContentPart::ReasoningContent(text)) = parts.next()
+				{
+					reasoning_blocks.push(json!({
+						"reasoningContent": { "reasoningText": { "text": text, "signature": signature } }
+					}));
+				} else {
+					reasoning_blocks.push(json!({ "reasoningContent": { "redactedContent": signature } }));
+				}
+			}
+			ContentPart::ReasoningContent(_) => {}
+			other => other_parts.push(other),
+		}
+	}
+
+	if reasoning_blocks.is_empty()
+		&& let Some(mirrored) = other_parts.iter().find_map(|part| match part {
+			ContentPart::ToolCall(tool_call) => tool_call.thought_signatures.clone(),
+			_ => None,
+		}) {
+		reasoning_blocks.extend(
+			mirrored
+				.into_iter()
+				.map(|blob| json!({ "reasoningContent": { "redactedContent": blob } })),
+		);
+	}
+
+	let mut blocks = reasoning_blocks;
+	for part in other_parts {
 		match part {
 			ContentPart::Text(text) => blocks.push(json!({ "text": text })),
 			ContentPart::ToolCall(tool_call) => {
@@ -374,9 +446,9 @@ fn assistant_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 			// Unsupported in assistant role for Converse.
 			ContentPart::Binary(_) => {}
 			ContentPart::ToolResponse(_) => {}
-			ContentPart::ThoughtSignature(_) => {}
-			ContentPart::ReasoningContent(_) => {}
 			ContentPart::Custom(_) => {}
+			// Consumed above.
+			ContentPart::ThoughtSignature(_) | ContentPart::ReasoningContent(_) => {}
 		}
 	}
 	blocks
@@ -397,10 +469,12 @@ fn tool_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 	blocks
 }
 
-fn binary_to_converse_block(binary: Binary) -> Option<Value> {
+fn binary_to_converse_block(binary: Binary, document_names: &mut Vec<String>) -> Option<Value> {
 	let is_image = binary.is_image();
 	let Binary {
-		content_type, source, ..
+		content_type,
+		source,
+		name,
 	} = binary;
 
 	// Converse format: image blocks use { image: { format, source: { bytes } } }
@@ -424,14 +498,44 @@ fn binary_to_converse_block(binary: Binary) -> Option<Value> {
 			}
 		}))
 	} else {
+		let name = unique_document_name(name.as_deref(), document_names);
 		Some(json!({
 			"document": {
 				"format": format,
-				"name": "document",
+				"name": name,
 				"source": { "bytes": data },
 			}
 		}))
 	}
+}
+
+/// Converse document names must be unique within a message and may only contain alphanumerics,
+/// single spaces, hyphens, parentheses and square brackets. Derive one from the file name.
+fn unique_document_name(file_name: Option<&str>, used: &mut Vec<String>) -> String {
+	let stem = file_name
+		.map(|name| name.rsplit_once('.').map(|(stem, _)| stem).unwrap_or(name))
+		.unwrap_or_default();
+	let sanitized: String = stem
+		.chars()
+		.map(|c| {
+			if c.is_ascii_alphanumeric() || matches!(c, ' ' | '-' | '(' | ')' | '[' | ']') {
+				c
+			} else {
+				'-'
+			}
+		})
+		.collect();
+	let base = sanitized.split_whitespace().collect::<Vec<_>>().join(" ");
+	let base = if base.is_empty() { "document".to_string() } else { base };
+
+	let mut name = base.clone();
+	let mut n = 2;
+	while used.contains(&name) {
+		name = format!("{base}-{n}");
+		n += 1;
+	}
+	used.push(name.clone());
+	name
 }
 
 fn converse_format_from_content_type(content_type: &str, is_image: bool) -> Option<&'static str> {
@@ -493,3 +597,192 @@ fn tool_to_converse_tool(tool: Tool) -> Result<Value> {
 
 	Ok(json!({ "toolSpec": tool_spec }))
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
+
+	use super::*;
+	use crate::adapter::AdapterKind;
+	use crate::chat::{ChatMessage, ChatOptions};
+
+	fn payload_for(model: &str, chat_req: ChatRequest, options: &ChatOptions) -> Result<Value> {
+		let model_iden = ModelIden::new(AdapterKind::BedrockApi, model);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(options));
+		Ok(build_converse_payload(&model_iden, chat_req, options_set)?)
+	}
+
+	fn tool_call() -> ToolCall {
+		ToolCall {
+			call_id: "call_1".to_string(),
+			fn_name: "weather".to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: None,
+		}
+	}
+
+	#[test]
+	fn publisher_is_read_with_and_without_a_profile_prefix() {
+		for (id, expected) in [
+			("anthropic.claude-sonnet-4-5-20250929-v1:0", "Anthropic"),
+			("us.anthropic.claude-sonnet-4-5-20250929-v1:0", "Anthropic"),
+			("global.anthropic.claude-haiku-4-5-20251001-v1:0", "Anthropic"),
+			("amazon.nova-pro-v1:0", "AmazonNova"),
+			("apac.amazon.nova-lite-v1:0", "AmazonNova"),
+			("global.openai.gpt-5.6-terra", "OpenAI"),
+			("openai.gpt-5.4", "OpenAI"),
+			("meta.llama3-1-70b-instruct-v1:0", "Other"),
+		] {
+			assert_eq!(format!("{:?}", BedrockPublisher::from_model_id(id)), expected, "{id}");
+		}
+	}
+
+	#[test]
+	fn bare_anthropic_id_gets_thinking_config() -> Result<()> {
+		// -- Setup & Fixtures
+		let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Low);
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("hi")]);
+
+		// -- Exec
+		let payload = payload_for("anthropic.claude-sonnet-4-5-20250929-v1:0", chat_req, &options)?;
+
+		// -- Check
+		assert_eq!(
+			payload["additionalModelRequestFields"]["thinking"]["budget_tokens"],
+			1024
+		);
+		Ok(())
+	}
+
+	#[test]
+	fn openai_gets_reasoning_effort() -> Result<()> {
+		// -- Setup & Fixtures
+		let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Medium);
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("hi")]);
+
+		// -- Exec
+		let payload = payload_for("global.openai.gpt-5.6-terra", chat_req, &options)?;
+
+		// -- Check
+		assert_eq!(
+			payload["additionalModelRequestFields"],
+			json!({ "reasoning": { "effort": "medium" } })
+		);
+		Ok(())
+	}
+
+	#[test]
+	fn assistant_turn_replays_signed_and_redacted_reasoning_before_tool_use() -> Result<()> {
+		// -- Setup & Fixtures
+		let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+			ContentPart::ThoughtSignature("sig-1".to_string()),
+			ContentPart::ReasoningContent("thinking".to_string()),
+			ContentPart::ThoughtSignature("blob".to_string()),
+			ContentPart::from_text("Checking."),
+			ContentPart::ToolCall(tool_call()),
+		]));
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("hi"), assistant]);
+
+		// -- Exec
+		let payload = payload_for("us.anthropic.claude-haiku-4-5", chat_req, &ChatOptions::default())?;
+
+		// -- Check
+		assert_eq!(
+			payload["messages"][1]["content"],
+			json!([
+				{ "reasoningContent": { "reasoningText": { "text": "thinking", "signature": "sig-1" } } },
+				{ "reasoningContent": { "redactedContent": "blob" } },
+				{ "text": "Checking." },
+				{ "toolUse": { "toolUseId": "call_1", "name": "weather", "input": {} } },
+			])
+		);
+		Ok(())
+	}
+
+	#[test]
+	fn assistant_turn_falls_back_to_tool_call_signatures() -> Result<()> {
+		// -- Setup & Fixtures
+		let mut call = tool_call();
+		call.thought_signatures = Some(vec!["blob".to_string()]);
+		let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![ContentPart::ToolCall(call)]));
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("hi"), assistant]);
+
+		// -- Exec
+		let payload = payload_for("global.openai.gpt-5.6-terra", chat_req, &ChatOptions::default())?;
+
+		// -- Check
+		assert_eq!(
+			payload["messages"][1]["content"][0],
+			json!({ "reasoningContent": { "redactedContent": "blob" } })
+		);
+		Ok(())
+	}
+
+	#[test]
+	fn documents_get_unique_valid_names() -> Result<()> {
+		// -- Setup & Fixtures
+		let user = ChatMessage::user(MessageContent::from_parts(vec![
+			ContentPart::from_binary_base64("application/pdf", "AAAA", Some("report.v2.pdf".to_string())),
+			ContentPart::from_binary_base64("application/pdf", "BBBB", Some("report.v2.pdf".to_string())),
+			ContentPart::from_binary_base64("text/plain", "CCCC", None),
+		]));
+		let chat_req = ChatRequest::new(vec![user]);
+
+		// -- Exec
+		let payload = payload_for("amazon.nova-lite-v1:0", chat_req, &ChatOptions::default())?;
+
+		// -- Check
+		let names: Vec<&str> = payload["messages"][0]["content"]
+			.as_array()
+			.ok_or("content should be an array")?
+			.iter()
+			.filter_map(|block| block["document"]["name"].as_str())
+			.collect();
+		assert_eq!(names, ["report-v2", "report-v2-2", "document"]);
+		Ok(())
+	}
+
+	#[test]
+	fn response_keeps_reasoning_blocks_for_replay() -> Result<()> {
+		// -- Setup & Fixtures
+		let body = json!({
+			"output": { "message": { "role": "assistant", "content": [
+				{ "reasoningContent": { "reasoningText": { "text": "thinking", "signature": "sig-1" } } },
+				{ "reasoningContent": { "redactedContent": "blob" } },
+				{ "toolUse": { "toolUseId": "call_1", "name": "weather", "input": {} } },
+			]}},
+			"stopReason": "tool_use",
+			"usage": { "inputTokens": 1, "outputTokens": 1, "totalTokens": 2 },
+		});
+		let web_response = WebResponse {
+			status: reqwest::StatusCode::OK,
+			body,
+		};
+
+		// -- Exec
+		let res = parse_converse_response(ModelIden::new(AdapterKind::BedrockApi, "m"), web_response)?;
+
+		// -- Check
+		assert_eq!(res.reasoning_content.as_deref(), Some("thinking"));
+		let parts: Vec<String> = res
+			.content
+			.parts()
+			.iter()
+			.map(|part| match part {
+				ContentPart::ThoughtSignature(sig) => format!("sig:{sig}"),
+				ContentPart::ReasoningContent(text) => format!("text:{text}"),
+				ContentPart::ToolCall(call) => format!("call:{:?}", call.thought_signatures),
+				_ => "other".to_string(),
+			})
+			.collect();
+		assert_eq!(
+			parts,
+			["sig:sig-1", "text:thinking", "sig:blob", r#"call:Some(["sig-1", "blob"])"#]
+		);
+		Ok(())
+	}
+}
+
+// endregion: --- Tests

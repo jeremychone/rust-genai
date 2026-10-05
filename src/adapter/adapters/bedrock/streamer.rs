@@ -15,9 +15,10 @@
 //!
 //! See: https://docs.aws.amazon.com/transcribe/latest/dg/event-stream.html
 
+use crate::adapter::adapters::bedrock::converse::parse_usage;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
-use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
+use crate::chat::{ChatOptionsSet, StopReason, ToolCall};
 use crate::webc::FrameTap;
 use crate::{Error, ModelIden, Result};
 use bytes::{Buf, BytesMut};
@@ -41,6 +42,8 @@ pub(super) struct BedrockStreamer {
 	done: bool,
 	emitted_start: bool,
 	in_progress_tool: Option<ToolCallAccumulator>,
+	in_progress_reasoning: Option<ReasoningAccumulator>,
+	captured_thought_blocks: Vec<InterStreamThoughtBlock>,
 	// Feeds the user `ChatFrameSink`, when one is configured. Bedrock decodes its own
 	// event-stream framing, so the tap lives here rather than in a shared transport.
 	frame_tap: Option<FrameTap>,
@@ -50,6 +53,36 @@ struct ToolCallAccumulator {
 	call_id: String,
 	fn_name: String,
 	input: String,
+}
+
+/// One `reasoningContent` content block. Claude streams `text` deltas then a `signature`;
+/// redacted reasoning (Claude `redacted_thinking`, OpenAI encrypted reasoning) arrives as
+/// `redactedContent`. Kept regardless of capture options: the blocks are what lets the caller
+/// replay a thinking + tool-use turn.
+#[derive(Default)]
+struct ReasoningAccumulator {
+	text: String,
+	signature: String,
+	redacted: String,
+}
+
+impl ReasoningAccumulator {
+	/// A signed or redacted block, or `None` for unsigned reasoning (it can't be replayed).
+	fn into_thought_block(self) -> Option<InterStreamThoughtBlock> {
+		if !self.redacted.is_empty() {
+			Some(InterStreamThoughtBlock {
+				reasoning_content: None,
+				signature: self.redacted,
+			})
+		} else if !self.signature.is_empty() {
+			Some(InterStreamThoughtBlock {
+				reasoning_content: Some(self.text),
+				signature: self.signature,
+			})
+		} else {
+			None
+		}
+	}
 }
 
 impl BedrockStreamer {
@@ -69,6 +102,8 @@ impl BedrockStreamer {
 			done: false,
 			emitted_start: false,
 			in_progress_tool: None,
+			in_progress_reasoning: None,
+			captured_thought_blocks: Vec::new(),
 			frame_tap,
 		}
 	}
@@ -260,6 +295,7 @@ impl BedrockStreamer {
 						}));
 					}
 				} else if let Ok(reasoning) = payload.x_take::<String>("/delta/reasoningContent/text") {
+					self.in_progress_reasoning.get_or_insert_default().text.push_str(&reasoning);
 					if self.options.capture_reasoning_content {
 						match self.captured_data.reasoning_content {
 							Some(ref mut r) => r.push_str(&reasoning),
@@ -268,10 +304,18 @@ impl BedrockStreamer {
 					}
 					events.push(InterStreamEvent::ReasoningChunk(reasoning));
 				} else if let Ok(signature) = payload.x_take::<String>("/delta/reasoningContent/signature") {
+					self.in_progress_reasoning
+						.get_or_insert_default()
+						.signature
+						.push_str(&signature);
 					events.push(InterStreamEvent::ThoughtSignatureChunk(signature));
+				} else if let Ok(redacted) = payload.x_take::<String>("/delta/reasoningContent/redactedContent") {
+					self.in_progress_reasoning.get_or_insert_default().redacted.push_str(&redacted);
+					events.push(InterStreamEvent::ThoughtSignatureChunk(redacted));
 				}
 			}
 			"contentBlockStop" => {
+				self.flush_reasoning();
 				if let Some(acc) = self.in_progress_tool.take()
 					&& self.options.capture_tool_calls
 				{
@@ -301,7 +345,7 @@ impl BedrockStreamer {
 				if self.options.capture_usage
 					&& let Ok(usage_value) = payload.x_take::<Value>("usage")
 				{
-					self.captured_data.usage = Some(parse_stream_usage(usage_value));
+					self.captured_data.usage = Some(parse_usage(usage_value));
 				}
 			}
 			other => {
@@ -312,7 +356,18 @@ impl BedrockStreamer {
 		Ok(events)
 	}
 
+	fn flush_reasoning(&mut self) {
+		if let Some(block) = self
+			.in_progress_reasoning
+			.take()
+			.and_then(ReasoningAccumulator::into_thought_block)
+		{
+			self.captured_thought_blocks.push(block);
+		}
+	}
+
 	fn finalize_end(&mut self) -> InterStreamEvent {
+		self.flush_reasoning();
 		let captured_usage = if self.options.capture_usage {
 			self.captured_data.usage.take()
 		} else {
@@ -325,7 +380,8 @@ impl BedrockStreamer {
 			captured_reasoning_content: self.captured_data.reasoning_content.take(),
 			captured_tool_calls: self.captured_data.tool_calls.take(),
 			captured_thought_signatures: None,
-			captured_thought_blocks: None,
+			captured_thought_blocks: (!self.captured_thought_blocks.is_empty())
+				.then(|| std::mem::take(&mut self.captured_thought_blocks)),
 			captured_response_id: None,
 		};
 		InterStreamEvent::End(end)
@@ -348,11 +404,13 @@ impl Stream for BedrockStreamer {
 			// Try to parse a complete frame from the buffer first.
 			match self.try_parse_frame() {
 				Ok(Some(frame)) => {
-					// Detect terminal events BEFORE handling so we can emit End after.
-					let is_message_stop = frame.headers.get(":event-type").map(|s| s.as_str()) == Some("messageStop");
+					// Detect the terminal event BEFORE handling so we can emit End after. ConverseStream
+					// sends `messageStop` (stop reason) and then `metadata` (usage), so End waits for
+					// `metadata`; a stream that closes without it is finalized at EOF below.
+					let is_metadata = frame.headers.get(":event-type").map(|s| s.as_str()) == Some("metadata");
 					let events = self.handle_frame(frame)?;
 					self.pending_events.extend(events);
-					if is_message_stop {
+					if is_metadata {
 						self.done = true;
 						let end = self.finalize_end();
 						self.pending_events.push_back(end);
@@ -484,19 +542,6 @@ fn parse_headers(mut raw: &[u8]) -> std::result::Result<std::collections::HashMa
 		}
 	}
 	Ok(out)
-}
-
-fn parse_stream_usage(mut value: Value) -> Usage {
-	let input_tokens: i32 = value.x_take("inputTokens").ok().unwrap_or(0);
-	let output_tokens: i32 = value.x_take("outputTokens").ok().unwrap_or(0);
-	let total_tokens: i32 = value.x_take("totalTokens").ok().unwrap_or(input_tokens + output_tokens);
-	Usage {
-		prompt_tokens: Some(input_tokens),
-		prompt_tokens_details: None,
-		completion_tokens: Some(output_tokens),
-		completion_tokens_details: None,
-		total_tokens: Some(total_tokens),
-	}
 }
 
 #[cfg(test)]
@@ -644,6 +689,137 @@ mod tests {
 		));
 		assert!(matches!(events.get(2), Some(Ok(InterStreamEvent::End(_)))));
 		assert_eq!(events.len(), 3);
+		Ok(())
+	}
+
+	#[tokio::test]
+	async fn end_carries_usage_from_metadata_after_message_stop() -> Result<()> {
+		// -- Setup & Fixtures
+		// ConverseStream order: the stop reason comes in `messageStop`, the usage after it in `metadata`.
+		let mut bytes = Vec::new();
+		bytes.extend(build_frame("messageStart", br#"{"role":"assistant"}"#));
+		bytes.extend(build_frame(
+			"contentBlockDelta",
+			br#"{"delta":{"text":"hello"},"contentBlockIndex":0}"#,
+		));
+		bytes.extend(build_frame("contentBlockStop", br#"{"contentBlockIndex":0}"#));
+		bytes.extend(build_frame("messageStop", br#"{"stopReason":"end_turn"}"#));
+		bytes.extend(build_frame(
+			"metadata",
+			br#"{"usage":{"inputTokens":10,"outputTokens":5,"totalTokens":15,"cacheReadInputTokens":7,"cacheWriteInputTokens":3},"metrics":{"latencyMs":1}}"#,
+		));
+		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
+			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(bytes))]));
+		let options = crate::chat::ChatOptions::default().with_capture_usage(true);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+
+		// -- Exec
+		let events = BedrockStreamer::new(inner, test_model_iden(), options_set)
+			.collect::<Vec<_>>()
+			.await;
+
+		// -- Check
+		let ends: Vec<_> = events
+			.iter()
+			.filter_map(|event| match event {
+				Ok(InterStreamEvent::End(end)) => Some(end),
+				_ => None,
+			})
+			.collect();
+		assert_eq!(ends.len(), 1, "Should emit exactly one End");
+		let end = ends[0];
+		assert!(matches!(events.last(), Some(Ok(InterStreamEvent::End(_)))));
+		assert_eq!(end.captured_stop_reason, Some(StopReason::from("end_turn".to_string())));
+		let usage = end.captured_usage.as_ref().ok_or("Should have usage")?;
+		assert_eq!(usage.prompt_tokens, Some(10));
+		assert_eq!(usage.completion_tokens, Some(5));
+		assert_eq!(usage.total_tokens, Some(15));
+		let details = usage.prompt_tokens_details.as_ref().ok_or("Should have cache details")?;
+		assert_eq!(details.cached_tokens, Some(7));
+		assert_eq!(details.cache_creation_tokens, Some(3));
+		Ok(())
+	}
+
+	#[tokio::test]
+	async fn end_is_emitted_at_eof_without_metadata() -> Result<()> {
+		// -- Setup & Fixtures
+		let mut bytes = Vec::new();
+		bytes.extend(build_frame(
+			"contentBlockDelta",
+			br#"{"delta":{"text":"hello"},"contentBlockIndex":0}"#,
+		));
+		bytes.extend(build_frame("messageStop", br#"{"stopReason":"end_turn"}"#));
+		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
+			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(bytes))]));
+
+		// -- Exec
+		let events = BedrockStreamer::new(inner, test_model_iden(), Default::default())
+			.collect::<Vec<_>>()
+			.await;
+
+		// -- Check
+		assert!(matches!(
+			events.last(),
+			Some(Ok(InterStreamEvent::End(end))) if end.captured_stop_reason == Some(StopReason::from("end_turn".to_string()))
+		));
+		Ok(())
+	}
+
+	#[tokio::test]
+	async fn end_carries_signed_and_redacted_thought_blocks() -> Result<()> {
+		// -- Setup & Fixtures
+		let mut bytes = Vec::new();
+		bytes.extend(build_frame(
+			"contentBlockDelta",
+			br#"{"delta":{"reasoningContent":{"text":"thin"}},"contentBlockIndex":0}"#,
+		));
+		bytes.extend(build_frame(
+			"contentBlockDelta",
+			br#"{"delta":{"reasoningContent":{"text":"king"}},"contentBlockIndex":0}"#,
+		));
+		bytes.extend(build_frame(
+			"contentBlockDelta",
+			br#"{"delta":{"reasoningContent":{"signature":"sig-1"}},"contentBlockIndex":0}"#,
+		));
+		bytes.extend(build_frame("contentBlockStop", br#"{"contentBlockIndex":0}"#));
+		bytes.extend(build_frame(
+			"contentBlockDelta",
+			br#"{"delta":{"reasoningContent":{"redactedContent":"blob"}},"contentBlockIndex":1}"#,
+		));
+		bytes.extend(build_frame("contentBlockStop", br#"{"contentBlockIndex":1}"#));
+		bytes.extend(build_frame(
+			"contentBlockStart",
+			br#"{"start":{"toolUse":{"toolUseId":"call_1","name":"weather"}},"contentBlockIndex":2}"#,
+		));
+		bytes.extend(build_frame("contentBlockStop", br#"{"contentBlockIndex":2}"#));
+		bytes.extend(build_frame("messageStop", br#"{"stopReason":"tool_use"}"#));
+		bytes.extend(build_frame(
+			"metadata",
+			br#"{"usage":{"inputTokens":1,"outputTokens":1,"totalTokens":2}}"#,
+		));
+		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
+			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(bytes))]));
+		// Blocks are kept even without `capture_reasoning_content`: they're needed for replay.
+		let options = crate::chat::ChatOptions::default().with_capture_tool_calls(true);
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+
+		// -- Exec
+		let events = BedrockStreamer::new(inner, test_model_iden(), options_set)
+			.collect::<Vec<_>>()
+			.await;
+
+		// -- Check
+		let Some(Ok(InterStreamEvent::End(end))) = events.last() else {
+			return Err("Should end with End".into());
+		};
+		let blocks: Vec<(Option<&str>, &str)> = end
+			.captured_thought_blocks
+			.as_ref()
+			.ok_or("Should have thought blocks")?
+			.iter()
+			.map(|block| (block.reasoning_content.as_deref(), block.signature.as_str()))
+			.collect();
+		assert_eq!(blocks, [(Some("thinking"), "sig-1"), (None, "blob")]);
 		Ok(())
 	}
 }

@@ -39,7 +39,10 @@
 //! GEMINI_API_KEY=... cargo test --test tests_yakbak_record -- --ignored record_gemini_thinking_stream
 //! ```
 //!
-//! Optional env vars for custom endpoints: `OPENAI_BASE_URL`, `GEMINI_BASE_URL`, `GITHUB_COPILOT_BASE_URL`, `OLLAMA_CLOUD_BASE_URL`.
+//! # Record only Bedrock scenarios (AWS_REGION defaults to us-east-1):
+//! AWS_BEARER_TOKEN_BEDROCK=... cargo test --test tests_yakbak_record -- --ignored record_bedrock
+//!
+//! Optional env vars for custom endpoints: `OPENAI_BASE_URL`, `GEMINI_BASE_URL`, `GITHUB_COPILOT_BASE_URL`, `OLLAMA_CLOUD_BASE_URL`, `BEDROCK_BASE_URL`.
 //!
 //! Each test records a response cassette to `tests/data/yakbak/{provider}/{scenario}/`.
 
@@ -980,3 +983,153 @@ async fn record_gemini_ix_stateful_session() -> TestResult<()> {
 }
 
 // endregion: --- Gemini Ix
+
+// region:    --- Bedrock
+
+fn bedrock_backend() -> String {
+	std::env::var("BEDROCK_BASE_URL").unwrap_or_else(|_| {
+		let region = std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
+		format!("https://bedrock-runtime.{region}.amazonaws.com/")
+	})
+}
+
+// gpt-5.6 on Bedrock returns its reasoning as an encrypted `redactedContent` block.
+const BEDROCK_REASONING_MODEL: &str = "bedrock_api::global.openai.gpt-5.6-terra";
+
+fn bedrock_reasoning_tool_request() -> ChatRequest {
+	ChatRequest::new(vec![ChatMessage::user(
+		"I'm planning a picnic and can't decide between Paris and Lyon, France. Think it through step by step, \
+		 then check the weather (in C) for the city you'd consider first.",
+	)])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city": { "type": "string" },
+			"country": { "type": "string" },
+			"unit": { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})))
+}
+
+fn bedrock_reasoning_options() -> ChatOptions {
+	ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true)
+		.with_reasoning_effort(ReasoningEffort::Medium)
+}
+
+/// Two streamed turns: reasoning + tool call, then the answer after the tool result.
+/// Needs `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`.
+#[tokio::test]
+#[ignore]
+async fn record_bedrock_reasoning_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("bedrock", "reasoning_tool_stream", &bedrock_backend()).await?;
+	let options = bedrock_reasoning_options();
+	let initial_request = bedrock_reasoning_tool_request();
+
+	let stream_res = client
+		.exec_chat_stream(BEDROCK_REASONING_MODEL, initial_request.clone(), Some(&options))
+		.await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Thought signature chunks: {}, tool calls: {:?}, usage: {:?}",
+		first.thought_signature_chunks.len(),
+		first.stream_end.captured_tool_calls().map(|calls| calls.len()),
+		first.stream_end.captured_usage,
+	);
+
+	let tool_call = first
+		.stream_end
+		.captured_tool_calls()
+		.and_then(|calls| calls.first().cloned().cloned())
+		.ok_or("recorded response should contain a tool call")?;
+	let continuation_request = initial_request.append_tool_use_from_stream_end(
+		&first.stream_end,
+		ToolResponse::from_tool_call(&tool_call, r#"{"weather": "Sunny", "temperature": "24C"}"#),
+	);
+	let continuation_res = client
+		.exec_chat_stream(BEDROCK_REASONING_MODEL, continuation_request, Some(&options))
+		.await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	eprintln!(
+		"[record] Continuation text: {} bytes, usage: {:?}",
+		continuation.content.as_deref().map(str::len).unwrap_or(0),
+		continuation.stream_end.captured_usage,
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+/// Claude Haiku with extended thinking: two streamed turns, the first one's signed `reasoningText`
+/// block replayed with its `toolUse`. Needs `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`.
+#[tokio::test]
+#[ignore]
+async fn record_bedrock_claude_thinking_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("bedrock", "claude_thinking_tool_stream", &bedrock_backend()).await?;
+	let model = "bedrock_api::us.anthropic.claude-haiku-4-5-20251001-v1:0";
+	// Low = a 1024-token thinking budget, the minimum.
+	let options = bedrock_reasoning_options().with_reasoning_effort(ReasoningEffort::Low);
+	let initial_request = bedrock_reasoning_tool_request();
+
+	let stream_res = client.exec_chat_stream(model, initial_request.clone(), Some(&options)).await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Reasoning: {} bytes, signature chunks: {}, tool calls: {:?}, usage: {:?}",
+		first.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		first.thought_signature_chunks.len(),
+		first.stream_end.captured_tool_calls().map(|calls| calls.len()),
+		first.stream_end.captured_usage,
+	);
+
+	let tool_call = first
+		.stream_end
+		.captured_tool_calls()
+		.and_then(|calls| calls.first().cloned().cloned())
+		.ok_or("recorded response should contain a tool call")?;
+	let continuation_request = initial_request.append_tool_use_from_stream_end(
+		&first.stream_end,
+		ToolResponse::from_tool_call(&tool_call, r#"{"weather": "Sunny", "temperature": "24C"}"#),
+	);
+	let continuation_res = client.exec_chat_stream(model, continuation_request, Some(&options)).await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	eprintln!(
+		"[record] Continuation text: {} bytes, reasoning: {} bytes, stop: {:?}, usage: {:?}",
+		continuation.content.as_deref().map(str::len).unwrap_or(0),
+		continuation.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		continuation.stream_end.captured_stop_reason,
+		continuation.stream_end.captured_usage,
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+/// One non-streamed reasoning + tool call turn.
+/// Needs `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`.
+#[tokio::test]
+#[ignore]
+async fn record_bedrock_reasoning_tool_non_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("bedrock", "reasoning_tool_non_stream", &bedrock_backend()).await?;
+
+	let res = client
+		.exec_chat(
+			BEDROCK_REASONING_MODEL,
+			bedrock_reasoning_tool_request(),
+			Some(&bedrock_reasoning_options()),
+		)
+		.await?;
+	eprintln!(
+		"[record] Thought signatures: {}, tool calls: {}",
+		res.content.thought_signatures().len(),
+		res.tool_calls().len()
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+// endregion: --- Bedrock
