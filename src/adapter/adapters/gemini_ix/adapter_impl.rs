@@ -9,10 +9,10 @@ use crate::chat::{
 	ToolResponse, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
+use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Error, Headers, Result};
 use crate::{ModelIden, ServiceTarget};
-use reqwest::RequestBuilder;
 use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 use value_ext::JsonValueExt;

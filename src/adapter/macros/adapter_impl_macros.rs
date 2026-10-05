@@ -144,7 +144,7 @@ macro_rules! impl_pass_through_adapter {
 
 		fn to_chat_stream(
 			model_iden: $crate::ModelIden,
-			reqwest_builder: ::reqwest::RequestBuilder,
+			reqwest_builder: $crate::webc::StreamRequest,
 			options_set: $crate::chat::ChatOptionsSet<'_, '_>,
 		) -> $crate::Result<$crate::chat::ChatStreamResponse> {
 			<$delegate as $crate::adapter::Adapter>::to_chat_stream(model_iden, reqwest_builder, options_set)

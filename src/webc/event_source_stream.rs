@@ -1,7 +1,7 @@
 use crate::error::BoxError;
+use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{FrameTap, WebStream};
 use futures::Stream;
-use reqwest::RequestBuilder;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 

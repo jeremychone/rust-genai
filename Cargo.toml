@@ -54,7 +54,7 @@ otel = []
 
 [dependencies]
 # -- Async
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "test-util", "io-util"]}
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "test-util", "io-util", "time"]}
 futures = "0.3"
 tokio-stream = "0.1"
 # -- Json
