@@ -42,6 +42,7 @@
 - Client:
   - `-` Apply `ServiceTargetResolver` when resolving adapter config in `Client::all_model_names()`. (PR #288)
 - Bedrock:
+  - `-` Send explicit OpenAI reasoning-effort keywords through `additionalModelRequestFields`: flat `reasoning_effort` for GPT-OSS and nested `reasoning.effort` for newer OpenAI models. Recognize publishers in direct model IDs and inference-profile IDs, including `in.` profiles.
   - `^` `bedrock_sigv4` now reads `AuthData` as an AWS profile name, rather than ignoring it; a shared `AuthResolver` that returns a non-profile value for every adapter now triggers a profile lookup. (PR #310)
 
 ### New Providers
