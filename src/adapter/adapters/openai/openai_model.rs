@@ -218,7 +218,8 @@ fn extract_snapshot(name: &str, base_offset: usize) -> (&str, Option<(usize, usi
 				candidate[0..4].parse::<u32>(),
 				candidate[4..6].parse::<u32>(),
 				candidate[6..8].parse::<u32>(),
-			) && (1990..=2099).contains(&year)
+			)
+			&& (1990..=2099).contains(&year)
 			&& (1..=12).contains(&month)
 			&& (1..=31).contains(&day)
 		{

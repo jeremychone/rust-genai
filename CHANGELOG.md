@@ -18,6 +18,8 @@
 - `!` API CHANGE: `Error::HttpError` adds a `headers: Box<HeaderMap>` field carrying the response headers of failed streaming HTTP calls.
 - `!` API CHANGE: `Tool` adds the public `custom_format: Option<Value>` field for provider-native freeform custom-tool formats. Downstream `Tool` struct literals must add `custom_format: None`, or preferably migrate to `Tool::new(...)` and builder methods. `Tool::with_custom_format(...)` is the new builder API.
 - `!` API CHANGE: `ChatOptions` adds the public `raw_frame_sink: Option<Arc<dyn ChatFrameSink>>` field for observing raw stream frames across providers. Downstream `ChatOptions` struct literals must add `raw_frame_sink: None` or use `..Default::default()`.
+- `!` API CHANGE: `ChatOptions` adds `stream_header_timeout` and `stream_read_timeout`, both `Option<std::time::Duration>`. Struct literals must add these fields or use `..Default::default()`. (PR #321)
+- `+` Add `AdapterKind::ApiRoute`; exhaustive matches must handle the new variant. (PR #323)
 - `+` Add `ClientBuilder::append_provider_config`, `ClientConfig::append_provider_config`, and `ClientConfig::provider_config` to configure per-adapter endpoint and auth targets declaratively without custom resolver closures. (PR #289)
 
 ### Behavior Refinement / Changes
@@ -46,6 +48,7 @@
 
 - `+` **AtlasCloud**: default env `ATLASCLOUD_API_KEY`, endpoint `https://api.atlascloud.ai/v1/` (activated on `atlascloud::` namespace) (PR #259)
 - `+` **Requesty**: OpenAI-compatible gateway, default env `REQUESTY_API_KEY`, endpoint `https://router.requesty.ai/v1/` (activated on `requesty::` namespace) (PR #317)
+- `+` **API Route**: OpenAI-compatible Chat Completions gateway, default env `API_ROUTE_API_KEY`, endpoint `https://global.api-route.com/v1/` (activated only on `api_route::` namespace). Unqualified model routing is unchanged. (PR #323)
 - `+` **Qwen Cloud**: default env `QWEN_CLOUD_API_KEY`, endpoint `https://dashscope-intl.aliyuncs.com/compatible-mode/v1/` (activated on `qwen_cloud::` namespace)
 - `+` **Kimi**: default env `KIMI_API_KEY`, endpoint `https://api.moonshot.ai/v1/` (activated on `kimi::` namespace or `kimi-` model prefix)
 - `+` **OMLX**: default env `OMLX_API_KEY` (can be absent), endpoint `OMLX_ENDPOINT` (default `http://127.0.0.1:8000/v1/`), OpenAI adapter with chat template kwargs (activated on `omlx::` namespace or `omlx-` model prefix)
@@ -67,6 +70,7 @@
 - `+` Adapter - Add `AdapterKind::all()` to enumerate built-in adapters, excluding `Custom`. (PR #286)
 - `+` Error - Add `Error::status()` and `webc::Error::status()` accessors for HTTP status inspection. (PR #287)
 - `+` Chat - Add `ChatFrameSink` and `ChatOptions::with_raw_frame_sink` / `with_raw_frame_fn` to observe raw stream frames across providers. (PR #290)
+- `+` Chat - Add independent streaming header and raw body read timeouts via `ChatOptions::with_stream_header_timeout` / `with_stream_read_timeout`. Per-call values override client defaults independently; unset values inherit defaults, with no additional limit by default. Heartbeats and partial frames reset the read wait, including for error-body reads. These transport-only options are not serialized, existing reqwest deadlines still apply, and `webc::StreamTimeout::{Headers, Read}` identifies the timeout phase. (PR #321)
 - Anthropic:
   - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
   - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.

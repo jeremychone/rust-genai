@@ -35,6 +35,10 @@ _If I forgot your PR, feel free to submit a PR_
   - [#307](https://github.com/jeremychone/rust-genai/pull/307) fix(chat): preserve per-call thought signatures
   - [#297](https://github.com/jeremychone/rust-genai/pull/297) fix(bedrock): preserve frame events after start
   - [#296](https://github.com/jeremychone/rust-genai/pull/296) fix(openai_resp): propagate streaming error events
+- [dmfs](https://github.com/dmfs)
+  - [#318](https://github.com/jeremychone/rust-genai/pull/318) ollama: map `prompt_eval_cached_count` to cached-token usage
+  - [#312](https://github.com/jeremychone/rust-genai/pull/312) feat(ollama): map ReasoningEffort to the think body param
+  - [#311](https://github.com/jeremychone/rust-genai/pull/311) fix(ollama): emit every event of an ndjson line instead of dropping the extras
 - [lambdabetaeta](https://github.com/lambdabetaeta)
   - [#249](https://github.com/jeremychone/rust-genai/pull/249) fix: reuse Client WebClient for model listing
   - [#250](https://github.com/jeremychone/rust-genai/pull/250) fix: support adaptive thinking for Claude Sonnet 5
@@ -47,12 +51,13 @@ _If I forgot your PR, feel free to submit a PR_
 - [wdwind](https://github.com/wdwind)
   - [#310](https://github.com/jeremychone/rust-genai/pull/310) feat(bedrock_sigv4): select the AWS profile per client via `AuthData`
   - [#308](https://github.com/jeremychone/rust-genai/pull/308) fix(bedrock): refresh SigV4 credentials before expiry, accept `AWS_BEARER_TOKEN_BEDROCK`, and sign for the region the request URL targets
-- [dmfs](https://github.com/dmfs)
-  - [#318](https://github.com/jeremychone/rust-genai/pull/318) ollama: map `prompt_eval_cached_count` to cached-token usage
-  - [#312](https://github.com/jeremychone/rust-genai/pull/312) feat(ollama): map ReasoningEffort to the think body param
-  - [#311](https://github.com/jeremychone/rust-genai/pull/311) fix(ollama): emit every event of an ndjson line instead of dropping the extras
+- [Jackkakaya](https://github.com/Jackkakaya)
+  - [#321](https://github.com/jeremychone/rust-genai/pull/321) feat(chat): add independent streaming header and body read timeouts
+  - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
 - [Thibaultjaigu](https://github.com/Thibaultjaigu)
   - [#317](https://github.com/jeremychone/rust-genai/pull/317) feat(adapter): add Requesty OpenAI-compatible adapter
+- [DennyHo0917](https://github.com/DennyHo0917)
+  - [#323](https://github.com/jeremychone/rust-genai/pull/323) feat(adapter): add API Route OpenAI-compatible adapter
 - [Alb-O](https://github.com/Alb-O)
   - [#243](https://github.com/jeremychone/rust-genai/pull/243) derive PartialEq/Eq for Usage and nested structs
 - [holovskyi](https://github.com/holovskyi) 
@@ -61,8 +66,6 @@ _If I forgot your PR, feel free to submit a PR_
   - [#244](https://github.com/jeremychone/rust-genai/pull/244) feat(otel): optional OpenTelemetry GenAI instrumentation (feature `otel`)
 - [binyangzhu000-sudo](https://github.com/binyangzhu000-sudo)
   - [#259](https://github.com/jeremychone/rust-genai/pull/259) add Atlas Cloud OpenAI-compatible adapter
-- [Jackkakaya](https://github.com/Jackkakaya)
-  - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
 - [blocksdevpro](https://github.com/blocksdevpro)
   - [#271](https://github.com/jeremychone/rust-genai/pull/271) map Anthropic ping events to `ChatStreamEvent::Heartbeat`
 - [CristiC0](https://github.com/CristiC0)

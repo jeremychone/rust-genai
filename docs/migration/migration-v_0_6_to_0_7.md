@@ -67,6 +67,22 @@ let options = ChatOptions {
 
 Use `ChatOptions::with_raw_frame_sink(...)`, `with_raw_frame_sink_arc(...)`, or `with_raw_frame_fn(...)` to attach sinks during streaming calls.
 
+### `ChatOptions` streaming timeout fields
+
+`ChatOptions` adds `stream_header_timeout` and `stream_read_timeout`, both `Option<std::time::Duration>`. Existing struct literals must add these fields as `None` or use `..Default::default()`.
+
+- Configure them with `with_stream_header_timeout(...)` and `with_stream_read_timeout(...)`. Per-call values override client defaults independently; unset values inherit defaults. Both default to no additional limit.
+
+- The header limit covers connection setup and request sending, excluding model resolution. The read limit applies to each raw body read, including error bodies; heartbeats and partial frames reset the wait.
+
+- These are polling-time transport bounds, not an overall generation deadline. Existing reqwest timeouts still apply. Both fields are skipped by serde and never sent to providers.
+
+- Transport timeout errors expose `webc::StreamTimeout::{Headers, Read}` through the boxed stream error.
+
+### `AdapterKind::ApiRoute` variant
+
+`AdapterKind` adds `ApiRoute`. Update exhaustive matches to handle it. Select the OpenAI-compatible Chat Completions gateway explicitly with `api_route::model_name`, using `API_ROUTE_API_KEY` and endpoint `https://global.api-route.com/v1/`. Unqualified model routing is unchanged.
+
 ### Optional fields omitted during JSON serialization
 
 Optional fields whose value is `None` are now omitted from JSON serialization instead of being serialized as `null`. This affects:
