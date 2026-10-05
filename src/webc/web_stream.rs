@@ -154,9 +154,12 @@ impl Stream for WebStream {
 							Err(e) => {
 								if e.error_len().is_some() {
 									// Actual invalid UTF-8 (not just incomplete) — fatal error.
-									return Poll::Ready(Some(Err(
-										Box::new(String::from_utf8(raw).unwrap_err()) as BoxError
-									)));
+									this.bytes_stream = None;
+									let error = match decode_with_partial(this.partial_message.take(), raw) {
+										Err(error) => Box::new(error) as BoxError,
+										Ok(_) => Box::new(e) as BoxError,
+									};
+									return Poll::Ready(Some(Err(error)));
 								}
 								e.valid_up_to()
 							}
@@ -166,7 +169,8 @@ impl Stream for WebStream {
 						this.utf8_carry = raw[valid_up_to..].to_vec();
 
 						// We already validated raw[..valid_up_to] is valid UTF-8 above.
-						let buff_string = String::from_utf8(raw[..valid_up_to].to_vec()).unwrap();
+						let buff_string =
+							String::from_utf8(raw[..valid_up_to].to_vec()).map_err(|e| Box::new(e) as BoxError)?;
 
 						// -- Iterate through the parts
 						let buff_response = match this.stream_mode {
@@ -205,12 +209,23 @@ impl Stream for WebStream {
 					}
 					Poll::Ready(Some(Err(e))) => return Poll::Ready(Some(Err(e))),
 					Poll::Ready(None) => {
-						if let Some(partial) = this.partial_message.take()
+						// The byte stream is done; never poll it again.
+						this.bytes_stream = None;
+						let carry = std::mem::take(&mut this.utf8_carry);
+						let partial = if carry.is_empty() {
+							this.partial_message.take()
+						} else {
+							// A truncated multi-byte sequence cannot be completed anymore.
+							match decode_with_partial(this.partial_message.take(), carry) {
+								Ok(partial) => Some(partial),
+								Err(error) => return Poll::Ready(Some(Err(Box::new(error)))),
+							}
+						};
+						if let Some(partial) = partial
 							&& !partial.is_empty()
 						{
 							return this.emit(partial);
 						}
-						this.bytes_stream = None;
 					}
 					Poll::Pending => return Poll::Pending,
 				}
@@ -288,6 +303,18 @@ fn process_buff_string_delimited(
 		next_messages,
 		candidate_message,
 	})
+}
+
+/// Joins the undelivered partial message with the raw undecoded bytes and decodes them.
+/// On failure, the returned `FromUtf8Error` owns every undelivered byte, so no input is lost.
+/// Note: in `Sse` mode, the partial message already has CR/LF normalized to LF.
+fn decode_with_partial(
+	partial_message: Option<String>,
+	raw: Vec<u8>,
+) -> Result<String, std::string::FromUtf8Error> {
+	let mut bytes = partial_message.map(String::into_bytes).unwrap_or_default();
+	bytes.extend_from_slice(&raw);
+	String::from_utf8(bytes)
 }
 
 // region:    --- Tests
