@@ -6,14 +6,9 @@ use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 use serial_test::serial;
 
-// "claude-3-haiku-20240307" cheapest
-// "claude-3-7-sonnet-latest" (fail on test_chat_json_mode_ok)
-// "claude-sonnet-4-20250514" (fail on test_chat_json_mode_ok)
-//
-const MODEL: &str = "claude-haiku-4-5";
-// const MODEL_THINKING: &str = "claude-sonnet-4-6";
-const MODEL_THINKING: &str = "claude-sonnet-5";
-const MODEL_NS: &str = "anthropic::claude-haiku-4-5";
+const MODEL: &str = "claude-haiku-5-5";
+const MODEL_THINKING: &str = "claude-haiku-5-5";
+const MODEL_NS: &str = "anthropic::claude-sonnet-5-5";
 
 // region:    --- Chat
 
@@ -27,7 +22,7 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[serial(anthropic)]
 async fn test_chat_reasoning_ok() -> TestResult<()> {
 	// NOTE: Does not test REASONING_USAGE as Anthropic does not report it
-	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, ReasoningEffort::High, Some(Check::REASONING_CONTENT))
+	common_tests::common_test_chat_reasoning_ok(MODEL_THINKING, ReasoningEffort::XHigh, Some(Check::REASONING_CONTENT))
 		.await
 }
 
@@ -43,11 +38,12 @@ async fn test_chat_multi_system_ok() -> TestResult<()> {
 	common_tests::common_test_chat_multi_system_ok(MODEL).await
 }
 
-#[tokio::test]
-#[serial(anthropic)]
-async fn test_chat_temperature_ok() -> TestResult<()> {
-	common_tests::common_test_chat_temperature_ok(MODEL).await
-}
+// jc-2026-10-07: Mostly deprecated (with new 5.x models)
+// #[tokio::test]
+// #[serial(anthropic)]
+// async fn test_chat_temperature_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_temperature_ok(MODEL).await
+// }
 
 #[tokio::test]
 #[serial(anthropic)]
