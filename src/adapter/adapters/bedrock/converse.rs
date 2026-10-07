@@ -60,7 +60,7 @@ pub(super) fn build_converse_payload(
 		system,
 		messages,
 		tools,
-	} = into_converse_request_parts(chat_req)?;
+	} = into_converse_request_parts(chat_req, publisher)?;
 
 	let mut payload = json!({});
 
@@ -98,7 +98,9 @@ pub(super) fn build_converse_payload(
 	if !options_set.stop_sequences().is_empty() {
 		inference.insert("stopSequences".to_string(), json!(options_set.stop_sequences()));
 	}
-	payload.x_insert("inferenceConfig", Value::Object(inference))?;
+	if !inference.is_empty() {
+		payload.x_insert("inferenceConfig", Value::Object(inference))?;
+	}
 
 	// additionalModelRequestFields — publisher-specific (reasoning, etc.)
 	if let Some(effort) = options_set.reasoning_effort()
@@ -208,7 +210,10 @@ pub(super) fn normalize_stop_reason(converse_reason: &str) -> &str {
 pub(super) fn parse_usage(mut usage_value: Value) -> Usage {
 	let input_tokens: i32 = usage_value.x_take("inputTokens").ok().unwrap_or(0);
 	let output_tokens: i32 = usage_value.x_take("outputTokens").ok().unwrap_or(0);
-	let total_tokens: i32 = usage_value.x_take("totalTokens").ok().unwrap_or(input_tokens + output_tokens);
+	let total_tokens: i32 = usage_value
+		.x_take("totalTokens")
+		.ok()
+		.unwrap_or_else(|| input_tokens.saturating_add(output_tokens));
 
 	// Bedrock reports cache stats under cacheReadInputTokens / cacheWriteInputTokens when supported.
 	let cache_read: Option<i32> = usage_value.x_take("cacheReadInputTokens").ok();
@@ -280,11 +285,12 @@ fn publisher_additional_fields(publisher: BedrockPublisher, effort: &ReasoningEf
 		}
 		BedrockPublisher::AmazonNova => {
 			// Nova 2 takes `reasoningConfig { type, maxReasoningEffort }` (required when enabled).
-			let reasoning_config = match nova_reasoning_effort(effort) {
-				Some(level) => json!({ "type": "enabled", "maxReasoningEffort": level }),
-				None => json!({ "type": "disabled" }),
-			};
-			Some(json!({ "inferenceConfig": { "reasoningConfig": reasoning_config } }))
+			// Reasoning is off by default, so `Zero` sends nothing; Nova 1 and Titan (also `amazon.*`)
+			// don't accept the field.
+			let level = nova_reasoning_effort(effort)?;
+			Some(json!({
+				"inferenceConfig": { "reasoningConfig": { "type": "enabled", "maxReasoningEffort": level } }
+			}))
 		}
 		BedrockPublisher::OpenAI => {
 			// Passed through to the OpenAI Responses API, which takes `reasoning.effort`.
@@ -323,7 +329,7 @@ struct ConverseRequestParts {
 }
 
 /// Translate a genai `ChatRequest` into Converse's `{system, messages, toolConfig}` shape.
-fn into_converse_request_parts(chat_req: ChatRequest) -> Result<ConverseRequestParts> {
+fn into_converse_request_parts(chat_req: ChatRequest, publisher: BedrockPublisher) -> Result<ConverseRequestParts> {
 	let mut messages: Vec<Value> = Vec::new();
 	let mut systems: Vec<String> = Vec::new();
 
@@ -345,7 +351,7 @@ fn into_converse_request_parts(chat_req: ChatRequest) -> Result<ConverseRequestP
 				}
 			}
 			ChatRole::Assistant => {
-				let blocks = assistant_content_to_converse_blocks(msg.content);
+				let blocks = assistant_content_to_converse_blocks(msg.content, publisher);
 				if !blocks.is_empty() {
 					messages.push(json!({ "role": "assistant", "content": blocks }));
 				}
@@ -414,8 +420,11 @@ fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 /// `parse_converse_response` lay them out: a `ThoughtSignature` immediately followed by its
 /// `ReasoningContent` is a signed `reasoningText` block, and a lone `ThoughtSignature` is a
 /// `redactedContent` blob. Unsigned reasoning text can't be replayed and is dropped. When the
-/// content carries no signatures, the ones mirrored onto the first tool call are used.
-fn assistant_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
+/// content carries no signatures, the ones mirrored onto the first tool call are used, but only
+/// for OpenAI: the mirror keeps neither the block kind nor the reasoning text, so it can only be
+/// replayed as `redactedContent`, which is what OpenAI's encrypted reasoning is. Other publishers'
+/// signatures (e.g. Claude's `reasoningText` signature, or another provider's) would be rejected.
+fn assistant_content_to_converse_blocks(content: MessageContent, publisher: BedrockPublisher) -> Vec<Value> {
 	let mut reasoning_blocks: Vec<Value> = Vec::new();
 	let mut other_parts: Vec<ContentPart> = Vec::new();
 	let mut parts = content.into_iter().peekable();
@@ -438,6 +447,7 @@ fn assistant_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 	}
 
 	if reasoning_blocks.is_empty()
+		&& matches!(publisher, BedrockPublisher::OpenAI)
 		&& let Some(mirrored) = other_parts.iter().find_map(|part| match part {
 			ContentPart::ToolCall(tool_call) => tool_call.thought_signatures.clone(),
 			_ => None,
@@ -702,10 +712,7 @@ mod tests {
 			medium["inferenceConfig"],
 			json!({ "maxTokens": 5000, "temperature": 0.5 })
 		);
-		assert_eq!(
-			zero["additionalModelRequestFields"],
-			json!({ "inferenceConfig": { "reasoningConfig": { "type": "disabled" } } })
-		);
+		assert!(zero.get("additionalModelRequestFields").is_none());
 		Ok(())
 	}
 
@@ -723,7 +730,7 @@ mod tests {
 		let payload = payload_for("amazon.nova-2-lite-v1:0", chat_req, &options)?;
 
 		// -- Check
-		assert_eq!(payload["inferenceConfig"], json!({}));
+		assert!(payload.get("inferenceConfig").is_none());
 		assert_eq!(
 			payload["additionalModelRequestFields"]["inferenceConfig"]["reasoningConfig"]["maxReasoningEffort"],
 			"high"
@@ -792,6 +799,28 @@ mod tests {
 			payload["messages"][1]["content"][0],
 			json!({ "reasoningContent": { "redactedContent": "blob" } })
 		);
+		Ok(())
+	}
+
+	#[test]
+	fn assistant_turn_skips_tool_call_signatures_for_non_openai() -> Result<()> {
+		// -- Setup & Fixtures
+		let mut call = tool_call();
+		call.thought_signatures = Some(vec!["sig-1".to_string()]);
+		let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![ContentPart::ToolCall(call)]));
+		let chat_req = || ChatRequest::new(vec![ChatMessage::user("hi"), assistant.clone()]);
+
+		for model in ["us.anthropic.claude-haiku-4-5", "us.amazon.nova-2-lite-v1:0"] {
+			// -- Exec
+			let payload = payload_for(model, chat_req(), &ChatOptions::default())?;
+
+			// -- Check
+			assert_eq!(
+				payload["messages"][1]["content"],
+				json!([{ "toolUse": { "toolUseId": "call_1", "name": "weather", "input": {} } }]),
+				"{model}"
+			);
+		}
 		Ok(())
 	}
 
