@@ -847,6 +847,40 @@ fn test_anthropic_adapter_protected_reasoning_suffix_is_retained() -> Result<()>
 
 // region:    --- Support
 
+#[test]
+fn test_anthropic_cache_control_parts_empty_is_noop() -> Result<()> {
+	let parts = apply_cache_control_to_parts(Some(&CacheControl::Ephemeral), Vec::new());
+	assert!(parts.is_empty());
+
+	Ok(())
+}
+
+#[test]
+fn test_anthropic_cache_control_parts_marks_only_last_part() -> Result<()> {
+	let first = json!({"type": "text", "text": "first"});
+	let last = json!({"type": "text", "text": "last"});
+	let parts = apply_cache_control_to_parts(Some(&CacheControl::Ephemeral), vec![first.clone(), last]);
+
+	assert_eq!(parts.len(), 2);
+	assert_eq!(parts.first(), Some(&first));
+	assert_eq!(
+		parts.last().and_then(|part| part.get("cache_control")),
+		Some(&json!({"type": "ephemeral"}))
+	);
+
+	Ok(())
+}
+
+#[test]
+fn test_anthropic_cache_control_parts_non_object_last_is_unchanged() -> Result<()> {
+	let parts = vec![json!({"type": "text", "text": "first"}), Value::Null];
+	let result = apply_cache_control_to_parts(Some(&CacheControl::Ephemeral), parts.clone());
+
+	assert_eq!(result, parts);
+
+	Ok(())
+}
+
 fn build_characterization_payload(model_name: &str, reasoning_effort: Option<ReasoningEffort>) -> Result<Value> {
 	let chat_options = reasoning_effort.map(|effort| ChatOptions::default().with_reasoning_effort(effort));
 	let options_set = ChatOptionsSet::default().with_chat_options(chat_options.as_ref());

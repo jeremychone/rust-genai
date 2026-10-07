@@ -341,7 +341,7 @@ impl AnthropicAdapter {
 							// Unsupported for assistant role in Anthropic message content
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
-							ContentPart::ThoughtSignature(_) | ContentPart::ReasoningContent(_) => unreachable!(),
+							ContentPart::ThoughtSignature(_) | ContentPart::ReasoningContent(_) => {}
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
 						}
 					}
@@ -878,13 +878,11 @@ fn apply_cache_control_to_parts(cache_control: Option<&CacheControl>, parts: Vec
 	let mut parts = parts;
 	if let Some(cc) = cache_control
 		&& !parts.is_empty()
+		&& let Some(last_value) = parts.last_mut()
 	{
-		let len = parts.len();
-		if let Some(last_value) = parts.get_mut(len - 1) {
-			// NOTE: For now, if it fails, then, no cache
-			let _ = last_value.x_insert("cache_control", cache_control_to_json(cc));
-			// TODO: Should warn
-		}
+		// NOTE: For now, if it fails, then, no cache
+		let _ = last_value.x_insert("cache_control", cache_control_to_json(cc));
+		// TODO: Should warn
 	}
 	parts
 }
