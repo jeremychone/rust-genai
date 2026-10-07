@@ -19,6 +19,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#255](https://github.com/jeremychone/rust-genai/pull/255) anthropic: merge extra request body fields
   - [#254](https://github.com/jeremychone/rust-genai/pull/254) anthropic: pass custom content parts through
 - [coaoac](https://github.com/coaoac)
+  - [#329](https://github.com/jeremychone/rust-genai/pull/329) fix(anthropic): Haiku 5 supports effort and adaptive thinking
   - [#268](https://github.com/jeremychone/rust-genai/pull/268) fix(anthropic): correct reasoning routing for current model names
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)

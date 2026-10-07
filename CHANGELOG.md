@@ -28,6 +28,7 @@
 - Chat:
   - `-` Preserve each tool call's thought signatures when converting `Vec<ToolCall>` into an assistant message, avoiding duplicate OpenAI Responses reasoning items and incorrect Gemini signature pairing. ([#306](https://github.com/jeremychone/rust-genai/issues/306)) (PR #307)
 - Anthropic:
+  - `-` Enable reasoning effort and adaptive thinking for Haiku 5+, avoiding rejected legacy `thinking.enabled` / `budget_tokens` payloads for effort-based requests. Recognize thinking as enabled by default and use a 128K default max output budget. Haiku 4.5 behavior is unchanged. (PR #329)
   - `Zero` now positively disables reasoning, whereas it previously triggered adaptive thinking.
   - Sonnet 5 sends `thinking: {"type": "disabled"}`, because thinking is on by default.
   - Other models omit `thinking` and `output_config.effort`.
