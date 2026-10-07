@@ -6,8 +6,8 @@
 # Current release
 genai = "0.6"
 
-# Soon to be released (first half of Sept 2026)
-genai = "0.7.0-beta"
+# Soon to be released (first half of Oct 2026)
+genai = "0.7.0-rc"
 ```
 
 See [v0.7.0-beta](#v070-beta)
