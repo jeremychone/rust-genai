@@ -112,11 +112,32 @@ impl<'a> AnthropicModel<'a> {
 			supports_adaptive_thinking,
 			thinking_enabled_by_default: self.thinking_enabled_by_default(),
 			supports_legacy_budget_thinking: !supports_adaptive_thinking,
-			max_tokens: if self.is_haiku_5_or_later() {
+			max_tokens: self.max_tokens(),
+		}
+	}
+
+	fn max_tokens(&self) -> AnthropicMaxTokens {
+		if self.is_haiku_5_or_later() {
+			AnthropicMaxTokens::Tokens128K
+		} else {
+			let model_name = self.normalized_name;
+			if legacy_is_fable_or_mythos(model_name) {
 				AnthropicMaxTokens::Tokens128K
+			} else if model_name.contains("claude-sonnet")
+				|| model_name.contains("claude-haiku")
+				|| model_name.contains("claude-3-7-sonnet")
+				|| model_name.contains("claude-opus-4-5")
+			{
+				AnthropicMaxTokens::Tokens64K
+			} else if model_name.contains("claude-opus-4") {
+				AnthropicMaxTokens::Tokens32K
+			} else if model_name.contains("claude-3-5") {
+				AnthropicMaxTokens::Tokens8K
+			} else if model_name.contains("3-opus") || model_name.contains("3-haiku") {
+				AnthropicMaxTokens::Tokens4K
 			} else {
-				max_tokens_for_name(self.normalized_name)
-			},
+				AnthropicMaxTokens::Tokens64K
+			}
 		}
 	}
 
@@ -264,26 +285,6 @@ fn legacy_supports_adaptive_thinking(model_name: &str) -> bool {
 
 fn legacy_thinking_enabled_by_default(model_name: &str) -> bool {
 	model_name.contains("claude-sonnet-5") || model_name.contains("claude-opus-5")
-}
-
-fn max_tokens_for_name(model_name: &str) -> AnthropicMaxTokens {
-	if legacy_is_fable_or_mythos(model_name) {
-		AnthropicMaxTokens::Tokens128K
-	} else if model_name.contains("claude-sonnet")
-		|| model_name.contains("claude-haiku")
-		|| model_name.contains("claude-3-7-sonnet")
-		|| model_name.contains("claude-opus-4-5")
-	{
-		AnthropicMaxTokens::Tokens64K
-	} else if model_name.contains("claude-opus-4") {
-		AnthropicMaxTokens::Tokens32K
-	} else if model_name.contains("claude-3-5") {
-		AnthropicMaxTokens::Tokens8K
-	} else if model_name.contains("3-opus") || model_name.contains("3-haiku") {
-		AnthropicMaxTokens::Tokens4K
-	} else {
-		AnthropicMaxTokens::Tokens64K
-	}
 }
 
 // endregion: --- Support
@@ -471,6 +472,8 @@ mod tests {
 		let cases = [
 			("claude-fable-5", AnthropicMaxTokens::Tokens128K),
 			("claude-sonnet-4-6", AnthropicMaxTokens::Tokens64K),
+			("claude-haiku-4-5", AnthropicMaxTokens::Tokens64K),
+			("claude-haiku-5-5", AnthropicMaxTokens::Tokens128K),
 			("claude-opus-4-5", AnthropicMaxTokens::Tokens64K),
 			("claude-opus-4-0", AnthropicMaxTokens::Tokens32K),
 			("claude-3-5-sonnet", AnthropicMaxTokens::Tokens8K),
