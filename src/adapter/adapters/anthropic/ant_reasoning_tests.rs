@@ -28,6 +28,24 @@ fn test_anthropic_opus_4_7_uses_adaptive_thinking() {
 }
 
 #[test]
+fn test_anthropic_haiku_5_uses_effort_not_legacy_budget_tokens() {
+	let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Low);
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "claude-haiku-5-5"),
+	};
+
+	let web_req =
+		AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, ChatRequest::from_user("hello"), options_set)
+			.expect("to_web_request_data should succeed");
+
+	assert_eq!(web_req.payload["thinking"], json!({"type": "adaptive"}));
+	assert_eq!(web_req.payload["output_config"]["effort"], json!("low"));
+}
+
+#[test]
 fn test_anthropic_sonnet_5_uses_adaptive_thinking() {
 	let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
 	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
