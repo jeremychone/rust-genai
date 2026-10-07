@@ -605,6 +605,7 @@ fn test_anthropic_adapter_resolve_max_tokens_existing_branches() -> Result<()> {
 		("claude-mythos-5", MAX_TOKENS_128K),
 		("claude-sonnet-4-6", MAX_TOKENS_64K),
 		("claude-haiku-4-5", MAX_TOKENS_64K),
+		("claude-haiku-5-5", MAX_TOKENS_128K),
 		("claude-3-7-sonnet-latest", MAX_TOKENS_64K),
 		("claude-opus-4-5", MAX_TOKENS_64K),
 		("claude-opus-4-0", MAX_TOKENS_32K),

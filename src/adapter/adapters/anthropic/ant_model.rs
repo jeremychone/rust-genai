@@ -112,7 +112,11 @@ impl<'a> AnthropicModel<'a> {
 			supports_adaptive_thinking,
 			thinking_enabled_by_default: self.thinking_enabled_by_default(),
 			supports_legacy_budget_thinking: !supports_adaptive_thinking,
-			max_tokens: max_tokens_for_name(self.normalized_name),
+			max_tokens: if self.is_haiku_5_or_later() {
+				AnthropicMaxTokens::Tokens128K
+			} else {
+				max_tokens_for_name(self.normalized_name)
+			},
 		}
 	}
 
@@ -127,12 +131,16 @@ impl<'a> AnthropicModel<'a> {
 		}
 	}
 
+	fn is_haiku_5_or_later(&self) -> bool {
+		matches!(self.family, AnthropicModelFamily::Haiku) && self.version().is_some_and(|version| version >= (5, 0))
+	}
+
 	fn supports_effort(&self) -> bool {
 		match self.family {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 5)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((4, 6) | (5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_effort(self.normalized_name),
 		}
 	}
@@ -142,7 +150,7 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 6)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((4, 6) | (5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_max_effort(self.normalized_name),
 		}
 	}
@@ -152,7 +160,7 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 7)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_xhigh_effort(self.normalized_name),
 		}
 	}
@@ -162,7 +170,7 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 6)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((4, 6) | (5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_adaptive_thinking(self.normalized_name),
 		}
 	}
@@ -172,7 +180,8 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus | AnthropicModelFamily::Sonnet => {
 				matches!(self.version(), Some((5, _)))
 			}
-			AnthropicModelFamily::Haiku | AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
+			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => false,
 			AnthropicModelFamily::Unknown => legacy_thinking_enabled_by_default(self.normalized_name),
 		}
 	}
@@ -407,6 +416,7 @@ mod tests {
 			("claude-fable-5", true, true, true, true, false, false),
 			("claude-mythos-5", true, true, true, true, false, false),
 			("claude-haiku-4-5", false, false, false, false, false, true),
+			("claude-haiku-5-5", true, true, true, true, true, false),
 		];
 
 		// -- Exec & Check
