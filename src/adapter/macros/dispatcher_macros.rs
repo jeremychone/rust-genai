@@ -83,6 +83,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<DeepSeek Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Mistral => {
+				type A = crate::adapter::adapters::all_adapters::[<Mistral Adapter>];
+				$body
+			}
 			crate::adapter::AdapterKind::Zai => {
 				type A = crate::adapter::adapters::all_adapters::[<Zai Adapter>];
 				$body

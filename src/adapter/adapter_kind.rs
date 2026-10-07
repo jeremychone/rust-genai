@@ -61,6 +61,9 @@ pub enum AdapterKind {
 	/// For DeepSeek (Mostly use OpenAI)
 	DeepSeek,
 
+	/// For Mistral AI (Mostly use OpenAI)
+	Mistral,
+
 	/// For ZAI (Mostly use OpenAI)
 	Zai,
 
@@ -164,6 +167,7 @@ adapter_kind_str_maps! {
 	Nebius             => "Nebius",             "nebius",              adapters::all_adapters::NebiusAdapter;
 	Xai                => "Xai",                "xai",                 adapters::all_adapters::XaiAdapter;
 	DeepSeek           => "DeepSeek",           "deepseek",            adapters::all_adapters::DeepSeekAdapter;
+	Mistral            => "Mistral",            "mistral",             adapters::all_adapters::MistralAdapter;
 	Zai                => "Zai",                "zai",                 adapters::all_adapters::ZaiAdapter;
 	BigModel           => "BigModel",           "bigmodel",            adapters::all_adapters::BigModelAdapter;
 	Aliyun             => "Aliyun",             "aliyun",              adapters::all_adapters::AliyunAdapter;

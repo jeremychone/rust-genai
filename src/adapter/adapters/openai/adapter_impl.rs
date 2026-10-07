@@ -118,6 +118,18 @@ impl Adapter for OpenAIAdapter {
 				}
 			}
 
+			// Mistral reasoning models return `content` as typed chunks, with the
+			// reasoning in `thinking` chunks
+			if let Some(content_value) = first_choice.pointer_mut("/message/content")
+				&& let Value::Array(chunks) = content_value
+			{
+				let (text, reasoning) = super::adapter_shared::split_content_chunks(chunks);
+				if reasoning_content.is_none() {
+					reasoning_content = reasoning.map(|r| r.trim().to_string());
+				}
+				*content_value = text.map(Value::String).unwrap_or(Value::Null);
+			}
+
 			// -- Push eventual text message
 			if let Ok(Some(mut text_content)) = first_choice.x_take::<Option<String>>("/message/content") {
 				text_content = text_content.trim().to_string();
@@ -333,6 +345,39 @@ mod tests {
 			.expect("chat response");
 
 		assert_eq!(response.stop_reason, None);
+	}
+
+	/// Mistral's reasoning models answer with `content` as typed chunks (shape
+	/// captured from a live `mistral-large-4` response). The text must still come
+	/// through, and the `thinking` chunk becomes `reasoning_content`.
+	#[test]
+	fn test_to_chat_response_splits_mistral_thinking_chunks() {
+		let web_response = WebResponse {
+			status: StatusCode::OK,
+			body: serde_json::json!({
+				"id": "7043ccd4",
+				"model": "mistral-large-4",
+				"usage": {"prompt_tokens": 10, "completion_tokens": 554, "total_tokens": 564, "prompt_tokens_details": {"cached_tokens": 0}},
+				"choices": [{
+					"finish_reason": "stop",
+					"message": {
+						"role": "assistant",
+						"tool_calls": null,
+						"content": [
+							{"type": "thinking", "thinking": [{"type": "text", "text": "17 x 23 = 391."}], "closed": true},
+							{"type": "text", "text": "No, 391 = 17 x 23."}
+						]
+					}
+				}]
+			}),
+		};
+		let model = ModelIden::new(AdapterKind::Mistral, "mistral-large-4");
+
+		let response =
+			OpenAIAdapter::to_chat_response(model, web_response, ChatOptionsSet::default()).expect("chat response");
+
+		assert_eq!(response.first_text(), Some("No, 391 = 17 x 23."));
+		assert_eq!(response.reasoning_content.as_deref(), Some("17 x 23 = 391."));
 	}
 
 	/// OpenRouter returns the provider's own reasoning blocks — signed text,
