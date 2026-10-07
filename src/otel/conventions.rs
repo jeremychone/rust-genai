@@ -126,6 +126,7 @@ pub fn provider_name(adapter_kind: AdapterKind) -> &'static str {
 		AdapterKind::Groq => "groq",
 		AdapterKind::Cohere => "cohere",
 		AdapterKind::DeepSeek => "deepseek",
+		AdapterKind::Mistral => "mistral_ai",
 		AdapterKind::Xai => "x_ai",
 		AdapterKind::Moonshot => "moonshot_ai",
 		AdapterKind::AtlasCloud => "atlascloud",

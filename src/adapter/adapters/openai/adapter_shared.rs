@@ -227,7 +227,13 @@ impl OpenAIAdapter {
 			payload.x_insert("top_p", top_p)?;
 		}
 		if let Some(seed) = options_set.seed() {
-			payload.x_insert("seed", seed)?;
+			// Mistral names it `random_seed` and 422s on an unknown `seed`.
+			let seed_key = if matches!(model.adapter_kind, AdapterKind::Mistral) {
+				"random_seed"
+			} else {
+				"seed"
+			};
+			payload.x_insert(seed_key, seed)?;
 		}
 		if let Some(service_tier) = options_set.service_tier()
 			&& let Some(keyword) = service_tier.as_keyword()
@@ -470,7 +476,14 @@ impl OpenAIAdapter {
 					// Note: In practice there is at most one ReasoningContent part per message,
 					//       but we join defensively in case multiple parts are present.
 					if !reasoning_parts.is_empty() {
-						message.x_insert("reasoning_content", reasoning_parts.join("\n"))?;
+						if matches!(model_iden.adapter_kind, AdapterKind::Mistral) {
+							// Mistral rejects a `reasoning_content` field (422, extra fields are
+							// forbidden) and takes the reasoning back the way it sent it: as a
+							// `thinking` chunk leading the content.
+							prepend_mistral_thinking(&mut message, reasoning_parts.join("\n"));
+						} else {
+							message.x_insert("reasoning_content", reasoning_parts.join("\n"))?;
+						}
 					}
 					// Echo reasoning_details back for OpenRouter, which needs the provider's
 					// signed/encrypted blocks — not just the plaintext — to keep a model's
@@ -634,6 +647,51 @@ fn apply_chat_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _
 mod tests;
 
 // endregion: --- Tests
+
+/// Turn an assistant message's `content` into Mistral's chunk array with a
+/// `thinking` chunk first. A plain string becomes a `text` chunk; an empty one
+/// (a tool-call-only turn) is dropped.
+fn prepend_mistral_thinking(message: &mut Value, reasoning: String) {
+	let thinking = json!({"type": "thinking", "thinking": [{"type": "text", "text": reasoning}]});
+	let mut chunks = vec![thinking];
+	match message.get_mut("content").map(Value::take) {
+		Some(Value::String(text)) if !text.is_empty() => chunks.push(json!({"type": "text", "text": text})),
+		Some(Value::Array(values)) => chunks.extend(values),
+		_ => {}
+	}
+	message["content"] = Value::Array(chunks);
+}
+
+/// Split a chunked `content` array — Mistral's reasoning-model shape,
+/// `[{"type":"thinking","thinking":[{"type":"text","text":…}]}, {"type":"text","text":…}]` —
+/// into `(text, reasoning)`. Either side is `None` when no chunk of that kind had text.
+pub(super) fn split_content_chunks(chunks: &[Value]) -> (Option<String>, Option<String>) {
+	let mut text = String::new();
+	let mut reasoning = String::new();
+	for chunk in chunks {
+		match chunk.get("type").and_then(Value::as_str) {
+			Some("text") => {
+				if let Some(t) = chunk.get("text").and_then(Value::as_str) {
+					text.push_str(t);
+				}
+			}
+			Some("thinking") => match chunk.get("thinking") {
+				Some(Value::Array(inner)) => {
+					for part in inner {
+						if let Some(t) = part.get("text").and_then(Value::as_str) {
+							reasoning.push_str(t);
+						}
+					}
+				}
+				Some(Value::String(t)) => reasoning.push_str(t),
+				_ => {}
+			},
+			_ => {}
+		}
+	}
+	let non_empty = |s: String| (!s.is_empty()).then_some(s);
+	(non_empty(text), non_empty(reasoning))
+}
 
 /// Is this `Custom` part one of OpenRouter's `reasoning_details` entries
 /// (`reasoning.text`, `reasoning.encrypted`, `reasoning.summary`, …)?

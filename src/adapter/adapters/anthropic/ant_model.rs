@@ -91,7 +91,7 @@ impl<'a> AnthropicModel<'a> {
 			major_version,
 			minor_version,
 			date_label,
-			remaining_suffix: model_segments[segment_index..].to_vec(),
+			remaining_suffix: model_segments.get(segment_index..).unwrap_or_default().to_vec(),
 		}
 	}
 
@@ -112,7 +112,32 @@ impl<'a> AnthropicModel<'a> {
 			supports_adaptive_thinking,
 			thinking_enabled_by_default: self.thinking_enabled_by_default(),
 			supports_legacy_budget_thinking: !supports_adaptive_thinking,
-			max_tokens: max_tokens_for_name(self.normalized_name),
+			max_tokens: self.max_tokens(),
+		}
+	}
+
+	fn max_tokens(&self) -> AnthropicMaxTokens {
+		if self.is_haiku_5_or_later() {
+			AnthropicMaxTokens::Tokens128K
+		} else {
+			let model_name = self.normalized_name;
+			if legacy_is_fable_or_mythos(model_name) {
+				AnthropicMaxTokens::Tokens128K
+			} else if model_name.contains("claude-sonnet")
+				|| model_name.contains("claude-haiku")
+				|| model_name.contains("claude-3-7-sonnet")
+				|| model_name.contains("claude-opus-4-5")
+			{
+				AnthropicMaxTokens::Tokens64K
+			} else if model_name.contains("claude-opus-4") {
+				AnthropicMaxTokens::Tokens32K
+			} else if model_name.contains("claude-3-5") {
+				AnthropicMaxTokens::Tokens8K
+			} else if model_name.contains("3-opus") || model_name.contains("3-haiku") {
+				AnthropicMaxTokens::Tokens4K
+			} else {
+				AnthropicMaxTokens::Tokens64K
+			}
 		}
 	}
 
@@ -127,12 +152,16 @@ impl<'a> AnthropicModel<'a> {
 		}
 	}
 
+	fn is_haiku_5_or_later(&self) -> bool {
+		matches!(self.family, AnthropicModelFamily::Haiku) && self.version().is_some_and(|version| version >= (5, 0))
+	}
+
 	fn supports_effort(&self) -> bool {
 		match self.family {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 5)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((4, 6) | (5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_effort(self.normalized_name),
 		}
 	}
@@ -142,7 +171,7 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 6)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((4, 6) | (5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_max_effort(self.normalized_name),
 		}
 	}
@@ -152,7 +181,7 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 7)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_xhigh_effort(self.normalized_name),
 		}
 	}
@@ -162,7 +191,7 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus => self.version().is_some_and(|version| version >= (4, 6)),
 			AnthropicModelFamily::Sonnet => matches!(self.version(), Some((4, 6) | (5, _))),
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
-			AnthropicModelFamily::Haiku => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_adaptive_thinking(self.normalized_name),
 		}
 	}
@@ -172,7 +201,8 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Opus | AnthropicModelFamily::Sonnet => {
 				matches!(self.version(), Some((5, _)))
 			}
-			AnthropicModelFamily::Haiku | AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => false,
+			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
+			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => false,
 			AnthropicModelFamily::Unknown => legacy_thinking_enabled_by_default(self.normalized_name),
 		}
 	}
@@ -257,230 +287,12 @@ fn legacy_thinking_enabled_by_default(model_name: &str) -> bool {
 	model_name.contains("claude-sonnet-5") || model_name.contains("claude-opus-5")
 }
 
-fn max_tokens_for_name(model_name: &str) -> AnthropicMaxTokens {
-	if legacy_is_fable_or_mythos(model_name) {
-		AnthropicMaxTokens::Tokens128K
-	} else if model_name.contains("claude-sonnet")
-		|| model_name.contains("claude-haiku")
-		|| model_name.contains("claude-3-7-sonnet")
-		|| model_name.contains("claude-opus-4-5")
-	{
-		AnthropicMaxTokens::Tokens64K
-	} else if model_name.contains("claude-opus-4") {
-		AnthropicMaxTokens::Tokens32K
-	} else if model_name.contains("claude-3-5") {
-		AnthropicMaxTokens::Tokens8K
-	} else if model_name.contains("3-opus") || model_name.contains("3-haiku") {
-		AnthropicMaxTokens::Tokens4K
-	} else {
-		AnthropicMaxTokens::Tokens64K
-	}
-}
-
 // endregion: --- Support
 
 // region:    --- Tests
 
 #[cfg(test)]
-mod tests {
-	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
-
-	use super::*;
-
-	#[test]
-	fn test_anthropic_model_parse_known_models() -> Result<()> {
-		// -- Setup & Fixtures
-		let cases = [
-			("claude-opus-4-7", AnthropicModelFamily::Opus, Some((4, 7)), None),
-			(
-				"claude-opus-4-8-20260701",
-				AnthropicModelFamily::Opus,
-				Some((4, 8)),
-				Some("20260701"),
-			),
-			(
-				"claude-opus-4-20250514",
-				AnthropicModelFamily::Opus,
-				Some((4, 0)),
-				Some("20250514"),
-			),
-			("claude-opus-5", AnthropicModelFamily::Opus, Some((5, 0)), None),
-			("claude-sonnet-4-6", AnthropicModelFamily::Sonnet, Some((4, 6)), None),
-			("claude-haiku-4-5", AnthropicModelFamily::Haiku, Some((4, 5)), None),
-			("claude-fable-5", AnthropicModelFamily::Fable, Some((5, 0)), None),
-			("claude-mythos-5", AnthropicModelFamily::Mythos, Some((5, 0)), None),
-		];
-
-		// -- Exec & Check
-		for (name, expected_family, expected_version, expected_date) in cases {
-			let model = AnthropicModel::parse(name);
-			assert_eq!(model.normalized_name, name);
-			assert_eq!(model.family, expected_family, "unexpected family for {name}");
-			assert_eq!(model.version(), expected_version, "unexpected version for {name}");
-			assert_eq!(model.date_label, expected_date, "unexpected date for {name}");
-			assert!(model.remaining_suffix.is_empty(), "unexpected suffix for {name}");
-		}
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_anthropic_model_parse_latest_alias() -> Result<()> {
-		// -- Setup & Fixtures
-		let name = "claude-opus-4-6-latest";
-
-		// -- Exec
-		let model = AnthropicModel::parse(name);
-
-		// -- Check
-		assert_eq!(model.family, AnthropicModelFamily::Opus);
-		assert_eq!(model.version(), Some((4, 6)));
-		assert_eq!(model.date_label, None);
-		assert_eq!(model.remaining_suffix, ["latest"]);
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_anthropic_model_parse_malformed_numeric_segments() -> Result<()> {
-		// -- Setup & Fixtures
-		let name = "claude-opus-four-7-preview";
-
-		// -- Exec
-		let model = AnthropicModel::parse(name);
-
-		// -- Check
-		assert_eq!(model.normalized_name, name);
-		assert_eq!(model.family, AnthropicModelFamily::Opus);
-		assert_eq!(model.version(), None);
-		assert_eq!(model.date_label, None);
-		assert_eq!(model.remaining_suffix, ["four", "7", "preview"]);
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_anthropic_model_parse_unrelated_custom_name() -> Result<()> {
-		// -- Setup & Fixtures
-		let name = "custom-claude-opus-4-7";
-
-		// -- Exec
-		let model = AnthropicModel::parse(name);
-
-		// -- Check
-		assert_eq!(model.normalized_name, name);
-		assert_eq!(model.family, AnthropicModelFamily::Unknown);
-		assert_eq!(model.version(), None);
-		assert_eq!(model.date_label, None);
-		assert!(model.remaining_suffix.is_empty());
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_anthropic_model_parse_unknown_family() -> Result<()> {
-		// -- Setup & Fixtures
-		let name = "claude-unrecognized-5-preview";
-
-		// -- Exec
-		let model = AnthropicModel::parse(name);
-
-		// -- Check
-		assert_eq!(model.normalized_name, name);
-		assert_eq!(model.family, AnthropicModelFamily::Unknown);
-		assert_eq!(model.version(), None);
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_anthropic_model_capability_matrix() -> Result<()> {
-		// -- Setup & Fixtures
-		let cases = [
-			("claude-opus-4-5", true, false, false, false, false, true),
-			("claude-opus-4-6", true, true, false, true, false, false),
-			("claude-opus-4-7", true, true, true, true, false, false),
-			("claude-opus-4-8", true, true, true, true, false, false),
-			("claude-opus-5", true, true, true, true, true, false),
-			("claude-sonnet-4-6", true, true, false, true, false, false),
-			("claude-sonnet-5", true, true, true, true, true, false),
-			("claude-fable-5", true, true, true, true, false, false),
-			("claude-mythos-5", true, true, true, true, false, false),
-			("claude-haiku-4-5", false, false, false, false, false, true),
-		];
-
-		// -- Exec & Check
-		for (name, effort, max, xhigh, adaptive, default_thinking, legacy_budget) in cases {
-			let capabilities = AnthropicModel::parse(name).capabilities();
-			assert_eq!(capabilities.supports_effort, effort, "effort for {name}");
-			assert_eq!(capabilities.supports_max_effort, max, "max for {name}");
-			assert_eq!(capabilities.supports_xhigh_effort, xhigh, "xhigh for {name}");
-			assert_eq!(
-				capabilities.supports_adaptive_thinking, adaptive,
-				"adaptive thinking for {name}"
-			);
-			assert_eq!(
-				capabilities.thinking_enabled_by_default, default_thinking,
-				"default thinking for {name}"
-			);
-			assert_eq!(
-				capabilities.supports_legacy_budget_thinking, legacy_budget,
-				"legacy budget thinking for {name}"
-			);
-		}
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_anthropic_model_capabilities_preserve_unknown_and_custom_behavior() -> Result<()> {
-		// -- Setup & Fixtures
-		let custom = AnthropicModel::parse("custom-claude-opus-4-7-preview");
-		let unknown = AnthropicModel::parse("unrecognized-model");
-
-		// -- Exec
-		let custom_capabilities = custom.capabilities();
-		let unknown_capabilities = unknown.capabilities();
-
-		// -- Check
-		assert_eq!(custom.family, AnthropicModelFamily::Unknown);
-		assert!(custom_capabilities.supports_effort);
-		assert!(custom_capabilities.supports_max_effort);
-		assert!(custom_capabilities.supports_xhigh_effort);
-		assert!(custom_capabilities.supports_adaptive_thinking);
-		assert!(!unknown_capabilities.supports_effort);
-		assert!(!unknown_capabilities.supports_adaptive_thinking);
-		assert!(unknown_capabilities.supports_legacy_budget_thinking);
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_anthropic_model_max_tokens_capability_preserves_existing_classes() -> Result<()> {
-		// -- Setup & Fixtures
-		let cases = [
-			("claude-fable-5", AnthropicMaxTokens::Tokens128K),
-			("claude-sonnet-4-6", AnthropicMaxTokens::Tokens64K),
-			("claude-opus-4-5", AnthropicMaxTokens::Tokens64K),
-			("claude-opus-4-0", AnthropicMaxTokens::Tokens32K),
-			("claude-3-5-sonnet", AnthropicMaxTokens::Tokens8K),
-			("claude-3-opus-20240229", AnthropicMaxTokens::Tokens4K),
-			("unrecognized-model", AnthropicMaxTokens::Tokens64K),
-			("custom-fable-alias", AnthropicMaxTokens::Tokens128K),
-			("vendor-claude-opus-4-custom", AnthropicMaxTokens::Tokens32K),
-		];
-
-		// -- Exec & Check
-		for (name, expected) in cases {
-			assert_eq!(
-				AnthropicModel::parse(name).capabilities().max_tokens,
-				expected,
-				"max-token class for {name}"
-			);
-		}
-
-		Ok(())
-	}
-}
+#[path = "ant_model_tests.rs"]
+mod tests;
 
 // endregion: --- Tests

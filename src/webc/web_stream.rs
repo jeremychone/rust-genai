@@ -308,10 +308,7 @@ fn process_buff_string_delimited(
 /// Joins the undelivered partial message with the raw undecoded bytes and decodes them.
 /// On failure, the returned `FromUtf8Error` owns every undelivered byte, so no input is lost.
 /// Note: in `Sse` mode, the partial message already has CR/LF normalized to LF.
-fn decode_with_partial(
-	partial_message: Option<String>,
-	raw: Vec<u8>,
-) -> Result<String, std::string::FromUtf8Error> {
+fn decode_with_partial(partial_message: Option<String>, raw: Vec<u8>) -> Result<String, std::string::FromUtf8Error> {
 	let mut bytes = partial_message.map(String::into_bytes).unwrap_or_default();
 	bytes.extend_from_slice(&raw);
 	String::from_utf8(bytes)

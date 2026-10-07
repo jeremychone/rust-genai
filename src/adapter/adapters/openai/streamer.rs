@@ -276,11 +276,11 @@ impl futures::Stream for OpenAIStreamer {
 							// NOTE: Some providers (e.g., mistral) send delta/content AND finish_reason
 							// in the same SSE message. We must capture and emit that final content chunk
 							// before continuing to the next message, otherwise it is silently lost.
-							let content = first_choice.x_take::<Option<String>>("/delta/content").ok().flatten();
-							let reasoning_content = first_choice
-								.x_take::<Option<String>>("/delta/reasoning_content")
-								.ok()
-								.flatten()
+							let (content, chunk_reasoning) = take_delta_content(&mut first_choice);
+							let reasoning_content = chunk_reasoning
+								.or_else(|| {
+									first_choice.x_take::<Option<String>>("/delta/reasoning_content").ok().flatten()
+								})
 								.or_else(|| first_choice.x_take::<Option<String>>("/delta/reasoning").ok().flatten());
 
 							if let Some(content) = content
@@ -347,11 +347,11 @@ impl futures::Stream for OpenAIStreamer {
 						// -- Content / Reasoning Content
 						// Some providers (e.g., Ollama) emit reasoning in `delta.reasoning` and send empty content.
 						else {
-							let content = first_choice.x_take::<Option<String>>("/delta/content").ok().flatten();
-							let reasoning_content = first_choice
-								.x_take::<Option<String>>("/delta/reasoning_content")
-								.ok()
-								.flatten()
+							let (content, chunk_reasoning) = take_delta_content(&mut first_choice);
+							let reasoning_content = chunk_reasoning
+								.or_else(|| {
+									first_choice.x_take::<Option<String>>("/delta/reasoning_content").ok().flatten()
+								})
 								.or_else(|| first_choice.x_take::<Option<String>>("/delta/reasoning").ok().flatten());
 
 							if let Some(content) = content
@@ -416,6 +416,18 @@ impl futures::Stream for OpenAIStreamer {
 	}
 }
 
+/// Take `delta.content`, which is a string on most providers but an array of typed
+/// chunks on Mistral's reasoning models:
+/// `[{"type":"thinking","thinking":[{"type":"text","text":"…"}]}]` or `[{"type":"text","text":"…"}]`.
+/// Returns `(text, reasoning)`.
+fn take_delta_content(choice: &mut Value) -> (Option<String>, Option<String>) {
+	match choice.x_take::<Value>("/delta/content") {
+		Ok(Value::String(text)) => (Some(text), None),
+		Ok(Value::Array(chunks)) => super::adapter_shared::split_content_chunks(&chunks),
+		_ => (None, None),
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -423,6 +435,26 @@ mod tests {
 
 	fn test_model() -> ModelIden {
 		ModelIden::new(AdapterKind::OpenAI, "test-model")
+	}
+
+	/// Mistral streams reasoning as `thinking` chunk arrays and the answer as plain
+	/// strings (frames trimmed from a live `mistral-large-4` stream).
+	#[test]
+	fn test_take_delta_content_reads_mistral_thinking_and_text() {
+		let mut thinking = serde_json::json!({
+			"index": 0,
+			"delta": {"content": [{"type": "thinking", "thinking": [{"type": "text", "text": " if"}]}]}
+		});
+		assert_eq!(take_delta_content(&mut thinking), (None, Some(" if".to_string())));
+
+		let mut text = serde_json::json!({"index": 0, "delta": {"content": "No"}, "finish_reason": "stop"});
+		assert_eq!(take_delta_content(&mut text), (Some("No".to_string()), None));
+
+		let mut chunked_text = serde_json::json!({"delta": {"content": [{"type": "text", "text": "No"}]}});
+		assert_eq!(take_delta_content(&mut chunked_text), (Some("No".to_string()), None));
+
+		let mut empty = serde_json::json!({"delta": {"role": "assistant"}});
+		assert_eq!(take_delta_content(&mut empty), (None, None));
 	}
 
 	#[test]

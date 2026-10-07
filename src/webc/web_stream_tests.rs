@@ -194,8 +194,7 @@ async fn test_web_stream_no_sink_leaves_transport_untapped() -> Result<()> {
 async fn test_web_stream_utf8_split_character() -> Result<()> {
 	// -- Setup & Fixtures
 	let reqwest_builder = reqwest::Client::new().get("http://127.0.0.1/");
-	let mut web_stream =
-		WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
+	let mut web_stream = WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
 	web_stream.reqwest_builder = None;
 	web_stream.bytes_stream = Some(Box::pin(futures::stream::iter([
 		Ok::<_, BoxError>(Bytes::from_static(b"caf\xc3")),
@@ -218,8 +217,7 @@ async fn test_web_stream_utf8_split_character() -> Result<()> {
 async fn test_web_stream_utf8_invalid_bytes() -> Result<()> {
 	// -- Setup & Fixtures
 	let reqwest_builder = reqwest::Client::new().get("http://127.0.0.1/");
-	let mut web_stream =
-		WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
+	let mut web_stream = WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
 	web_stream.reqwest_builder = None;
 	web_stream.bytes_stream = Some(Box::pin(futures::stream::iter([
 		Ok::<_, BoxError>(Bytes::from_static(b"caf\xc3")),
@@ -248,8 +246,7 @@ async fn test_web_stream_utf8_invalid_bytes() -> Result<()> {
 async fn test_web_stream_utf8_truncated_at_end() -> Result<()> {
 	// -- Setup & Fixtures
 	let reqwest_builder = reqwest::Client::new().get("http://127.0.0.1/");
-	let mut web_stream =
-		WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
+	let mut web_stream = WebStream::new_with_delimiter(RequestBuilder::new(reqwest_builder, None, None), "\n");
 	web_stream.reqwest_builder = None;
 	web_stream.bytes_stream = Some(Box::pin(futures::stream::iter([Ok::<_, BoxError>(
 		Bytes::from_static(b"ok\ncaf\xc3"),
