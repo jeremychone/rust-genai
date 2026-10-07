@@ -116,6 +116,15 @@ impl_pass_through_adapter!(
 	managed_body_thinking: true,
 );
 
+pub struct MistralAdapter;
+impl_pass_through_adapter!(
+	name: MistralAdapter,
+	kind: AdapterKind::Mistral,
+	key_env: Some("MISTRAL_API_KEY"),
+	endpoint: "https://api.mistral.ai/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- Groq
 pub struct GroqAdapter;
 impl_pass_through_adapter!(
