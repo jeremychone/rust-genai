@@ -1,7 +1,9 @@
-use super::{DeepSeekAdapter, OllamaAdapter};
+use super::{DeepSeekAdapter, MistralAdapter, OllamaAdapter};
 use crate::adapter::AdapterDispatcher;
 use crate::adapter::{Adapter, AdapterKind, ServiceType};
-use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ReasoningEffort};
+use crate::chat::{
+	ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest, ContentPart, MessageContent, ReasoningEffort,
+};
 use crate::embed::{EmbedOptionsSet, EmbedRequest};
 use crate::resolver::{AuthData, Endpoint};
 use crate::{ModelIden, ServiceTarget};
@@ -192,6 +194,77 @@ fn test_ollama_think_enabled_for_budget_effort() -> Result<()> {
 }
 
 // endregion: --- Ollama
+
+// region:    --- Mistral
+
+// Mistral 422s on any field it does not know, `reasoning_content` and `seed`
+// included. Reasoning goes back as the leading `thinking` chunk it arrived as,
+// and the seed is `random_seed`.
+#[test]
+fn test_mistral_replays_reasoning_as_thinking_chunk_and_renames_seed() -> Result<()> {
+	// -- Setup & Fixtures
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::ReasoningContent("17 x 23 = 391".to_string()),
+		ContentPart::Text("No, 391 = 17 x 23.".to_string()),
+	]));
+	let chat_req = ChatRequest::from_user("Is 391 prime?")
+		.append_message(assistant)
+		.append_message(ChatMessage::user("And 397?"));
+	let chat_options = ChatOptions::default().with_seed(7);
+
+	// -- Exec
+	let request = MistralAdapter::to_web_request_data(
+		ServiceTarget {
+			model: ModelIden::new(AdapterKind::Mistral, "mistral-large-4"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: AdapterDispatcher::default_endpoint(AdapterKind::Mistral),
+		},
+		ServiceType::Chat,
+		chat_req,
+		ChatOptionsSet::default().with_chat_options(Some(&chat_options)),
+	)?;
+
+	// -- Check
+	assert_eq!(request.url, "https://api.mistral.ai/v1/chat/completions");
+	let payload = request.payload;
+	assert_eq!(payload["random_seed"], 7);
+	assert!(payload.get("seed").is_none());
+	let assistant = &payload["messages"][1];
+	assert!(assistant.get("reasoning_content").is_none());
+	assert_eq!(assistant["content"][0]["type"], "thinking");
+	assert_eq!(assistant["content"][0]["thinking"][0]["text"], "17 x 23 = 391");
+	assert_eq!(
+		assistant["content"][1],
+		serde_json::json!({"type": "text", "text": "No, 391 = 17 x 23."})
+	);
+
+	Ok(())
+}
+
+// Other OpenAI-compatible providers keep the sibling `reasoning_content` field.
+#[test]
+fn test_deepseek_still_echoes_reasoning_content() -> Result<()> {
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::ReasoningContent("thought".to_string()),
+		ContentPart::Text("answer".to_string()),
+	]));
+	let request = DeepSeekAdapter::to_web_request_data(
+		ServiceTarget {
+			model: ModelIden::new(AdapterKind::DeepSeek, "deepseek-v4-flash"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: Endpoint::from_static("https://api.deepseek.com/v1/"),
+		},
+		ServiceType::Chat,
+		ChatRequest::from_user("q").append_message(assistant),
+		ChatOptionsSet::default(),
+	)?;
+
+	assert_eq!(request.payload["messages"][1]["reasoning_content"], "thought");
+	assert_eq!(request.payload["messages"][1]["content"], "answer");
+	Ok(())
+}
+
+// endregion: --- Mistral
 
 // region:    --- Support
 
