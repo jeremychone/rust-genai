@@ -20,6 +20,7 @@
 - `!` API CHANGE: `ChatOptions` adds the public `raw_frame_sink: Option<Arc<dyn ChatFrameSink>>` field for observing raw stream frames across providers. Downstream `ChatOptions` struct literals must add `raw_frame_sink: None` or use `..Default::default()`.
 - `!` API CHANGE: `ChatOptions` adds `stream_header_timeout` and `stream_read_timeout`, both `Option<std::time::Duration>`. Struct literals must add these fields or use `..Default::default()`. (PR #321)
 - `+` Add `AdapterKind::ApiRoute`; exhaustive matches must handle the new variant. (PR #323)
+- `+` Add `AdapterKind::Mistral`; exhaustive matches must handle the new variant. (PR #328)
 - `+` Add `ClientBuilder::append_provider_config`, `ClientConfig::append_provider_config`, and `ClientConfig::provider_config` to configure per-adapter endpoint and auth targets declaratively without custom resolver closures. (PR #289)
 
 ### Behavior Refinement / Changes
@@ -46,6 +47,7 @@
 
 ### New Providers
 
+- `+` **Mistral AI**: OpenAI-compatible Chat Completions adapter, default env `MISTRAL_API_KEY`, endpoint `https://api.mistral.ai/v1/` (activated on `mistral::` namespace). Supports typed `thinking` content chunks in streaming and non-streaming responses, replays assistant reasoning as a leading `thinking` chunk, and maps `ChatOptions::seed` to `random_seed`. (PR #328)
 - `+` **AtlasCloud**: default env `ATLASCLOUD_API_KEY`, endpoint `https://api.atlascloud.ai/v1/` (activated on `atlascloud::` namespace) (PR #259)
 - `+` **Requesty**: OpenAI-compatible gateway, default env `REQUESTY_API_KEY`, endpoint `https://router.requesty.ai/v1/` (activated on `requesty::` namespace) (PR #317)
 - `+` **API Route**: OpenAI-compatible Chat Completions gateway, default env `API_ROUTE_API_KEY`, endpoint `https://global.api-route.com/v1/` (activated only on `api_route::` namespace). Unqualified model routing is unchanged. (PR #323)
@@ -101,6 +103,10 @@
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
 - Bedrock:
+  - `-` Wait for the ConverseStream `metadata` frame after `messageStop` before emitting `End`, preserving usage and cache-token details; finalize at EOF when metadata is absent. Streaming and non-streaming paths share usage normalization, with saturating addition when total tokens are missing. (PR #326)
+  - `-` Preserve signed `reasoningText` and opaque `redactedContent` blocks in streaming and non-streaming responses and replay them ahead of assistant text and tool calls. Tool-call-only signature fallback is limited to the OpenAI publisher, avoiding replay of Claude or other providers' signatures as redacted reasoning. (PR #326)
+  - `-` Detect publishers correctly for bare model IDs and geographic inference-profile prefixes. Add Bedrock OpenAI `reasoning.effort` mapping and a 16384-token default output budget; map Nova reasoning effort to `maxReasoningEffort`, omit reasoning config for `Zero`, and omit `maxTokens`, `temperature`, and `topP` for high effort. Empty `inferenceConfig` is omitted. (PR #326)
+  - `^` Derive valid, unique document names within each message from binary file names, rather than naming every document `"document"`. (PR #326)
   - `-` Fix Bedrock streamer to queue and preserve frame events after `Start`, preventing dropped text deltas or tool-call chunks from the initial frame. (PR #297)
   - `-` Refresh SigV4 credentials before they expire instead of caching the first `provide_credentials()` snapshot for the life of the process, mirroring the AWS SDK identity cache (10s early refresh, 15-minute default TTL, deduplicated refreshes, jitter), so long-lived processes stop failing with signature errors. (PR #308)
   - `-` Accept `AWS_BEARER_TOKEN_BEDROCK` as a fallback for `BEDROCK_API_KEY` in the `bedrock_api` adapter, with an empty value falling through to the next candidate; an explicit `AuthData` is still used as-is. (PR #308)

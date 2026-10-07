@@ -23,6 +23,8 @@ _If I forgot your PR, feel free to submit a PR_
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
 - [vagmi](https://github.com/vagmi)
+  - [#328](https://github.com/jeremychone/rust-genai/pull/328) feat(adapter): add Mistral AI with thinking-content replay and random_seed mapping
+  - [#326](https://github.com/jeremychone/rust-genai/pull/326) fix(bedrock): preserve streaming usage and reasoning blocks, detect publishers, refine reasoning mappings and document names
   - [#316](https://github.com/jeremychone/rust-genai/pull/316) fix(gemini): send all previous thought signatures on multi-turn tool calls
   - [#293](https://github.com/jeremychone/rust-genai/pull/293) feat(adapter): Gemini Interactions API adapter (`gemini_ix::`)
   - [#290](https://github.com/jeremychone/rust-genai/pull/290) feat(chat): stream frame observation via ChatFrameSink

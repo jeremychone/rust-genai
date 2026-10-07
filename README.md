@@ -25,7 +25,7 @@ See [v0.7.0-beta](#v070-beta)
 
 Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `atlascloud`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `atlascloud`, `xai`
 
 
 Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
@@ -96,6 +96,7 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 **New Providers & Adapters:**
 
 - Gemini Interactions API (`gemini_ix::`): stateful conversation sessions (`previous_response_id`, `store`).
+- Mistral AI (`mistral::`): Chat Completions with typed thinking content, assistant reasoning replay, and `random_seed` mapping.
 - Atlas Cloud (`atlascloud::`), Qwen Cloud (`qwen_cloud::`), Kimi (`kimi::`, `kimi-*`), OMLX (`omlx::`, `omlx-*`).
 - Custom adapter (`genai_{n}::`): generic OpenAI-compatible routing via `GENAI_{n}_ENDPOINT` and `GENAI_{n}_API_KEY`.
 
@@ -104,6 +105,7 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 - Declarative provider config via `ClientBuilder::append_provider_config` and `ClientConfig::append_provider_config`.
 - Stream frame inspection via `ChatFrameSink` and `ChatOptions::with_raw_frame_sink`.
 - Thought signature and signed thinking block preservation across tool turns (Anthropic, Gemini, OpenRouter).
+- Bedrock Converse: preserve streaming usage from metadata after the stop event, replay signed and redacted reasoning across tool turns, and refine publisher detection, Nova/OpenAI reasoning mappings, and document naming.
 - Anthropic prompt caching on tools (`Tool::with_cache_control`) and SSE heartbeat events (`ChatStreamEvent::Heartbeat`).
 - OpenTelemetry GenAI semantic conventions instrumentation behind the `otel` feature flag.
 
@@ -179,6 +181,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **Cohere**: `command-*`, `embed-*`
 - **Mimo**: `mimo-*`
 - **OpenCode Go**: Namespace `opencode_go::` only
+- **Mistral AI**: Namespace `mistral::` only
 - **Atlas Cloud**: Namespace `atlascloud::` only
 - **Qwen Cloud**: Namespace `qwen_cloud::` only, for the managed Qwen Cloud service at qwencloud.com. It uses the internal Aliyun-compatible endpoint and `QWEN_CLOUD_API_KEY`.
 - **Fireworks**: Models containing `fireworks`
@@ -189,6 +192,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 You can force a specific adapter by using the `adapter_kind::model_name` syntax. This is the recommended way for many providers and for disambiguating OpenAI-compatible services.
 
 - `groq::openai/gpt-oss-20b` (Forces **Groq** adapter)
+- `mistral::mistral-large-4` (Forces **Mistral AI** adapter)
 - `together::meta-llama/Llama-3-8b-chat-hf` (Forces **Together** adapter)
 - `fireworks::glm-5p1` (for fireworks.ai)
 - `ollama_cloud::gemma3:4b` (Forces **Ollama Cloud** adapter)
@@ -214,6 +218,16 @@ For [API Route](https://www.api-route.com), create a key in its dashboard and se
 Use a model available to your key; see the [setup guide](https://www.api-route.com/docs/quickstart).
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
+
+### Mistral AI
+
+Set `MISTRAL_API_KEY` and use the `mistral::` namespace, for example `mistral::mistral-large-4`. Requests use `https://api.mistral.ai/v1/`.
+
+- Typed `thinking` chunks are normalized to reasoning content in streaming and non-streaming responses.
+
+- Assistant `ContentPart::ReasoningContent` is replayed as a leading `thinking` content chunk rather than a sibling `reasoning_content` field.
+
+- `ChatOptions::seed` maps to Mistral's `random_seed` field.
 
 ## Examples
 
