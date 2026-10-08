@@ -40,6 +40,35 @@ fn test_api_route_dispatch_preserves_model_and_uses_gateway_endpoint() -> Result
 	Ok(())
 }
 
+#[test]
+fn test_opper_dispatch_preserves_model_and_uses_gateway_endpoint() -> Result<()> {
+	// Pool names route across providers; `provider/model` IDs pin one route.
+	for model_name in ["claude-sonnet-4-6", "anthropic/claude-sonnet-4-6"] {
+		let namespaced = format!("opper::{model_name}");
+		let kind = AdapterKind::from_model(&namespaced)?;
+		assert_eq!(kind, AdapterKind::Opper);
+		assert_eq!(kind.default_key_env_name(), Some("OPPER_API_KEY"));
+		let request = AdapterDispatcher::to_web_request_data(
+			ServiceTarget {
+				model: ModelIden::new(kind, namespaced),
+				auth: AuthData::from_single("test-opper-key"),
+				endpoint: AdapterDispatcher::default_endpoint(kind),
+			},
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			ChatOptionsSet::default(),
+		)?;
+		assert_eq!(request.url, "https://api.opper.ai/v3/compat/chat/completions");
+		assert_eq!(request.payload["model"], model_name);
+		assert!(
+			request.headers.iter().any(|(name, value)| {
+				name.eq_ignore_ascii_case("authorization") && value == "Bearer test-opper-key"
+			})
+		);
+	}
+	Ok(())
+}
+
 // region:    --- DeepSeek
 
 #[test]
