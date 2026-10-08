@@ -25,7 +25,7 @@ See [v0.7.0-beta](#v070-beta)
 
 Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `atlascloud`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `opper`, `atlascloud`, `xai`
 
 
 Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
@@ -209,6 +209,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `open_router::google/gemini-2.0-flash-001` (Forces **OpenRouter** adapter)
 - `requesty::openai/gpt-4o-mini` (Forces **Requesty** adapter)
 - `api_route::gpt-6.1-sol` or `api_route::claude-fable-5-1` (Forces **API Route** adapter)
+- `opper::claude-sonnet-4-6` or `opper::anthropic/claude-sonnet-4-6` (Forces **Opper** adapter)
 - `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 

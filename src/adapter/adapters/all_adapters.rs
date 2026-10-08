@@ -220,6 +220,16 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- Opper
+pub struct OpperAdapter;
+impl_pass_through_adapter!(
+	name: OpperAdapter,
+	kind: AdapterKind::Opper,
+	key_env: Some("OPPER_API_KEY"),
+	endpoint: "https://api.opper.ai/v3/compat/",
+	delegate: OpenAIAdapter,
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(

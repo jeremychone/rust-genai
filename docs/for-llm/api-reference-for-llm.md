@@ -32,7 +32,7 @@ genai (crate root / lib.rs)
 - **ProviderConfig**: Provider-level endpoint/auth overrides for adapter-wide operations such as model listing. Since v0.6.0.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
 - **Bound Adapter**: Optional `Client`/`ClientBuilder` adapter constraint. Since v0.6.0. When set, bare model names route through the bound adapter instead of heuristic inference. Explicit mismatched namespaces or mismatched `ModelIden` values return `AdapterKindMismatch`.
-- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot`, `aihubmix`, `open_router`, `requesty`, `api_route`, `custom`, `xai`.
+- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot`, `aihubmix`, `open_router`, `requesty`, `api_route`, `opper`, `custom`, `xai`.
   - `github_copilot` (since v0.6.0) is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `ollama_cloud` (since v0.6.0) is the hosted Ollama Cloud service (`ollama.com`). It uses the same native Ollama protocol as the local `ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via the `ollama_cloud::model_name` namespace, for example, `ollama_cloud::gemma3:4b`.
   - `vertex` (since v0.6.0) is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
@@ -42,6 +42,7 @@ genai (crate root / lib.rs)
   - `open_router` (since v0.6.0) is OpenRouter OpenAI-compatible gateway. Uses `OPEN_ROUTER_API_KEY`. Use via the `open_router::` namespace.
   - `requesty` (since v0.7.0) is Requesty OpenAI-compatible gateway. Uses `REQUESTY_API_KEY`. Use via the `requesty::` namespace (e.g., `requesty::openai/gpt-4o-mini`).
   - `api_route` is the [API Route](https://www.api-route.com) OpenAI-compatible gateway. Uses `API_ROUTE_API_KEY` and endpoint `https://global.api-route.com/v1/`. Select it explicitly with `api_route::gpt-6.1-sol` or `api_route::claude-fable-5-1`; the upstream model ID is preserved.
+  - `opper` is the [Opper](https://opper.ai) OpenAI-compatible gateway. Uses `OPPER_API_KEY` and endpoint `https://api.opper.ai/v3/compat/`. Use via the `opper::` namespace with a pool name such as `opper::claude-sonnet-4-6`, or a `provider/model` ID such as `opper::anthropic/claude-sonnet-4-6` to pin one route; the model ID is preserved.
   - `baidu` (since v0.6.0) is Baidu's OpenAI/Anthropic compatible proxies.
   - `aliyun` (since v0.6.0) is Aliyun's namespace-only OpenAI-compatible service.
   - `qwen_cloud` is the managed Qwen Cloud service at `qwencloud.com`. It uses the international Aliyun-compatible endpoint and requires `QWEN_CLOUD_API_KEY`.
@@ -631,7 +632,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`, `requesty`, `api_route`.
+Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`, `requesty`, `api_route`, `opper`.
 
   - Namespace matches adapter lowercase name (updated in v0.6.0 with namespaces such as `open_router::`, `bedrock_api::`, `bedrock_sigv4::`, `vertex::`, `github_copilot::`, `opencode_go::`, `baidu::`, `aliyun::`, `moonshot::`, `aihubmix::`, and `ollama_cloud::`).
 
@@ -681,6 +682,7 @@ Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `f
   - `open_router::model_name` targets OpenRouter OpenAI-compatible gateway (since v0.6.0).
   - `requesty::model_name` targets Requesty OpenAI-compatible gateway (since v0.7.0).
   - `api_route::model_name` targets API Route's OpenAI-compatible Chat Completions API. Use model IDs available to the API key.
+  - `opper::model_name` targets Opper's OpenAI-compatible gateway.
 - **Ollama Fallback**: Unrecognized non-namespaced names default to `Ollama` adapter (localhost:11434).
 - **Reasoning Normalization**: Automatic extraction for DeepSeek/Ollama `<think>` blocks when `normalize_reasoning_content` is enabled.
 

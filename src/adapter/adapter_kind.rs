@@ -136,6 +136,11 @@ pub enum AdapterKind {
 	/// Uses `API_ROUTE_API_KEY`.
 	ApiRoute,
 
+	/// Opper: OpenAI-compatible gateway for many providers (OpenAI, Anthropic, Google, etc.).
+	/// Namespace: `opper::claude-sonnet-4-6` (pool name), `opper::anthropic/claude-sonnet-4-6` (pinned route).
+	/// Uses `OPPER_API_KEY`.
+	Opper,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -185,6 +190,7 @@ adapter_kind_str_maps! {
 	AtlasCloud         => "AtlasCloud",         "atlascloud",          adapters::all_adapters::AtlasCloudAdapter;
 	Requesty           => "Requesty",           "requesty",            adapters::all_adapters::RequestyAdapter;
 	ApiRoute           => "ApiRoute",           "api_route",           adapters::all_adapters::ApiRouteAdapter;
+	Opper              => "Opper",              "opper",               adapters::all_adapters::OpperAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
