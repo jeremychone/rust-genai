@@ -206,8 +206,9 @@ impl OpenAIAdapter {
 			payload.x_insert("stop", options_set.stop_sequences())?;
 		}
 
-		// GPT-5.x and o-series models require "max_completion_tokens" instead of "max_tokens"
+		// GPT-5.x, GPT-6.x and o-series models require "max_completion_tokens" instead of "max_tokens"
 		let max_tokens_key = if model_name.starts_with("gpt-5")
+			|| model_name.starts_with("gpt-6")
 			|| model_name.starts_with("o1")
 			|| model_name.starts_with("o3")
 			|| model_name.starts_with("o4")
