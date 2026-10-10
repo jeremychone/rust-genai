@@ -558,6 +558,41 @@ fn test_managed_body_thinking_uses_model_name_derived_effort() -> Result<()> {
 
 // endregion: --- Managed Thinking
 
+// region:    --- Max Tokens Key
+
+#[test]
+fn test_max_tokens_key_by_model() -> Result<()> {
+	// -- Setup & Fixtures
+	let options = ChatOptions::default().with_max_tokens(256);
+	// (model name, expects "max_completion_tokens")
+	let cases = [
+		("gpt-4o", false),
+		("gpt-5.6", true),
+		("gpt-6", true),
+		("gpt-6-luna", true),
+		("o3-mini", true),
+	];
+
+	for (model_name, expects_completion_key) in cases {
+		// -- Exec
+		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+		let payload = payload(model_name, options_set, None)?;
+
+		// -- Check
+		if expects_completion_key {
+			assert_eq!(payload["max_completion_tokens"], 256, "model: {model_name}");
+			assert!(payload.get("max_tokens").is_none(), "model: {model_name}");
+		} else {
+			assert_eq!(payload["max_tokens"], 256, "model: {model_name}");
+			assert!(payload.get("max_completion_tokens").is_none(), "model: {model_name}");
+		}
+	}
+
+	Ok(())
+}
+
+// endregion: --- Max Tokens Key
+
 // region:    --- Support
 
 fn test_model() -> ModelIden {
