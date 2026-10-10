@@ -160,6 +160,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<ApiRoute Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Heabsy => {
+				type A = crate::adapter::adapters::all_adapters::[<Heabsy Adapter>];
+				$body
+			}
 
 			crate::adapter::AdapterKind::Custom(_) => {
 				type A = crate::adapter::adapters::all_adapters::[<Custom Adapter>];

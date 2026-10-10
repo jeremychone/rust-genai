@@ -220,6 +220,17 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- Heabsy
+pub struct HeabsyAdapter;
+impl_pass_through_adapter!(
+	name: HeabsyAdapter,
+	kind: AdapterKind::Heabsy,
+	key_env: Some("HEABSY_API_KEY"),
+	endpoint: "https://api.heabsy.com/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(
