@@ -73,6 +73,8 @@ _If I forgot your PR, feel free to submit a PR_
   - [#271](https://github.com/jeremychone/rust-genai/pull/271) map Anthropic ping events to `ChatStreamEvent::Heartbeat`
 - [CristiC0](https://github.com/CristiC0)
   - [#279](https://github.com/jeremychone/rust-genai/pull/279) fix(anthropic): align stream usage capture with new Anthropic API behaviour
+- [emnlmn](https://github.com/emnlmn)
+  - [#331](https://github.com/jeremychone/rust-genai/pull/331) fix(openai): send max_completion_tokens for gpt-6 chat completions
 
 
 ## v0.6.0..0.6.x

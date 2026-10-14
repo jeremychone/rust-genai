@@ -87,6 +87,7 @@
   - `-` Propagate Responses API streaming `error` events as `genai::Error::ChatResponse` and cleanly terminate the stream. (PR #296)
   - `+` Capture OpenRouter's `reasoning_details` (signed, encrypted and summary reasoning blocks) as `Custom` parts on the non-streaming path and echo them verbatim, in order, on assistant messages, so a multi-turn tool round trip through OpenRouter keeps the model's continuity token; `reasoning_content` is still echoed beside them. (PR #301)
   - `+` Route GPT-6 models (such as `gpt-6-astra`) to the OpenAI Responses API adapter.
+  - `-` Send `max_completion_tokens` instead of `max_tokens` for `gpt-6*` models on the Chat Completions path, avoiding a 400 from OpenAI. (PR #331)
   - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
   - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
   - `^` GPT-5.6 and later now use cache opt-in only. Here is how to opt in: (see [PR #260](https://github.com/jeremychone/rust-genai/pull/260))
