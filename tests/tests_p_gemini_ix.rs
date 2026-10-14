@@ -5,6 +5,7 @@ use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
 // The Interactions API is opt-in, so every model name here carries the `gemini_ix::` prefix.
+const ARGON: &str = "gemini-4-argon";
 const MODEL: &str = "gemini_ix::gemini-3.5-flash";
 const MODEL_NS: &str = "gemini_ix::gemini-3.5-flash";
 
@@ -83,7 +84,7 @@ async fn test_gemini_ix_stateful_stream_captures_response_id_ok() -> TestResult<
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL, None).await
+	common_tests::common_test_chat_simple_ok(ARGON, None).await
 }
 
 #[tokio::test]

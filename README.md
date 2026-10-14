@@ -173,6 +173,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **OpenAI Responses**: `gpt-5-*`, `gpt-6-*`, `gpt-*` (containing `codex` or `pro`)
 - **Anthropic**: `claude-*`
 - **Gemini**: `gemini-*`
+- **Gemini Interactions API**: `gemini-4-argon*` (routed to the `gemini_ix` adapter)
 - **xAI**: `grok-*`
 - **DeepSeek**: `deepseek-*`
 - **Moonshot**: `moonshot-*` (moonshot.ai)
@@ -201,6 +202,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `aliyun::qwen-plus` (Forces **Aliyun** adapter)
 - `qwen_cloud::qwen-plus` (Forces **Qwen Cloud** adapter, managed by qwencloud.com and backed by the internal Aliyun-compatible service)
 - `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
+- `gemini_ix::gemini-3.5-flash` (Forces **Gemini Interactions API** adapter)
 - `moonshot::moonshot-v1-8k` (Forces **Moonshot** adapter)
 - `baidu::ernie-4.0` (Forces **Baidu** adapter)
 - `zai_coding::glm-4.6` (Special namespace for **Zai** coding subscription)

@@ -25,7 +25,7 @@ pub enum AdapterKind {
 
 	/// Gemini Interactions API.
 	///
-	/// Opt-in only: reachable via the `gemini_ix::` namespace (or `gemini_interactions::`).
+	/// Reachable via the `gemini_ix::` namespace (or `gemini_interactions::`), and the default adapter for `gemini-4-argon` models.
 	GeminiIx,
 
 	/// Anthopric native protocol as well
@@ -212,6 +212,7 @@ impl AdapterKind {
 	///  - Zhipu      - starts_with "glm"
 	///  - Cohere     - starts_with "command"
 	///  - Ollama     - For anything else
+	///  - GeminiIx   - starts_with "gemini-4-argon"
 	///
 	/// Other Some adapters have to have model name namespaced to be used,
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
@@ -248,6 +249,8 @@ impl AdapterKind {
 			} else {
 				Ok(Self::OpenAI)
 			}
+		} else if model.starts_with("gemini-4-argon") {
+			Ok(Self::GeminiIx)
 		} else if model.starts_with("gemini") {
 			Ok(Self::Gemini)
 		} else if model.starts_with("claude") {
@@ -381,4 +384,4 @@ mod tests {
 	}
 }
 
-// endregion: --- Tests
+

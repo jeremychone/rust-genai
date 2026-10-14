@@ -66,6 +66,7 @@
   - Opt-in adapter for Google Gemini Interactions API supporting server-side conversation state (`previous_response_id` and `store`).
   - Full streaming and non-streaming support for function calling, thought signatures, media and binary inputs, and structured JSON output.
   - Exposes `genai::adapter::gemini_ix` helper types (`EnrichedEvent`, `UrlCitation`, `GroundingToolCount`) for decoding search grounding citations and server-side tool metadata via `ChatFrameSink`.
+  - `+` Model names starting with `gemini-4-argon` route to the `gemini_ix` adapter by default, without a namespace.
 
 ### Additions & Fixes
 
