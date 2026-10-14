@@ -57,6 +57,10 @@ _If I forgot your PR, feel free to submit a PR_
 - [Jackkakaya](https://github.com/Jackkakaya)
   - [#321](https://github.com/jeremychone/rust-genai/pull/321) feat(chat): add independent streaming header and body read timeouts
   - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
+- [kawayiYokami](https://github.com/kawayiYokami)
+  - [#332](https://github.com/jeremychone/rust-genai/pull/332) fix(openai_resp): use the completed arguments from output_item.done for streaming function_call
+- [emnlmn](https://github.com/emnlmn)
+  - [#331](https://github.com/jeremychone/rust-genai/pull/331) fix(openai): send max_completion_tokens for gpt-6 chat completions
 - [Thibaultjaigu](https://github.com/Thibaultjaigu)
   - [#317](https://github.com/jeremychone/rust-genai/pull/317) feat(adapter): add Requesty OpenAI-compatible adapter
 - [DennyHo0917](https://github.com/DennyHo0917)
@@ -73,8 +77,6 @@ _If I forgot your PR, feel free to submit a PR_
   - [#271](https://github.com/jeremychone/rust-genai/pull/271) map Anthropic ping events to `ChatStreamEvent::Heartbeat`
 - [CristiC0](https://github.com/CristiC0)
   - [#279](https://github.com/jeremychone/rust-genai/pull/279) fix(anthropic): align stream usage capture with new Anthropic API behaviour
-- [emnlmn](https://github.com/emnlmn)
-  - [#331](https://github.com/jeremychone/rust-genai/pull/331) fix(openai): send max_completion_tokens for gpt-6 chat completions
 
 
 ## v0.6.0..0.6.x

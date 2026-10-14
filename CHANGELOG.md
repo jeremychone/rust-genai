@@ -86,6 +86,7 @@
   - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. (PR #275)
 - OpenAI:
   - `-` Propagate Responses API streaming `error` events as `genai::Error::ChatResponse` and cleanly terminate the stream. (PR #296)
+  - `-` Use the completed arguments from `response.output_item.done` for streaming `function_call` items when the delta arguments were truncated or arrived before `output_item.added`. (PR #332)
   - `+` Capture OpenRouter's `reasoning_details` (signed, encrypted and summary reasoning blocks) as `Custom` parts on the non-streaming path and echo them verbatim, in order, on assistant messages, so a multi-turn tool round trip through OpenRouter keeps the model's continuity token; `reasoning_content` is still echoed beside them. (PR #301)
   - `+` Route GPT-6 models (such as `gpt-6-astra`) to the OpenAI Responses API adapter.
   - `-` Send `max_completion_tokens` instead of `max_tokens` for `gpt-6*` models on the Chat Completions path, avoiding a 400 from OpenAI. (PR #331)
