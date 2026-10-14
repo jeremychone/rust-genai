@@ -1,6 +1,6 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## v0.7.0-beta.x
+## v0.7.0-rc.x
 
 (see [v0.7.0 migration](docs/migration/migration-v_0_6_to_0_7.md) | [genai beta versions](https://crates.io/crates/genai/versions))
 

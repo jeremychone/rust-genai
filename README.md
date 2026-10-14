@@ -10,7 +10,7 @@ genai = "0.6"
 genai = "0.7.0-rc"
 ```
 
-See [v0.7.0-beta](#v070-beta)
+See [v0.7.0-rc](#v070-rc)
 
 <div align="center">
 
@@ -19,7 +19,7 @@ See [v0.7.0-beta](#v070-beta)
 
 </div>
 
-[v0.7.0-beta](#v070-beta) | [v0.6.x](#v06x-released-) | [Key Features](#key-features) | [Providers](#model-to-adapter-resolution) | [Examples](#examples) | [Chat Options](#chatoptions) | [Usage](#usage) | [TLS Backends](#tls-backends) | [Contribution](#contribution)
+[v0.7.0-rc](#v070-rc) | [v0.6.x](#v06x-released-) | [Key Features](#key-features) | [Providers](#model-to-adapter-resolution) | [Examples](#examples) | [Chat Options](#chatoptions) | [Usage](#usage) | [TLS Backends](#tls-backends) | [Contribution](#contribution)
 
 `genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
@@ -82,9 +82,9 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
-## v0.7.0-beta
+## v0.7.0-rc
 
-**v0.7.0 release target: first half of Sept 2026**. See latest [v0.7.0-beta releases](https://crates.io/crates/genai/versions).
+**v0.7.0 release target: first half of Oct 2026**. See latest [v0.7.0-rc releases](https://crates.io/crates/genai/versions).
 
 **Big release**: Many fixes, new capabilities, new providers, and minimal API changes.
 
@@ -92,6 +92,10 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 - Fallible client initialization: `Client::new()?` and `ClientBuilder::build()?` return `Result<Client>` (no more `Client::default()`).
 - `ReasoningEffort::Zero` replaces `ReasoningEffort::None` (`"zero"` keyword, `"none"` backward-compatible alias).
+- `Error::HttpError` now carries the failed response `headers`.
+- `Tool` adds `custom_format`, and `ChatOptions` adds `raw_frame_sink`, `stream_header_timeout`, and `stream_read_timeout` (use `..Default::default()` or add the fields to struct literals).
+- Optional `None` fields are omitted from serialized JSON instead of `null`.
+- `JsonSpec::schema_with_additional_properties_false` is removed; adapters now sanitize schemas.
 
 **New Providers & Adapters:**
 
@@ -155,7 +159,7 @@ See [BIG-THANKS](BIG-THANKS.md) for contributors
 
 ## Key Features
 
-- Multi-AI provider/model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Atlas Cloud, Google Vertex, and GitHub Copilot (direct chat and streaming) (see [examples/c00-readme.rs](examples/c00-readme.rs))
+- Multi-AI provider/model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Atlas Cloud, Google Vertex, GitHub Copilot, Mistral, Requesty, API Route, Qwen Cloud, Kimi, and OMLX (direct chat and streaming), plus custom `genai_{n}` OpenAI-compatible endpoints (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - Image analysis (for OpenAI, Gemini Flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom auth/API key (see [examples/c02-auth.rs](examples/c02-auth.rs))
 - Model aliases (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
@@ -432,7 +436,7 @@ let reqwest_client = reqwest::Client::builder()
 
 let client = genai::Client::builder()
     .with_reqwest(reqwest_client)
-    .build();
+    .build()?;
 ```
 
 If you set `default-features = false` on `genai` without enabling a TLS feature, add `reqwest` with a TLS feature directly to your own `Cargo.toml` (or use the `rustls-no-provider` path and install a `CryptoProvider`) — otherwise HTTPS requests fail at runtime.

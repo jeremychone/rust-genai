@@ -4,7 +4,7 @@ Comprehensive, dry reference for the `genai` Rust library.
 All public types, methods, and module structure are documented below.
 
 ```toml
-genai = "0.6"
+genai = "0.7.0-rc"
 ```
 
 ## Crate Structure
@@ -53,9 +53,9 @@ genai (crate root / lib.rs)
 
 ### `Client`
 
-Construct via `Client::default()` or `Client::builder().build()`.
+Construct via `Client::new()?` or `Client::builder().build()?`.
 
-- `Client::default()`: Standard client.
+- `Client::new()`: Standard client. Returns `Result<Client>`.
 - `Client::builder()`: Returns `ClientBuilder`.
 - `adapter_kind()`: Returns `Option<AdapterKind>` when this client is bound to a single adapter. Since v0.6.0.
 - `exec_chat(model, chat_req, options)`: `model: impl Into<ModelSpec>`, `chat_req: ChatRequest`, `options: Option<&ChatOptions>` -> `Result<ChatResponse>`. Updated in v0.6.0 to accept `impl Into<ModelSpec>`.
@@ -80,7 +80,7 @@ Construct via `Client::default()` or `Client::builder().build()`.
 - `with_web_config(web_config)`: Configure `reqwest` (timeouts, proxies, default headers).
 - `with_reqwest(reqwest_client)`: Use a custom `reqwest::Client` directly.
 - `with_config(config)`: Set a `ClientConfig` directly.
-- `build()`: Consumes the builder and returns a `Client`.
+- `build()`: Consumes the builder and returns `Result<Client>`.
 
 ### `ClientConfig`
 
