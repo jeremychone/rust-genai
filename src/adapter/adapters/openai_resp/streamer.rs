@@ -209,6 +209,26 @@ impl futures::Stream for OpenAIRespStreamer {
 									.get_or_insert_with(Vec::new)
 									.push(encrypted.to_string());
 							}
+							// For a function_call, the complete arguments live on `done`. `arguments.delta`
+							// may be truncated or arrive before `output_item.added`; a non-empty `arguments` on `done` wins.
+							if item.x_get_str("type").ok() == Some("function_call")
+								&& let Ok(arguments) = item.x_get_str("arguments")
+								&& !arguments.is_empty()
+							{
+								if let Some(tool_call) = self.in_progress_tool_calls.get_mut(&output_index) {
+									tool_call.fn_arguments = Value::String(arguments.to_string());
+								} else {
+									self.in_progress_tool_calls.insert(
+										output_index,
+										ToolCall {
+											call_id: item.x_get_str("call_id").unwrap_or_default().to_string(),
+											fn_name: item.x_get_str("name").unwrap_or_default().to_string(),
+											fn_arguments: Value::String(arguments.to_string()),
+											thought_signatures: None,
+										},
+									);
+								}
+							}
 							if item.x_get_str("type").ok() == Some("custom_tool_call") {
 								let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
 								let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
