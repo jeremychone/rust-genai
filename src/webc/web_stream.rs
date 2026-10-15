@@ -165,12 +165,12 @@ impl Stream for WebStream {
 							}
 						};
 
-						// Carry over incomplete trailing bytes for the next chunk.
-						this.utf8_carry = raw[valid_up_to..].to_vec();
+						// Preserve any incomplete trailing UTF-8 bytes for the next chunk.
+						let (valid, carry) = raw.split_at(valid_up_to);
+						this.utf8_carry = carry.to_vec();
 
-						// We already validated raw[..valid_up_to] is valid UTF-8 above.
-						let buff_string =
-							String::from_utf8(raw[..valid_up_to].to_vec()).map_err(|e| Box::new(e) as BoxError)?;
+						// Convert the valid prefix into an owned UTF-8 string.
+						let buff_string = std::str::from_utf8(valid).map_err(|e| Box::new(e) as BoxError)?.to_owned();
 
 						// -- Iterate through the parts
 						let buff_response = match this.stream_mode {

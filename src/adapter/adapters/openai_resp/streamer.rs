@@ -254,30 +254,24 @@ impl futures::Stream for OpenAIRespStreamer {
 
 						RespStreamEvent::OutputTextDelta { delta, .. } => {
 							if self.options.capture_content {
-								match self.captured_data.content {
-									Some(ref mut c) => c.push_str(&delta),
-									None => self.captured_data.content = Some(delta.clone()),
-								}
+								self.captured_data.content.get_or_insert_with(String::new).push_str(&delta);
 							}
 							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(delta))));
 						}
 
 						RespStreamEvent::ReasoningTextDelta { delta, .. } => {
 							if self.options.capture_reasoning_content {
-								match self.captured_data.reasoning_content {
-									Some(ref mut c) => c.push_str(&delta),
-									None => self.captured_data.reasoning_content = Some(delta.clone()),
-								}
+								self.captured_data
+									.reasoning_content
+									.get_or_insert_with(String::new)
+									.push_str(&delta);
 							}
 							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(delta))));
 						}
 
 						RespStreamEvent::ReasoningSummaryTextDelta { delta, .. } => {
 							if self.options.capture_reasoning_content {
-								match self.captured_data.reasoning_content {
-									Some(ref mut c) => c.push_str(&delta),
-									None => self.captured_data.reasoning_content = Some(delta.clone()),
-								}
+								self.captured_data.reasoning_content.get_or_insert_default().push_str(&delta);
 							}
 							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(delta))));
 						}
