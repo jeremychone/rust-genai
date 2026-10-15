@@ -586,6 +586,60 @@ fn test_gemini_ix_reasoning_effort_maps_to_thinking_level() -> Result<()> {
 
 // endregion: --- Request — tools & formats
 
+// region:    --- Request - reasoning effort suffix
+
+#[test]
+fn test_gemini_ix_reasoning_effort_from_model_suffix() -> Result<()> {
+	// -- Setup & Fixtures
+	let cases = [
+		("gemini-3.5-flash-low", "low"),
+		("gemini-3.5-flash-medium", "medium"),
+		("gemini-3.5-flash-high", "high"),
+		("gemini-3.5-flash-max", "high"),
+		("gemini-3.5-flash-minimal", "minimal"),
+		("gemini-3.5-flash-zero", "minimal"),
+		("gemini-3.5-flash-none", "minimal"),
+		("gemini_ix::gemini-3.5-flash-low", "low"),
+	];
+
+	for (model_name, expected) in cases {
+		// -- Exec
+		let request =
+			support_request_for_model(model_name, ChatRequest::from_user("Hello"), None, ServiceType::Chat)?;
+
+		// -- Check
+		assert_eq!(request.payload["model"], MODEL, "for model '{model_name}'");
+		assert_eq!(
+			request.payload["generation_config"]["thinking_level"], expected,
+			"for model '{model_name}'"
+		);
+	}
+
+	Ok(())
+}
+
+#[test]
+fn test_gemini_ix_reasoning_effort_option_wins_over_model_suffix() -> Result<()> {
+	// -- Setup & Fixtures
+	let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+
+	// -- Exec
+	let request = support_request_for_model(
+		"gemini-3.5-flash-low",
+		ChatRequest::from_user("Hello"),
+		Some(options),
+		ServiceType::Chat,
+	)?;
+
+	// -- Check
+	assert_eq!(request.payload["model"], MODEL, "the suffix is still stripped");
+	assert_eq!(request.payload["generation_config"]["thinking_level"], "high");
+
+	Ok(())
+}
+
+// endregion: --- Request - reasoning effort suffix
+
 // region:    --- Request — extra_body deep merge
 
 #[test]
@@ -882,11 +936,20 @@ fn support_request(
 	chat_options: Option<ChatOptions>,
 	service_type: ServiceType,
 ) -> Result<WebRequestData> {
+	support_request_for_model(MODEL, chat_req, chat_options, service_type)
+}
+
+fn support_request_for_model(
+	model_name: &str,
+	chat_req: ChatRequest,
+	chat_options: Option<ChatOptions>,
+	service_type: ServiceType,
+) -> Result<WebRequestData> {
 	let options_set = ChatOptionsSet::default().with_chat_options(chat_options.as_ref());
 
 	let request = GeminiIxAdapter::to_web_request_data(
 		ServiceTarget {
-			model: ModelIden::new(AdapterKind::GeminiIx, MODEL),
+			model: ModelIden::new(AdapterKind::GeminiIx, model_name),
 			auth: AuthData::from_single("test-key"),
 			endpoint: Endpoint::from_static("https://generativelanguage.googleapis.com/v1beta/"),
 		},
