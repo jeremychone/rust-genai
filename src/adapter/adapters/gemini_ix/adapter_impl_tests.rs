@@ -604,8 +604,7 @@ fn test_gemini_ix_reasoning_effort_from_model_suffix() -> Result<()> {
 
 	for (model_name, expected) in cases {
 		// -- Exec
-		let request =
-			support_request_for_model(model_name, ChatRequest::from_user("Hello"), None, ServiceType::Chat)?;
+		let request = support_request_for_model(model_name, ChatRequest::from_user("Hello"), None, ServiceType::Chat)?;
 
 		// -- Check
 		assert_eq!(request.payload["model"], MODEL, "for model '{model_name}'");

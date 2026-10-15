@@ -23,6 +23,11 @@ _If I forgot your PR, feel free to submit a PR_
   - [#268](https://github.com/jeremychone/rust-genai/pull/268) fix(anthropic): correct reasoning routing for current model names
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
+- [wouterdebie](https://github.com/wouterdebie)
+  - [#336](https://github.com/jeremychone/rust-genai/pull/336) deps: replace paste with pastey
+  - [#335](https://github.com/jeremychone/rust-genai/pull/335) fix(gemini): send function call ids back with the call and its response
+  - [#334](https://github.com/jeremychone/rust-genai/pull/334) cargo: make reqwest system-proxy a genai feature (on by default)
+  - [#333](https://github.com/jeremychone/rust-genai/pull/333) fix(openai_resp): send function tool strict only when set
 - [vagmi](https://github.com/vagmi)
   - [#328](https://github.com/jeremychone/rust-genai/pull/328) feat(adapter): add Mistral AI with thinking-content replay and random_seed mapping
   - [#326](https://github.com/jeremychone/rust-genai/pull/326) fix(bedrock): preserve streaming usage and reasoning blocks, detect publishers, refine reasoning mappings and document names

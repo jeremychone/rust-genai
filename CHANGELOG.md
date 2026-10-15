@@ -12,6 +12,7 @@
 - `!` API CHANGE: `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias.
 - `!` API CHANGE: `JsonSpec::schema_with_additional_properties_false` is removed. Provider adapters now sanitize schemas as required by their target API. `JsonSchemaDialect` and `sanitize_json_schema(...)` are available for explicit schema sanitization.
 - `!` API CHANGE: When serializing genai types to json, Optional fields with `None` are now omitted from JSON instead of serialized as `null`. ([migration guide](docs/migration/migration-v_0_6_to_0_7.md) | [merged PR search](https://github.com/jeremychone/rust-genai/pulls?q=is%3Apr+is%3Amerged+in%3Atitle+%22types+json+serialization+now+skip+none%22))
+- `!` Cargo feature: reqwest's `system-proxy` is now the genai `system-proxy` feature, enabled by default. Builds with `default-features = false` no longer read the macOS and Windows system proxy settings unless `system-proxy` is enabled. Proxy environment variables are still honored. (PR #334)
 
 ### API Minor Changes (New Properties / Variants)
 
@@ -76,6 +77,7 @@
 - `+` Chat - Add `ChatFrameSink` and `ChatOptions::with_raw_frame_sink` / `with_raw_frame_fn` to observe raw stream frames across providers. (PR #290)
 - `+` Chat - Add independent streaming header and raw body read timeouts via `ChatOptions::with_stream_header_timeout` / `with_stream_read_timeout`. Per-call values override client defaults independently; unset values inherit defaults, with no additional limit by default. Heartbeats and partial frames reset the read wait, including for error-body reads. These transport-only options are not serialized, existing reqwest deadlines still apply, and `webc::StreamTimeout::{Headers, Read}` identifies the timeout phase. (PR #321)
 - Anthropic:
+  - `!` Responses API function tools without `strict` no longer send `strict: false`, so OpenAI's default applies. Use `with_strict(false)` to keep the previous payload. (PR #333)
   - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
   - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
   - `+` Support the `extra_body` `ChatOptions` field, merging extra request body fields. ([#255](https://github.com/jeremychone/rust-genai/pull/255))
@@ -106,6 +108,7 @@
   - `-` Count server-side built-in tool-use tokens in normalized prompt usage and allow mixing built-in and user-defined function tools. (PR #284)
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
+  - `-` Send each function call's id back with the call and its response, so Gemini can match calls to the same function in one turn. Calls without an id, and responses whose function name cannot be resolved, keep the previous wire shape. (PR #335)
 - Bedrock:
   - `-` Wait for the ConverseStream `metadata` frame after `messageStop` before emitting `End`, preserving usage and cache-token details; finalize at EOF when metadata is absent. Streaming and non-streaming paths share usage normalization, with saturating addition when total tokens are missing. (PR #326)
   - `-` Preserve signed `reasoningText` and opaque `redactedContent` blocks in streaming and non-streaming responses and replay them ahead of assistant text and tool calls. Tool-call-only signature fallback is limited to the OpenAI publisher, avoiding replay of Claude or other providers' signatures as redacted reasoning. (PR #326)
@@ -122,6 +125,7 @@
   - `-` Emit every event-bearing field of an NDJSON line instead of only the first, so fields sharing a line (e.g., `thinking` + `content`), every tool call of a line, and every line of a web chunk are no longer dropped. Events are buffered in stream order and drained before polling the inner stream, and the queued `End` event preserves the final `done` line's events, `done_reason`, and usage captures. (PR #311)
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
+- `^` Dependencies - replace the unmaintained `paste` crate with `pastey`, which clears RUSTSEC-2024-0436 for `cargo audit` and `cargo deny` users. (PR #336)
 - OpenTelemetry:
   - `-` Fix `otel` feature compilation, by covering the `CacheBreakpointNoEligibleContent` error variant in the `error.type` derivation (broken since v0.7.0-beta.18).
   - `-` Cover `Error::ClientBuildFail` in the `error.type` derivation, fixing `otel` compilation when `bedrock-sigv4` is enabled. (PR #310)

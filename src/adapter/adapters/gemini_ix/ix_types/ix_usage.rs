@@ -66,12 +66,9 @@ impl From<IxUsage> for Usage {
 		};
 
 		let cached_tokens = total_cached_tokens.filter(|tokens| *tokens > 0);
-		let prompt_audio_tokens = modality_tokens(
-			&[&input_tokens_by_modality, &tool_use_tokens_by_modality],
-			"audio",
-		);
-		let prompt_tokens_details = (cached_tokens.is_some() || prompt_audio_tokens.is_some())
-			.then_some(PromptTokensDetails {
+		let prompt_audio_tokens = modality_tokens(&[&input_tokens_by_modality, &tool_use_tokens_by_modality], "audio");
+		let prompt_tokens_details =
+			(cached_tokens.is_some() || prompt_audio_tokens.is_some()).then_some(PromptTokensDetails {
 				cache_creation_tokens: None,
 				cache_creation_details: None,
 				cached_tokens,
@@ -87,8 +84,8 @@ impl From<IxUsage> for Usage {
 			(None, Some(thought)) => Some(thought),
 			(output, None) => output,
 		};
-		let completion_tokens_details = (reasoning_tokens.is_some() || completion_audio_tokens.is_some())
-			.then_some(CompletionTokensDetails {
+		let completion_tokens_details =
+			(reasoning_tokens.is_some() || completion_audio_tokens.is_some()).then_some(CompletionTokensDetails {
 				accepted_prediction_tokens: None,
 				rejected_prediction_tokens: None,
 				reasoning_tokens,
@@ -97,7 +94,9 @@ impl From<IxUsage> for Usage {
 
 		// The reported total wins; the computed sum is only a fallback when both halves are known.
 		let total_tokens = total_tokens.or_else(|| {
-			prompt_tokens.zip(completion_tokens).map(|(prompt, completion)| prompt + completion)
+			prompt_tokens
+				.zip(completion_tokens)
+				.map(|(prompt, completion)| prompt + completion)
 		});
 
 		Usage {
