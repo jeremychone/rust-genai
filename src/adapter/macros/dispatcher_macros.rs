@@ -1,6 +1,6 @@
 //! Macros for adapter dispatching.
 
-use paste::paste;
+use pastey::paste;
 
 // Dispatch adapter method call based on `AdapterKind`, avoiding repeated `match` arms.
 //
