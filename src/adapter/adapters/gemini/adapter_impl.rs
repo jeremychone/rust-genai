@@ -648,24 +648,10 @@ impl GeminiAdapter {
 								}
 							}
 							ContentPart::ToolCall(tool_call) => {
-								parts_values.push(json!({
-									"functionCall": {
-										"name": tool_call.fn_name,
-										"args": tool_call.fn_arguments,
-									}
-								}));
+								parts_values.push(gemini_function_call_part(tool_call)?);
 							}
 							ContentPart::ToolResponse(tool_response) => {
-								let fn_name = gemini_function_response_name(&tool_response);
-								parts_values.push(json!({
-									"functionResponse": {
-										"name": &fn_name,
-										"response": {
-											"name": &fn_name,
-											"content": tool_response.content,
-										}
-									}
-								}));
+								parts_values.push(gemini_function_response_part(tool_response)?);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -693,24 +679,10 @@ impl GeminiAdapter {
 					for part in msg.content {
 						match part {
 							ContentPart::ToolCall(tool_call) => {
-								parts_values.push(json!({
-									"functionCall": {
-										"name": tool_call.fn_name,
-										"args": tool_call.fn_arguments,
-									}
-								}));
+								parts_values.push(gemini_function_call_part(tool_call)?);
 							}
 							ContentPart::ToolResponse(tool_response) => {
-								let fn_name = gemini_function_response_name(&tool_response);
-								parts_values.push(json!({
-									"functionResponse": {
-										"name": &fn_name,
-										"response": {
-											"name": &fn_name,
-											"content": tool_response.content,
-										}
-									}
-								}));
+								parts_values.push(gemini_function_response_part(tool_response)?);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -887,7 +859,12 @@ struct GeminiModelPart {
 #[serde(rename_all = "camelCase")]
 enum GeminiModelPartData {
 	Text(String),
-	FunctionCall { name: String, args: Value },
+	FunctionCall {
+		#[serde(skip_serializing_if = "Option::is_none")]
+		id: Option<String>,
+		name: String,
+		args: Value,
+	},
 }
 
 impl GeminiModelPart {
@@ -924,6 +901,7 @@ impl GeminiModelPart {
 						});
 					parts.push(Self {
 						data: GeminiModelPartData::FunctionCall {
+							id: gemini_call_id(&call.call_id).map(str::to_string),
 							name: call.fn_name,
 							args: call.fn_arguments,
 						},
@@ -967,6 +945,41 @@ fn take_bool(v: &mut Value, key: &str) -> bool {
 		.and_then(|m| m.remove(key))
 		.and_then(|v| v.as_bool())
 		.unwrap_or(false)
+}
+
+/// A `functionCall` part, with the call's id when it has one (see `gemini_call_id`).
+fn gemini_function_call_part(tool_call: ToolCall) -> Result<Value> {
+	let mut function_call = json!({
+		"name": tool_call.fn_name,
+		"args": tool_call.fn_arguments,
+	});
+	if let Some(id) = gemini_call_id(&tool_call.call_id) {
+		function_call.x_insert("id", id)?;
+	}
+	Ok(json!({ "functionCall": function_call }))
+}
+
+/// A `functionResponse` part, with the id of the call it answers when it has one (see `gemini_call_id`).
+fn gemini_function_response_part(tool_response: ToolResponse) -> Result<Value> {
+	let fn_name = gemini_function_response_name(&tool_response);
+	let mut function_response = json!({
+		"name": &fn_name,
+		"response": {
+			"name": &fn_name,
+			"content": tool_response.content,
+		}
+	});
+	if let Some(id) = gemini_call_id(&tool_response.call_id) {
+		function_response.x_insert("id", id)?;
+	}
+	Ok(json!({ "functionResponse": function_response }))
+}
+
+/// The id to send back to Gemini for a call: the call's own id (Gemini's, when it returned one),
+/// but not the stand-in this adapter makes for a call that came without one (`call#{name}#{n}`),
+/// so such calls are sent as before and matched in order.
+fn gemini_call_id(call_id: &str) -> Option<&str> {
+	(!call_id.is_empty() && infer_gemini_synthetic_call_fn_name(call_id).is_none()).then_some(call_id)
 }
 
 fn gemini_function_response_name(tool_response: &ToolResponse) -> String {
@@ -1504,6 +1517,39 @@ mod tests {
 		assert_eq!(model_turn[1]["functionCall"]["args"]["path"], "/a");
 		assert_eq!(model_turn[2]["thoughtSignature"], "sig-b");
 		assert_eq!(model_turn[2]["functionCall"]["args"]["path"], "/b");
+	}
+
+	/// A call Gemini gave an id goes back with that id, and so does its response, so Gemini can
+	/// match the two. A call that came without one keeps its local stand-in id, which is not sent.
+	#[test]
+	fn function_call_ids_go_back_with_the_call_and_its_response() {
+		let response = GeminiAdapter::to_chat_response(
+			gemini_3(),
+			response_with_parts(json!([
+				{"functionCall": {"name": "read_file", "args": {"path": "/a"}, "id": "call_a"}, "thoughtSignature": "sig-a"},
+				{"functionCall": {"name": "read_file", "args": {"path": "/b"}}}
+			])),
+			ChatOptionsSet::default(),
+		)
+		.expect("chat response");
+		let calls = response.content.tool_calls();
+		assert_eq!(calls[0].call_id, "call_a");
+		let tool_responses: Vec<ChatMessage> = calls
+			.iter()
+			.map(|call| ChatMessage::from(ToolResponse::new(call.call_id.clone(), "{}").with_fn_name("read_file")))
+			.collect();
+		let mut messages = vec![ChatMessage::user("Read both."), ChatMessage::assistant(response.content)];
+		messages.extend(tool_responses);
+
+		let parts =
+			GeminiAdapter::into_gemini_request_parts(&gemini_3(), ChatRequest::new(messages)).expect("request parts");
+
+		let model_turn = &parts.contents[1]["parts"];
+		assert_eq!(model_turn[0]["functionCall"]["id"], "call_a");
+		assert!(model_turn[1]["functionCall"].get("id").is_none());
+		let response_turn = &parts.contents[2]["parts"];
+		assert_eq!(response_turn[0]["functionResponse"]["id"], "call_a");
+		assert!(response_turn[1]["functionResponse"].get("id").is_none());
 	}
 
 	/// A signature on a text part rides that text part back, as it was returned.
