@@ -2,6 +2,7 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
+use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 
 // The Interactions API is opt-in, so every model name here carries the `gemini_ix::` prefix.
@@ -90,6 +91,16 @@ async fn test_chat_simple_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_chat_namespaced_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
+}
+
+#[tokio::test]
+async fn test_chat_reasoning_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(
+		ARGON,
+		ReasoningEffort::XHigh,
+		Some(Check::REASONING_CONTENT | Check::REASONING_USAGE),
+	)
+	.await
 }
 
 #[tokio::test]
