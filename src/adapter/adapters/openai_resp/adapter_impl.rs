@@ -708,16 +708,20 @@ impl OpenAIRespAdapter {
 					tool_value
 				}
 				name => {
-					let strict = strict.unwrap_or(false);
-					let parameters = tool_parameters_schema(schema, strict);
+					let parameters = tool_parameters_schema(schema, strict == Some(true));
 
-					json!({
+					let mut tool_value = json!({
 						"type": "function",
 						"name": name,
 						"description": description,
 						"parameters": parameters,
-						"strict": strict,
-					})
+					});
+					// Unset `strict` is left out, so the Responses API default applies
+					// (strict when the schema allows it, non-strict otherwise).
+					if let Some(strict) = strict {
+						tool_value.x_insert("strict", strict)?;
+					}
+					tool_value
 				}
 			}
 		};
@@ -826,6 +830,36 @@ mod tests {
 		assert!(input.iter().any(|item| {
 			item["type"] == "custom_tool_call_output" && item["call_id"] == "call_patch" && item["output"] == "Done!"
 		}));
+	}
+
+	#[test]
+	fn function_tool_strict_is_sent_only_when_set() {
+		let target = ServiceTarget {
+			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+		};
+		let schema = json!({
+			"type": "object",
+			"properties": {"city": {"type": "string"}}
+		});
+		let request = ChatRequest::from_user("weather").with_tools(vec![
+			Tool::new("unset").with_schema(schema.clone()),
+			Tool::new("not_strict").with_schema(schema.clone()).with_strict(false),
+			Tool::new("strict").with_schema(schema.clone()).with_strict(true),
+		]);
+
+		let web_req =
+			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())
+				.unwrap();
+		let tools = &web_req.payload["tools"];
+
+		assert!(tools[0].get("strict").is_none());
+		assert_eq!(tools[0]["parameters"], schema);
+		assert_eq!(tools[1]["strict"], false);
+		assert_eq!(tools[1]["parameters"], schema);
+		assert_eq!(tools[2]["strict"], true);
+		assert_eq!(tools[2]["parameters"]["additionalProperties"], false);
 	}
 
 	#[test]
