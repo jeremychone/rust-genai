@@ -441,6 +441,8 @@ let client = genai::Client::builder()
 
 If you set `default-features = false` on `genai` without enabling a TLS feature, add `reqwest` with a TLS feature directly to your own `Cargo.toml` (or use the `rustls-no-provider` path and install a `CryptoProvider`) — otherwise HTTPS requests fail at runtime.
 
+The default `system-proxy` feature turns on reqwest's `system-proxy`, which reads the macOS and Windows system proxy settings when a client is built. Cargo unifies features, so it applies to every `reqwest` client in the binary. With `default-features = false` it is off; add `features = ["system-proxy"]` to keep it. Proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) are honored either way.
+
 ## Contribution
 
 Contributions are welcome. To keep review fast and the codebase consistent, please follow these guidelines.
