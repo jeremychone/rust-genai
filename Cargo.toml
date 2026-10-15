@@ -24,6 +24,7 @@ rustls-tls = ["reqwest/rustls"]
 # NOTE: rustls-tls and native-tls are mutually exclusive. When selecting native-tls,
 # set `default-features = false` — otherwise both backends compile and the build fails
 # with a `compile_error!` (see src/lib.rs) telling you to do so.
+# Re-add `system-proxy` to keep reading the macOS and Windows proxy settings, as it is off with `default-features = false`.
 native-tls = ["reqwest/native-tls"]
 #
 # BYO crypto provider (FIPS/ring), static OpenSSL, custom root CAs, or mTLS: not a genai

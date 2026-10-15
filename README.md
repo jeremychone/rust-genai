@@ -25,13 +25,12 @@ See [v0.7.0-rc](#v070-rc)
 
 Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `atlascloud`, `xai`
-
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `atlascloud`, `xai`
 
 Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
 
 Providers and adapters can also be forced with a namespaced model name via `[name_space]::[model_name]`, for example, `qwen_cloud::qwen3.8-max`
- 
+
 Custom OpenAI-compatible endpoints can be accessed with the built-in `genai_n` adapter. Set `GENAI_{n}_ENDPOINT` and optionally `GENAI_{n}_API_KEY`, then use the `genai_{n}::model_name` namespace:
 
 ```text
@@ -60,7 +59,6 @@ let chat_res = client.exec_chat("omlx::my-model", chat_req, None).await?;
 
 Also supports custom endpoints and auth with `ServiceTargetResolver` (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs)) to support any other providers.
 
-
 ```rust
 
 // Can talk to any models / providers
@@ -75,9 +73,9 @@ let chat_req = ChatRequest::new(vec![
 
 // Model names can even have a reasoning effort suffix, such as "-high", which will be set, and then removed from name when sent to the provider.
 let chat_res = client.exec_chat("gpt-5.4-mini-high", chat_req, None).await?;
-	
+
 println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
-	
+
 ```
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
@@ -115,8 +113,7 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 See all in [CHANGELOG](CHANGELOG.md) and [v0.7.0 migration guide](docs/migration/migration-v_0_6_to_0_7.md) for more details.
 
-
-## v0.6.x Released 🎉 
+## v0.6.x Released 🎉
 
 New provider since v0.6.0: `minimax`
 
@@ -125,17 +122,17 @@ _v0.6.0 release date: 2026-05-23_
 Here’s what’s new:
 
 - **New Adapters**:
-    - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
-    - `open_router`
-    - `vertex` (with Gemini and Anthropic support)
-    - `github_copilot` (GitHub Models API)
-    - `opencode_go`
-    - `baidu`
-    - `aliyun`
-    - `qwen_cloud` (managed Qwen Cloud service at qwencloud.com, using the internal Aliyun-compatible endpoint)
-    - `moonshot`
-    - `aihubmix`
-    - `ollama_cloud` (Ollama Cloud)
+  - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
+  - `open_router`
+  - `vertex` (with Gemini and Anthropic support)
+  - `github_copilot` (GitHub Models API)
+  - `opencode_go`
+  - `baidu`
+  - `aliyun`
+  - `qwen_cloud` (managed Qwen Cloud service at qwencloud.com, using the internal Aliyun-compatible endpoint)
+  - `moonshot`
+  - `aihubmix`
+  - `ollama_cloud` (Ollama Cloud)
 - **Reasoning effort additions**: Added `ReasoningEffort::Max` for Anthropic and `ReasoningEffort::XHigh` for OpenAI.
 - **ProviderConfig for model listing**: `Client::all_model_names(adapter_kind, provider_config)` now accepts endpoint and auth overrides, including remote Ollama hosts and custom OpenAI-compatible model listing.
 - **Ollama and Ollama Cloud**: Now use the native Ollama API protocol.
@@ -167,7 +164,6 @@ See [BIG-THANKS](BIG-THANKS.md) for contributors
 - And much more
 
 [Examples](#examples) | [Thanks](BIG-THANKS.md) | [Library Focus](#library-focus) | [Changelog](CHANGELOG.md) | Provider Mapping: [ChatOptions](#chatoptions) | [Usage](#usage)
-
 
 ## Model to Adapter Resolution
 
@@ -355,19 +351,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [genai introduction (v0.1.0)](https://www.youtube.com/watch?v=uqGso3JD3eE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
 
 - **genai live coding, code design, and best practices**
-    - [Adding **Gemini** Structured Output (vid-0060)](https://www.youtube.com/watch?v=GdFsqLJ1_pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
-    - [Adding **OpenAI** Structured Output (vid-0059)](https://www.youtube.com/watch?v=FpoNbQMhAH8&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
-    - [Splitting the JSON value extension trait into its own public crate, value-ext](https://www.youtube.com/watch?v=OS5KOz9y7Cg&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj) [value-ext](https://crates.io/crates/value-ext)
-    - [(part 1/3) Module, Error, constructors/builders](https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
-    - [(part 2/3) Extension Traits, Project Files, Versioning](https://www.youtube.com/watch?v=LRfDAZfo00o&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
-    - [(part 3/3) When to Async? Project Files, Versioning strategy](https://www.youtube.com/watch?v=93SS3VGsKx4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q)
+  - [Adding **Gemini** Structured Output (vid-0060)](https://www.youtube.com/watch?v=GdFsqLJ1_pE&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+  - [Adding **OpenAI** Structured Output (vid-0059)](https://www.youtube.com/watch?v=FpoNbQMhAH8&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+  - [Splitting the JSON value extension trait into its own public crate, value-ext](https://www.youtube.com/watch?v=OS5KOz9y7Cg&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj) [value-ext](https://crates.io/crates/value-ext)
+  - [(part 1/3) Module, Error, constructors/builders](https://www.youtube.com/watch?v=XCrZleaIUO4&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+  - [(part 2/3) Extension Traits, Project Files, Versioning](https://www.youtube.com/watch?v=LRfDAZfo00o&list=PL7r-PXl6ZPcBcLsBdBABOFUuLziNyigqj)
+  - [(part 3/3) When to Async? Project Files, Versioning strategy](https://www.youtube.com/watch?v=93SS3VGsKx4&list=PL7r-PXl6ZPcCIOFaL7nVHXZvBmHNhrh_Q)
 
 ## Library Focus:
 
 - Focuses on standardizing chat completion APIs across major AI providers while preserving provider-specific strengths.
 
 - Native implementation without per-service SDK dependencies.
-    - Reason: genai uses each provider's native protocol when available, so features such as reasoning controls, thinking budgets, streaming metadata, and multimodal inputs can be represented more completely. When a provider primarily exposes an OpenAI-compatible API, genai uses that compatibility layer instead. Managing these protocol differences at the adapter layer is simpler and more scalable than dealing with multiple SDKs.
+  - Reason: genai uses each provider's native protocol when available, so features such as reasoning controls, thinking budgets, streaming metadata, and multimodal inputs can be represented more completely. When a provider primarily exposes an OpenAI-compatible API, genai uses that compatibility layer instead. Managing these protocol differences at the adapter layer is simpler and more scalable than dealing with multiple SDKs.
 
 - Prioritizes ergonomics and commonality, while depth is secondary. (If you require a complete client API, consider using [async-openai](https://crates.io/search?q=async-openai) and [ollama-rs](https://crates.io/crates/ollama-rs); both are excellent and easy to use.)
 
@@ -376,10 +372,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## ChatOptions
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, AIHubMix, Atlas Cloud
+  - Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, AIHubMix, Atlas Cloud
 
 | Property      | OpenAI Compatibles (*1) | Anthropic                   | Gemini `generationConfig.` | Cohere        |
-|---------------|-------------------------|-----------------------------|----------------------------|---------------|
+| ------------- | ----------------------- | --------------------------- | -------------------------- | ------------- |
 | `temperature` | `temperature`           | `temperature`               | `temperature`              | `temperature` |
 | `max_tokens`  | `max_tokens`            | `max_tokens` (default 1024) | `maxOutputTokens`          | `max_tokens`  |
 | `top_p`       | `top_p`                 | `top_p`                     | `topP`                     | `p`           |
@@ -387,21 +383,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Usage
 
 | Property                    | OpenAI Compatibles (1)      | Anthropic `usage.`      | Gemini `usageMetadata.`    | Cohere `meta.tokens.` |
-|-----------------------------|-----------------------------|-------------------------|----------------------------|-----------------------|
+| --------------------------- | --------------------------- | ----------------------- | -------------------------- | --------------------- |
 | `prompt_tokens`             | `prompt_tokens`             | `input_tokens` (added)  | `promptTokenCount` (2)     | `input_tokens`        |
-| `completion_tokens`         | `completion_tokens`       | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
+| `completion_tokens`         | `completion_tokens`         | `output_tokens` (added) | `candidatesTokenCount` (2) | `output_tokens`       |
 | `total_tokens`              | `total_tokens`              | (computed)              | `totalTokenCount` (2)      | (computed)            |
 | `prompt_tokens_details`     | `prompt_tokens_details`     | `cached/cache_creation` | N/A for now                | N/A for now           |
 | `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
 
 - **(1)** - **OpenAI-compatible** notes
-	- Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, AIHubMix, Atlas Cloud
-	- For **Groq**, the property is `x_groq.usage.`
-	- At this point, **Ollama** does not emit input/output tokens when streaming due to a limitation in the Ollama OpenAI compatibility layer. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
-	- `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider, or `None`
+  - Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, AIHubMix, Atlas Cloud
+  - For **Groq**, the property is `x_groq.usage.`
+  - At this point, **Ollama** does not emit input/output tokens when streaming due to a limitation in the Ollama OpenAI compatibility layer. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
+  - `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider, or `None`
 
 - **(2)**: **Gemini** tokens
-	- Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it’s not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
+  - Right now, with the [Gemini Stream API](https://ai.google.dev/api/rest/v1beta/models/streamGenerateContent), it’s not clear whether usage for each event is cumulative or must be summed. It appears to be cumulative, meaning the last message shows the total number of input, output, and total tokens, so that is the current assumption. See [possible tweet answer](https://twitter.com/jeremychone/status/1813734565967802859) for more info.
 
 ## Usage examples
 
@@ -415,13 +411,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 TLS is selectable via cargo features. The default works out of the box and is right for almost everyone.
 
-| You want… | Use |
-|---|---|
-| A backend that just works (default) | nothing — `rustls-tls` (rustls + aws-lc-rs + OS trust store) |
-| System trust policy / OpenSSL or SChannel | `genai = { default-features = false, features = ["native-tls"] }` |
+| You want…                                                | Use                                                                                                                                                                                                      |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A backend that just works (default)                      | nothing — `rustls-tls` (rustls + aws-lc-rs + OS trust store)                                                                                                                                             |
+| System trust policy / OpenSSL or SChannel                | `genai = { default-features = false, features = ["native-tls", "system-proxy"] }`                                                                                                                        |
 | ring / FIPS / no `aws-lc-sys` (lean musl & cross builds) | `genai = { default-features = false }`, add your own `reqwest = { features = ["rustls-no-provider"] }` + a provider (e.g. `rustls` with `ring`), and call `CryptoProvider::install_default()` at startup |
-| Static OpenSSL | `genai = { default-features = false }` + your own `reqwest = { features = ["native-tls-vendored"] }` |
-| Custom root CA / mTLS / fully custom client | build your own `reqwest::Client` and inject it via `with_reqwest(...)` |
+| Static OpenSSL                                           | `genai = { default-features = false }` + your own `reqwest = { features = ["native-tls-vendored"] }`                                                                                                     |
+| Custom root CA / mTLS / fully custom client              | build your own `reqwest::Client` and inject it via `with_reqwest(...)`                                                                                                                                   |
 
 `rustls-tls` and `native-tls` are mutually exclusive. When selecting `native-tls`, set `default-features = false` (as shown above) — otherwise both backends compile and the build fails with a `compile_error!` telling you to do so.
 
@@ -450,14 +446,14 @@ Contributions are welcome. To keep review fast and the codebase consistent, plea
 - Keep your PR focused on one problem or one enhancement, or on very closely related changes. Small, focused PRs are easier to review and faster to merge.
 
 - This crate follows a zero-panic approach, so avoid `.unwrap()`, `.expect(...)`, and similar panic-prone calls in the production code path, and avoid array indexing with `[]` as much as possible.
-    - For now, `.unwrap()` and `.expect(...)` are tolerated in tests and examples, but they should be avoided going forward and will be changed soon. Favor `.ok_or("...")?` and other non-panicking alternatives.
+  - For now, `.unwrap()` and `.expect(...)` are tolerated in tests and examples, but they should be avoided going forward and will be changed soon. Favor `.ok_or("...")?` and other non-panicking alternatives.
 
 - When changing a provider or adapter implementation behavior, updating or adding a Yakbak cassette is appreciated when it makes sense.
 
 - Using AI is completely fine, as long as you fully review and control the end result before submitting the PR.
-    - Concise, to-the-point description.
-    - Clean and focused code.
-    - Emoticonless, especially in code.
+  - Concise, to-the-point description.
+  - Clean and focused code.
+  - Emoticonless, especially in code.
 
 - Do not update `CHANGELOG.md`, `BIG-THANKS.md`, or the migration docs under `docs/migration/` in your PR. The maintainer handles those in a single pass so the formatting, wording, and ordering stay consistent across releases. Describe the change in your PR instead, and call out anything user-visible or breaking so it can be captured accurately.
   - If CHANGELOG.md or migration files are erroneous, submitting a PR to rectify them is a good approach.

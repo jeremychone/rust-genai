@@ -486,7 +486,10 @@ Use through `Tool::new_web_search().with_config(WebSearchConfig { ... })` or `To
 ### `ToolResponse`
 
 - `call_id: String`, `content: String` (result as string, usually JSON).
-- `ToolResponse::new(call_id, content)`: Constructor.
+- `fn_name: Option<String>`: Name of the function that produced the response. Gemini uses it as `functionResponse.name`. When unset, the adapter looks up the matching call in the request.
+- `ToolResponse::new(call_id, content)`: Constructor. `fn_name` is `None`.
+- `ToolResponse::from_tool_call(tool_call, content)`: Constructor from the originating `ToolCall`, copying its `call_id` and `fn_name`.
+- `with_fn_name(name)`: Chainable setter for `fn_name`.
 - `size()`: Approximate in-memory size.
 
 ## Responses & Streaming

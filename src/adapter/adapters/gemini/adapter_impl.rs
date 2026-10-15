@@ -969,7 +969,7 @@ fn gemini_function_call_part(tool_call: ToolCall) -> Result<Value> {
 /// Its name must be the call's: Gemini rejects a response that carries a call's id under another
 /// name (400 INVALID_ARGUMENT). The name is the response's `fn_name`, else the name of the call with
 /// this id earlier in the request, else the name in a stand-in id. When none is found, the call id
-/// stands in for the name, as before, and no id is sent.
+/// stands in for the name and no id is sent.
 fn gemini_function_response_part(tool_response: ToolResponse, call_names: &HashMap<String, String>) -> Result<Value> {
 	let fn_name = tool_response
 		.fn_name
@@ -992,7 +992,8 @@ fn gemini_function_response_part(tool_response: ToolResponse, call_names: &HashM
 
 /// The id to send back to Gemini for a call: the call's own id (Gemini's, when it returned one),
 /// but not the stand-in this adapter makes for a call that came without one (`call#{name}#{n}`),
-/// so such calls are sent as before and matched in order.
+/// so such calls are sent without an id and matched in order.
+/// Ids from other providers or callers are sent as they are.
 fn gemini_call_id(call_id: &str) -> Option<&str> {
 	(!call_id.is_empty() && infer_gemini_synthetic_call_fn_name(call_id).is_none()).then_some(call_id)
 }
