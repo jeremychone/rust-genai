@@ -99,7 +99,7 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 **New Providers & Adapters:**
 
-- Gemini Interactions API (`gemini_ix::`): stateful conversation sessions (`previous_response_id`, `store`).
+- Gemini Interactions API (`gemini_ix::`, and `gemini-4-argon*` models mapped to it): stateful conversation sessions (`previous_response_id`, `store`).
 - Mistral AI (`mistral::`): Chat Completions with typed thinking content, assistant reasoning replay, and `random_seed` mapping.
 - Atlas Cloud (`atlascloud::`), Qwen Cloud (`qwen_cloud::`), Kimi (`kimi::`, `kimi-*`), OMLX (`omlx::`, `omlx-*`).
 - Custom adapter (`genai_{n}::`): generic OpenAI-compatible routing via `GENAI_{n}_ENDPOINT` and `GENAI_{n}_API_KEY`.
@@ -177,7 +177,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **OpenAI Responses**: `gpt-5-*`, `gpt-6-*`, `gpt-*` (containing `codex` or `pro`)
 - **Anthropic**: `claude-*`
 - **Gemini**: `gemini-*`
-- **Gemini Interactions API**: `gemini-4-argon*` (routed to the `gemini_ix` adapter)
+- **Gemini Interactions API (Argon)**: `gemini-4-argon*` models are routed to the `gemini_ix` adapter. The `gemini_ix::` namespace also forces this adapter.
 - **xAI**: `grok-*`
 - **DeepSeek**: `deepseek-*`
 - **Moonshot**: `moonshot-*` (moonshot.ai)
