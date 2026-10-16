@@ -1,6 +1,8 @@
 use super::*;
 use crate::chat::{ChatMessage, ChatOptions, JsonSpec, WebSearchConfig};
 
+type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
+
 // region:    --- usageMetadata normalization
 
 /// `toolUsePromptTokenCount` sits OUTSIDE `promptTokenCount`: the page content
@@ -726,3 +728,40 @@ fn test_gemini_parser_keeps_a_signature_only_part_as_empty_text() {
 }
 
 // endregion: --- Thought signature placement
+#[test]
+fn test_gemini_function_response_part_id_only_for_known_calls() -> Result<()> {
+	// -- Setup & Fixtures
+	let cases = [
+		("call_123", Some("get_weather"), false, "get_weather", None),
+		("call_123", None, false, "call_123", None),
+		("call#get_weather#0", None, false, "get_weather", None),
+		("call_123", None, true, "get_weather", Some("call_123")),
+		("call_123", Some("explicit_name"), true, "explicit_name", Some("call_123")),
+		("call#get_weather#0", None, true, "get_weather", None),
+	];
+
+	// -- Exec & Check
+	for (call_id, fn_name, known, expected_name, expected_id) in cases {
+		let mut call_names = HashMap::new();
+		if known {
+			call_names.insert(call_id.to_string(), "get_weather".to_string());
+		}
+		let mut response = ToolResponse::new(call_id, "{}");
+		if let Some(fn_name) = fn_name {
+			response = response.with_fn_name(fn_name);
+		}
+
+		let part = gemini_function_response_part(response, &call_names)?;
+		let function_response = &part["functionResponse"];
+
+		assert_eq!(function_response["name"], expected_name);
+		assert_eq!(function_response["response"]["name"], expected_name);
+		assert_eq!(
+			function_response.get("id"),
+			expected_id.map(|id| json!(id)).as_ref(),
+			"call_id={call_id}, known={known}, fn_name={fn_name:?}"
+		);
+	}
+
+	Ok(())
+}

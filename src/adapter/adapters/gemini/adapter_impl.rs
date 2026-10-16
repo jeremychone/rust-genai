@@ -977,7 +977,10 @@ fn gemini_function_response_part(tool_response: ToolResponse, call_names: &HashM
 		.fn_name
 		.or_else(|| call_names.get(&tool_response.call_id).cloned())
 		.or_else(|| infer_gemini_synthetic_call_fn_name(&tool_response.call_id));
-	let id = fn_name.as_ref().and(gemini_call_id(&tool_response.call_id));
+	let id = call_names
+		.contains_key(&tool_response.call_id)
+		.then(|| gemini_call_id(&tool_response.call_id))
+		.flatten();
 	let fn_name = fn_name.as_deref().unwrap_or(&tool_response.call_id);
 	let mut function_response = json!({
 		"name": fn_name,
