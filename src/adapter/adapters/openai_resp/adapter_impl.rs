@@ -713,9 +713,11 @@ impl OpenAIRespAdapter {
 					let mut tool_value = json!({
 						"type": "function",
 						"name": name,
-						"description": description,
 						"parameters": parameters,
 					});
+					if let Some(description) = description {
+						tool_value.x_insert("description", description)?;
+					}
 					// Unset `strict` is left out, so the Responses API default applies
 					// (strict when the schema allows it, non-strict otherwise).
 					if let Some(strict) = strict {

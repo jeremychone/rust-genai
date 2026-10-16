@@ -5,7 +5,7 @@ use crate::chat::{ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
 
 #[test]
-fn test_cache_control_without_eligible_content_does_not_fail_response_request() {
+fn test_openai_resp_cache_control_without_eligible_content_does_not_fail_response_request() {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
 		auth: AuthData::from_single("test-key"),
@@ -105,7 +105,7 @@ fn function_tool_strict_is_sent_only_when_set() -> Result<()> {
 }
 
 #[test]
-fn test_extra_body_merged_into_response_payload() {
+fn test_openai_resp_extra_body_merged_into_response_payload() {
 	let chat_options = ChatOptions::default()
 		.with_top_p(0.3)
 		.with_extra_body(json!({"top_p": 0.9, "metadata": {"source": "test"}}));
@@ -203,7 +203,7 @@ fn dynamic_map_schema_is_sent_to_backend_for_validation() {
 }
 
 #[test]
-fn test_tool_choice_specific_tool_serialized_on_response_payload() {
+fn test_openai_resp_tool_choice_specific_tool_serialized_on_response_payload() {
 	let chat_options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
 	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
 	let target = ServiceTarget {
@@ -231,7 +231,7 @@ fn test_tool_choice_specific_tool_serialized_on_response_payload() {
 /// so it must use "output_text". Using "input_text" causes:
 /// "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'."
 #[test]
-fn test_assistant_message_uses_output_text_content_type() {
+fn test_openai_resp_assistant_message_uses_output_text_content_type() {
 	let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-codex");
 
 	// Create a chat request with an assistant message
@@ -275,7 +275,7 @@ fn test_assistant_message_uses_output_text_content_type() {
 }
 
 #[test]
-fn test_gpt_5_6_responses_defaults_to_explicit_cache_mode() {
+fn test_openai_resp_gpt_5_6_responses_defaults_to_explicit_cache_mode() {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
 		auth: AuthData::from_single("test-key"),
@@ -300,7 +300,7 @@ fn test_gpt_5_6_responses_defaults_to_explicit_cache_mode() {
 }
 
 #[test]
-fn test_gpt_6_responses_defaults_to_explicit_cache_mode() {
+fn test_openai_resp_gpt_6_responses_defaults_to_explicit_cache_mode() {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-6"),
 		auth: AuthData::from_single("test-key"),
@@ -325,7 +325,7 @@ fn test_gpt_6_responses_defaults_to_explicit_cache_mode() {
 }
 
 #[test]
-fn test_gpt_5_6_codex_responses_endpoint_omits_prompt_cache_options() -> Result<()> {
+fn test_openai_resp_gpt_5_6_codex_responses_endpoint_omits_prompt_cache_options() -> Result<()> {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
 		auth: AuthData::from_single("test-key"),
@@ -344,7 +344,7 @@ fn test_gpt_5_6_codex_responses_endpoint_omits_prompt_cache_options() -> Result<
 }
 
 #[test]
-fn test_gpt_5_6_responses_cache_key_uses_api_default_cache_mode() {
+fn test_openai_resp_gpt_5_6_responses_cache_key_uses_api_default_cache_mode() {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6-mini"),
 		auth: AuthData::from_single("test-key"),
@@ -366,7 +366,7 @@ fn test_gpt_5_6_responses_cache_key_uses_api_default_cache_mode() {
 }
 
 #[test]
-fn test_gpt_5_6_responses_places_breakpoint_on_last_eligible_content_block() {
+fn test_openai_resp_gpt_5_6_responses_places_breakpoint_on_last_eligible_content_block() {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
 		auth: AuthData::from_single("test-key"),
@@ -394,7 +394,7 @@ fn test_gpt_5_6_responses_places_breakpoint_on_last_eligible_content_block() {
 }
 
 #[test]
-fn test_gpt_5_6_responses_ignores_tool_cache_control() {
+fn test_openai_resp_gpt_5_6_responses_ignores_tool_cache_control() {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
 		auth: AuthData::from_single("test-key"),
@@ -412,7 +412,7 @@ fn test_gpt_5_6_responses_ignores_tool_cache_control() {
 }
 
 #[test]
-fn test_gpt_5_5_responses_keeps_legacy_cache_retention() {
+fn test_openai_resp_gpt_5_5_responses_keeps_legacy_cache_retention() {
 	let target = ServiceTarget {
 		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.5"),
 		auth: AuthData::from_single("test-key"),
@@ -427,4 +427,41 @@ fn test_gpt_5_5_responses_keeps_legacy_cache_retention() {
 
 	assert_eq!(web_req.payload["prompt_cache_retention"], "24h");
 	assert!(web_req.payload.get("prompt_cache_options").is_none());
+}
+
+#[test]
+fn test_openai_resp_adapter_adapters_openai_resp_tool_to_openai_tool_optional_description() -> Result<()> {
+	// -- Setup & Fixtures
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+	};
+	let schema = json!({
+		"type": "object",
+		"properties": {"city": {"type": "string"}}
+	});
+	let request = ChatRequest::from_user("weather").with_tools(vec![
+		Tool::new("without_description").with_schema(schema.clone()),
+		Tool::new("with_description")
+			.with_schema(schema.clone())
+			.with_description("Get the weather"),
+	]);
+
+	// -- Exec
+	let web_req =
+		OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())?;
+
+	// -- Check
+	let tools = web_req.payload["tools"].as_array().ok_or("Should have a tools array")?;
+	assert_eq!(tools.len(), 2);
+	assert_eq!(tools[0]["type"], "function");
+	assert_eq!(tools[0]["name"], "without_description");
+	assert_eq!(tools[0]["parameters"], schema);
+	assert!(tools[0].get("description").is_none());
+	assert_eq!(tools[1]["type"], "function");
+	assert_eq!(tools[1]["description"], "Get the weather");
+	assert_eq!(tools[1]["parameters"], schema);
+
+	Ok(())
 }

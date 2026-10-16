@@ -173,18 +173,11 @@ impl futures::Stream for OpenAIRespStreamer {
 						RespStreamEvent::OutputItemAdded { output_index, item } => {
 							let item_type = item.x_get_str("type").ok();
 							if matches!(item_type, Some("function_call" | "custom_tool_call")) {
-								let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
-								let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
 								if item_type == Some("custom_tool_call") {
 									self.custom_tool_call_indexes.insert(output_index);
 								}
 
-								let tool_call = ToolCall {
-									call_id,
-									fn_name,
-									fn_arguments: Value::String(String::new()),
-									thought_signatures: None,
-								};
+								let tool_call = tool_call_from_item(&item, String::new());
 
 								self.in_progress_tool_calls.insert(output_index, tool_call);
 							}
@@ -192,6 +185,7 @@ impl futures::Stream for OpenAIRespStreamer {
 						}
 
 						RespStreamEvent::OutputItemDone { output_index, item } => {
+							let item_type = item.x_get_str("type").ok();
 							// Capture encrypted reasoning blobs from `type: "reasoning"`
 							// items as they finalise. Some Responses-API-shaped proxies
 							// don't include `response.output` in the terminal
@@ -200,7 +194,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							// here keeps the prefix cache round-trip working regardless
 							// of whether the backend echoes `output` at the end.
 							if self.options.capture_reasoning_content
-								&& item.x_get_str("type").ok() == Some("reasoning")
+								&& item_type == Some("reasoning")
 								&& let Ok(encrypted) = item.x_get_str("encrypted_content")
 								&& !encrypted.is_empty()
 							{
@@ -211,7 +205,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							}
 							// For a function_call, the complete arguments live on `done`. `arguments.delta`
 							// may be truncated or arrive before `output_item.added`; a non-empty `arguments` on `done` wins.
-							if item.x_get_str("type").ok() == Some("function_call")
+							if item_type == Some("function_call")
 								&& let Ok(arguments) = item.x_get_str("arguments")
 								&& !arguments.is_empty()
 							{
@@ -220,28 +214,16 @@ impl futures::Stream for OpenAIRespStreamer {
 								} else {
 									self.in_progress_tool_calls.insert(
 										output_index,
-										ToolCall {
-											call_id: item.x_get_str("call_id").unwrap_or_default().to_string(),
-											fn_name: item.x_get_str("name").unwrap_or_default().to_string(),
-											fn_arguments: Value::String(arguments.to_string()),
-											thought_signatures: None,
-										},
+										tool_call_from_item(&item, arguments.to_string()),
 									);
 								}
 							}
-							if item.x_get_str("type").ok() == Some("custom_tool_call") {
-								let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
-								let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
+							if item_type == Some("custom_tool_call") {
 								let input = item.x_get_str("input").unwrap_or_default().to_string();
 								self.custom_tool_call_indexes.insert(output_index);
 								self.in_progress_tool_calls.insert(
 									output_index,
-									ToolCall {
-										call_id,
-										fn_name,
-										fn_arguments: Value::String(input),
-										thought_signatures: None,
-									},
+									tool_call_from_item(&item, input),
 								);
 							}
 							continue;
@@ -475,6 +457,19 @@ impl futures::Stream for OpenAIRespStreamer {
 		Poll::Pending
 	}
 }
+
+// region:    --- Support
+
+fn tool_call_from_item(item: &Value, arguments: String) -> ToolCall {
+	ToolCall {
+		call_id: item.x_get_str("call_id").unwrap_or_default().to_string(),
+		fn_name: item.x_get_str("name").unwrap_or_default().to_string(),
+		fn_arguments: Value::String(arguments),
+		thought_signatures: None,
+	}
+}
+
+// endregion: --- Support
 
 #[cfg(test)]
 mod tests {

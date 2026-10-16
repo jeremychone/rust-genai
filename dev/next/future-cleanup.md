@@ -175,3 +175,14 @@
 
 - Suggested change: run `cargo tree -i paste` (expect nothing), `cargo build --features bedrock-sigv4`, and confirm `Cargo.lock` is updated if it is tracked. Record the results in the PR.
 
+
+## ■ Step - Fix: finalize OpenAI Responses tool calls on incomplete and EOF
+      status: not_started
+time-created: 2026-10-15 15:51:23
+
+Behavior change, needs yakbak coverage. Commit prefix: `- openai_resp - Finalize tool calls on incomplete and EOF`
+
+- Refresh `call_id` and `name` from `output_item.done` when the entry came from an `output_item.added` with empty values.
+- Emit a final `ToolCallChunk` when `output_item.done` overrides the accumulated arguments.
+- Finalize `in_progress_tool_calls` on the `ResponseIncomplete` and EOF (`None`) paths so accumulated calls are not dropped.
+- Add a yakbak cassette test and remove the raw TCP test. Blocked until the test files are provided.
