@@ -93,6 +93,42 @@ impl AnthropicStreamer {
 	pub fn frame_tap(&self) -> Option<crate::webc::FrameTap> {
 		self.inner.frame_tap()
 	}
+
+	/// Moves a `tool_use` block's call into `captured_data` (when capturing tool calls),
+	/// parsing its input when it is JSON. A block `cut_off` before its `content_block_stop`
+	/// (e.g., by `max_tokens`) keeps its input as far as it got, left as a string when it
+	/// does not parse, an empty one included.
+	fn capture_tool_call(&mut self, id: String, name: String, input: String, cut_off: bool) {
+		if !self.options.capture_tool_calls {
+			return;
+		}
+
+		let fn_arguments = if input.is_empty() && !cut_off {
+			Value::Object(Map::new())
+		} else {
+			serde_json::from_str(&input).unwrap_or_else(|e| {
+				if !cut_off {
+					tracing::warn!(
+						"Anthropic streamer: failed to parse tool-call input JSON ({} bytes): {e}",
+						input.len()
+					);
+				}
+				Value::String(input)
+			})
+		};
+
+		let tc = ToolCall {
+			call_id: id,
+			fn_name: name,
+			fn_arguments,
+			thought_signatures: None,
+		};
+
+		match self.captured_data.tool_calls {
+			Some(ref mut t) => t.push(tc),
+			None => self.captured_data.tool_calls = Some(vec![tc]),
+		}
+	}
 }
 
 impl futures::Stream for AnthropicStreamer {
@@ -284,33 +320,11 @@ impl futures::Stream for AnthropicStreamer {
 						}
 						"content_block_stop" => {
 							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text) {
-								InProgressBlock::ToolUse { id, name, input } if self.options.capture_tool_calls => {
+								InProgressBlock::ToolUse { id, name, input } => {
 									// ToolCallChunks were already emitted incrementally
 									// during content_block_start and content_block_delta.
 									// Here we only finalize capture with parsed arguments.
-									let fn_arguments = if input.is_empty() {
-										Value::Object(Map::new())
-									} else {
-										serde_json::from_str(&input).unwrap_or_else(|e| {
-											tracing::warn!(
-												"Anthropic streamer: failed to parse tool-call input JSON ({} bytes): {e}",
-												input.len()
-											);
-											Value::String(input)
-										})
-									};
-
-									let tc = ToolCall {
-										call_id: id,
-										fn_name: name,
-										fn_arguments,
-										thought_signatures: None,
-									};
-
-									match self.captured_data.tool_calls {
-										Some(ref mut t) => t.push(tc),
-										None => self.captured_data.tool_calls = Some(vec![tc]),
-									}
+									self.capture_tool_call(id, name, input, false);
 								}
 								InProgressBlock::Thinking(thinking_block) => {
 									if let Some(block) = thinking_block.into_thought_block() {
@@ -330,6 +344,15 @@ impl futures::Stream for AnthropicStreamer {
 							// NOTE: This way, the last MessageStop event is still sent,
 							//       but then, on the next poll, it will be stopped.
 							self.done = true;
+
+							// A `tool_use` block cut short (e.g., by `max_tokens`) gets no
+							// `content_block_stop`, so its call is captured here, with its
+							// input as far as it got.
+							if let InProgressBlock::ToolUse { id, name, input } =
+								std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text)
+							{
+								self.capture_tool_call(id, name, input, true);
+							}
 
 							// Capture the usage
 							let captured_usage = if self.options.capture_usage {
