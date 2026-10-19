@@ -7,8 +7,8 @@ use genai::resolver::AuthData;
 
 // The Interactions API is opt-in, so every model name here carries the `gemini_ix::` prefix.
 const ARGON: &str = "gemini-4-argon";
-const MODEL: &str = "gemini_ix::gemini-3.5-flash";
-const MODEL_NS: &str = "gemini_ix::gemini-3.5-flash";
+const MODEL: &str = "gemini_ix::gemini-3.8-flash";
+const MODEL_NS: &str = "gemini_ix::gemini-3.8-flash";
 
 // region:    --- Provider Specific
 

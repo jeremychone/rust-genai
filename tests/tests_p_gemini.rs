@@ -8,9 +8,9 @@ use genai::resolver::AuthData;
 // "gemini-2.5-flash" "gemini-2.5-pro" "gemini-2.5-flash-lite"
 // "gemini-2.5-flash-zero"
 // const MODEL_GPRO_3: &str = "gemini-3-pro-preview";
-const MODEL_FLASH_3: &str = "gemini-3-flash-preview"; // pure gem, fast, cheap, and good!
-const MODEL_FLASH_LITE: &str = "gemini-3.1-flash-lite";
-const MODEL_NS: &str = "gemini::gemini-3.1-flash-lite";
+const MODEL_FLASH_3: &str = "gemini-3.8-flash"; // pure gem, fast, cheap, and good!
+const MODEL_FLASH_LITE: &str = "gemini-3.5-flash-lite";
+const MODEL_NS: &str = "gemini::gemini-3.5-flash-lite";
 
 // region:    --- Chat
 

@@ -9,11 +9,11 @@ use tracing_subscriber::EnvFilter;
 const MODEL_OPENAI: &str = "gpt-6-luna";
 const MODEL_ANTHROPIC: &str = "claude-haiku-5-5";
 const MODEL_FIREWORKS: &str = "fireworks::gpt-oss-120b";
-const MODEL_TOGETHER: &str = "together::openai/gpt-oss-20b";
+const MODEL_TOGETHER: &str = "together::openai/gpt-oss-120b";
 const MODEL_GEMINI: &str = "gemini-3.5-flash-lite";
 const MODEL_GROQ: &str = "groq::openai/gpt-oss-20b";
 const MODEL_OLLAMA_CLOUD: &str = "ollama_cloud::gemma3:4b";
-const MODEL_XAI: &str = "grok-4.";
+const MODEL_XAI: &str = "grok-4.7";
 const MODEL_DEEPSEEK: &str = "deepseek-flash";
 const MODEL_ZAI: &str = "glm-5.3-flash";
 const MODEL_ALIYUN: &str = "aliyun::qwen-plus"; // required namespace
