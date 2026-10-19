@@ -138,6 +138,58 @@ impl OpenAIRespStreamer {
 	pub fn frame_tap(&self) -> Option<crate::webc::FrameTap> {
 		self.inner.frame_tap()
 	}
+
+	/// Moves the tool calls streamed so far into `captured_data` (when capturing them),
+	/// parsing function call arguments that are JSON. Falls back to the function calls
+	/// listed in the terminal response's `output` when none were streamed.
+	fn capture_tool_calls(&mut self, output: &[Value]) {
+		let mut tool_calls = Vec::new();
+		for (index, mut tc) in std::mem::take(&mut self.in_progress_tool_calls) {
+			// Parse arguments if they are strings
+			if !self.custom_tool_call_indexes.contains(&index)
+				&& let Some(args_str) = tc.fn_arguments.as_str()
+				&& let Ok(args_val) = serde_json::from_str(args_str)
+			{
+				tc.fn_arguments = args_val;
+			}
+			tool_calls.push(tc);
+		}
+
+		// Fallback: if no tool calls were captured incrementally
+		// (e.g., the server sent only the terminal response without
+		// preceding OutputItemAdded / FunctionCallArgumentsDelta
+		// events), extract them from the response.output payload.
+		if tool_calls.is_empty() {
+			for item in output {
+				let item_type = item.x_get_str("type").ok();
+				if matches!(item_type, Some("function_call" | "custom_tool_call")) {
+					let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
+					let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
+					let args_str = if item_type == Some("custom_tool_call") {
+						item.x_get_str("input").unwrap_or_default()
+					} else {
+						item.x_get_str("arguments").unwrap_or_default()
+					};
+					let fn_arguments = if item_type == Some("custom_tool_call") {
+						Value::String(args_str.to_string())
+					} else {
+						serde_json::from_str(args_str).unwrap_or_else(|_| Value::String(args_str.to_string()))
+					};
+
+					tool_calls.push(ToolCall {
+						call_id,
+						fn_name,
+						fn_arguments,
+						thought_signatures: None,
+					});
+				}
+			}
+		}
+
+		if self.options.capture_tool_calls && !tool_calls.is_empty() {
+			self.captured_data.tool_calls = Some(tool_calls);
+		}
+	}
 }
 
 impl futures::Stream for OpenAIRespStreamer {
@@ -289,53 +341,7 @@ impl futures::Stream for OpenAIRespStreamer {
 								self.captured_data.usage = response.usage.map(Into::into);
 							}
 
-							let mut tool_calls = Vec::new();
-							for (index, mut tc) in std::mem::take(&mut self.in_progress_tool_calls) {
-								// Parse arguments if they are strings
-								if !self.custom_tool_call_indexes.contains(&index)
-									&& let Some(args_str) = tc.fn_arguments.as_str()
-									&& let Ok(args_val) = serde_json::from_str(args_str)
-								{
-									tc.fn_arguments = args_val;
-								}
-								tool_calls.push(tc);
-							}
-
-							// Fallback: if no tool calls were captured incrementally
-							// (e.g., the server sent only response.completed without
-							// preceding OutputItemAdded / FunctionCallArgumentsDelta
-							// events), extract them from the response.output payload.
-							if tool_calls.is_empty() {
-								for item in &response.output {
-									let item_type = item.x_get_str("type").ok();
-									if matches!(item_type, Some("function_call" | "custom_tool_call")) {
-										let call_id = item.x_get_str("call_id").unwrap_or_default().to_string();
-										let fn_name = item.x_get_str("name").unwrap_or_default().to_string();
-										let args_str = if item_type == Some("custom_tool_call") {
-											item.x_get_str("input").unwrap_or_default()
-										} else {
-											item.x_get_str("arguments").unwrap_or_default()
-										};
-										let fn_arguments = if item_type == Some("custom_tool_call") {
-											Value::String(args_str.to_string())
-										} else {
-											serde_json::from_str(args_str)
-												.unwrap_or_else(|_| Value::String(args_str.to_string()))
-										};
-
-										tool_calls.push(ToolCall {
-											call_id,
-											fn_name,
-											fn_arguments,
-											thought_signatures: None,
-										});
-									}
-								}
-							}
-
-							if self.options.capture_tool_calls && !tool_calls.is_empty() {
-								self.captured_data.tool_calls = Some(tool_calls.clone());
-							}
+							self.capture_tool_calls(&response.output);
 
 							// Extract encrypted reasoning content from output items
 							// (OpenAI equivalent of Gemini thought signatures).
@@ -389,8 +395,10 @@ impl futures::Stream for OpenAIRespStreamer {
 						RespStreamEvent::ResponseIncomplete { response } => {
 							self.done = true;
 							self.captured_data.stop_reason = Some(response.status.clone());
-							// For incomplete, we might still want to return what we have?
-							// But for now, let's treat it as a successful end but with whatever we captured.
+							// A response cut short (e.g., by `max_output_tokens`) keeps the tool
+							// calls it streamed, a truncated call with its arguments as far as
+							// they got (left as a string when they do not parse).
+							self.capture_tool_calls(&response.output);
 							let resp_id = response.id.clone();
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: response.usage.map(Into::into),
