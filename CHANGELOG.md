@@ -86,6 +86,7 @@
   - `-` Fix: reuse Client WebClient for model listing. ([#249](https://github.com/jeremychone/rust-genai/pull/249))
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
   - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. (PR #275)
+  - `-` Keep a streamed answer's tool call when `max_tokens` cuts the answer off inside a `tool_use` block. Anthropic ends such a stream with `message_delta` (`max_tokens`) and `message_stop` and never sends `content_block_stop`, so the call was dropped and the answer looked like one with no calls. The call is now captured at `message_stop` with its input as far as it got, as a string when it does not parse (an empty one when the cut came before any input); a finished answer is unchanged. (PR #340)
 - OpenAI:
   - `-` Propagate Responses API streaming `error` events as `genai::Error::ChatResponse` and cleanly terminate the stream. (PR #296)
   - `-` Use the completed arguments from `response.output_item.done` for streaming `function_call` items when the delta arguments were truncated or arrived before `output_item.added`. (PR #332)

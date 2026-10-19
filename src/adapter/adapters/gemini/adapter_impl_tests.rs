@@ -736,7 +736,13 @@ fn test_gemini_function_response_part_id_only_for_known_calls() -> Result<()> {
 		("call_123", None, false, "call_123", None),
 		("call#get_weather#0", None, false, "get_weather", None),
 		("call_123", None, true, "get_weather", Some("call_123")),
-		("call_123", Some("explicit_name"), true, "explicit_name", Some("call_123")),
+		(
+			"call_123",
+			Some("explicit_name"),
+			true,
+			"explicit_name",
+			Some("call_123"),
+		),
 		("call#get_weather#0", None, true, "get_weather", None),
 	];
 

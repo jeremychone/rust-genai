@@ -93,42 +93,6 @@ impl AnthropicStreamer {
 	pub fn frame_tap(&self) -> Option<crate::webc::FrameTap> {
 		self.inner.frame_tap()
 	}
-
-	/// Moves a `tool_use` block's call into `captured_data` (when capturing tool calls),
-	/// parsing its input when it is JSON. A block `cut_off` before its `content_block_stop`
-	/// (e.g., by `max_tokens`) keeps its input as far as it got, left as a string when it
-	/// does not parse, an empty one included.
-	fn capture_tool_call(&mut self, id: String, name: String, input: String, cut_off: bool) {
-		if !self.options.capture_tool_calls {
-			return;
-		}
-
-		let fn_arguments = if input.is_empty() && !cut_off {
-			Value::Object(Map::new())
-		} else {
-			serde_json::from_str(&input).unwrap_or_else(|e| {
-				if !cut_off {
-					tracing::warn!(
-						"Anthropic streamer: failed to parse tool-call input JSON ({} bytes): {e}",
-						input.len()
-					);
-				}
-				Value::String(input)
-			})
-		};
-
-		let tc = ToolCall {
-			call_id: id,
-			fn_name: name,
-			fn_arguments,
-			thought_signatures: None,
-		};
-
-		match self.captured_data.tool_calls {
-			Some(ref mut t) => t.push(tc),
-			None => self.captured_data.tool_calls = Some(vec![tc]),
-		}
-	}
 }
 
 impl futures::Stream for AnthropicStreamer {
@@ -512,6 +476,42 @@ impl AnthropicStreamer {
 			model_iden: self.options.model_iden.clone(),
 			serde_error,
 		})
+	}
+
+	/// Moves a `tool_use` block's call into `captured_data` (when capturing tool calls),
+	/// parsing its input when it is JSON. A block `cut_off` before its `content_block_stop`
+	/// (e.g., by `max_tokens`) keeps its input as far as it got, left as a string when it
+	/// does not parse, an empty one included.
+	fn capture_tool_call(&mut self, id: String, name: String, input: String, cut_off: bool) {
+		if !self.options.capture_tool_calls {
+			return;
+		}
+
+		let fn_arguments = if input.is_empty() && !cut_off {
+			Value::Object(Map::new())
+		} else {
+			serde_json::from_str(&input).unwrap_or_else(|e| {
+				if !cut_off {
+					tracing::warn!(
+						"Anthropic streamer: failed to parse tool-call input JSON ({} bytes): {e}",
+						input.len()
+					);
+				}
+				Value::String(input)
+			})
+		};
+
+		let tc = ToolCall {
+			call_id: id,
+			fn_name: name,
+			fn_arguments,
+			thought_signatures: None,
+		};
+
+		match self.captured_data.tool_calls {
+			Some(ref mut t) => t.push(tc),
+			None => self.captured_data.tool_calls = Some(vec![tc]),
+		}
 	}
 }
 

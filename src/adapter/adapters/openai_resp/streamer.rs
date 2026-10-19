@@ -264,19 +264,15 @@ impl futures::Stream for OpenAIRespStreamer {
 								if let Some(tool_call) = self.in_progress_tool_calls.get_mut(&output_index) {
 									tool_call.fn_arguments = Value::String(arguments.to_string());
 								} else {
-									self.in_progress_tool_calls.insert(
-										output_index,
-										tool_call_from_item(&item, arguments.to_string()),
-									);
+									self.in_progress_tool_calls
+										.insert(output_index, tool_call_from_item(&item, arguments.to_string()));
 								}
 							}
 							if item_type == Some("custom_tool_call") {
 								let input = item.x_get_str("input").unwrap_or_default().to_string();
 								self.custom_tool_call_indexes.insert(output_index);
-								self.in_progress_tool_calls.insert(
-									output_index,
-									tool_call_from_item(&item, input),
-								);
+								self.in_progress_tool_calls
+									.insert(output_index, tool_call_from_item(&item, input));
 							}
 							continue;
 						}

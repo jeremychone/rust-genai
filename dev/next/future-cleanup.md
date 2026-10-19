@@ -93,6 +93,23 @@
 
 - Test suite: `tests/openai_resp_incomplete_tool_calls.rs` spins up a raw `TcpListener`, the same pattern the 2026-10-14 item already wants converted. Fold it into that work: a yakbak cassette under `tests/data/yakbak/openai_resp/` plus a case in `tests/tests_yakbak_openai_resp.rs`, then delete the raw TCP server.
 
+## 2026-10-19 - PR 340 related - anthropic max_tokens tool-call test and streamer follow-ups
+
+- Context: PR 340 captures a `tool_use` block cut off by `max_tokens` at `message_stop`, through `AnthropicStreamer::capture_tool_call(id, name, input, cut_off)` in `src/adapter/adapters/anthropic/streamer.rs`, called from both `content_block_stop` and `message_stop`.
+
+- Test file: `tests/anthropic_max_tokens_tool_calls.rs` spins up a raw `TcpListener`, and its name breaks the `tests/tests_*.rs` convention.
+  - Suggested change: fold it into `tests/tests_yakbak_anthropic.rs` with a cassette under `tests/data/yakbak/anthropic/`, then delete the raw TCP server, the same conversion the 2026-10-14 item wants for the OpenAI Responses tests.
+
+- Nit, helper placement: `capture_tool_call` sits in the top inherent `impl` block, while the file keeps its private helpers (`capture_usage`, `parse_message_data`) in the bottom `// Support` impl.
+  - Suggested change: move it there, and consider replacing the `cut_off: bool` argument with two named wrappers or a small enum, since `.., false)` and `.., true)` do not read at the call sites.
+
+- Missing test: no coverage for `capture_tool_calls == false`, which is exactly the guard that moved out of the `content_block_stop` match arm and into the method.
+
+- Follow-up fix, not a regression: `StreamEnd::into_assistant_message_for_tool_use()` now returns `Some(..)` for a stream whose call was truncated mid-input, so replaying that message serializes `tool_use.input` as a JSON string, and Anthropic requires an object. The same exposure already exists for malformed non-truncated arguments.
+  - Suggested change: in `into_anthropic_request_parts`, coerce a non-object `ToolCall.fn_arguments` to `{}` with a warn, so a captured truncated call cannot produce a request Anthropic rejects.
+
+- Out of scope, unchanged: a `thinking` block cut off by `max_tokens` is still dropped, because only a block that reaches `content_block_stop` is turned into an `InterStreamThoughtBlock`.
+
 
 ## ■ Step - Fix: finalize OpenAI Responses tool calls on incomplete and EOF
       status: not_started
