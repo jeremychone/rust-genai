@@ -24,6 +24,7 @@ _If I forgot your PR, feel free to submit a PR_
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
 - [wouterdebie](https://github.com/wouterdebie)
+  - [#339](https://github.com/jeremychone/rust-genai/pull/339) fix(openai_resp): keep a stream's tool calls when the response is incomplete
   - [#336](https://github.com/jeremychone/rust-genai/pull/336) deps: replace paste with pastey
   - [#335](https://github.com/jeremychone/rust-genai/pull/335) fix(gemini): send function call ids back with the call and its response
   - [#334](https://github.com/jeremychone/rust-genai/pull/334) cargo: make reqwest system-proxy a genai feature (on by default)

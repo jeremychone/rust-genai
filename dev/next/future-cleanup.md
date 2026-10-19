@@ -73,6 +73,26 @@
 
 - Suggested change: run `cargo tree -i paste` (expect nothing), `cargo build --features bedrock-sigv4`, and confirm `Cargo.lock` is updated if it is tracked. Record the results in the PR.
 
+## 2026-10-19 - PR 339 related - openai_resp terminal paths still drop captured state
+
+- Context: PR 339 (`openai_resp - keep a stream's tool calls when the response is incomplete`) moved the tool-call capture out of `RespStreamEvent::ResponseCompleted` into `OpenAIRespStreamer::capture_tool_calls(&mut self, output: &[Value])` in `src/adapter/adapters/openai_resp/streamer.rs`, and now calls it from both `ResponseCompleted` and `ResponseIncomplete`.
+
+- Resolved by PR 339: `response.incomplete` no longer loses the calls accumulated in `in_progress_tool_calls`. That closes the `ResponseIncomplete` half of the third bullet in `## 2026-10-14 - PR 332 related - openai_resp done arguments`. That bullet is kept verbatim for history, and only its EOF half is still open.
+
+- Potential bug 1, EOF path: the `Poll::Ready(None)` branch (the `None => { if !self.done { ... } }` arm of `poll_next`) builds its `InterStreamEnd` from `captured_data` only and never calls `capture_tool_calls`, so `in_progress_tool_calls`, which is filled by `response.function_call_arguments.delta` and `response.custom_tool_call_input.delta`, is dropped.
+  - It also leaves `captured_stop_reason` as `None`, because `captured_data.stop_reason` is only set by `response.completed`, `response.incomplete`, and `response.failed`.
+  - This is the same failure mode PR 339 fixed, on the path taken when the event source ends without a terminal event: a dropped connection, a proxy closing the stream, or a backend that streams deltas only.
+  - Suggested change: call `self.capture_tool_calls(&[])` before building the end in that branch (empty `output`, since there is no terminal response to fall back to), and add a test whose stream stops right after the argument deltas.
+
+- Potential bug 2, `response.incomplete` drops reasoning signatures: `OutputItemDone` pushes a `type: "reasoning"` item's `encrypted_content` into `captured_data.thought_signatures`, and `ResponseCompleted` moves them into `InterStreamEnd::captured_thought_signatures`. The `ResponseIncomplete` branch hard-codes `captured_thought_signatures: None`, and it also skips the `response.output` scan that `ResponseCompleted` does, so blocks finalized before the cap are lost.
+  - Impact: an incomplete answer keeps its text and its tool calls but not the continuation blocks OpenAI expects on the next turn, so replaying that assistant message is inconsistent with a completed answer.
+  - Suggested change: `take()` `self.captured_data.thought_signatures` there as well, or fold the terminal paths into one helper that builds `InterStreamEnd` for completed, incomplete, and EOF.
+
+- Potential bug 3, `response.incomplete` ignores `capture_usage`: `ResponseCompleted` stores usage only under `if self.options.capture_usage`, while `ResponseIncomplete` uses `response.usage.map(Into::into)` directly, so usage is reported on an incomplete answer even when the option is off.
+  - Suggested change: gate it like the completed branch, ideally through the same shared helper.
+
+- Test suite: `tests/openai_resp_incomplete_tool_calls.rs` spins up a raw `TcpListener`, the same pattern the 2026-10-14 item already wants converted. Fold it into that work: a yakbak cassette under `tests/data/yakbak/openai_resp/` plus a case in `tests/tests_yakbak_openai_resp.rs`, then delete the raw TCP server.
+
 
 ## ■ Step - Fix: finalize OpenAI Responses tool calls on incomplete and EOF
       status: not_started
