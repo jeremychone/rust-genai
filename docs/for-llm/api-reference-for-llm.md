@@ -4,7 +4,7 @@ Comprehensive, dry reference for the `genai` Rust library.
 All public types, methods, and module structure are documented below.
 
 ```toml
-genai = "0.7.0-rc"
+genai = "0.7"
 ```
 
 ## Crate Structure
@@ -32,7 +32,7 @@ genai (crate root / lib.rs)
 - **ProviderConfig**: Provider-level endpoint/auth overrides for adapter-wide operations such as model listing. Since v0.6.0.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
 - **Bound Adapter**: Optional `Client`/`ClientBuilder` adapter constraint. Since v0.6.0. When set, bare model names route through the bound adapter instead of heuristic inference. Explicit mismatched namespaces or mismatched `ModelIden` values return `AdapterKindMismatch`.
-- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot`, `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `custom`, `xai`.
+- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `mistral`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot`, `atlascloud`, `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `custom`, `xai`.
   - `github_copilot` (since v0.6.0) is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `ollama_cloud` (since v0.6.0) is the hosted Ollama Cloud service (`ollama.com`). It uses the same native Ollama protocol as the local `ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via the `ollama_cloud::model_name` namespace, for example, `ollama_cloud::gemma3:4b`.
   - `vertex` (since v0.6.0) is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
@@ -328,7 +328,9 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `cache_control`: `CacheControl` request-level cache preference. Updated in v0.6.0 for chat-level prompt cache control.
 - `extra_headers`: `Headers` added to the request.
 - `extra_body`: `serde_json::Value` merged into supported provider request bodies as a low-level escape hatch for provider-specific fields. Since v0.6.0. Currently used by OpenAI-compatible chat payloads, including Chat Completions and Responses.
-- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_tool_choice(choice)` (since v0.6.0), `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)` (since v0.6.0), `with_cache_control(cache_control)` (updated in v0.6.0 for chat-level prompt cache control), `with_extra_headers(headers)`, `with_extra_body(value)` (since v0.6.0).
+- `raw_frame_sink`: `Option<Arc<dyn ChatFrameSink>>` to observe raw provider stream frames. Since v0.7.0.
+- `stream_header_timeout`, `stream_read_timeout`: `Option<Duration>` transport bounds for the streamed header phase and each raw body read. Unset means no additional limit and no serialization. Since v0.7.0.
+- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_tool_choice(choice)` (since v0.6.0), `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)` (since v0.6.0), `with_cache_control(cache_control)` (updated in v0.6.0 for chat-level prompt cache control), `with_extra_headers(headers)`, `with_extra_body(value)` (since v0.6.0), `with_raw_frame_sink(sink)` (since v0.7.0), `with_raw_frame_sink_arc(arc)` (since v0.7.0), `with_raw_frame_fn(f)` (since v0.7.0), `with_stream_header_timeout(d)` (since v0.7.0), `with_stream_read_timeout(d)` (since v0.7.0).
 - Deprecated: `with_json_mode(bool)` in favor of `with_response_format(ChatResponseFormat::JsonMode)`.
 
 ### `ChatResponseFormat`
@@ -354,8 +356,9 @@ Updated in v0.6.0.
 
 Provider-specific hint for reasoning intensity/budget.
 
-- Variants: `None`, `Low`, `Medium`, `High`, `XHigh` (since v0.6.0), `Max` (since v0.6.0), `Budget(u32)`, `Minimal` (legacy, for <= gpt-5).
-- `variant_name()`: Returns lowercase name (`"none"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`, `"budget"`, `"minimal"`).
+- Variants: `Zero`, `Low`, `Medium`, `High`, `XHigh` (since v0.6.0), `Max` (since v0.6.0), `Budget(u32)`, `Minimal` (legacy, for <= gpt-5).
+- `Zero` was named `None` before v0.7.0; `from_keyword("none")` and the `-none` model suffix remain accepted as aliases.
+- `variant_name()`: Returns lowercase name (`"zero"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`, `"budget"`, `"minimal"`).
 - `as_keyword()`: Returns `Option<&'static str>` (None for `Budget`).
 - `from_keyword(name)`: Parses keyword string.
 - `from_model_name(model_name)`: If model name ends with `-<effort>`, returns `(Some(effort), trimmed_name)`.
@@ -421,10 +424,10 @@ OpenAI service tier preference for flex processing.
 
 ### `Tool`
 
-- `name: ToolName`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `strict: Option<bool>`, `config: Option<ToolConfig>`. `config` is available since v0.6.0.
+- `name: ToolName`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `strict: Option<bool>`, `config: Option<ToolConfig>`, `custom_format: Option<Value>`. `config` is available since v0.6.0, and `custom_format` since v0.7.0.
 - `Tool::new(name)`: Constructor.
 - `Tool::new_web_search()`: Constructor for the built-in web search tool. Since v0.6.0.
-- `with_description(desc)`, `with_schema(parameters)`, `with_strict(bool)`, `with_config(config)`: Chainable setters. `with_config` is available since v0.6.0.
+- `with_description(desc)`, `with_schema(parameters)`, `with_strict(bool)`, `with_config(config)`, `with_custom_format(format)`: Chainable setters. `with_config` is available since v0.6.0, and `with_custom_format` since v0.7.0.
 - `size()`: Approximate in-memory size.
 - `config`: Optional provider-specific config.
 - Gemini and Vertex Gemini tool schema conversion applies the same compatibility normalization used for structured JSON schemas. Updated in v0.6.0.
@@ -532,7 +535,14 @@ Implements `Stream<Item = Result<ChatStreamEvent>>`.
 - `ReasoningChunk(StreamChunk)`: Reasoning content chunk.
 - `ThoughtSignatureChunk(StreamChunk)`: Thought signature chunk.
 - `ToolCallChunk(ToolChunk)`: Tool-call chunk. `ToolChunk { tool_call: ToolCall }`.
+- `Heartbeat`: Provider-neutral keep-alive, emitted for SSE ping messages such as Anthropic's. Since v0.7.0.
 - `End(StreamEnd)`: End of stream with captured data.
+
+### `ChatFrameSink`
+
+Observer for raw provider stream frames, attached with `ChatOptions::with_raw_frame_sink(...)`, `with_raw_frame_sink_arc(...)`, or `with_raw_frame_fn(...)`. Since v0.7.0.
+
+- Receives a `RawFrame` for each frame the adapter reads, so callers can inspect provider payloads that genai does not surface as typed stream events.
 
 ### `StreamEnd`
 

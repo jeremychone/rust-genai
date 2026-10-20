@@ -4,13 +4,10 @@
 
 ```toml
 # Current release
-genai = "0.6"
-
-# Soon to be released (first half of Oct 2026)
-genai = "0.7.0-rc"
+genai = "0.7"
 ```
 
-See [v0.7.0-rc](#v070-rc)
+See [v0.7.0](#v070-released-)
 
 <div align="center">
 
@@ -19,7 +16,7 @@ See [v0.7.0-rc](#v070-rc)
 
 </div>
 
-[v0.7.0-rc](#v070-rc) | [v0.6.x](#v06x-released-) | [Key Features](#key-features) | [Providers](#model-to-adapter-resolution) | [Examples](#examples) | [Chat Options](#chatoptions) | [Usage](#usage) | [TLS Backends](#tls-backends) | [Contribution](#contribution)
+[v0.7.0](#v070-released-) | [v0.6.x](#v06x-released-) | [Key Features](#key-features) | [Providers](#model-to-adapter-resolution) | [Examples](#examples) | [Chat Options](#chatoptions) | [Usage](#usage) | [TLS Backends](#tls-backends) | [Contribution](#contribution)
 
 `genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
@@ -80,9 +77,9 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
-## v0.7.0-rc
+## v0.7.0 Released 🎉
 
-**v0.7.0 release target: first half of Oct 2026**. See latest [v0.7.0-rc releases](https://crates.io/crates/genai/versions).
+_v0.7.0 release date: 2026-10-19_
 
 **Big release**: Many fixes, new capabilities, new providers, and minimal API changes.
 

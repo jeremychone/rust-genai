@@ -4,7 +4,7 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
-## v0.7.0-beta.x
+## v0.7.0
 
 - [ropoctl](https://github.com/ropoctl)
   - [#289](https://github.com/jeremychone/rust-genai/pull/289) feat(client): ClientBuilder::append_provider_config for per-adapter endpoint/auth

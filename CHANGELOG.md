@@ -1,8 +1,8 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## v0.7.0-rc.x
+## 2026-10-19 [v0.7.0](https://github.com/jeremychone/rust-genai/compare/v0.6.5...v0.7.0)
 
-(see [v0.7.0 migration](docs/migration/migration-v_0_6_to_0_7.md) | [genai beta versions](https://crates.io/crates/genai/versions))
+(see [v0.7.0 migration](docs/migration/migration-v_0_6_to_0_7.md) | [genai versions](https://crates.io/crates/genai/versions))
 
 ### API Breaking Changes
 
