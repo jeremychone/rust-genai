@@ -303,6 +303,111 @@ fn test_non_stream_multiple_thinking_blocks_round_trip_without_flattening() {
 	assert_eq!(content[2]["type"], "tool_use");
 }
 
+/// A `redacted_thinking` block is kept as a custom part, and goes back in its place among
+/// the signed thinking blocks, ahead of the tool use.
+#[test]
+fn test_non_stream_redacted_thinking_round_trips_in_place() {
+	let response = AnthropicAdapter::build_chat_response(
+		ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		WebResponse {
+			status: StatusCode::OK,
+			body: json!({
+				"model": "fixture-model",
+				"content": [
+					{"type": "redacted_thinking", "data": "redacted-one"},
+					{"type": "thinking", "thinking": "First block.", "signature": "signature-one"},
+					{"type": "redacted_thinking", "data": "redacted-two"},
+					{"type": "thinking", "thinking": "Second block.", "signature": "signature-two"},
+					{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {"query": "status"}}
+				],
+				"stop_reason": "tool_use",
+				"usage": {"input_tokens": 3, "output_tokens": 4}
+			}),
+		},
+	)
+	.expect("Anthropic response should parse");
+
+	let assistant = response
+		.into_assistant_message_for_tool_use()
+		.expect("assistant tool-use message");
+	let request = ChatRequest::new(vec![
+		assistant,
+		ChatMessage::from(ToolResponse::new("call-1", "available")),
+	]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		request,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("continuation request should serialize");
+
+	assert_eq!(
+		web_req.payload["messages"][0]["content"],
+		json!([
+			{"type": "redacted_thinking", "data": "redacted-one"},
+			{"type": "thinking", "thinking": "First block.", "signature": "signature-one"},
+			{"type": "redacted_thinking", "data": "redacted-two"},
+			{"type": "thinking", "thinking": "Second block.", "signature": "signature-two"},
+			{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {"query": "status"}}
+		])
+	);
+}
+
+/// Thinking blocks passed through as custom parts, signed or redacted, go back in their
+/// order, ahead of the tool use.
+#[test]
+fn test_assistant_custom_thinking_blocks_keep_their_order() {
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::from_custom(
+			json!({"type": "thinking", "thinking": "First block.", "signature": "signature-one"}),
+			None,
+		),
+		ContentPart::from_custom(json!({"type": "redacted_thinking", "data": "redacted-one"}), None),
+		ContentPart::from_custom(
+			json!({"type": "thinking", "thinking": "Second block.", "signature": "signature-two"}),
+			None,
+		),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call-1".to_string(),
+			fn_name: "lookup".to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: None,
+		}),
+	]));
+	let request = ChatRequest::new(vec![
+		assistant,
+		ChatMessage::from(ToolResponse::new("call-1", "available")),
+	]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		request,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("continuation request should serialize");
+
+	assert_eq!(
+		web_req.payload["messages"][0]["content"],
+		json!([
+			{"type": "thinking", "thinking": "First block.", "signature": "signature-one"},
+			{"type": "redacted_thinking", "data": "redacted-one"},
+			{"type": "thinking", "thinking": "Second block.", "signature": "signature-two"},
+			{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {}}
+		])
+	);
+}
+
 /// Unpaired reasoning/signature metadata must not fail the request. Pairing by position
 /// would sign the wrong text, so the thinking blocks are dropped and the rest of the
 /// message is still sent.

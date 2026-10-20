@@ -70,12 +70,12 @@ impl ReasoningAccumulator {
 	/// A signed or redacted block, or `None` for unsigned reasoning (it can't be replayed).
 	fn into_thought_block(self) -> Option<InterStreamThoughtBlock> {
 		if !self.redacted.is_empty() {
-			Some(InterStreamThoughtBlock {
+			Some(InterStreamThoughtBlock::Signed {
 				reasoning_content: None,
 				signature: self.redacted,
 			})
 		} else if !self.signature.is_empty() {
-			Some(InterStreamThoughtBlock {
+			Some(InterStreamThoughtBlock::Signed {
 				reasoning_content: Some(self.text),
 				signature: self.signature,
 			})
@@ -817,7 +817,13 @@ mod tests {
 			.as_ref()
 			.ok_or("Should have thought blocks")?
 			.iter()
-			.map(|block| (block.reasoning_content.as_deref(), block.signature.as_str()))
+			.filter_map(|block| match block {
+				InterStreamThoughtBlock::Signed {
+					reasoning_content,
+					signature,
+				} => Some((reasoning_content.as_deref(), signature.as_str())),
+				InterStreamThoughtBlock::Custom(_) => None,
+			})
 			.collect();
 		assert_eq!(blocks, [(Some("thinking"), "sig-1"), (None, "blob")]);
 		Ok(())

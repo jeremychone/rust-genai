@@ -1,4 +1,4 @@
-use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
 use crate::chat::{ChatMessage, ContentPart, MessageContent, StopReason, ToolCall, Usage};
 use crate::webc::FrameTap;
 use futures::Stream;
@@ -222,15 +222,26 @@ impl From<InterStreamEnd> for StreamEnd {
 		let mut captured_tool_calls = inter_end.captured_tool_calls;
 
 		// -- create public captured_content
-		// Ordering policy: paired ThoughtSignature/ReasoningContent blocks, then
-		// unpaired signatures, text, and tool calls. Provider adapters can scan the
-		// leading parts to reconstruct their native continuation blocks.
+		// Ordering policy: paired ThoughtSignature/ReasoningContent blocks and custom
+		// thought blocks (in their original order), then unpaired signatures, text, and
+		// tool calls. Provider adapters can scan the leading parts to reconstruct their
+		// native continuation blocks.
 		let mut leading_content: Vec<ContentPart> = Vec::new();
 		if let Some(captured_blocks) = inter_end.captured_thought_blocks {
 			for block in captured_blocks {
-				leading_content.push(ContentPart::ThoughtSignature(block.signature));
-				if let Some(reasoning_content) = block.reasoning_content {
-					leading_content.push(ContentPart::ReasoningContent(reasoning_content));
+				match block {
+					InterStreamThoughtBlock::Signed {
+						reasoning_content,
+						signature,
+					} => {
+						leading_content.push(ContentPart::ThoughtSignature(signature));
+						if let Some(reasoning_content) = reasoning_content {
+							leading_content.push(ContentPart::ReasoningContent(reasoning_content));
+						}
+					}
+					InterStreamThoughtBlock::Custom(custom_part) => {
+						leading_content.push(ContentPart::Custom(custom_part))
+					}
 				}
 			}
 		}
