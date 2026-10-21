@@ -771,3 +771,71 @@ fn test_gemini_function_response_part_id_only_for_known_calls() -> Result<()> {
 
 	Ok(())
 }
+
+#[test]
+fn test_gemini_build_request_payload_supports_seed_and_extra_body() -> Result<()> {
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("hello")]);
+	let options = ChatOptions::default().with_seed(42).with_extra_body(json!({
+		"cachedContent": "cachedContents/abc123",
+		"safetySettings": [
+			{
+				"category": "HARM_CATEGORY_HATE_SPEECH",
+				"threshold": "BLOCK_ONLY_HIGH"
+			}
+		]
+	}));
+
+	let payload = build_payload(chat_req, &options);
+
+	assert_eq!(payload["generationConfig"]["seed"], 42);
+	assert_eq!(payload["cachedContent"], "cachedContents/abc123");
+	assert_eq!(payload["safetySettings"][0]["category"], "HARM_CATEGORY_HATE_SPEECH");
+
+	Ok(())
+}
+
+#[test]
+fn test_gemini_to_chat_response_reasoning_content_none_when_empty() -> Result<()> {
+	let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+
+	let body_no_reasoning = json!({
+		"candidates": [{
+			"content": {
+				"parts": [{"text": "Hello world"}]
+			},
+			"finishReason": "STOP"
+		}]
+	});
+	let web_response = WebResponse {
+		status: reqwest::StatusCode::OK,
+		body: body_no_reasoning,
+	};
+	let chat_res = GeminiAdapter::to_chat_response(model_iden.clone(), web_response, ChatOptionsSet::default())?;
+	assert_eq!(chat_res.first_text(), Some("Hello world"));
+	assert_eq!(chat_res.reasoning_content, None);
+
+	let body_with_reasoning = json!({
+		"candidates": [{
+			"content": {
+				"parts": [
+					{"thought": true, "text": "Thinking first..."},
+					{"text": "Final answer"}
+				]
+			},
+			"finishReason": "STOP"
+		}]
+	});
+	let web_response_with_reasoning = WebResponse {
+		status: reqwest::StatusCode::OK,
+		body: body_with_reasoning,
+	};
+	let chat_res_with_reasoning =
+		GeminiAdapter::to_chat_response(model_iden, web_response_with_reasoning, ChatOptionsSet::default())?;
+	assert_eq!(chat_res_with_reasoning.first_text(), Some("Final answer"));
+	assert_eq!(
+		chat_res_with_reasoning.reasoning_content.as_deref(),
+		Some("Thinking first...")
+	);
+
+	Ok(())
+}
