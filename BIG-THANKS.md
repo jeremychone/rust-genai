@@ -4,6 +4,16 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
+## v0.7.1 (pending)
+
+- [wouterdebie](https://github.com/wouterdebie)
+  - [#342](https://github.com/jeremychone/rust-genai/pull/342) fix(anthropic): keep a stream's redacted thinking, and send thinking blocks back in their order
+- [ropoctl](https://github.com/ropoctl)
+  - [#343](https://github.com/jeremychone/rust-genai/pull/343) fix(anthropic): resolve default max_tokens for Claude Opus 4.6, 4.7, and 4.8
+  - [#344](https://github.com/jeremychone/rust-genai/pull/344) fix(openai_resp): capture non-streaming reasoning and deduplicate mirrored thought signatures
+  - [#345](https://github.com/jeremychone/rust-genai/pull/345) fix(gemini): forward seed and extra_body options and omit empty reasoning_content
+  - [#346](https://github.com/jeremychone/rust-genai/pull/346) fix(client): apply RequestOverride and default/extra headers in exec_embed
+
 ## v0.7.0
 
 - [ropoctl](https://github.com/ropoctl)
