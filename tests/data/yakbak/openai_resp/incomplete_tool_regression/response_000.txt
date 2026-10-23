@@ -1,0 +1,13 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_fixture","status":"in_progress","model":"gpt-6-luna","output":[],"usage":{"input_tokens":12,"output_tokens":8,"total_tokens":20}}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","call_id":"call_fixture","name":"write_result","arguments":""}}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","output_index":0,"delta":"{\"summary\":\"The American Rev"}
+
+event: response.incomplete
+data: {"type":"response.incomplete","response":{"id":"resp_fixture","status":"incomplete","model":"gpt-6-luna","output":[{"type":"function_call","call_id":"call_fixture","name":"write_result","arguments":"{\"summary\":\"The American Rev"}],"usage":{"input_tokens":12,"output_tokens":8,"total_tokens":20}}}
+
+: end

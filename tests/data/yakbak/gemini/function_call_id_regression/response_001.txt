@@ -1,0 +1,1 @@
+{"candidates": [{"content": {"role": "model", "parts": [{"text": "Sunny."}]}, "finishReason": "STOP"}], "modelVersion": "gemini-3-flash"}
