@@ -266,12 +266,22 @@ impl AnthropicAdapter {
 					let mut has_text = false;
 					let mut thought_signatures: Vec<String> = Vec::new();
 					let mut reasoning_contents: Vec<String> = Vec::new();
+					// The thinking blocks in the order they came: `None` for the next signed
+					// block, `Some(block)` for one kept as a custom part (`redacted_thinking`,
+					// or a block passed through as is).
+					let mut thinking_blocks: Vec<Option<Value>> = Vec::new();
 					let mut other_parts: Vec<ContentPart> = Vec::new();
 
 					for part in msg.content {
 						match part {
-							ContentPart::ThoughtSignature(signature) => thought_signatures.push(signature),
+							ContentPart::ThoughtSignature(signature) => {
+								thought_signatures.push(signature);
+								thinking_blocks.push(None);
+							}
 							ContentPart::ReasoningContent(reasoning) => reasoning_contents.push(reasoning),
+							ContentPart::Custom(custom_part) if is_thinking_block(&custom_part.data) => {
+								thinking_blocks.push(Some(custom_part.data));
+							}
 							other => other_parts.push(other),
 						}
 					}
@@ -283,6 +293,8 @@ impl AnthropicAdapter {
 							ContentPart::ToolCall(tool_call) => tool_call.thought_signatures.clone(),
 							_ => None,
 						}) {
+						// The mirror keeps no position, so its blocks lead.
+						thinking_blocks = std::iter::repeat_n(None, mirrored.len()).chain(thinking_blocks).collect();
 						thought_signatures = mirrored;
 					}
 
@@ -295,16 +307,22 @@ impl AnthropicAdapter {
 					// by position anyway would sign the wrong text, which Anthropic rejects, so
 					// drop the thinking blocks and send the rest of the message instead.
 					if reasoning_contents.len() == thought_signatures.len() {
-						// Anthropic requires every signed thinking block before text/tool-use blocks.
-						values.extend(reasoning_contents.into_iter().zip(thought_signatures).map(
-							|(thinking, signature)| {
-								json!({
-									"type": "thinking",
-									"thinking": thinking,
-									"signature": signature,
-								})
-							},
-						));
+						// Anthropic requires every thinking block before text/tool-use blocks,
+						// and gets them back in the order they came.
+						let mut signed =
+							reasoning_contents
+								.into_iter()
+								.zip(thought_signatures)
+								.map(|(thinking, signature)| {
+									json!({
+										"type": "thinking",
+										"thinking": thinking,
+										"signature": signature,
+									})
+								});
+						for block in thinking_blocks {
+							values.extend(block.or_else(|| signed.next()));
+						}
 					} else if !reasoning_contents.is_empty() || !thought_signatures.is_empty() {
 						tracing::warn!(
 							reasoning_count = reasoning_contents.len(),
@@ -312,6 +330,8 @@ impl AnthropicAdapter {
 							"anthropic - assistant message has unpaired reasoning content and thought signatures; \
 							 omitting thinking blocks from this message"
 						);
+						// A block kept as a custom part needs no pairing, so it still goes back.
+						values.extend(thinking_blocks.into_iter().flatten());
 					}
 
 					for part in other_parts {
@@ -897,6 +917,15 @@ fn anthropic_tool_choice(tool_choice: Option<&ToolChoice>) -> Option<Value> {
 			"name": name
 		})),
 	}
+}
+
+/// A thinking block kept as a custom part: `redacted_thinking`, as both the streamed and
+/// the non-streamed response keep it, or a `thinking` block passed through as is.
+fn is_thinking_block(data: &Value) -> bool {
+	matches!(
+		data.get("type").and_then(Value::as_str),
+		Some("thinking" | "redacted_thinking")
+	)
 }
 
 // endregion: --- Support

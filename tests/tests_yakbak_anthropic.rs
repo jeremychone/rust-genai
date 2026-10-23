@@ -634,6 +634,78 @@ async fn test_yakbak_anthropic_thinking_signature_variants_preserve_block_pairs(
 	Ok(())
 }
 
+/// The kind of each content part, in order, with the value that identifies it.
+fn part_summary(parts: &[ContentPart]) -> Vec<String> {
+	parts
+		.iter()
+		.map(|part| match part {
+			ContentPart::ThoughtSignature(value) => format!("signature:{value}"),
+			ContentPart::ReasoningContent(value) => format!("reasoning:{value}"),
+			ContentPart::Custom(custom) => format!("custom:{}", custom.data),
+			ContentPart::ToolCall(call) => format!("tool_call:{}", call.fn_name),
+			other => format!("other:{other:?}"),
+		})
+		.collect()
+}
+
+/// A streamed `redacted_thinking` block between two signed ones is captured in its
+/// place, as a custom part, and the continuation built from the stream end sends it
+/// back there.
+#[tokio::test]
+async fn test_yakbak_anthropic_redacted_thinking_stream_keeps_block_order() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "redacted_thinking_tool_stream").await?;
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_tool_calls(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_usage(true);
+	let initial_request = thinking_tool_request();
+	let continuation_base = initial_request.clone();
+
+	let stream_res = client
+		.exec_chat_stream("anthropic::fixture-model", initial_request, Some(&options))
+		.await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	let redacted = json!({ "type": "redacted_thinking", "data": "redacted-fixture-blob" });
+	let expected = [
+		"signature:sig-first".to_string(),
+		"reasoning:First block.".to_string(),
+		format!("custom:{redacted}"),
+		"signature:sig-third".to_string(),
+		"reasoning:Third block.".to_string(),
+		"tool_call:get_weather".to_string(),
+	];
+
+	let content = extract.stream_end.captured_content.as_ref().ok_or("captured content")?;
+	assert_eq!(part_summary(content.parts()), expected);
+
+	let tool_call = extract.stream_end.captured_tool_calls().ok_or("tool call")?[0].clone();
+	let continuation_request = continuation_base.append_tool_use_from_stream_end(
+		&extract.stream_end,
+		ToolResponse::from_tool_call(&tool_call, "25 C and clear"),
+	);
+	let assistant = continuation_request
+		.messages
+		.iter()
+		.rev()
+		.find(|message| message.role == ChatRole::Assistant)
+		.ok_or("assistant tool-use message")?;
+	assert_eq!(part_summary(assistant.content.parts()), expected);
+
+	let continuation_res = client
+		.exec_chat_stream("anthropic::fixture-model", continuation_request, Some(&options))
+		.await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	assert_eq!(continuation.content.as_deref(), Some("Continuation accepted."));
+	assert!(matches!(
+		continuation.stream_end.captured_stop_reason,
+		Some(StopReason::Completed(_))
+	));
+
+	Ok(())
+}
+
 #[tokio::test]
 async fn test_yakbak_anthropic_thinking_tool_non_stream_capture() -> TestResult<()> {
 	let (client, _server) = replay_client("anthropic", "thinking_tool_non_stream").await?;

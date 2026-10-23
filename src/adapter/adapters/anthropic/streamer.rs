@@ -1,7 +1,7 @@
 use super::parse_cache_creation_details;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
-use crate::chat::{ChatOptionsSet, PromptTokensDetails, StopReason, ToolCall, Usage};
+use crate::chat::{ChatOptionsSet, CustomPart, PromptTokensDetails, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -66,7 +66,7 @@ impl ThinkingBlock {
 
 	fn into_thought_block(self) -> Option<InterStreamThoughtBlock> {
 		let signature = self.signature.filter(|signature| !signature.is_empty())?;
-		Some(InterStreamThoughtBlock {
+		Some(InterStreamThoughtBlock::Signed {
 			reasoning_content: self.reasoning,
 			signature,
 		})
@@ -154,20 +154,7 @@ impl futures::Stream for AnthropicStreamer {
 									// Callers replaying a signed assistant turn must set
 									// `capture_reasoning_content`, otherwise Anthropic rejects the
 									// continuation.
-									// A signature is only replayable together with the reasoning it signs, so
-									// capturing tool calls alone silently yields a continuation Anthropic
-									// rejects. Surface that once rather than failing later at the provider.
-									if self.options.capture_tool_calls
-										&& !self.options.capture_reasoning_content
-										&& !self.warned_unreplayable_thinking
-									{
-										self.warned_unreplayable_thinking = true;
-										tracing::warn!(
-											"anthropic - thinking block received with capture_tool_calls but not \
-											 capture_reasoning_content; thought signatures will not be captured and \
-											 the tool continuation will be missing its thinking blocks"
-										);
-									}
+									self.warn_if_thinking_is_not_captured();
 
 									let capture_block = self.options.capture_reasoning_content;
 									let captured_reasoning = capture_block.then_some(thinking.clone());
@@ -186,6 +173,23 @@ impl futures::Stream for AnthropicStreamer {
 									}
 									if let Some(event) = self.pending_events.pop_front() {
 										return Poll::Ready(Some(Ok(event)));
+									}
+								}
+								Ok("redacted_thinking") => {
+									// A redacted block arrives whole, with its encrypted `data` and no
+									// deltas, and is replayed as is. Under the same opt-in as a signed
+									// block, it is kept in its place among the thinking blocks, as the
+									// custom part a non-streamed answer makes of it.
+									self.warn_if_thinking_is_not_captured();
+									if self.options.capture_reasoning_content
+										&& let Ok(block) = data.x_take::<Value>("/content_block")
+									{
+										let model_iden = Some(self.options.model_iden.clone());
+										let custom_part = CustomPart {
+											model_iden,
+											data: block,
+										};
+										self.captured_thought_blocks.push(InterStreamThoughtBlock::Custom(custom_part));
 									}
 								}
 								Ok("tool_use") => {
@@ -469,6 +473,23 @@ impl AnthropicStreamer {
 		Ok(())
 	}
 
+	/// A thinking block is only replayable together with the reasoning it signs (or, when
+	/// redacted, as a whole), so capturing tool calls alone silently yields a continuation
+	/// Anthropic rejects. Surface that once rather than failing later at the provider.
+	fn warn_if_thinking_is_not_captured(&mut self) {
+		if self.options.capture_tool_calls
+			&& !self.options.capture_reasoning_content
+			&& !self.warned_unreplayable_thinking
+		{
+			self.warned_unreplayable_thinking = true;
+			tracing::warn!(
+				"anthropic - thinking block received with capture_tool_calls but not \
+				 capture_reasoning_content; thought signatures will not be captured and \
+				 the tool continuation will be missing its thinking blocks"
+			);
+		}
+	}
+
 	/// Simple wrapper for now, with the corresponding map_err.
 	/// Might have more logic later.
 	fn parse_message_data(&self, payload: &str) -> Result<Value> {
@@ -518,13 +539,17 @@ impl AnthropicStreamer {
 #[cfg(test)]
 mod tests {
 	use super::ThinkingBlock;
+	use crate::adapter::inter_stream::InterStreamThoughtBlock;
 
 	fn signature(start: &str, deltas: &[&str]) -> Option<String> {
 		let mut block = ThinkingBlock::new(None, Some(start.to_string()));
 		for delta in deltas {
 			block.append_signature_delta(delta);
 		}
-		block.into_thought_block().map(|block| block.signature)
+		match block.into_thought_block()? {
+			InterStreamThoughtBlock::Signed { signature, .. } => Some(signature),
+			InterStreamThoughtBlock::Custom(_) => None,
+		}
 	}
 
 	#[test]
