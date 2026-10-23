@@ -7,6 +7,7 @@
 - `-` openai_resp - Capture a non-streaming answer's reasoning summaries and encrypted reasoning content in `ChatResponse::reasoning_content` and the thought signatures, and stop emitting a mirrored `{"type": "reasoning", "encrypted_content": ...}` input item twice when replaying an assistant tool turn. (PR #344)
 - `-` gemini - Forward `ChatOptions::seed` to `generationConfig.seed` and merge `extra_body` into the request payload, and return `reasoning_content: None` instead of `Some("")` when a non-streaming answer has no thought parts. (PR #345)
 - `-` client - Apply `AuthData::RequestOverride` and the client-level and per-request headers in `exec_embed`, and merge the client-level `chat_options.extra_headers` in `exec_chat` and `exec_chat_stream`. (PR #346)
+- `-` openai - Keep every piece of a streamed chunk, not only the first: reasoning, content, and each `delta.tool_calls` entry are queued and drained before the next message, which also removes the two drifted copies of the delta handling and applies to every OpenAI-compatible adapter kind. (PR #347)
 
 ## 2026-10-19 [v0.7.0](https://github.com/jeremychone/rust-genai/compare/v0.6.5...v0.7.0)
 
