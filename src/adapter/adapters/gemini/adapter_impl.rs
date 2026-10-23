@@ -236,7 +236,7 @@ impl Adapter for GeminiAdapter {
 
 		Ok(ChatResponse {
 			content,
-			reasoning_content: Some(reasoning_text),
+			reasoning_content: (!reasoning_text.is_empty()).then_some(reasoning_text),
 			model_iden,
 			provider_model_iden,
 			stop_reason,
@@ -513,6 +513,12 @@ impl GeminiAdapter {
 		}
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("/generationConfig/topP", top_p)?;
+		}
+		if let Some(seed) = options_set.seed() {
+			payload.x_insert("/generationConfig/seed", seed)?;
+		}
+		if let Some(extra_body) = options_set.extra_body() {
+			payload.x_merge(extra_body.clone())?;
 		}
 
 		Ok((payload, provider_model_name.to_string()))
