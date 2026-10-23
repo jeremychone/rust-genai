@@ -117,6 +117,20 @@ impl<'a> AnthropicModel<'a> {
 	}
 
 	fn max_tokens(&self) -> AnthropicMaxTokens {
+		if matches!(self.family, AnthropicModelFamily::Opus)
+			&& let Some(version) = self.version()
+		{
+			if version >= (4, 8) {
+				return AnthropicMaxTokens::Tokens128K;
+			} else if version >= (4, 5) {
+				return AnthropicMaxTokens::Tokens64K;
+			} else if version >= (4, 0) {
+				return AnthropicMaxTokens::Tokens32K;
+			} else if matches!(version, (3, _)) {
+				return AnthropicMaxTokens::Tokens4K;
+			}
+		}
+
 		if self.is_haiku_5_or_later() {
 			AnthropicMaxTokens::Tokens128K
 		} else {
