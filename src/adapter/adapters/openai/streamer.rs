@@ -6,6 +6,7 @@ use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
+use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -78,6 +79,8 @@ pub struct OpenAIStreamer {
 	/// Flag to prevent polling the EventSource after a MessageStop event
 	done: bool,
 	captured_data: StreamerCapturedData,
+	/// Events read from a message but not returned yet, since one chunk can carry several.
+	pending_events: VecDeque<InterStreamEvent>,
 }
 
 impl OpenAIStreamer {
@@ -89,6 +92,7 @@ impl OpenAIStreamer {
 			done: false,
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
+			pending_events: VecDeque::new(),
 		}
 	}
 
@@ -131,6 +135,62 @@ impl OpenAIStreamer {
 			tool_call
 		}
 	}
+
+	/// Queues a `ReasoningChunk` and then a `Chunk` for the delta's reasoning and content,
+	/// capturing both when the chat options allow it.
+	fn queue_delta_text(&mut self, choice: &mut Value) {
+		let (content, chunk_reasoning) = take_delta_content(choice);
+		// Some providers (e.g., Ollama) emit reasoning in `delta.reasoning` and send empty content.
+		let reasoning_content = chunk_reasoning
+			.or_else(|| choice.x_take::<Option<String>>("/delta/reasoning_content").ok().flatten())
+			.or_else(|| choice.x_take::<Option<String>>("/delta/reasoning").ok().flatten());
+
+		if let Some(reasoning_content) = reasoning_content
+			&& !reasoning_content.is_empty()
+		{
+			if self.options.capture_reasoning_content {
+				match self.captured_data.reasoning_content {
+					Some(ref mut c) => c.push_str(&reasoning_content),
+					None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
+				}
+			}
+			self.pending_events
+				.push_back(InterStreamEvent::ReasoningChunk(reasoning_content));
+		}
+
+		if let Some(content) = content
+			&& !content.is_empty()
+		{
+			if self.options.capture_content {
+				match self.captured_data.content {
+					Some(ref mut c) => c.push_str(&content),
+					None => self.captured_data.content = Some(content.clone()),
+				}
+			}
+			self.pending_events.push_back(InterStreamEvent::Chunk(content));
+		}
+	}
+
+	/// Captures every entry of a `delta.tool_calls` array and queues a `ToolCallChunk` for each.
+	fn queue_delta_tool_calls(&mut self, delta_tool_calls: Value) {
+		let Value::Array(delta_tool_calls) = delta_tool_calls else {
+			return;
+		};
+
+		for mut tool_call_obj in delta_tool_calls {
+			if let (Ok(index), Ok(mut function)) = (
+				tool_call_obj.x_take::<u32>("index"),
+				tool_call_obj.x_take::<Value>("function"),
+			) {
+				let call_id = tool_call_obj.x_take::<String>("id").unwrap_or_else(|_| format!("call_{index}"));
+				let fn_name = function.x_take::<String>("name").unwrap_or_default();
+				let arguments = function.x_take::<String>("arguments").unwrap_or_default();
+
+				let tool_call = self.capture_tool_call(index as usize, call_id, fn_name, arguments);
+				self.pending_events.push_back(InterStreamEvent::ToolCallChunk(tool_call));
+			}
+		}
+	}
 }
 
 impl futures::Stream for OpenAIStreamer {
@@ -141,6 +201,9 @@ impl futures::Stream for OpenAIStreamer {
 			// The last poll was definitely the end, so end the stream.
 			// This will prevent triggering a stream ended error
 			return Poll::Ready(None);
+		}
+		if let Some(event) = self.pending_events.pop_front() {
+			return Poll::Ready(Some(Ok(event)));
 		}
 		while let Poll::Ready(event) = Pin::new(&mut self.inner).poll_next(cx) {
 			match event {
@@ -230,162 +293,38 @@ impl futures::Stream for OpenAIStreamer {
 
 					// If we have a first choice, then it's a normal message
 					if let Some(mut first_choice) = first_choice {
+						// -- Delta content
+						// One chunk can carry several pieces (reasoning and content, or more than one
+						// `delta.tool_calls` entry). Queue an event for each, in that order.
+						self.queue_delta_text(&mut first_choice);
+						if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls") {
+							self.queue_delta_tool_calls(delta_tool_calls);
+						}
+
 						// -- Finish Reason
 						// If finish_reason exists, it's the end of this choice.
 						// Since we support only a single choice, we can proceed,
 						// as there might be other messages, and the last one contains data: `[DONE]`
+						// NOTE: Some providers (e.g., mistral, Ollama) send content or tool_calls in the same
+						//       message as finish_reason, so the delta above is read first.
 						// NOTE: xAI has no `finish_reason` when not finished, so, need to just account for both null/absent
 						if let Ok(Some(finish_reason)) = first_choice.x_take::<Option<String>>("finish_reason") {
 							self.captured_data.stop_reason = Some(finish_reason);
-							// NOTE: Some providers (e.g., Ollama) send tool_calls AND finish_reason in the same message.
-							// We need to capture tool_calls here before continuing to the next message.
-							// Capture tool_calls that arrive in the same chunk as finish_reason.
-							// After capturing, emit the first ToolCallChunk so downstream
-							// consumers (e.g. agent loops) see the tool call event.
-							let mut first_tool_call_event: Option<ToolCall> = None;
-							if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls")
-								&& delta_tool_calls != Value::Null
-								&& let Some(delta_tool_calls) = delta_tool_calls.as_array()
-							{
-								for tool_call_obj_val in delta_tool_calls {
-									let mut tool_call_obj = tool_call_obj_val.clone();
-									if let (Ok(index), Ok(mut function)) = (
-										tool_call_obj.x_take::<u32>("index"),
-										tool_call_obj.x_take::<Value>("function"),
-									) {
-										let call_id = tool_call_obj
-											.x_take::<String>("id")
-											.unwrap_or_else(|_| format!("call_{index}"));
-										let fn_name = function.x_take::<String>("name").unwrap_or_default();
-										let arguments = function.x_take::<String>("arguments").unwrap_or_default();
-
-										let tc = self.capture_tool_call(index as usize, call_id, fn_name, arguments);
-										if first_tool_call_event.is_none() {
-											first_tool_call_event = Some(tc);
-										}
-									}
-								}
-							}
 
 							if let Some(usage) =
 								take_finish_reason_usage(&mut message_data, adapter_kind, self.options.capture_usage)
 							{
 								self.captured_data.usage = Some(usage);
 							}
-
-							// NOTE: Some providers (e.g., mistral) send delta/content AND finish_reason
-							// in the same SSE message. We must capture and emit that final content chunk
-							// before continuing to the next message, otherwise it is silently lost.
-							let (content, chunk_reasoning) = take_delta_content(&mut first_choice);
-							let reasoning_content = chunk_reasoning
-								.or_else(|| {
-									first_choice.x_take::<Option<String>>("/delta/reasoning_content").ok().flatten()
-								})
-								.or_else(|| first_choice.x_take::<Option<String>>("/delta/reasoning").ok().flatten());
-
-							if let Some(content) = content
-								&& !content.is_empty()
-							{
-								if self.options.capture_content {
-									match self.captured_data.content {
-										Some(ref mut c) => c.push_str(&content),
-										None => self.captured_data.content = Some(content.clone()),
-									}
-								}
-								return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
-							} else if let Some(reasoning_content) = reasoning_content
-								&& !reasoning_content.is_empty()
-							{
-								if self.options.capture_reasoning_content {
-									match self.captured_data.reasoning_content {
-										Some(ref mut c) => c.push_str(&reasoning_content),
-										None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
-									}
-								}
-								return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(reasoning_content))));
-							}
-
-							// If we captured a tool call in the finish_reason chunk,
-							// emit it as a ToolCallChunk so the agent loop sees it.
-							if let Some(tc) = first_tool_call_event {
-								return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tc))));
-							}
-
-							continue;
-						}
-						// -- Tool Call
-						else if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls")
-							&& delta_tool_calls != Value::Null
-						{
-							// Check if there's a tool call in the delta
-							if let Some(delta_tool_calls) = delta_tool_calls.as_array()
-								&& let Some(tool_call_obj_val) = delta_tool_calls.first()
-							{
-								// Extract the first tool call object as a mutable value
-								let mut tool_call_obj = tool_call_obj_val.clone();
-
-								// Extract tool call data
-								if let (Ok(index), Ok(mut function)) = (
-									tool_call_obj.x_take::<u32>("index"),
-									tool_call_obj.x_take::<Value>("function"),
-								) {
-									let call_id = tool_call_obj
-										.x_take::<String>("id")
-										.unwrap_or_else(|_| format!("call_{index}"));
-									let fn_name = function.x_take::<String>("name").unwrap_or_default();
-									let arguments = function.x_take::<String>("arguments").unwrap_or_default();
-
-									let tool_call = self.capture_tool_call(index as usize, call_id, fn_name, arguments);
-
-									// Return the ToolCallChunk event
-									return Poll::Ready(Some(Ok(InterStreamEvent::ToolCallChunk(tool_call))));
-								}
-							}
-							// No valid tool call found, continue to next message
-							continue;
-						}
-						// -- Content / Reasoning Content
-						// Some providers (e.g., Ollama) emit reasoning in `delta.reasoning` and send empty content.
-						else {
-							let (content, chunk_reasoning) = take_delta_content(&mut first_choice);
-							let reasoning_content = chunk_reasoning
-								.or_else(|| {
-									first_choice.x_take::<Option<String>>("/delta/reasoning_content").ok().flatten()
-								})
-								.or_else(|| first_choice.x_take::<Option<String>>("/delta/reasoning").ok().flatten());
-
-							if let Some(content) = content
-								&& !content.is_empty()
-							{
-								// Add to the captured_content if chat options allow it
-								if self.options.capture_content {
-									match self.captured_data.content {
-										Some(ref mut c) => c.push_str(&content),
-										None => self.captured_data.content = Some(content.clone()),
-									}
-								}
-
-								// Return the Event
-								return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(content))));
-							} else if let Some(reasoning_content) = reasoning_content
-								&& !reasoning_content.is_empty()
-							{
-								// Add to the captured_content if chat options allow it
-								if self.options.capture_reasoning_content {
-									match self.captured_data.reasoning_content {
-										Some(ref mut c) => c.push_str(&reasoning_content),
-										None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
-									}
-								}
-
-								// Return the Event
-								return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(reasoning_content))));
-							}
-
-							// If we do not have content, then log a trace message
+						} else if self.pending_events.is_empty() {
 							// TODO: use tracing debug
 							tracing::warn!("EMPTY CHOICE CONTENT");
 						}
+
+						if let Some(event) = self.pending_events.pop_front() {
+							return Poll::Ready(Some(Ok(event)));
+						}
+						continue;
 					}
 					// -- Usage message
 					else {
