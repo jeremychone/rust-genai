@@ -465,3 +465,96 @@ fn test_openai_resp_adapter_adapters_openai_resp_tool_to_openai_tool_optional_de
 
 	Ok(())
 }
+
+#[test]
+fn test_openai_resp_to_chat_response_captures_reasoning_and_thought_signature() -> Result<()> {
+	let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.4-mini");
+	let web_response = WebResponse {
+		status: reqwest::StatusCode::OK,
+		body: json!({
+			"id": "resp_123",
+			"status": "completed",
+			"model": "gpt-5.4-mini-2026-03-17",
+			"output": [
+				{
+					"id": "rs_1",
+					"type": "reasoning",
+					"encrypted_content": "enc_sig_1",
+					"summary": [
+						{"type": "summary_text", "text": "**Checking weather**\nLooking up Paris."}
+					],
+					"content": [
+						{"type": "reasoning_text", "text": "Need to call get_weather."}
+					]
+				},
+				{
+					"type": "function_call",
+					"call_id": "call_1",
+					"name": "get_weather",
+					"arguments": "{\"city\":\"Paris\"}"
+				}
+			],
+			"usage": {
+				"input_tokens": 20,
+				"output_tokens": 15,
+				"total_tokens": 35
+			}
+		}),
+	};
+
+	let response = OpenAIRespAdapter::to_chat_response(model_iden, web_response, ChatOptionsSet::default())?;
+
+	assert_eq!(
+		response.reasoning_content.as_deref(),
+		Some("**Checking weather**\nLooking up Paris.\nNeed to call get_weather.")
+	);
+	assert_eq!(response.content.thought_signatures(), vec!["enc_sig_1"]);
+
+	let tool_calls = response.tool_calls();
+	assert_eq!(tool_calls.len(), 1);
+	assert_eq!(tool_calls[0].call_id, "call_1");
+	assert_eq!(tool_calls[0].fn_name, "get_weather");
+	assert_eq!(
+		tool_calls[0].thought_signatures.as_deref(),
+		Some(["enc_sig_1".to_string()].as_slice())
+	);
+
+	Ok(())
+}
+
+#[test]
+fn test_openai_resp_into_openai_request_parts_does_not_duplicate_mirrored_thought_signatures() -> Result<()> {
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.4-mini"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+	};
+	let assistant_content = MessageContent::from_parts(vec![
+		ContentPart::ThoughtSignature("enc_sig_1".to_string()),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call_1".to_string(),
+			fn_name: "get_weather".to_string(),
+			fn_arguments: json!({"city": "Paris"}),
+			thought_signatures: Some(vec!["enc_sig_1".to_string()]),
+		}),
+	]);
+	let request = ChatRequest::new(vec![
+		ChatMessage::user("weather in Paris"),
+		ChatMessage::assistant(assistant_content),
+		ChatMessage::from(ToolResponse::new("call_1", "22C")),
+	]);
+
+	let web_req =
+		OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())?;
+	let input = web_req.payload["input"].as_array().ok_or("input should be an array")?;
+	let reasoning_items: Vec<&Value> = input.iter().filter(|item| item["type"] == "reasoning").collect();
+
+	assert_eq!(
+		reasoning_items.len(),
+		1,
+		"encrypted reasoning blob must not be emitted twice"
+	);
+	assert_eq!(reasoning_items[0]["encrypted_content"], "enc_sig_1");
+
+	Ok(())
+}

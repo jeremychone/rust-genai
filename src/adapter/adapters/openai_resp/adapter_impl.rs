@@ -1,4 +1,4 @@
-use super::{OpenAIRespStreamer, RespResponse};
+use super::{OpenAIRespStreamer, RespResponse, extract_resp_reasoning_texts};
 use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::openai::cache_policy::{
 	OpenAiPromptCachePolicy, OpenAiProtocol, openai_prompt_cache_policy, requires_explicit_cache,
@@ -318,13 +318,25 @@ impl Adapter for OpenAIRespAdapter {
 
 		// -- Capture the content
 		let mut content: MessageContent = MessageContent::default();
-		let reasoning_content: Option<String> = None;
+		let mut reasoning_parts: Vec<String> = Vec::new();
 
 		// -- Extract the content message
 		for output_item in resp.output {
+			reasoning_parts.extend(extract_resp_reasoning_texts(&output_item));
 			let parts = ContentPart::from_resp_output_item(output_item)?;
 			content.extend(parts);
 		}
+
+		let thought_signatures = content.thought_signatures().into_iter().map(str::to_string).collect::<Vec<_>>();
+		if !thought_signatures.is_empty()
+			&& let Some(tool_call) = content.iter_mut().find_map(|part| match part {
+				ContentPart::ToolCall(tool_call) => Some(tool_call),
+				_ => None,
+			}) {
+			tool_call.thought_signatures.get_or_insert(thought_signatures);
+		}
+
+		let reasoning_content = (!reasoning_parts.is_empty()).then(|| reasoning_parts.join("\n"));
 
 		Ok(ChatResponse {
 			content,
@@ -549,8 +561,10 @@ impl OpenAIRespAdapter {
 					// parts (from `StreamEnd::captured_content`) or on
 					// `ToolCall::thought_signatures` (rust-genai's streamer stashes
 					// captured blobs there when there are tool calls).
+					let mut has_top_level_thought_signatures = false;
 					for part in msg.content.iter() {
 						if let ContentPart::ThoughtSignature(blob) = part {
+							has_top_level_thought_signatures = true;
 							input_items.push(json!({
 								"type": "reasoning",
 								"encrypted_content": blob,
@@ -558,16 +572,18 @@ impl OpenAIRespAdapter {
 							}));
 						}
 					}
-					for part in msg.content.iter() {
-						if let ContentPart::ToolCall(tool_call) = part
-							&& let Some(sigs) = tool_call.thought_signatures.as_ref()
-						{
-							for blob in sigs {
-								input_items.push(json!({
-									"type": "reasoning",
-									"encrypted_content": blob,
-									"summary": [],
-								}));
+					if !has_top_level_thought_signatures {
+						for part in msg.content.iter() {
+							if let ContentPart::ToolCall(tool_call) = part
+								&& let Some(sigs) = tool_call.thought_signatures.as_ref()
+							{
+								for blob in sigs {
+									input_items.push(json!({
+										"type": "reasoning",
+										"encrypted_content": blob,
+										"summary": [],
+									}));
+								}
 							}
 						}
 					}
