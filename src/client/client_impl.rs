@@ -114,6 +114,9 @@ impl Client {
 				payload,
 			} = AdapterDispatcher::to_web_request_data(target, ServiceType::Chat, chat_req, options_set.clone())?;
 
+			if let Some(extra_headers) = self.config().chat_options().and_then(|o| o.extra_headers.as_ref()) {
+				headers.merge_with(extra_headers);
+			}
 			if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
 				headers.merge_with(extra_headers);
 			}
@@ -198,6 +201,9 @@ impl Client {
 				payload,
 			} = AdapterDispatcher::to_web_request_data(target, ServiceType::ChatStream, chat_req, options_set.clone())?;
 
+			if let Some(extra_headers) = self.config().chat_options().and_then(|o| o.extra_headers.as_ref()) {
+				headers.merge_with(extra_headers);
+			}
 			if let Some(extra_headers) = options.and_then(|o| o.extra_headers.as_ref()) {
 				headers.merge_with(extra_headers);
 			}
@@ -297,14 +303,34 @@ impl Client {
 
 		let target = self.config().resolve_model_spec(model.into()).await?;
 		let model = target.model.clone();
+		let auth_data = target.auth.clone();
 
 		// -- OTel: create the `embeddings` span (borrow ends before `target` is consumed below).
 		#[cfg(feature = "otel")]
 		let otel_span = crate::otel::span::embeddings_request_span(&model, &target.endpoint, &options_set);
 
 		let result = async {
-			let WebRequestData { headers, payload, url } =
-				AdapterDispatcher::to_embed_request_data(target, embed_req, options_set.clone())?;
+			let WebRequestData {
+				mut headers,
+				payload,
+				mut url,
+			} = AdapterDispatcher::to_embed_request_data(target, embed_req, options_set.clone())?;
+
+			if let Some(extra_headers) = self.config().embed_options().and_then(|o| o.headers()) {
+				headers.merge_with(extra_headers);
+			}
+			if let Some(extra_headers) = options.and_then(|o| o.headers()) {
+				headers.merge_with(extra_headers);
+			}
+
+			if let AuthData::RequestOverride {
+				url: override_url,
+				headers: override_headers,
+			} = auth_data
+			{
+				url = override_url;
+				headers = override_headers;
+			};
 
 			let web_res = self
 				.web_client()
@@ -325,5 +351,113 @@ impl Client {
 		let result = crate::otel::span::record_embed_result(&otel_span, result);
 
 		result
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::resolver::Endpoint;
+	use crate::{ClientConfig, Headers};
+	use std::io::{Read, Write};
+	use std::net::{Shutdown, TcpListener};
+	use std::sync::{Arc, Mutex};
+
+	fn serve_json(response_body: String, captured_request: Arc<Mutex<String>>) -> u16 {
+		let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+		let port = listener.local_addr().expect("addr").port();
+		std::thread::spawn(move || {
+			let (mut stream, _) = listener.accept().expect("accept");
+			let mut buf = [0_u8; 8192];
+			let n = stream.read(&mut buf).unwrap_or(0);
+			*captured_request.lock().expect("lock") = String::from_utf8_lossy(&buf[..n]).to_string();
+			let header = format!(
+				"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n",
+				response_body.len()
+			);
+			stream.write_all(header.as_bytes()).expect("header");
+			stream.write_all(response_body.as_bytes()).expect("body");
+			let _ = stream.shutdown(Shutdown::Both);
+		});
+		port
+	}
+
+	#[tokio::test]
+	async fn test_exec_embed_applies_request_override() {
+		let captured = Arc::new(Mutex::new(String::new()));
+		let body = serde_json::json!({
+			"data": [{"embedding": [0.1, 0.2], "index": 0}],
+			"model": "text-embedding-3-small",
+			"usage": {"prompt_tokens": 3, "total_tokens": 3}
+		})
+		.to_string();
+		let port = serve_json(body, captured.clone());
+
+		let client = Client::builder().build().expect("client");
+		let target = ServiceTarget {
+			endpoint: Endpoint::from_static("http://127.0.0.1:1/unused/"),
+			auth: AuthData::RequestOverride {
+				url: format!("http://127.0.0.1:{port}/custom-embed-path"),
+				headers: Headers::from(("x-custom-auth", "override-secret")),
+			},
+			model: ModelIden::new(AdapterKind::OpenAI, "text-embedding-3-small"),
+		};
+
+		let res = client
+			.exec_embed(target, EmbedRequest::new("hello"), None)
+			.await
+			.expect("embed should succeed via RequestOverride");
+
+		assert_eq!(res.embeddings.len(), 1);
+		let raw_req = captured.lock().expect("lock").clone();
+		assert!(
+			raw_req.starts_with("POST /custom-embed-path HTTP/1.1"),
+			"unexpected request line: {raw_req}"
+		);
+		assert!(
+			raw_req.to_ascii_lowercase().contains("x-custom-auth: override-secret"),
+			"missing override header in: {raw_req}"
+		);
+		assert!(
+			!raw_req.to_ascii_lowercase().contains("authorization:"),
+			"override headers should replace adapter default Authorization header: {raw_req}"
+		);
+	}
+
+	#[tokio::test]
+	async fn test_exec_embed_merges_client_and_request_headers() {
+		let captured = Arc::new(Mutex::new(String::new()));
+		let body = serde_json::json!({
+			"data": [{"embedding": [0.1, 0.2], "index": 0}],
+			"model": "text-embedding-3-small",
+			"usage": {"prompt_tokens": 3, "total_tokens": 3}
+		})
+		.to_string();
+		let port = serve_json(body, captured.clone());
+
+		let client_embed_opts = EmbedOptions::new().with_headers(Headers::from([
+			("x-client-only", "from-client"),
+			("x-shared", "client"),
+		]));
+		let config = ClientConfig::default().with_embed_options(client_embed_opts);
+		let client = Client::builder().with_config(config).build().expect("client");
+
+		let target = ServiceTarget {
+			endpoint: Endpoint::from_owned(format!("http://127.0.0.1:{port}/v1/")),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::OpenAI, "text-embedding-3-small"),
+		};
+		let req_opts =
+			EmbedOptions::new().with_headers(Headers::from([("x-req-only", "from-req"), ("x-shared", "request")]));
+
+		let _res = client
+			.exec_embed(target, EmbedRequest::new("hello"), Some(&req_opts))
+			.await
+			.expect("embed should succeed");
+
+		let raw_req = captured.lock().expect("lock").to_ascii_lowercase();
+		assert!(raw_req.contains("x-client-only: from-client"), "raw_req: {raw_req}");
+		assert!(raw_req.contains("x-req-only: from-req"), "raw_req: {raw_req}");
+		assert!(raw_req.contains("x-shared: request"), "raw_req: {raw_req}");
 	}
 }
