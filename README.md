@@ -22,7 +22,7 @@ See [v0.7.0](#v070-released-)
 
 Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `atlascloud`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `atlascloud`, `xai`
 
 Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
 
@@ -209,6 +209,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `requesty::openai/gpt-4o-mini` (Forces **Requesty** adapter)
 - `api_route::gpt-6.1-sol` or `api_route::claude-fable-5-1` (Forces **API Route** adapter)
 - `heabsy::qwen38` (Forces **Heabsy** adapter)
+- `runcrate::deepseek-ai/DeepSeek-V4.1-Flash` (Forces **Runcrate** adapter)
 - `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
@@ -221,6 +222,12 @@ For [Heabsy](https://heabsy.com/platform), get an API key in the Heabsy console 
 on request) and set `HEABSY_API_KEY`. The `heabsy::` namespace routes Chat Completions to
 `https://api.heabsy.com/v1/` and sends the model ID after `::` unchanged. Embeddings are not
 supported; see the [model catalog](https://heabsy.com/models) for model IDs.
+
+For [Runcrate](https://www.runcrate.ai/?utm_source=rust-genai&utm_medium=directory&utm_campaign=gpu_pricing), create a key in the dashboard and set
+`RUNCRATE_API_KEY`. The `runcrate::` namespace routes Chat Completions and embeddings to
+`https://api.runcrate.ai/v1/` and sends the `vendor/model` ID after `::` unchanged (for example
+`runcrate::openai/gpt-oss-120b`); `GET https://api.runcrate.ai/v1/models` lists them. Open models are
+free with your GitHub account.
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
