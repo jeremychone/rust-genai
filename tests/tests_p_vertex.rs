@@ -9,7 +9,7 @@ use serial_test::serial;
 // Env vars needed: VERTEX_PROJECT_ID, VERTEX_LOCATION, VERTEX_API_KEY (Bearer token)
 
 // -- Gemini on Vertex (publishers/google)
-const MODEL_GEMINI: &str = "vertex::gemini-2.5-flash";
+const MODEL_GEMINI: &str = "vertex::gemini-3.8-flash";
 
 // -- Claude on Vertex / Model Garden (publishers/anthropic)
 const MODEL_CLAUDE: &str = "vertex::claude-sonnet-4-6";
@@ -166,7 +166,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Vertex, "gemini-2.5-flash").await
+	common_tests::common_test_list_models(AdapterKind::Vertex, "gemini-3.8-flash").await
 }
 
 // endregion: --- List

@@ -92,7 +92,7 @@ pub enum AdapterKind {
 	Omlx,
 
 	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
-	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
+	/// Uses namespace routing: `vertex::gemini-3.8-flash`, `vertex::claude-sonnet-4-6`
 	Vertex,
 
 	/// GitHub Models inference API (multi-publisher gateway for OpenAI, Anthropic, and Google models).
@@ -218,7 +218,7 @@ impl AdapterKind {
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
 	/// - e.g., for ZAI coding plan with `zai_coding::glm-4.6`
-	/// - e.g., for vertex with `vertex::gemini-2.5-flash` or `vertex::claude-sonnet-4-6`
+	/// - e.g., for vertex with `vertex::gemini-3.8-flash` or `vertex::claude-sonnet-4-6`
 	///
 	/// And all adapters can be force namspaced as well.
 	///

@@ -198,7 +198,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `nebius::Qwen/Qwen3-235B-A22B` (Forces **Nebius** adapter)
 - `aliyun::qwen-plus` (Forces **Aliyun** adapter)
 - `qwen_cloud::qwen-plus` (Forces **Qwen Cloud** adapter, managed by qwencloud.com and backed by the internal Aliyun-compatible service)
-- `vertex::gemini-2.5-flash` (Forces **Google Vertex** adapter)
+- `vertex::gemini-3.8-flash` (Forces **Google Vertex** adapter)
 - `gemini_ix::gemini-3.5-flash` (Forces **Gemini Interactions API** adapter)
 - `moonshot::moonshot-v1-8k` (Forces **Moonshot** adapter)
 - `baidu::ernie-4.0` (Forces **Baidu** adapter)
