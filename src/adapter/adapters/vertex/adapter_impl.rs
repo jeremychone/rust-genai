@@ -113,8 +113,9 @@ impl Adapter for VertexAdapter {
 				ServiceType::Embed => format!("{base_url}{publisher_path}/models/{model_name}:predict"),
 			},
 			VertexPublisher::Anthropic => match service_type {
-				ServiceType::Chat | ServiceType::ChatStream => {
-					format!("{base_url}{publisher_path}/models/{model_name}:rawPredict")
+				ServiceType::Chat => format!("{base_url}{publisher_path}/models/{model_name}:rawPredict"),
+				ServiceType::ChatStream => {
+					format!("{base_url}{publisher_path}/models/{model_name}:streamRawPredict")
 				}
 				ServiceType::Embed => format!("{base_url}{publisher_path}/models/{model_name}:predict"),
 			},
@@ -294,3 +295,34 @@ impl VertexAdapter {
 }
 
 // endregion: --- Anthropic Publisher Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	fn anthropic_url(service_type: ServiceType) -> String {
+		let model = ModelIden::from_static(AdapterKind::Vertex, "claude-sonnet-4-6");
+		let endpoint =
+			Endpoint::from_static("https://us-east5-aiplatform.googleapis.com/v1/projects/p/locations/us-east5/");
+		VertexAdapter::get_service_url(&model, service_type, endpoint).expect("service url")
+	}
+
+	#[test]
+	fn test_get_service_url_anthropic_chat_uses_raw_predict() {
+		assert!(
+			anthropic_url(ServiceType::Chat).ends_with("/publishers/anthropic/models/claude-sonnet-4-6:rawPredict")
+		);
+	}
+
+	#[test]
+	fn test_get_service_url_anthropic_stream_uses_stream_raw_predict() {
+		assert!(
+			anthropic_url(ServiceType::ChatStream)
+				.ends_with("/publishers/anthropic/models/claude-sonnet-4-6:streamRawPredict")
+		);
+	}
+}
+
+// endregion: --- Tests
