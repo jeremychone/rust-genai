@@ -241,6 +241,17 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- CloudGPU
+pub struct CloudGpuAdapter;
+impl_pass_through_adapter!(
+	name: CloudGpuAdapter,
+	kind: AdapterKind::CloudGpu,
+	key_env: Some("CLOUDGPU_API_KEY"),
+	endpoint: "https://cloudgpu.app/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(
