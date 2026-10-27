@@ -22,7 +22,7 @@ See [v0.7.0](#v070-released-)
 
 Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `atlascloud`, `xai`
+Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `atlascloud`, `xai`
 
 Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
 
@@ -210,6 +210,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `api_route::gpt-6.1-sol` or `api_route::claude-fable-5-1` (Forces **API Route** adapter)
 - `heabsy::qwen38` (Forces **Heabsy** adapter)
 - `runcrate::deepseek-ai/DeepSeek-V4.1-Flash` (Forces **Runcrate** adapter)
+- `cloudgpu::deepseek-v4.1-flash` (Forces **CloudGPU** adapter)
 - `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
@@ -228,6 +229,12 @@ For [Runcrate](https://www.runcrate.ai/?utm_source=rust-genai&utm_medium=directo
 `https://api.runcrate.ai/v1/` and sends the `vendor/model` ID after `::` unchanged (for example
 `runcrate::openai/gpt-oss-120b`); `GET https://api.runcrate.ai/v1/models` lists them. Open models are
 free with your GitHub account.
+
+For [CloudGPU](https://cloudgpu.app/api/docs?utm_source=github&utm_medium=referral&utm_campaign=202611_seg06_indiedev&utm_content=github_rust_genai_adapter), create an API key in the console and set
+`CLOUDGPU_API_KEY`. The `cloudgpu::` namespace routes Chat Completions to `https://cloudgpu.app/v1/`
+and sends the model ID after `::` unchanged (for example `cloudgpu::deepseek-v4.1-flash`,
+`cloudgpu::kimi-k2.7-code` or `cloudgpu::glm-5.3-flash`); `GET https://cloudgpu.app/v1/models` lists them.
+Embeddings are not supported.
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 

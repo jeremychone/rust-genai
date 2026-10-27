@@ -146,6 +146,11 @@ pub enum AdapterKind {
 	/// Uses `RUNCRATE_API_KEY`.
 	Runcrate,
 
+	/// CloudGPU: OpenAI-compatible inference API for open models, selected via the `cloudgpu::` namespace.
+	/// Example: `cloudgpu::deepseek-v4.1-flash`. Website: <https://cloudgpu.app>.
+	/// Uses `CLOUDGPU_API_KEY`. Embeddings are not supported.
+	CloudGpu,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -197,6 +202,7 @@ adapter_kind_str_maps! {
 	ApiRoute           => "ApiRoute",           "api_route",           adapters::all_adapters::ApiRouteAdapter;
 	Heabsy             => "Heabsy",             "heabsy",              adapters::all_adapters::HeabsyAdapter;
 	Runcrate           => "Runcrate",           "runcrate",            adapters::all_adapters::RuncrateAdapter;
+	CloudGpu           => "CloudGpu",           "cloudgpu",            adapters::all_adapters::CloudGpuAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
