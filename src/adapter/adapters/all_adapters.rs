@@ -231,6 +231,16 @@ impl_pass_through_adapter!(
 	unsupported: [embeddings],
 );
 
+// -- Runcrate
+pub struct RuncrateAdapter;
+impl_pass_through_adapter!(
+	name: RuncrateAdapter,
+	kind: AdapterKind::Runcrate,
+	key_env: Some("RUNCRATE_API_KEY"),
+	endpoint: "https://api.runcrate.ai/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(
