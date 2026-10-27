@@ -77,6 +77,35 @@ fn test_heabsy_dispatch_preserves_model_and_uses_heabsy_endpoint() -> Result<()>
 	Ok(())
 }
 
+#[test]
+fn test_runcrate_dispatch_preserves_model_and_uses_runcrate_endpoint() -> Result<()> {
+	let kind = AdapterKind::from_model("runcrate::deepseek-ai/DeepSeek-V4.1-Flash")?;
+	assert_eq!(kind, AdapterKind::Runcrate);
+	assert_eq!(kind.default_key_env_name(), Some("RUNCRATE_API_KEY"));
+	let target = ServiceTarget {
+		model: ModelIden::new(kind, "runcrate::deepseek-ai/DeepSeek-V4.1-Flash"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: AdapterDispatcher::default_endpoint(kind),
+	};
+	let request = AdapterDispatcher::to_web_request_data(
+		target.clone(),
+		ServiceType::Chat,
+		ChatRequest::from_user("hello"),
+		ChatOptionsSet::default(),
+	)?;
+	assert_eq!(request.url, "https://api.runcrate.ai/v1/chat/completions");
+	assert_eq!(request.payload["model"], "deepseek-ai/DeepSeek-V4.1-Flash");
+	let has_bearer = request
+		.headers
+		.iter()
+		.any(|(name, value)| name.eq_ignore_ascii_case("authorization") && value == "Bearer test-key");
+	assert!(has_bearer);
+	let embed =
+		AdapterDispatcher::to_embed_request_data(target, EmbedRequest::new("hello"), EmbedOptionsSet::default())?;
+	assert_eq!(embed.url, "https://api.runcrate.ai/v1/embeddings");
+	Ok(())
+}
+
 // region:    --- DeepSeek
 
 #[test]

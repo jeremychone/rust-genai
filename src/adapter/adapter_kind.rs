@@ -141,6 +141,11 @@ pub enum AdapterKind {
 	/// Uses `HEABSY_API_KEY`. Embeddings are not supported.
 	Heabsy,
 
+	/// Runcrate: OpenAI-compatible inference API for open models, selected via the `runcrate::` namespace.
+	/// Example: `runcrate::deepseek-ai/DeepSeek-V4.1-Flash`. Website: <https://www.runcrate.ai>.
+	/// Uses `RUNCRATE_API_KEY`.
+	Runcrate,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -191,6 +196,7 @@ adapter_kind_str_maps! {
 	Requesty           => "Requesty",           "requesty",            adapters::all_adapters::RequestyAdapter;
 	ApiRoute           => "ApiRoute",           "api_route",           adapters::all_adapters::ApiRouteAdapter;
 	Heabsy             => "Heabsy",             "heabsy",              adapters::all_adapters::HeabsyAdapter;
+	Runcrate           => "Runcrate",           "runcrate",            adapters::all_adapters::RuncrateAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 

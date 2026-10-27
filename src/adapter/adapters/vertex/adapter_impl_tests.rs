@@ -1,6 +1,7 @@
 use super::VertexAdapter;
-use crate::adapter::{Adapter, AdapterKind};
+use crate::adapter::{Adapter, AdapterKind, ServiceType};
 use crate::resolver::{AuthData, Endpoint};
+use crate::ModelIden;
 use crate::webc::WebClient;
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
@@ -26,4 +27,23 @@ async fn test_vertex_all_model_names_lists_no_retired_gemini() -> Result<()> {
 	assert!(names.iter().any(|name| name.starts_with("claude-")), "{names:?}");
 
 	Ok(())
+}
+
+fn anthropic_url(service_type: ServiceType) -> String {
+	let model = ModelIden::from_static(AdapterKind::Vertex, "claude-sonnet-4-6");
+	let endpoint = Endpoint::from_static("https://us-east5-aiplatform.googleapis.com/v1/projects/p/locations/us-east5/");
+	VertexAdapter::get_service_url(&model, service_type, endpoint).expect("service url")
+}
+
+#[test]
+fn test_get_service_url_anthropic_chat_uses_raw_predict() {
+	assert!(anthropic_url(ServiceType::Chat).ends_with("/publishers/anthropic/models/claude-sonnet-4-6:rawPredict"));
+}
+
+#[test]
+fn test_get_service_url_anthropic_stream_uses_stream_raw_predict() {
+	assert!(
+		anthropic_url(ServiceType::ChatStream)
+			.ends_with("/publishers/anthropic/models/claude-sonnet-4-6:streamRawPredict")
+	);
 }
