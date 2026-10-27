@@ -111,9 +111,7 @@
 - Out of scope, unchanged: a `thinking` block cut off by `max_tokens` is still dropped, because only a block that reaches `content_block_stop` is turned into an `InterStreamThoughtBlock`.
 
 
-## ■ Step - Fix: finalize OpenAI Responses tool calls on incomplete and EOF
-      status: not_started
-time-created: 2026-10-15 15:51:23
+## 2026-10-00 - Fix: finalize OpenAI Responses tool calls on incomplete and EOF
 
 Behavior change, needs yakbak coverage. Commit prefix: `- openai_resp - Finalize tool calls on incomplete and EOF`
 
@@ -122,12 +120,74 @@ Behavior change, needs yakbak coverage. Commit prefix: `- openai_resp - Finalize
 - Finalize `in_progress_tool_calls` on the `ResponseIncomplete` and EOF (`None`) paths so accumulated calls are not dropped.
 - Add a yakbak cassette test and remove the raw TCP test. Blocked until the test files are provided.
 
-## ■ Step - Refactor: literal adapter identifiers in dispatcher macros
-      status: not_started
-time-created: 2026-10-15 15:51:23
+## 2026-10-00 - Refactor: literal adapter identifiers in dispatcher macros
 
 High-risk macro refactor. Commit prefix: `> macros - Use literal adapter identifiers`
 
 - `src/adapter/macros/dispatcher_macros.rs`: replace `[<X Adapter>]` forms with literal identifiers such as `OpenAIAdapter`, and remove the `paste` import.
 - `Cargo.toml`: remove the direct `pastey` dependency if nothing else uses it.
 - Verify with `cargo tree -i pastey`, `cargo build`, and `cargo build --features bedrock-sigv4`.
+
+## 2026-10-27 - OpenAI-compatible streaming and shared tool tests
+
+- Context: PR 347 changed `src/adapter/adapters/openai/streamer.rs` so one SSE message can emit reasoning, content, and every tool call through a `pending_events` queue. This affects all adapters using `OpenAIStreamer`, not only OpenAI.
+
+- Shared live tool tests: `tests/support/common_tests.rs` is used by multiple provider suites. The review identified intermittent failures when a model returned Fahrenheit instead of Celsius, or multiple tool calls while `common_test_tool_full_flow_ok` answered only one. Check the current file before changing it: later workbench notes report that the tests were already hardened.
+
+  - If still needed, answer every assistant tool call with a matching `ToolResponse`, including the function name for providers such as Gemini. Alternatively, send only the one assistant call being answered.
+
+  - Keep streaming and non-streaming argument checks aligned. Account for valid model variance in units, capitalization, location formatting, and parallel calls without losing the check that captured arguments are parsed JSON objects.
+
+  - Avoid requiring final prose to repeat facts absent from the supplied tool responses. Run the affected OpenAI live tests and at least one other provider suite after changes; live tests require credentials.
+
+- Synthetic streaming tests: `tests/openai_stream_shared_chunks.rs` was reported to use a local raw TCP SSE server. Consider moving its support into shared test infrastructure or using yakbak, consistent with the existing OpenAI Responses and Anthropic cassette follow-ups above. Cover multiple tool calls, reasoning and content together, content and tool calls together, finish-reason frames, and disabled capture options.
+
+- Streamer polish, optional: in `src/adapter/adapters/openai/streamer.rs`, consider a warning for malformed tool-call entries instead of silently skipping them, and document the invariant that queued events are drained before another SSE message is read. Verify existing behavior before changing it.
+
+- Tool-call event semantics: `capture_tool_call` returns accumulated arguments when capture is enabled, rather than necessarily returning only the latest fragment. Consumers that concatenate successive `ToolCallChunk` arguments can over-accumulate. Clarify the intended contract and test both enabled and disabled capture before changing behavior; this is not specific to PR 347.
+
+## 2026-10-27 - Cohere request coverage and embedding errors
+
+- Context: PR 351 changes Cohere v1 `chat_history` entries from `content` to `message` in `src/adapter/adapters/cohere/adapter_impl.rs`. Its unit tests are in `src/adapter/adapters/cohere/adapter_impl_tests.rs`.
+
+- Add a multi-turn live test in `tests/tests_p_cohere.rs` to confirm that the provider accepts and uses history. The existing unit tests validate the outbound payload without a network call. Also consider a unit test for system-message `preamble` handling.
+
+- In `src/adapter/adapters/cohere/embed.rs`, replace the fabricated serde error created with `serde_json::from_str::<()>(...).unwrap_err()` for missing embedding data with an appropriate existing or dedicated error. The current input always fails to parse, but the `unwrap_err()` becomes panic-capable if that assumption changes. Preserve useful error context and check compatibility of any public error change.
+
+- Optional test cleanup: align setup, execution, and check markers in `adapter_impl_tests.rs`, and consider deriving test endpoint and authentication fixtures from adapter defaults if that makes the tests clearer.
+
+## 2026-10-27 - Vertex model listing and Claude streaming
+
+- Context: PR 352 selects `:streamRawPredict` for Vertex Claude streaming and retains `:rawPredict` for non-streaming requests. PR 353 updates the hardcoded Vertex model list and moves URL tests to `src/adapter/adapters/vertex/adapter_impl_tests.rs`.
+
+- Run the Claude streaming live tests in `tests/tests_p_vertex.rs` against a configured Vertex project, including simple and capture-all cases if available. This verifies that the Vertex stream's SSE event names are handled by `src/adapter/adapters/anthropic/streamer.rs`; the URL unit tests alone cannot verify the live response format.
+
+- In `src/adapter/adapters/vertex/adapter_impl_tests.rs`, consider checking that Gemini streaming URL selection remains unchanged, and replacing test-only `.expect("service url")` calls with propagated errors where practical.
+
+- Verify the current Vertex model names and retirement status against Google documentation before revising `all_model_names` in `src/adapter/adapters/vertex/adapter_impl.rs`. The PR 353 review specifically called for checking the removal of Gemini 2.5 entries and the proposed `gemini-3.8-flash` replacement. Do not assume those names or retirement dates remain correct. Update related examples, tests, and documentation only when supported by current provider information.
+
+- Review the unknown-publisher fallback in `VertexAdapter::get_service_url`: it warns and defaults to Google, while other paths validate the publisher. Consider propagating an error if the trait and callers allow it, and test the behavior rather than assuming every caller validates first.
+
+- Separate optional safety cleanup: `gemini_tool_config` in `src/adapter/adapters/gemini/adapter_impl.rs` uses mutable `serde_json::Value` indexing for `allowedFunctionNames`. Its current object shape makes that assignment safe, but mutable indexing can panic if the shape changes. Consider a fallible insertion consistent with the file's style.
+
+## 2026-10-27 - Stop-reason mapping and documentation
+
+- Context: PR 354 updates `StopReason::from(String)` in `src/chat/chat_response.rs` so additional refusal, content-filter, and model-length strings map to existing variants rather than `Other`. Raw provider strings remain available, but the selected enum variant and its serialized representation change for those strings.
+
+- Check that the `ContentFilter` variant and `is_max_tokens` documentation describe the complete current mapping, including refusals and context-window exhaustion. Keep the documentation table aligned and run `cargo fmt --check` after any code changes.
+
+- Review remaining provider termination reasons deliberately rather than assuming they belong to an existing variant. Examples raised in review include OpenAI Responses `max_output_tokens` and Gemini `MALFORMED_FUNCTION_CALL`, `TOO_MANY_TOOL_CALLS`, and `UNEXPECTED_TOOL_CALL`. Verify the actual provider field carrying each value and the adapter's extraction path before adding mappings and tests.
+
+- Any further mapping changes are observable to callers matching `Other` and can change serialized variants. Preserve raw values and document the compatibility impact in the appropriate release notes.
+
+## 2026-10-27 - OpenAI-compatible provider follow-ups
+
+- Context: PR 350 adds Runcrate and PR 355 adds CloudGPU using the shared OpenAI-compatible adapter machinery. Both route through explicit namespaces and add public `AdapterKind` variants, which can affect downstream exhaustive matches.
+
+- In `src/adapter/adapters/all_adapters_tests.rs`, retain or extend namespace, endpoint, authentication, model-name preservation, and embedding support tests when changing either provider. CloudGPU was reported to reject embeddings, while Runcrate was added with embedding support. Recheck provider documentation and behavior before changing those capabilities.
+
+- Review the shared OpenAI model-name handling for names ending in reasoning qualifiers such as `-low` or `-high`. The PR 350 review noted that this existing behavior may alter an explicitly namespaced Runcrate model ID. Check `src/adapter/adapters/openai/adapter_shared.rs` and the related model parsing code before deciding whether a provider-specific exception is warranted; add regression coverage for any change.
+
+- Optional documentation consistency: compare provider ordering and link formatting in `README.md`, `docs/for-llm/api-reference-for-llm.md`, and `src/adapter/adapter_kind.rs`. Runcrate and CloudGPU documentation was reported to use a mix of plain and tracking-parameter URLs; avoid changing links without checking their intended destinations.
+
+- Check `src/adapter/adapters/custom/adapter_impl.rs` for the reported stale `// TODO FOR LLM` concerning endpoint and authentication methods. Remove or revise it only after confirming the current implementation and the project's comment-preservation rules.
