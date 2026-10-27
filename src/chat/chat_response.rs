@@ -13,9 +13,9 @@ use crate::chat::{ChatMessage, ChatStream, MessageContent, ToolCall, Usage};
 /// | StopReason      | Provider strings                                                         |
 /// |-----------------|--------------------------------------------------------------------------|
 /// | `Completed`     | `stop`, `end_turn`, `STOP`, `COMPLETE`, `completed`                      |
-/// | `MaxTokens`     | `length`, `max_tokens`, `MAX_TOKENS`, `incomplete`                       |
+/// | `MaxTokens`     | `length`, `max_tokens`, `MAX_TOKENS`, `incomplete`, `model_context_window_exceeded`, `model_length` |
 /// | `ToolCall`      | `tool_calls`, `tool_use`, `function_call`                                |
-/// | `ContentFilter` | `content_filter`, `SAFETY`, `RECITATION`, `BLOCKLIST`, …                 |
+/// | `ContentFilter` | `content_filter`, `refusal`, `SAFETY`, `RECITATION`, `BLOCKLIST`, …      |
 /// | `StopSequence`  | `stop_sequence`, `STOP_SEQUENCE`                                         |
 /// | `Other(s)`      | anything else (`failed`, `cancelled`, `ERROR`, `load`, …)                |
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,14 +41,29 @@ impl From<String> for StopReason {
 			"stop" | "end_turn" | "STOP" | "COMPLETE" | "completed" => Self::Completed(reason),
 
 			// -- Truncated by token limit
-			"length" | "max_tokens" | "MAX_TOKENS" | "incomplete" => Self::MaxTokens(reason),
+			"length"
+			| "max_tokens"
+			| "MAX_TOKENS"
+			| "incomplete"
+			| "model_context_window_exceeded"
+			| "model_length" => Self::MaxTokens(reason),
 
 			// -- Tool invocation
 			"tool_calls" | "tool_use" | "function_call" => Self::ToolCall(reason),
 
 			// -- Content / safety filter
-			"content_filter" | "SAFETY" | "RECITATION" | "BLOCKLIST" | "PROHIBITED_CONTENT" | "SPII"
-			| "IMAGE_SAFETY" | "ERROR_TOXIC" => Self::ContentFilter(reason),
+			"content_filter"
+			| "refusal"
+			| "SAFETY"
+			| "RECITATION"
+			| "BLOCKLIST"
+			| "PROHIBITED_CONTENT"
+			| "SPII"
+			| "IMAGE_SAFETY"
+			| "IMAGE_PROHIBITED_CONTENT"
+			| "IMAGE_RECITATION"
+			| "LANGUAGE"
+			| "ERROR_TOXIC" => Self::ContentFilter(reason),
 
 			// -- Stop sequence
 			"stop_sequence" | "STOP_SEQUENCE" => Self::StopSequence(reason),
@@ -218,3 +233,52 @@ pub struct ChatStreamResponse {
 }
 
 // endregion: --- ChatStreamResponse
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::StopReason;
+
+	/// `StopReason`'s `PartialEq` ignores the raw string, so compare the variant name explicitly.
+	fn kind(raw: &str) -> &'static str {
+		match StopReason::from(raw.to_string()) {
+			StopReason::Completed(_) => "Completed",
+			StopReason::MaxTokens(_) => "MaxTokens",
+			StopReason::ToolCall(_) => "ToolCall",
+			StopReason::ContentFilter(_) => "ContentFilter",
+			StopReason::StopSequence(_) => "StopSequence",
+			StopReason::Other(_) => "Other",
+		}
+	}
+
+	#[test]
+	fn test_stop_reason_maps_refusals_to_content_filter() {
+		// Anthropic `refusal`, Gemini image / language filters
+		for raw in ["refusal", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "LANGUAGE"] {
+			assert_eq!(kind(raw), "ContentFilter", "{raw}");
+		}
+	}
+
+	#[test]
+	fn test_stop_reason_maps_context_window_limits_to_max_tokens() {
+		// Anthropic `model_context_window_exceeded`, Mistral `model_length`
+		for raw in ["model_context_window_exceeded", "model_length"] {
+			assert_eq!(kind(raw), "MaxTokens", "{raw}");
+		}
+	}
+
+	#[test]
+	fn test_stop_reason_keeps_the_raw_string_and_the_existing_mappings() {
+		assert_eq!(StopReason::from("refusal".to_string()).raw(), "refusal");
+		assert_eq!(kind("end_turn"), "Completed");
+		assert_eq!(kind("max_tokens"), "MaxTokens");
+		assert_eq!(kind("tool_use"), "ToolCall");
+		assert_eq!(kind("SAFETY"), "ContentFilter");
+		assert_eq!(kind("stop_sequence"), "StopSequence");
+		// `pause_turn` asks the caller to continue the turn, it is neither a filter nor a limit
+		assert_eq!(kind("pause_turn"), "Other");
+	}
+}
+
+// endregion: --- Tests
