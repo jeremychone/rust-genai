@@ -6,13 +6,22 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.1 (pending)
 
-- [Mattbusel](https://github.com/Mattbusel)
-  - [#347](https://github.com/jeremychone/rust-genai/pull/347) fix(openai): keep every piece of a stream chunk
+- [pcbeingused333](https://github.com/pcbeingused333)
+  - [#354](https://github.com/jeremychone/rust-genai/pull/354) fix(chat): map refusals and context-window stops
+  - [#353](https://github.com/jeremychone/rust-genai/pull/353) fix(vertex): replace retired Gemini models in the model list
+  - [#352](https://github.com/jeremychone/rust-genai/pull/352) fix(vertex): stream Claude through streamRawPredict
+  - [#351](https://github.com/jeremychone/rust-genai/pull/351) fix(cohere): send chat history entries with the message field
 - [ropoctl](https://github.com/ropoctl)
   - [#343](https://github.com/jeremychone/rust-genai/pull/343) fix(anthropic): resolve default max_tokens for Claude Opus 4.6, 4.7, and 4.8
   - [#344](https://github.com/jeremychone/rust-genai/pull/344) fix(openai_resp): capture non-streaming reasoning and deduplicate mirrored thought signatures
   - [#345](https://github.com/jeremychone/rust-genai/pull/345) fix(gemini): forward seed and extra_body options and omit empty reasoning_content
   - [#346](https://github.com/jeremychone/rust-genai/pull/346) fix(client): apply RequestOverride and default/extra headers in exec_embed
+- [mrhy7176](https://github.com/mrhy7176)
+  - [#355](https://github.com/jeremychone/rust-genai/pull/355) feat(adapter): add CloudGPU OpenAI-compatible adapter
+- [heydryft](https://github.com/heydryft)
+  - [#350](https://github.com/jeremychone/rust-genai/pull/350) feat(adapter): add Runcrate OpenAI-compatible adapter
+- [Mattbusel](https://github.com/Mattbusel)
+  - [#347](https://github.com/jeremychone/rust-genai/pull/347) fix(openai): keep every piece of a stream chunk
 - [wouterdebie](https://github.com/wouterdebie)
   - [#342](https://github.com/jeremychone/rust-genai/pull/342) fix(anthropic): keep a stream's redacted thinking, and send thinking blocks back in their order
 

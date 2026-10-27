@@ -2,12 +2,19 @@
 
 ## 2026-10-22 [v0.7.1](https://github.com/jeremychone/rust-genai/compare/v0.7.0...main) - pending
 
+- `+` New Adapters:
+  - `cloudgpu::` - CloudGpu - OpenAI-compatible chat provider, only selected by namespace. Uses `CLOUDGPU_API_KEY` and `https://cloudgpu.app/v1/`; embeddings are unsupported. The new `AdapterKind::CloudGpu` variant requires downstream exhaustive matches to be updated. (PR #355)
+  - `runcrate::` - Runcrate - OpenAI-compatible chat and embeddings provider, only selected by namespace. Uses `RUNCRATE_API_KEY` and `https://api.runcrate.ai/v1/`. The new `AdapterKind::Runcrate` variant requires downstream exhaustive matches to be updated. (PR #350)
 - `-` anthropic - Keep a streamed answer's `redacted_thinking` blocks, in their place among the signed thinking blocks, as the custom parts a non-streamed answer already makes of them, so `captured_content` carries them under the same `capture_reasoning_content` opt-in, and send every thinking block back in the order it came, still ahead of the text and the tool use. A `thinking` block passed through as a custom part takes its place among them too, and unpaired signatures and reasoning are still dropped with the warning. (PR #342)
 - `-` anthropic - Resolve the default max output tokens from the parsed model version rather than substring matching: Claude Opus 4.8 uses 128K, Opus 4.6 and 4.7 use 64K (both fell through to 32K before), Opus 4.0 and 4.1 keep 32K, and Opus 3.x keeps 4K. (PR #343)
 - `-` openai_resp - Capture a non-streaming answer's reasoning summaries and encrypted reasoning content in `ChatResponse::reasoning_content` and the thought signatures, and stop emitting a mirrored `{"type": "reasoning", "encrypted_content": ...}` input item twice when replaying an assistant tool turn. (PR #344)
 - `-` gemini - Forward `ChatOptions::seed` to `generationConfig.seed` and merge `extra_body` into the request payload, and return `reasoning_content: None` instead of `Some("")` when a non-streaming answer has no thought parts. (PR #345)
 - `-` client - Apply `AuthData::RequestOverride` and the client-level and per-request headers in `exec_embed`, and merge the client-level `chat_options.extra_headers` in `exec_chat` and `exec_chat_stream`. (PR #346)
 - `-` openai - Keep every piece of a streamed chunk, not only the first: reasoning, content, and each `delta.tool_calls` entry are queued and drained before the next message, which also removes the two drifted copies of the delta handling and applies to every OpenAI-compatible adapter kind. (PR #347)
+- `-` cohere - Send prior user and assistant turns in the v1 `chat_history` entry's `message` field instead of `content`. (PR #351)
+- `-` vertex - Use `:streamRawPredict` for streaming Claude requests, while non-streaming requests continue to use `:rawPredict`. (PR #352)
+- `-` vertex - Replace the retired Gemini 2.5 models in the static model list with `gemini-3.8-flash`, and update Vertex examples and tests. (PR #353)
+- `-` chat - Map Claude refusals and Gemini image and language finish reasons to `StopReason::ContentFilter`, and Claude context-window and Mistral model-length stops to `StopReason::MaxTokens`, preserving the raw provider strings. These reasons previously mapped to `Other`. (PR #354)
 
 ## 2026-10-19 [v0.7.0](https://github.com/jeremychone/rust-genai/compare/v0.6.5...v0.7.0)
 
