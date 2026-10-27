@@ -83,9 +83,7 @@ impl Adapter for VertexAdapter {
 		_web_client: &WebClient,
 	) -> Result<Vec<String>> {
 		Ok(vec![
-			"gemini-2.5-pro".to_string(),
-			"gemini-2.5-flash".to_string(),
-			"gemini-2.5-flash-lite".to_string(),
+			"gemini-3.8-flash".to_string(),
 			"claude-sonnet-4-6".to_string(),
 			"claude-opus-4-6".to_string(),
 			"claude-haiku-4-5".to_string(),
@@ -299,30 +297,7 @@ impl VertexAdapter {
 // region:    --- Tests
 
 #[cfg(test)]
-mod tests {
-	use super::*;
-
-	fn anthropic_url(service_type: ServiceType) -> String {
-		let model = ModelIden::from_static(AdapterKind::Vertex, "claude-sonnet-4-6");
-		let endpoint =
-			Endpoint::from_static("https://us-east5-aiplatform.googleapis.com/v1/projects/p/locations/us-east5/");
-		VertexAdapter::get_service_url(&model, service_type, endpoint).expect("service url")
-	}
-
-	#[test]
-	fn test_get_service_url_anthropic_chat_uses_raw_predict() {
-		assert!(
-			anthropic_url(ServiceType::Chat).ends_with("/publishers/anthropic/models/claude-sonnet-4-6:rawPredict")
-		);
-	}
-
-	#[test]
-	fn test_get_service_url_anthropic_stream_uses_stream_raw_predict() {
-		assert!(
-			anthropic_url(ServiceType::ChatStream)
-				.ends_with("/publishers/anthropic/models/claude-sonnet-4-6:streamRawPredict")
-		);
-	}
-}
+#[path = "adapter_impl_tests.rs"]
+mod tests;
 
 // endregion: --- Tests
