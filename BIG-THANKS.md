@@ -4,7 +4,10 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
-## v0.7.1 (pending)
+## v0.7.3 (pending)
+
+
+## v0.7.1..v0.7.2
 
 - [pcbeingused333](https://github.com/pcbeingused333)
   - [#354](https://github.com/jeremychone/rust-genai/pull/354) fix(chat): map refusals and context-window stops

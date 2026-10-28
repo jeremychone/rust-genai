@@ -1,5 +1,7 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
+## PENDING [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...main)
+
 ## 2026-10-27 [v0.7.0..v0.7.2](https://github.com/jeremychone/rust-genai/compare/v0.7.0...v0.7.2)
 
 - `+` New Adapters:
