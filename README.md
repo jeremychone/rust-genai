@@ -7,7 +7,7 @@
 genai = "0.7"
 ```
 
-See [v0.7.0](#v070-released-)
+See [v0.7.x](#v070-released)
 
 <div align="center">
 
@@ -16,15 +16,15 @@ See [v0.7.0](#v070-released-)
 
 </div>
 
-[v0.7.0](#v070-released-) | [v0.6.x](#v06x-released-) | [Key Features](#key-features) | [Providers](#model-to-adapter-resolution) | [Examples](#examples) | [Chat Options](#chatoptions) | [Usage](#usage) | [TLS Backends](#tls-backends) | [Contribution](#contribution)
+[v0.7.x](#v070-released) · [CHANGELOG](CHANGELOG.md) · [Key Features](#key-features) · [Providers](#model-to-adapter-resolution) · [Examples](#examples) · [Chat Options](#chatoptions) · [Usage](#usage) · [TLS Backends](#tls-backends) · [Contribution](#contribution)
 
 `genai` provides a single, ergonomic Rust API for **native-protocol** multi-AI provider access, including Anthropic, OpenAI, Gemini, xAI, Ollama, Groq, and more.
 
-Over 200+ LLM models, 27+ LLM providers out of the box, including **Ollama** for local execution.
+Supports many models and providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers: `openai`, `openai_resp`, `anthropic`, `gemini`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `atlascloud`, `xai`
+Out-of-the-box providers and adapters: `openai`, `openai_resp`, `anthropic`, `gemini`, `gemini_ix`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `atlascloud`, `xai`
 
-Common models like OpenAI, Anthropic, Gemini, can be accessed with their simple name `gpt-5.6-luna`, `claude-...`, `gemini-...` and the right adapter/providers will be selected.
+Common models from OpenAI, Anthropic, and Gemini can be accessed by name, such as `gpt-6-luna`, `claude-...`, or `gemini-...`, and the appropriate adapter will be selected.
 
 Providers and adapters can also be forced with a namespaced model name via `[name_space]::[model_name]`, for example, `qwen_cloud::qwen3.8-max`
 
@@ -77,86 +77,12 @@ println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
 
 [Docs for LLMs](docs/for-llm/api-reference-for-llm.md) | [CHANGELOG](CHANGELOG.md) | [BIG THANKS](BIG-THANKS.md)
 
-## v0.7.0 Released 🎉
-
-_v0.7.0 release date: 2026-10-19_
-
-**Big release**: Many fixes, new capabilities, new providers, and minimal API changes.
-
-**Key Breaking Changes:**
-
-- Fallible client initialization: `Client::new()?` and `ClientBuilder::build()?` return `Result<Client>` (no more `Client::default()`).
-- `ReasoningEffort::Zero` replaces `ReasoningEffort::None` (`"zero"` keyword, `"none"` backward-compatible alias).
-- `Error::HttpError` now carries the failed response `headers`.
-- `Tool` adds `custom_format`, and `ChatOptions` adds `raw_frame_sink`, `stream_header_timeout`, and `stream_read_timeout` (use `..Default::default()` or add the fields to struct literals).
-- Optional `None` fields are omitted from serialized JSON instead of `null`.
-- `JsonSpec::schema_with_additional_properties_false` is removed; adapters now sanitize schemas.
-
-**New Providers & Adapters:**
-
-- Gemini Interactions API (`gemini_ix::`, and `gemini-4-argon*` models mapped to it): stateful conversation sessions (`previous_response_id`, `store`).
-- Mistral AI (`mistral::`): Chat Completions with typed thinking content, assistant reasoning replay, and `random_seed` mapping.
-- Atlas Cloud (`atlascloud::`), Qwen Cloud (`qwen_cloud::`), Kimi (`kimi::`, `kimi-*`), OMLX (`omlx::`, `omlx-*`).
-- Custom adapter (`genai_{n}::`): generic OpenAI-compatible routing via `GENAI_{n}_ENDPOINT` and `GENAI_{n}_API_KEY`.
-
-**Key Capabilities & Improvements:**
-
-- Declarative provider config via `ClientBuilder::append_provider_config` and `ClientConfig::append_provider_config`.
-- Stream frame inspection via `ChatFrameSink` and `ChatOptions::with_raw_frame_sink`.
-- Thought signature and signed thinking block preservation across tool turns (Anthropic, Gemini, OpenRouter).
-- Bedrock Converse: preserve streaming usage from metadata after the stop event, replay signed and redacted reasoning across tool turns, and refine publisher detection, Nova/OpenAI reasoning mappings, and document naming.
-- Anthropic prompt caching on tools (`Tool::with_cache_control`) and SSE heartbeat events (`ChatStreamEvent::Heartbeat`).
-- OpenTelemetry GenAI semantic conventions instrumentation behind the `otel` feature flag.
-
-See all in [CHANGELOG](CHANGELOG.md) and [v0.7.0 migration guide](docs/migration/migration-v_0_6_to_0_7.md) for more details.
-
-## v0.6.x Released 🎉
-
-New provider since v0.6.0: `minimax`
-
-_v0.6.0 release date: 2026-05-23_
-
-Here’s what’s new:
-
-- **New Adapters**:
-  - AWS Bedrock (`bedrock_api` and `bedrock_sigv4` adapters)
-  - `open_router`
-  - `vertex` (with Gemini and Anthropic support)
-  - `github_copilot` (GitHub Models API)
-  - `opencode_go`
-  - `baidu`
-  - `aliyun`
-  - `qwen_cloud` (managed Qwen Cloud service at qwencloud.com, using the internal Aliyun-compatible endpoint)
-  - `moonshot`
-  - `aihubmix`
-  - `ollama_cloud` (Ollama Cloud)
-- **Reasoning effort additions**: Added `ReasoningEffort::Max` for Anthropic and `ReasoningEffort::XHigh` for OpenAI.
-- **ProviderConfig for model listing**: `Client::all_model_names(adapter_kind, provider_config)` now accepts endpoint and auth overrides, including remote Ollama hosts and custom OpenAI-compatible model listing.
-- **Ollama and Ollama Cloud**: Now use the native Ollama API protocol.
-- **Gemini schema compatibility**: Gemini and Vertex Gemini structured output and tool schemas now normalize common JSON Schema shapes, including `const`, nullable schema patterns, `additionalProperties`, and JSON Schema-only keywords rejected by Vertex.
-- **Bound adapter clients**: `ClientBuilder::with_adapter_kind(...)` and `ClientConfig::with_adapter_kind(...)` bind a client to a single provider adapter, which is useful for proxies, gateways, Azure-style deployment names, and OpenAI-compatible providers with nonstandard model names.
-- **ModelSpec and ServiceTarget**: Model arguments can be represented as a model name, explicit `ModelIden`, or complete `ServiceTarget`, enabling custom endpoints, auth, and model identity without relying on model-name inference.
-- **OpenAI Responses stateful sessions**: OpenAI Responses supports session continuity with `previous_response_id`, request `store`, and returned `response_id`.
-- **Chat extra body**: `ChatOptions::with_extra_body(...)` provides a low-level request body extension point for provider-specific fields in OpenAI-compatible chat payloads.
-- **Tool choice**: `ChatOptions::with_tool_choice(...)` adds provider-neutral tool selection hints for automatic, disabled, required, or specific tool calls.
-- **Built-in tools and WebSearch**: Added typed built-in tool support, including `ToolName`, `ToolConfig`, `WebSearch`, and provider mappings for Anthropic, OpenAI, and Gemini.
-- **Prompt cache controls**: Chat-level `CacheControl` support adds provider-specific prompt caching options, including OpenAI `prompt_cache_key` and cache retention. On Anthropic, `Tool::with_cache_control` marks individual tools, and request-level `ChatOptions::with_cache_control` auto-applies a breakpoint to the static (tools+system) prefix.
-- **Updated API**: Refined `ReasoningContent` and `StopReason` handling (v0.6.0-beta.20), including `ContentPart::ReasoningContent` and provider stop reasons.
-- **Perf Improvements**: HTTP requests use performance optimizations such as gzip, `TCP_NODELAY`, and HTTP/2 tuning.
-- Numerous fixes, optimizations, and API enhancements.
-
-See [v0.5.x to v0.6.x migration](docs/migration/migration_v_0_5_to_0_6.md)
-
-See [CHANGELOG](CHANGELOG.md)
-
-See [BIG-THANKS](BIG-THANKS.md) for contributors
-
 ## Key Features
 
 - Multi-AI provider/model access optimized per provider: native protocols when available, OpenAI-compatible APIs when appropriate or required, and one common Rust API for OpenAI, OpenAI Responses, Anthropic, Gemini, Ollama, Ollama Cloud, OpenCode Go, Groq, xAI, DeepSeek, Cohere, Together, Fireworks, Nebius, Mimo, Zai, BigModel, Aliyun, Atlas Cloud, Google Vertex, GitHub Copilot, Mistral, Requesty, API Route, Qwen Cloud, Kimi, and OMLX (direct chat and streaming), plus custom `genai_{n}` OpenAI-compatible endpoints (see [examples/c00-readme.rs](examples/c00-readme.rs))
 - Image analysis (for OpenAI, Gemini Flash-2, Anthropic) (see [examples/c07-image.rs](examples/c07-image.rs))
 - Custom auth/API key (see [examples/c02-auth.rs](examples/c02-auth.rs))
-- Model aliases (see [examples/c05-model-names.rs](examples/c05-model-names.rs))
+- Model aliases (see [examples/c03-mapper.rs](examples/c03-mapper.rs))
 - Custom endpoint, auth, and model identifier (see [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs))
 - And much more
 
@@ -173,7 +99,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **Gemini Interactions API (Argon)**: `gemini-4-argon*` models are routed to the `gemini_ix` adapter. The `gemini_ix::` namespace also forces this adapter.
 - **xAI**: `grok-*`
 - **DeepSeek**: `deepseek-*`
-- **Moonshot**: `moonshot-*` (moonshot.ai)
+- **Moonshot**: `moonshot-*`
 - **Kimi**: `kimi*` (moonshot.ai)
 - **Zai**: `glm-*`
 - **Cohere**: `command-*`, `embed-*`
@@ -181,7 +107,7 @@ By default, the library resolves the `AdapterKind` (AI provider) based on the mo
 - **OpenCode Go**: Namespace `opencode_go::` only
 - **Mistral AI**: Namespace `mistral::` only
 - **Atlas Cloud**: Namespace `atlascloud::` only
-- **Qwen Cloud**: Namespace `qwen_cloud::` only, for the managed Qwen Cloud service at qwencloud.com. It uses the internal Aliyun-compatible endpoint and `QWEN_CLOUD_API_KEY`.
+- **Qwen Cloud**: Namespace `qwen_cloud::` only, for the managed Qwen Cloud service at qwencloud.com. It uses the international Aliyun-compatible endpoint and `QWEN_CLOUD_API_KEY`.
 - **Fireworks**: Models containing `fireworks`
 - **Ollama**: Fallback for any other names, defaulting to local Ollama.
 
@@ -197,7 +123,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `github_copilot::openai/gpt-5.4-mini` (Forces **GitHub Copilot** adapter)
 - `nebius::Qwen/Qwen3-235B-A22B` (Forces **Nebius** adapter)
 - `aliyun::qwen-plus` (Forces **Aliyun** adapter)
-- `qwen_cloud::qwen-plus` (Forces **Qwen Cloud** adapter, managed by qwencloud.com and backed by the internal Aliyun-compatible service)
+- `qwen_cloud::qwen-plus` (Forces **Qwen Cloud** adapter, managed by qwencloud.com and backed by the international Aliyun-compatible service)
 - `vertex::gemini-3.8-flash` (Forces **Google Vertex** adapter)
 - `gemini_ix::gemini-3.5-flash` (Forces **Gemini Interactions API** adapter)
 - `moonshot::moonshot-v1-8k` (Forces **Moonshot** adapter)
@@ -238,116 +164,45 @@ Embeddings are not supported.
 
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
-### Mistral AI
+## v0.7.0 Released
 
-Set `MISTRAL_API_KEY` and use the `mistral::` namespace, for example `mistral::mistral-large-4`. Requests use `https://api.mistral.ai/v1/`.
+_v0.7.0 release date: 2026-10-19_
 
-- Typed `thinking` chunks are normalized to reasoning content in streaming and non-streaming responses.
+See all in [CHANGELOG](CHANGELOG.md) and [v0.7.0 migration guide](docs/migration/migration-v_0_6_to_0_7.md) for more details.
 
-- Assistant `ContentPart::ReasoningContent` is replayed as a leading `thinking` content chunk rather than a sibling `reasoning_content` field.
+**Big release**: Many fixes, new capabilities, new providers, and minimal API changes.
 
-- `ChatOptions::seed` maps to Mistral's `random_seed` field.
+**Key Breaking Changes:**
+
+- Fallible client initialization: `Client::new()?` and `ClientBuilder::build()?` return `Result<Client>` (no more `Client::default()`).
+- `ReasoningEffort::Zero` replaces `ReasoningEffort::None` (`"zero"` keyword, `"none"` backward-compatible alias).
+- `Error::HttpError` now carries the failed response `headers`.
+- `Tool` adds `custom_format`, and `ChatOptions` adds `raw_frame_sink`, `stream_header_timeout`, and `stream_read_timeout` (use `..Default::default()` or add the fields to struct literals).
+- Optional `None` fields are omitted from serialized JSON instead of `null`.
+- `JsonSpec::schema_with_additional_properties_false` is removed; adapters now sanitize schemas.
+
+**New Providers & Adapters:**
+
+- Gemini Interactions API (`gemini_ix::`, and `gemini-4-argon*` models mapped to it): stateful conversation sessions (`previous_response_id`, `store`).
+- Mistral AI (`mistral::`): Chat Completions with typed thinking content, assistant reasoning replay, and `random_seed` mapping.
+- Atlas Cloud (`atlascloud::`), Qwen Cloud (`qwen_cloud::`), Kimi (`kimi::`, `kimi-*`), OMLX (`omlx::`, `omlx-*`).
+- Custom adapter (`genai_{n}::`): generic OpenAI-compatible routing via `GENAI_{n}_ENDPOINT` and `GENAI_{n}_API_KEY`.
+
+**Key Capabilities & Improvements:**
+
+- Declarative provider config via `ClientBuilder::append_provider_config` and `ClientConfig::append_provider_config`.
+- Stream frame inspection via `ChatFrameSink` and `ChatOptions::with_raw_frame_sink`.
+- Thought signature and signed thinking block preservation across tool turns (Anthropic, Gemini, OpenRouter).
+- Bedrock Converse: preserve streaming usage from metadata after the stop event, replay signed and redacted reasoning across tool turns, and refine publisher detection, Nova/OpenAI reasoning mappings, and document naming.
+- Anthropic prompt caching on tools (`Tool::with_cache_control`) and SSE heartbeat events (`ChatStreamEvent::Heartbeat`).
+- OpenTelemetry GenAI semantic conventions instrumentation behind the `otel` feature flag.
 
 ## Examples
-
-[examples/c00-readme.rs](examples/c00-readme.rs)
-
-```rust
-//! Base examples demonstrating the core capabilities of genai
-#![allow(unused)]
-
-use genai::Client;
-use genai::chat::printer::{PrintChatStreamOptions, print_chat_stream};
-use genai::chat::{ChatMessage, ChatRequest};
-use tracing_subscriber::EnvFilter;
-
-const MODEL_OPENAI: &str = "gpt-5.6-luna";
-const MODEL_ANTHROPIC: &str = "claude-haiku-4-5";
-const MODEL_GEMINI: &str = "gemini-3.1-flash-lite";
-const MODEL_ZAI: &str = "glm-5.3-flash";
-// -- local models
-const MODEL_OMLX: &str = "omlx::gemma-4-12B-it-8bit";
-const MODEL_OLLAMA: &str = "gemma4:e2b"; // sh: `ollama pull gemma:e2b`
-
-// NOTE: These are the default environment keys for each AI Adapter Type.
-//       They can be customized; see `examples/c02-auth.rs`
-const MODEL_AND_KEY_ENV_NAME_LIST: &[(&str, &str)] = &[
-	// -- De/activate models/providers
-	(MODEL_OPENAI, "OPENAI_API_KEY"),
-	(MODEL_ANTHROPIC, "ANTHROPIC_API_KEY"),
-	(MODEL_GEMINI, "GEMINI_API_KEY"),
-	(MODEL_ZAI, "ZAI_API_KEY"),
-	// -- Local models
-	(MODEL_OMLX, ""),
-	(MODEL_OLLAMA, ""),
-];
-
-// NOTE: Model to AdapterKind (AI Provider) type mapping rule
-//  - starts_with "gpt"      -> OpenAI
-//  - starts_with "claude"   -> Anthropic
-//  - starts_with "command"  -> Cohere
-//  - starts_with "gemini"   -> Gemini
-//  - model in Groq models   -> Groq
-//  - starts_with "glm"      -> ZAI
-//  - starts_with "ollama_cloud::" -> OllamaCloud
-//  - starts_with "atlascloud::" -> AtlasCloud
-//  - For anything else      -> Ollama
-//
-// This can be customized; see `examples/c03-mapper.rs`
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	tracing_subscriber::fmt()
-		.with_env_filter(EnvFilter::new("genai=debug"))
-		// .with_max_level(tracing::Level::DEBUG) // To enable all sub-library tracing
-		.init();
-
-	let question = "Why is the sky red?";
-
-	let chat_req = ChatRequest::new(vec![
-		// -- Messages (de/activate to see the differences)
-		ChatMessage::system("Answer in one sentence"),
-		ChatMessage::user(question),
-	]);
-
-	let client = Client::new()?;
-
-	let print_options = PrintChatStreamOptions::from_print_events(false);
-
-	for (model, env_name) in MODEL_AND_KEY_ENV_NAME_LIST {
-		// Skip if the environment name is not set
-		if !env_name.is_empty() && std::env::var(env_name).is_err() {
-			println!("===== Skipping model: {model} (env var not set: {env_name})");
-			continue;
-		}
-
-		let adapter_kind = client.resolve_service_target(model).await?.model.adapter_kind;
-
-		println!("\n===== MODEL: {model} ({adapter_kind}) =====");
-
-		println!("\n--- Question:\n{question}");
-
-		println!("\n--- Answer:");
-		let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
-		println!("{}", chat_res.first_text().unwrap_or("NO ANSWER"));
-
-		println!("\n--- Answer: (streaming)");
-		let chat_res = client.exec_chat_stream(model, chat_req.clone(), None).await?;
-		print_chat_stream(chat_res, Some(&print_options)).await?;
-
-		println!();
-	}
-
-	Ok(())
-}
-```
-
-### More Examples
 
 - [examples/c00-readme.rs](examples/c00-readme.rs) - Quick overview code with multiple providers and streaming.
 - [examples/c01-conv.rs](examples/c01-conv.rs) - Shows how to build a conversation flow.
 - [examples/c02-auth.rs](examples/c02-auth.rs) - Demonstrates how to provide a custom `AuthResolver` to supply auth data, such as `api_key`, per adapter kind.
-- [examples/c03-mapper.rs](examples/c03-mapper.rs) - Demonstrates how to provide a custom `AdapterKindResolver` to customize the "model name" to "adapter kind" mapping.
+- [examples/c03-mapper.rs](examples/c03-mapper.rs) - Demonstrates how to use a custom `ModelMapper` to customize model mapping.
 - [examples/c04-chat-options.rs](examples/c04-chat-options.rs) - Demonstrates how to set chat generation options such as `temperature` and `max_tokens` at the client level, for all requests, and at the per-request level.
 - [examples/c05-model-names.rs](examples/c05-model-names.rs) - Shows how to get model names per `AdapterKind`.
 - [examples/c06-target-resolver.rs](examples/c06-target-resolver.rs) - For custom auth, endpoint, and model.
@@ -383,7 +238,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## ChatOptions
 
 - **(1)** - **OpenAI-compatible** notes
-  - Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, Together, Fireworks, Nebius, Zai, AIHubMix, Atlas Cloud
+  - Models: OpenAI, DeepSeek, Groq, xAI, Mimo, Together, Fireworks, Nebius, Zai, AIHubMix, Atlas Cloud
 
 | Property      | OpenAI Compatibles (*1) | Anthropic                   | Gemini `generationConfig.` | Cohere        |
 | ------------- | ----------------------- | --------------------------- | -------------------------- | ------------- |
@@ -402,9 +257,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | `completion_tokens_details` | `completion_tokens_details` | N/A for now             | N/A for now                | N/A for now           |
 
 - **(1)** - **OpenAI-compatible** notes
-  - Models: OpenAI, DeepSeek, Groq, Ollama, xAI, Mimo, AIHubMix, Atlas Cloud
+  - Models: OpenAI, DeepSeek, Groq, xAI, Mimo, AIHubMix, Atlas Cloud
   - For **Groq**, the property is `x_groq.usage.`
-  - At this point, **Ollama** does not emit input/output tokens when streaming due to a limitation in the Ollama OpenAI compatibility layer. (see [ollama #4448 - Streaming Chat Completion via OpenAI API should support stream option to include Usage](https://github.com/ollama/ollama/issues/4448))
+  - Usage availability can vary by provider and streaming mode.
   - `prompt_tokens_details` and `completion_tokens_details` will have the value sent by the compatible provider, or `None`
 
 - **(2)**: **Gemini** tokens
