@@ -106,6 +106,40 @@ async fn openrouter_preserves_reasoning_details_order() -> TestResult<()> {
 	Ok(())
 }
 
+// #301 follow-up: a streamed answer keeps its reasoning_details, one per signed block, and
+// the next request sends them back.
+#[tokio::test]
+async fn openrouter_stream_keeps_reasoning_details_for_the_next_turn() -> TestResult<()> {
+	let (client, server) = replay_client("open_router", "reasoning_details_stream_regression").await?;
+	let model = "open_router::anthropic/claude-sonnet-4";
+	let options = ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true);
+	let request = ChatRequest::from_user("Read first");
+	let res = client.exec_chat_stream(model, request.clone(), Some(&options)).await?;
+	let end = extract_stream_end(res.stream).await?.stream_end;
+	let content = end.captured_content.ok_or("OpenRouter assistant content")?;
+	let details: Vec<_> = content
+		.parts()
+		.iter()
+		.filter_map(|part| part.as_custom().map(|custom| custom.data().clone()))
+		.collect();
+	let expected = json!([
+		{"type": "reasoning.text", "text": "Read first.", "format": "anthropic-claude-v1", "index": 0, "signature": "fixture-signature-1"},
+		{"type": "reasoning.text", "text": "Now the runbook.", "format": "anthropic-claude-v1", "index": 0, "signature": "fixture-signature-2"}
+	]);
+	assert_eq!(json!(details), expected);
+
+	let continuation = request
+		.append_message(ChatMessage::assistant(content))
+		.append_message(ToolResponse::new("call_read", "Restart the service."));
+	client.exec_chat(model, continuation, None).await?;
+	let requests = server.replay_requests().await;
+	assert_eq!(requests[1]["messages"][1]["reasoning_details"], expected);
+	Ok(())
+}
+
 // #302: keep each Gemini signature next to the part it arrived on.
 #[tokio::test]
 async fn gemini_nonstream_keeps_signature_on_function_call() -> TestResult<()> {
