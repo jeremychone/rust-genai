@@ -54,3 +54,20 @@ fn test_cohere_single_message_has_no_chat_history() -> Result<()> {
 
 	Ok(())
 }
+
+#[test]
+fn test_cohere_model_names_skip_deprecated_models() {
+	// Cohere's deprecations page lists these as deprecated (replacements are `command-r-08-2024`,
+	// `command-r-plus-08-2024` and `command-a-03-2025`).
+	for deprecated in ["command", "command-light", "command-r", "command-r-plus"] {
+		assert!(!super::MODELS.contains(&deprecated), "`{deprecated}` is deprecated");
+	}
+	for current in [
+		"command-a-03-2025",
+		"command-r-plus-08-2024",
+		"command-r-08-2024",
+		"command-r7b-12-2024",
+	] {
+		assert!(super::MODELS.contains(&current), "`{current}` should be listed");
+	}
+}

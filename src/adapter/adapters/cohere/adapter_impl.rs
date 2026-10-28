@@ -15,12 +15,14 @@ use value_ext::JsonValueExt;
 
 pub struct CohereAdapter;
 
+// Cohere deprecated `command`, `command-light`, `command-r` and `command-r-plus` on 2025-09-15
+// and recommends these instead: <https://docs.cohere.com/docs/deprecations>
 const MODELS: &[&str] = &[
-	"command-r-plus",
-	"command-r",
-	"command",
+	"command-a-03-2025",
+	"command-r-plus-08-2024",
+	"command-r-08-2024",
+	"command-r7b-12-2024",
 	"command-nightly",
-	"command-light",
 	"command-light-nightly",
 ];
 
