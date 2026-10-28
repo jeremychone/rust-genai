@@ -140,28 +140,6 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
-For [API Route](https://www.api-route.com), create a key in its dashboard and set
-`API_ROUTE_API_KEY`. The `api_route::` namespace routes Chat Completions to
-`https://global.api-route.com/v1/` and sends the model ID after `::` unchanged.
-Use a model available to your key; see the [setup guide](https://www.api-route.com/docs/quickstart).
-
-For [Heabsy](https://heabsy.com/platform), get an API key in the Heabsy console (accounts are opened
-on request) and set `HEABSY_API_KEY`. The `heabsy::` namespace routes Chat Completions to
-`https://api.heabsy.com/v1/` and sends the model ID after `::` unchanged. Embeddings are not
-supported; see the [model catalog](https://heabsy.com/models) for model IDs.
-
-For [Runcrate](https://www.runcrate.ai/?utm_source=rust-genai&utm_medium=directory&utm_campaign=gpu_pricing), create a key in the dashboard and set
-`RUNCRATE_API_KEY`. The `runcrate::` namespace routes Chat Completions and embeddings to
-`https://api.runcrate.ai/v1/` and sends the `vendor/model` ID after `::` unchanged (for example
-`runcrate::openai/gpt-oss-120b`); `GET https://api.runcrate.ai/v1/models` lists them. Open models are
-free with your GitHub account.
-
-For [CloudGPU](https://cloudgpu.app/api/docs?utm_source=github&utm_medium=referral&utm_campaign=202611_seg06_indiedev&utm_content=github_rust_genai_adapter), create an API key in the console and set
-`CLOUDGPU_API_KEY`. The `cloudgpu::` namespace routes Chat Completions to `https://cloudgpu.app/v1/`
-and sends the model ID after `::` unchanged (for example `cloudgpu::deepseek-v4.1-flash`,
-`cloudgpu::kimi-k2.7-code` or `cloudgpu::glm-5.3-flash`); `GET https://cloudgpu.app/v1/models` lists them.
-Embeddings are not supported.
-
 For a complete list of `AdapterKind`, see the [AdapterKind enum](src/adapter/adapter_kind.rs).
 
 ## v0.7.0 Released
