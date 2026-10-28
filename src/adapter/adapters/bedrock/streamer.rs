@@ -706,7 +706,7 @@ mod tests {
 		bytes.extend(build_frame("messageStop", br#"{"stopReason":"end_turn"}"#));
 		bytes.extend(build_frame(
 			"metadata",
-			br#"{"usage":{"inputTokens":10,"outputTokens":5,"totalTokens":15,"cacheReadInputTokens":7,"cacheWriteInputTokens":3},"metrics":{"latencyMs":1}}"#,
+			br#"{"usage":{"inputTokens":10,"outputTokens":5,"totalTokens":25,"cacheReadInputTokens":7,"cacheWriteInputTokens":3},"metrics":{"latencyMs":1}}"#,
 		));
 		let inner: Pin<Box<dyn Stream<Item = _> + Send>> =
 			Box::pin(futures::stream::iter(vec![Ok(bytes::Bytes::from(bytes))]));
@@ -731,9 +731,9 @@ mod tests {
 		assert!(matches!(events.last(), Some(Ok(InterStreamEvent::End(_)))));
 		assert_eq!(end.captured_stop_reason, Some(StopReason::from("end_turn".to_string())));
 		let usage = end.captured_usage.as_ref().ok_or("Should have usage")?;
-		assert_eq!(usage.prompt_tokens, Some(10));
+		assert_eq!(usage.prompt_tokens, Some(20));
 		assert_eq!(usage.completion_tokens, Some(5));
-		assert_eq!(usage.total_tokens, Some(15));
+		assert_eq!(usage.total_tokens, Some(25));
 		let details = usage.prompt_tokens_details.as_ref().ok_or("Should have cache details")?;
 		assert_eq!(details.cached_tokens, Some(7));
 		assert_eq!(details.cache_creation_tokens, Some(3));
