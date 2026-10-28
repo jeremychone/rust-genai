@@ -558,3 +558,30 @@ fn test_openai_resp_into_openai_request_parts_does_not_duplicate_mirrored_though
 
 	Ok(())
 }
+
+#[test]
+fn test_openai_resp_to_chat_response_incomplete_reason_sets_stop_reason() -> Result<()> {
+	for (reason, expect_max_tokens) in [("max_output_tokens", true), ("content_filter", false)] {
+		let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.4-mini");
+		let web_response = WebResponse {
+			status: reqwest::StatusCode::OK,
+			body: json!({
+				"id": "resp_123",
+				"status": "incomplete",
+				"incomplete_details": {"reason": reason},
+				"model": "gpt-5.4-mini-2026-03-17",
+				"output": []
+			}),
+		};
+
+		let response = OpenAIRespAdapter::to_chat_response(model_iden, web_response, ChatOptionsSet::default())?;
+
+		match response.stop_reason {
+			Some(StopReason::MaxTokens(_)) if expect_max_tokens => (),
+			Some(StopReason::ContentFilter(_)) if !expect_max_tokens => (),
+			other => panic!("unexpected stop reason for `{reason}`: {other:?}"),
+		}
+	}
+
+	Ok(())
+}
