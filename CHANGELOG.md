@@ -1,6 +1,6 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## 2026-10-22 [v0.7.1](https://github.com/jeremychone/rust-genai/compare/v0.7.0...main) - pending
+## 2026-10-27 [v0.7.2](https://github.com/jeremychone/rust-genai/compare/v0.7.0...v0.7.2)
 
 - `+` New Adapters:
   - `cloudgpu::` - CloudGpu - OpenAI-compatible chat provider, only selected by namespace. Uses `CLOUDGPU_API_KEY` and `https://cloudgpu.app/v1/`; embeddings are unsupported. The new `AdapterKind::CloudGpu` variant requires downstream exhaustive matches to be updated. (PR #355)
