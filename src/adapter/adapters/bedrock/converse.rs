@@ -219,6 +219,12 @@ pub(super) fn parse_usage(mut usage_value: Value) -> Usage {
 	let cache_read: Option<i32> = usage_value.x_take("cacheReadInputTokens").ok();
 	let cache_write: Option<i32> = usage_value.x_take("cacheWriteInputTokens").ok();
 
+	// Converse reports `inputTokens` net of the cache tokens, and `totalTokens` includes them. As for the
+	// Anthropic adapter, `prompt_tokens` is the whole prompt: input + cache read + cache write.
+	let prompt_tokens = input_tokens
+		.saturating_add(cache_read.unwrap_or(0))
+		.saturating_add(cache_write.unwrap_or(0));
+
 	let prompt_tokens_details = if cache_read.is_some() || cache_write.is_some() {
 		Some(crate::chat::PromptTokensDetails {
 			cache_creation_tokens: cache_write,
@@ -231,7 +237,7 @@ pub(super) fn parse_usage(mut usage_value: Value) -> Usage {
 	};
 
 	Usage {
-		prompt_tokens: Some(input_tokens),
+		prompt_tokens: Some(prompt_tokens),
 		prompt_tokens_details,
 		completion_tokens: Some(output_tokens),
 		completion_tokens_details: None,
@@ -641,6 +647,41 @@ mod tests {
 	use super::*;
 	use crate::adapter::AdapterKind;
 	use crate::chat::{ChatMessage, ChatOptions};
+
+	#[test]
+	fn parse_usage_counts_cache_tokens_in_prompt_tokens() -> Result<()> {
+		// -- Setup & Fixtures
+		// Converse reports `inputTokens` net of the cache tokens; `totalTokens` includes them.
+		let usage_value = serde_json::json!({
+			"inputTokens": 10,
+			"outputTokens": 5,
+			"totalTokens": 25,
+			"cacheReadInputTokens": 7,
+			"cacheWriteInputTokens": 3
+		});
+
+		// -- Exec
+		let usage = parse_usage(usage_value);
+
+		// -- Check
+		assert_eq!(usage.prompt_tokens, Some(20));
+		assert_eq!(usage.completion_tokens, Some(5));
+		assert_eq!(usage.total_tokens, Some(25));
+		let details = usage.prompt_tokens_details.as_ref().ok_or("Should have cache details")?;
+		assert_eq!(details.cached_tokens, Some(7));
+		assert_eq!(details.cache_creation_tokens, Some(3));
+
+		Ok(())
+	}
+
+	#[test]
+	fn parse_usage_without_cache_keeps_input_tokens() {
+		let usage = parse_usage(serde_json::json!({"inputTokens": 10, "outputTokens": 5, "totalTokens": 15}));
+
+		assert_eq!(usage.prompt_tokens, Some(10));
+		assert_eq!(usage.total_tokens, Some(15));
+		assert!(usage.prompt_tokens_details.is_none());
+	}
 
 	fn payload_for(model: &str, chat_req: ChatRequest, options: &ChatOptions) -> Result<Value> {
 		let model_iden = ModelIden::new(AdapterKind::BedrockApi, model);
