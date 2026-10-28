@@ -309,6 +309,7 @@ impl Adapter for OpenAIRespAdapter {
 		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 
 		let resp: RespResponse = serde_json::from_value(body)?;
+		let stop_reason = StopReason::from(resp.stop_reason_raw());
 
 		// -- Capture the provider_model_iden
 		let provider_model_iden = model_iden.from_name(&resp.model);
@@ -343,7 +344,7 @@ impl Adapter for OpenAIRespAdapter {
 			reasoning_content,
 			model_iden,
 			provider_model_iden,
-			stop_reason: Some(StopReason::from(resp.status)),
+			stop_reason: Some(stop_reason),
 			usage,
 			captured_raw_body,
 			response_id: Some(resp.id),

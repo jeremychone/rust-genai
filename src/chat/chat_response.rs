@@ -13,7 +13,7 @@ use crate::chat::{ChatMessage, ChatStream, MessageContent, ToolCall, Usage};
 /// | StopReason      | Provider strings                                                         |
 /// |-----------------|--------------------------------------------------------------------------|
 /// | `Completed`     | `stop`, `end_turn`, `STOP`, `COMPLETE`, `completed`                      |
-/// | `MaxTokens`     | `length`, `max_tokens`, `MAX_TOKENS`, `incomplete`, `model_context_window_exceeded`, `model_length` |
+/// | `MaxTokens`     | `length`, `max_tokens`, `MAX_TOKENS`, `incomplete`, `max_output_tokens`, `model_context_window_exceeded`, `model_length` |
 /// | `ToolCall`      | `tool_calls`, `tool_use`, `function_call`                                |
 /// | `ContentFilter` | `content_filter`, `refusal`, `SAFETY`, `RECITATION`, `BLOCKLIST`, …      |
 /// | `StopSequence`  | `stop_sequence`, `STOP_SEQUENCE`                                         |
@@ -45,6 +45,7 @@ impl From<String> for StopReason {
 			| "max_tokens"
 			| "MAX_TOKENS"
 			| "incomplete"
+			| "max_output_tokens"
 			| "model_context_window_exceeded"
 			| "model_length" => Self::MaxTokens(reason),
 

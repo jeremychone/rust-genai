@@ -331,7 +331,7 @@ impl futures::Stream for OpenAIRespStreamer {
 
 						RespStreamEvent::ResponseCompleted { response } => {
 							self.done = true;
-							self.captured_data.stop_reason = Some(response.status.clone());
+							self.captured_data.stop_reason = Some(response.stop_reason_raw());
 
 							if self.options.capture_usage {
 								self.captured_data.usage = response.usage.map(Into::into);
@@ -390,7 +390,7 @@ impl futures::Stream for OpenAIRespStreamer {
 
 						RespStreamEvent::ResponseIncomplete { response } => {
 							self.done = true;
-							self.captured_data.stop_reason = Some(response.status.clone());
+							self.captured_data.stop_reason = Some(response.stop_reason_raw());
 							// A response cut short (e.g., by `max_output_tokens`) keeps the tool
 							// calls it streamed, a truncated call with its arguments as far as
 							// they got (left as a string when they do not parse).
@@ -498,6 +498,34 @@ mod tests {
 			event,
 			RespStreamEvent::CustomToolCallInputDelta { output_index: 3, delta }
 				if delta == "*** Begin Patch\n"
+		));
+		Ok(())
+	}
+
+	#[test]
+	fn incomplete_event_carries_the_reason_the_response_was_cut_short() -> Result<()> {
+		// -- Setup & Fixtures
+		let json_val = serde_json::json!({
+			"type": "response.incomplete",
+			"response": {
+				"id": "resp_1",
+				"status": "incomplete",
+				"incomplete_details": {"reason": "content_filter"},
+				"model": "gpt-5",
+				"output": []
+			}
+		});
+
+		// -- Exec
+		let event: RespStreamEvent = serde_json::from_value(json_val)?;
+
+		// -- Check
+		let RespStreamEvent::ResponseIncomplete { response } = event else {
+			panic!("should be a response.incomplete event");
+		};
+		assert!(matches!(
+			StopReason::from(response.stop_reason_raw()),
+			StopReason::ContentFilter(_)
 		));
 		Ok(())
 	}
