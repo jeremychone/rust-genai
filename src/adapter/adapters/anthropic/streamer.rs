@@ -232,7 +232,11 @@ impl futures::Stream for AnthropicStreamer {
 
 							match &mut self.in_progress_block {
 								InProgressBlock::Text => {
-									let content: String = data.x_take("/delta/text")?;
+									// Server-tool blocks (`server_tool_use`, `web_search_tool_result`) and
+									// `citations_delta` events carry no text: skip them, keep streaming.
+									let Ok(content) = data.x_take::<String>("/delta/text") else {
+										continue;
+									};
 
 									// Add to the captured_content if chat options say so
 									if self.options.capture_content {
