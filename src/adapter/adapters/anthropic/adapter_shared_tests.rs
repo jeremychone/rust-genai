@@ -1088,3 +1088,37 @@ fn test_non_stream_usage_zero_thinking_tokens_is_none() -> Result<()> {
 
 	Ok(())
 }
+
+/// A text part on a tool message goes out as a text block after the tool_result blocks, in the
+/// same user message, instead of being dropped.
+#[test]
+fn test_tool_message_text_part_serializes_after_tool_result() {
+	let tool_message = ChatMessage::tool(MessageContent::from_parts(vec![
+		ContentPart::Text("Use the result above.".to_string()),
+		ContentPart::ToolResponse(ToolResponse::new("call-1", "25 C and clear")),
+	]));
+	let req = ChatRequest::new(vec![ChatMessage::user("Weather in Cairo?"), tool_message]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		req,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("to_web_request_data should succeed");
+
+	let message = &web_req.payload["messages"][1];
+	assert_eq!(message["role"], "user");
+	assert_eq!(
+		message["content"],
+		json!([
+			{"type": "tool_result", "content": "25 C and clear", "tool_use_id": "call-1"},
+			{"type": "text", "text": "Use the result above."},
+		])
+	);
+}
