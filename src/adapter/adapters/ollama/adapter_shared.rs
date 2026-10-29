@@ -3,7 +3,9 @@
 use super::OllamaAdapter;
 use crate::Headers;
 use crate::adapter::AdapterKind;
-use crate::chat::{Binary, BinarySource, ChatRequest, ContentPart, PromptTokensDetails, Tool, ToolName, Usage};
+use crate::chat::{
+	Binary, BinarySource, ChatRequest, ChatResponseFormat, ContentPart, PromptTokensDetails, Tool, ToolName, Usage,
+};
 use crate::resolver::Endpoint;
 use crate::webc::WebClient;
 use crate::{Error, Result};
@@ -12,6 +14,16 @@ use value_ext::JsonValueExt;
 
 /// Support functions for other adapters that share Ollama APIs
 impl OllamaAdapter {
+	/// The value of Ollama's top-level `format` param for a response format: `"json"` for JSON mode,
+	/// or the JSON Schema itself for structured output.
+	/// See <https://docs.ollama.com/capabilities/structured-outputs>
+	pub(in crate::adapter::adapters) fn response_format_to_format(format: &ChatResponseFormat) -> Value {
+		match format {
+			ChatResponseFormat::JsonMode => json!("json"),
+			ChatResponseFormat::JsonSpec(spec) => spec.schema.clone(),
+		}
+	}
+
 	pub(in crate::adapter::adapters) async fn list_model_names(
 		adapter_kind: AdapterKind,
 		endpoint: Endpoint,
@@ -253,6 +265,69 @@ mod tests {
 			usage.prompt_tokens_details.is_none(),
 			"cached count 0 must not produce details"
 		);
+	}
+
+	#[test]
+	fn test_response_format_to_format() {
+		use crate::chat::JsonSpec;
+
+		// -- Setup & Fixtures
+		let schema = json!({"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]});
+
+		// -- Exec & Check
+		assert_eq!(
+			OllamaAdapter::response_format_to_format(&ChatResponseFormat::JsonMode),
+			json!("json")
+		);
+		assert_eq!(
+			OllamaAdapter::response_format_to_format(&ChatResponseFormat::JsonSpec(JsonSpec::new(
+				"place",
+				schema.clone()
+			))),
+			schema
+		);
+	}
+
+	#[test]
+	fn test_json_spec_is_sent_as_format_by_both_ollama_adapters() -> Result<()> {
+		use crate::ModelIden;
+		use crate::ServiceTarget;
+		use crate::adapter::adapters::ollama_cloud::OllamaCloudAdapter;
+		use crate::adapter::{Adapter, AdapterKind, ServiceType};
+		use crate::chat::{ChatMessage, ChatOptions, ChatOptionsSet, JsonSpec};
+		use crate::resolver::AuthData;
+
+		// -- Setup & Fixtures
+		let schema = json!({"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]});
+		let chat_options = ChatOptions::default().with_response_format(JsonSpec::new("place", schema.clone()));
+		let req = || ChatRequest::new(vec![ChatMessage::user("Where is Cairo?")]);
+
+		// -- Exec & Check
+		let local = OllamaAdapter::to_web_request_data(
+			ServiceTarget {
+				endpoint: OllamaAdapter::default_endpoint(AdapterKind::Ollama),
+				auth: AuthData::from_single("unused"),
+				model: ModelIden::new(AdapterKind::Ollama, "fixture-model"),
+			},
+			ServiceType::Chat,
+			req(),
+			ChatOptionsSet::default().with_chat_options(Some(&chat_options)),
+		)?;
+		assert_eq!(local.payload["format"], schema);
+
+		let cloud = OllamaCloudAdapter::to_web_request_data(
+			ServiceTarget {
+				endpoint: OllamaCloudAdapter::default_endpoint(AdapterKind::OllamaCloud),
+				auth: AuthData::from_single("test-key"),
+				model: ModelIden::new(AdapterKind::OllamaCloud, "fixture-model"),
+			},
+			ServiceType::Chat,
+			req(),
+			ChatOptionsSet::default().with_chat_options(Some(&chat_options)),
+		)?;
+		assert_eq!(cloud.payload["format"], schema);
+
+		Ok(())
 	}
 }
 
