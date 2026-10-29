@@ -40,11 +40,6 @@ pub(in crate::adapter::adapters) const MAX_TOKENS_4K: u32 = 4096; // claude-3-op
 impl AnthropicAdapter {
 	/// Resolves the max_tokens value for an Anthropic model, using the user-provided
 	/// value if set, or a model-appropriate default.
-	pub(in crate::adapter::adapters) fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
-		let capabilities = AnthropicModel::parse(model_name).capabilities();
-		Self::resolve_max_tokens_for_capabilities(&capabilities, options_set)
-	}
-
 	fn resolve_max_tokens_for_capabilities(
 		capabilities: &AnthropicModelCapabilities,
 		options_set: &ChatOptionsSet,
@@ -484,14 +479,6 @@ impl AnthropicAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let response_schema = options_set.response_format().and_then(|format| match format {
-			ChatResponseFormat::JsonSpec(spec) => Some(sanitize_json_schema(
-				&spec.schema,
-				JsonSchemaDialect::AnthropicStructured,
-			)),
-			ChatResponseFormat::JsonMode => None,
-		});
-
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
@@ -503,6 +490,27 @@ impl AnthropicAdapter {
 			("x-api-key".to_string(), api_key),
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		]);
+
+		let payload = Self::build_anthropic_request_payload(&model, service_type, chat_req, options_set)?;
+
+		Ok(WebRequestData { url, headers, payload })
+	}
+
+	/// The Messages API request body, shared with the Vertex AI Anthropic publisher
+	/// (which moves `model` to the URL and adds `anthropic_version`).
+	pub(in crate::adapter::adapters) fn build_anthropic_request_payload(
+		model: &ModelIden,
+		service_type: ServiceType,
+		chat_req: ChatRequest,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<Value> {
+		let response_schema = options_set.response_format().and_then(|format| match format {
+			ChatResponseFormat::JsonSpec(spec) => Some(sanitize_json_schema(
+				&spec.schema,
+				JsonSchemaDialect::AnthropicStructured,
+			)),
+			ChatResponseFormat::JsonMode => None,
+		});
 
 		// -- Parts
 		let AnthropicRequestParts {
@@ -604,7 +612,7 @@ impl AnthropicAdapter {
 			payload.x_merge(extra_body.clone())?;
 		}
 
-		Ok(WebRequestData { url, headers, payload })
+		Ok(payload)
 	}
 
 	pub(in crate::adapter::adapters) fn build_chat_response(

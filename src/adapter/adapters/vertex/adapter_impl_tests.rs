@@ -1,6 +1,10 @@
 use super::VertexAdapter;
 use crate::ModelIden;
+use crate::ServiceTarget;
 use crate::adapter::{Adapter, AdapterKind, ServiceType};
+use crate::chat::{
+	ChatOptions, ChatOptionsSet, ChatRequest, ChatResponseFormat, JsonSpec, ReasoningEffort, ToolChoice,
+};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebClient;
 
@@ -47,4 +51,40 @@ fn test_get_service_url_anthropic_stream_uses_stream_raw_predict() {
 		anthropic_url(ServiceType::ChatStream)
 			.ends_with("/publishers/anthropic/models/claude-sonnet-4-6:streamRawPredict")
 	);
+}
+
+#[test]
+fn test_vertex_claude_sends_tool_choice_effort_and_format() -> Result<()> {
+	// -- Setup & Fixtures
+	let target = ServiceTarget {
+		endpoint: Endpoint::from_static("https://us-east5-aiplatform.googleapis.com/v1/projects/p/locations/us-east5/"),
+		auth: AuthData::from_single("test-token"),
+		model: ModelIden::from_static(AdapterKind::Vertex, "claude-sonnet-4-6"),
+	};
+	let schema = serde_json::json!({
+		"type": "object",
+		"properties": { "answer": { "type": "string" } },
+		"required": ["answer"],
+		"additionalProperties": false
+	});
+	let options = ChatOptions::default()
+		.with_tool_choice(ToolChoice::Required)
+		.with_reasoning_effort(ReasoningEffort::High)
+		.with_response_format(ChatResponseFormat::JsonSpec(JsonSpec::new("answer", schema)));
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+
+	// -- Exec
+	let data =
+		VertexAdapter::to_web_request_data(target, ServiceType::Chat, ChatRequest::from_user("hi"), options_set)?;
+
+	// -- Check
+	let payload = &data.payload;
+	assert_eq!(payload["tool_choice"], serde_json::json!({ "type": "any" }));
+	assert_eq!(payload["output_config"]["format"]["type"], "json_schema");
+	assert!(payload["output_config"].get("effort").is_some(), "{payload}");
+	assert!(payload.get("model").is_none(), "{payload}");
+	assert_eq!(payload["anthropic_version"], "vertex-2023-10-16");
+	assert_eq!(payload["stream"], false);
+
+	Ok(())
 }
