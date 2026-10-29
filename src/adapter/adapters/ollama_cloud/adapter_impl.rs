@@ -95,10 +95,8 @@ impl Adapter for OllamaCloudAdapter {
 		// -- Messages (after tools)
 		payload.x_insert("messages", messages)?;
 
-		if let Some(format) = chat_options.response_format()
-			&& matches!(format, crate::chat::ChatResponseFormat::JsonMode)
-		{
-			payload.x_insert("format", "json")?;
+		if let Some(format) = chat_options.response_format() {
+			payload.x_insert("format", OllamaAdapter::response_format_to_format(format))?;
 		}
 
 		let mut headers = Headers::default();
