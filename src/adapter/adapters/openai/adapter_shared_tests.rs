@@ -630,3 +630,22 @@ fn payload(
 }
 
 // endregion: --- Support
+
+#[test]
+fn test_tool_response_binary_is_dropped_and_text_kept() -> Result<()> {
+	// -- Setup & Fixtures
+	let tool_response = crate::chat::ToolResponse::new("call_1", "Screenshot taken")
+		.with_binary(crate::chat::Binary::from_base64("image/png", "iVBORw0KGgo=", None));
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+	// -- Exec
+	let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req, None)?;
+
+	// -- Check
+	assert_eq!(
+		parts.messages[0],
+		json!({"role": "tool", "content": "Screenshot taken", "tool_call_id": "call_1"})
+	);
+
+	Ok(())
+}

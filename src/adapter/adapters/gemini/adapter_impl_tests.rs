@@ -757,7 +757,8 @@ fn test_gemini_function_response_part_id_only_for_known_calls() -> Result<()> {
 			response = response.with_fn_name(fn_name);
 		}
 
-		let part = gemini_function_response_part(response, &call_names)?;
+		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-3.7-flash");
+		let part = gemini_function_response_part(&model_iden, response, &call_names)?;
 		let function_response = &part["functionResponse"];
 
 		assert_eq!(function_response["name"], expected_name);
@@ -838,4 +839,37 @@ fn test_gemini_to_chat_response_reasoning_content_none_when_empty() -> Result<()
 	);
 
 	Ok(())
+}
+
+#[test]
+fn test_gemini_3_function_response_sends_binaries_as_parts() {
+	let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-3.7-flash");
+	let tool_response = ToolResponse::new("call_123", "Screenshot taken")
+		.with_fn_name("screenshot")
+		.with_binary(Binary::from_base64("image/png", "iVBORw0KGgo=", None));
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+	let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+	let function_response = &parts.contents[0]["parts"][0]["functionResponse"];
+
+	assert_eq!(function_response["response"]["content"], "Screenshot taken");
+	assert_eq!(
+		function_response["parts"],
+		json!([{"inline_data": {"mime_type": "image/png", "data": "iVBORw0KGgo="}}])
+	);
+}
+
+#[test]
+fn test_gemini_2_function_response_drops_binaries() {
+	let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
+	let tool_response = ToolResponse::new("call_123", "Screenshot taken")
+		.with_fn_name("screenshot")
+		.with_binary(Binary::from_base64("image/png", "iVBORw0KGgo=", None));
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+	let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+	let function_response = &parts.contents[0]["parts"][0]["functionResponse"];
+
+	assert_eq!(function_response["response"]["content"], "Screenshot taken");
+	assert!(function_response.get("parts").is_none());
 }

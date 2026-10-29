@@ -164,6 +164,11 @@ async fn test_tool_full_flow_ok() -> TestResult<()> {
 	common_tests::common_test_tool_full_flow_ok(MODEL).await
 }
 
+#[tokio::test]
+async fn test_tool_binary_response_ok() -> TestResult<()> {
+	common_tests::common_test_tool_binary_response_ok(MODEL).await
+}
+
 // endregion: --- Tool Tests
 
 // region:    --- Resolver Tests

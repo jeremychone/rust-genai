@@ -191,61 +191,13 @@ impl AnthropicAdapter {
 								ContentPart::Text(text) => {
 									values.push(json!({"type": "text", "text": text}));
 								}
-								ContentPart::Binary(binary) => {
-									let is_image = binary.is_image();
-									let Binary {
-										content_type, source, ..
-									} = binary;
-
-									if is_image {
-										match &source {
-											BinarySource::Url(_) => {
-												// As of this API version, Anthropic doesn't support images by URL directly in messages.
-												warn!(
-													"Anthropic doesn't support images from URL, need to handle it gracefully"
-												);
-											}
-											BinarySource::Base64(content) => {
-												values.push(json!({
-													"type": "image",
-													"source": {
-														"type": "base64",
-														"media_type": content_type,
-														"data": content,
-													}
-												}));
-											}
-										}
-									} else {
-										match &source {
-											BinarySource::Url(url) => {
-												values.push(json!({
-													"type": "document",
-													"source": {
-														"type": "url",
-														"url": url,
-													}
-												}));
-											}
-											BinarySource::Base64(b64) => {
-												values.push(json!({
-													"type": "document",
-													"source": {
-														"type": "base64",
-														"media_type": content_type,
-														"data": b64,
-													}
-												}));
-											}
-										}
-									}
-								}
+								ContentPart::Binary(binary) => values.extend(binary_to_anthropic_block(binary)),
 								// ToolCall is not valid in user content for Anthropic; skip gracefully.
 								ContentPart::ToolCall(_tc) => {}
 								ContentPart::ToolResponse(tool_response) => {
 									values.push(json!({
 										"type": "tool_result",
-										"content": tool_response.content,
+										"content": tool_result_content(tool_response.content),
 										"tool_use_id": tool_response.call_id,
 									}));
 								}
@@ -393,7 +345,7 @@ impl AnthropicAdapter {
 							ContentPart::ToolResponse(tool_response) => {
 								values.push(json!({
 									"type": "tool_result",
-									"content": tool_response.content,
+									"content": tool_result_content(tool_response.content),
 									"tool_use_id": tool_response.call_id,
 								}));
 							}
@@ -942,3 +894,70 @@ fn is_thinking_block(data: &Value) -> bool {
 mod tests;
 
 // endregion: --- Tests
+
+// region:    --- Content Support
+
+/// The `image` / `document` block for a binary, or `None` when Anthropic can't take it.
+fn binary_to_anthropic_block(binary: Binary) -> Option<Value> {
+	let is_image = binary.is_image();
+	let Binary {
+		content_type, source, ..
+	} = binary;
+
+	if is_image {
+		match source {
+			BinarySource::Url(_) => {
+				// As of this API version, Anthropic doesn't support images by URL directly in messages.
+				warn!("Anthropic doesn't support images from URL, need to handle it gracefully");
+				None
+			}
+			BinarySource::Base64(content) => Some(json!({
+				"type": "image",
+				"source": {
+					"type": "base64",
+					"media_type": content_type,
+					"data": content,
+				}
+			})),
+		}
+	} else {
+		match source {
+			BinarySource::Url(url) => Some(json!({
+				"type": "document",
+				"source": {
+					"type": "url",
+					"url": url,
+				}
+			})),
+			BinarySource::Base64(b64) => Some(json!({
+				"type": "document",
+				"source": {
+					"type": "base64",
+					"media_type": content_type,
+					"data": b64,
+				}
+			})),
+		}
+	}
+}
+
+/// The `content` of a `tool_result` block: a plain string when the response is text only,
+/// else an array of `text`, `image` and `document` blocks.
+fn tool_result_content(content: MessageContent) -> Value {
+	if !content.contains_binary() {
+		return json!(content.into_joined_texts().unwrap_or_default());
+	}
+
+	let mut blocks: Vec<Value> = Vec::new();
+	for part in content {
+		match part {
+			ContentPart::Text(text) => blocks.push(json!({"type": "text", "text": text})),
+			ContentPart::Binary(binary) => blocks.extend(binary_to_anthropic_block(binary)),
+			// Only text and binary parts are meaningful in a tool result.
+			_ => {}
+		}
+	}
+	Value::Array(blocks)
+}
+
+// endregion: --- Content Support

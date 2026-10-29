@@ -5,7 +5,7 @@ use super::cache_policy::{
 };
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{get_api_key, tool_response_text_only};
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, CustomPart, ReasoningEffort,
@@ -499,9 +499,11 @@ impl OpenAIAdapter {
 				ChatRole::Tool => {
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
+							// Chat Completions tool messages accept only text.
+							let content = tool_response_text_only(model_iden, &tool_response);
 							messages.push(json!({
 								"role": "tool",
-								"content": tool_response.content,
+								"content": content,
 								"tool_call_id": tool_response.call_id,
 							}))
 						}

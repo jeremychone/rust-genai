@@ -1,5 +1,5 @@
 use crate::adapter::adapters::gemini::GeminiStreamer;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{get_api_key, tool_response_text_only};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
@@ -641,30 +641,16 @@ impl GeminiAdapter {
 					for part in msg.content {
 						match part {
 							ContentPart::Text(text) => parts_values.push(json!({"text": text})),
-							ContentPart::Binary(binary) => {
-								let Binary {
-									content_type, source, ..
-								} = binary;
-								match &source {
-									BinarySource::Url(url) => parts_values.push(json!({
-										"file_data": {
-											"mime_type": content_type,
-											"file_uri": url
-										}
-									})),
-									BinarySource::Base64(content) => parts_values.push(json!({
-										"inline_data": {
-											"mime_type": content_type,
-											"data": content
-										}
-									})),
-								}
-							}
+							ContentPart::Binary(binary) => parts_values.push(gemini_binary_part(binary)),
 							ContentPart::ToolCall(tool_call) => {
 								parts_values.push(gemini_function_call_part(tool_call)?);
 							}
 							ContentPart::ToolResponse(tool_response) => {
-								parts_values.push(gemini_function_response_part(tool_response, &call_names)?);
+								parts_values.push(gemini_function_response_part(
+									model_iden,
+									tool_response,
+									&call_names,
+								)?);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -695,7 +681,11 @@ impl GeminiAdapter {
 								parts_values.push(gemini_function_call_part(tool_call)?);
 							}
 							ContentPart::ToolResponse(tool_response) => {
-								parts_values.push(gemini_function_response_part(tool_response, &call_names)?);
+								parts_values.push(gemini_function_response_part(
+									model_iden,
+									tool_response,
+									&call_names,
+								)?);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -978,7 +968,30 @@ fn gemini_function_call_part(tool_call: ToolCall) -> Result<Value> {
 /// name (400 INVALID_ARGUMENT). The name is the response's `fn_name`, else the name of the call with
 /// this id earlier in the request, else the name in a stand-in id. When none is found, the call id
 /// stands in for the name and no id is sent.
-fn gemini_function_response_part(tool_response: ToolResponse, call_names: &HashMap<String, String>) -> Result<Value> {
+///
+/// The response's text goes in `response.content`. Its binaries go in `parts` (multimodal function
+/// responses), which only Gemini 3 models accept; other models get the text only.
+fn gemini_function_response_part(
+	model_iden: &ModelIden,
+	tool_response: ToolResponse,
+	call_names: &HashMap<String, String>,
+) -> Result<Value> {
+	let multimodal = model_iden.model_name.contains("gemini-3");
+	let content = if multimodal {
+		tool_response.text_content()
+	} else {
+		tool_response_text_only(model_iden, &tool_response)
+	};
+	let binary_parts: Vec<Value> = if multimodal {
+		tool_response
+			.content
+			.into_binaries()
+			.into_iter()
+			.map(gemini_binary_part)
+			.collect()
+	} else {
+		Vec::new()
+	};
 	let fn_name = tool_response
 		.fn_name
 		.or_else(|| call_names.get(&tool_response.call_id).cloned())
@@ -992,13 +1005,37 @@ fn gemini_function_response_part(tool_response: ToolResponse, call_names: &HashM
 		"name": fn_name,
 		"response": {
 			"name": fn_name,
-			"content": tool_response.content,
+			"content": content,
 		}
 	});
 	if let Some(id) = id {
 		function_response.x_insert("id", id)?;
 	}
+	if !binary_parts.is_empty() {
+		function_response.x_insert("parts", binary_parts)?;
+	}
 	Ok(json!({ "functionResponse": function_response }))
+}
+
+/// An `inline_data` (base64) or `file_data` (URL) part for a binary.
+fn gemini_binary_part(binary: Binary) -> Value {
+	let Binary {
+		content_type, source, ..
+	} = binary;
+	match source {
+		BinarySource::Url(url) => json!({
+			"file_data": {
+				"mime_type": content_type,
+				"file_uri": url
+			}
+		}),
+		BinarySource::Base64(content) => json!({
+			"inline_data": {
+				"mime_type": content_type,
+				"data": content
+			}
+		}),
+	}
 }
 
 /// The id to send back to Gemini for a call: the call's own id (Gemini's, when it returned one),

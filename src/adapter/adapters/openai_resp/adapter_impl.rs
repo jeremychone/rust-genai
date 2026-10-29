@@ -10,8 +10,8 @@ use crate::adapter::adapters::openai::schema::{
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, ContentPart,
-	MessageContent, ReasoningEffort, StopReason, Tool, ToolChoice, ToolConfig, ToolName, Usage,
+	Binary, CacheControl, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse,
+	ContentPart, MessageContent, ReasoningEffort, StopReason, Tool, ToolChoice, ToolConfig, ToolName, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::StreamRequest as RequestBuilder;
@@ -486,44 +486,8 @@ impl OpenAIRespAdapter {
 									values.push(json!({"type": "input_text", "text": content}))
 								}
 								// -- Binary
-								ContentPart::Binary(mut binary) => {
-									let is_image = binary.is_image();
-
-									// Process the image
-									if is_image {
-										let image_url = binary.into_url();
-										let input_image = json!({
-											"type": "input_image",
-											"detail": "auto",
-											"image_url": image_url
-										});
-										values.push(input_image);
-									}
-									// Process file
-									// TODO - Needs to support audio
-									else {
-										let mut input_file = Map::new();
-										input_file.insert("type".into(), "input_file".into());
-
-										// Set the file name if not defined (otherwise error)
-										if let Some(file_name) = binary.name.take() {
-											input_file.insert("filename".into(), file_name.into());
-										} else {
-											unamed_file_count += 1;
-											input_file
-												.insert("filename".into(), format!("file-{unamed_file_count}").into());
-										}
-
-										let file_url = binary.into_url();
-										if file_url.starts_with("data") {
-											input_file.insert("file_data".into(), file_url.into());
-										} else {
-											input_file.insert("file_url".into(), file_url.into());
-										}
-										let input_file: Value = input_file.into();
-
-										values.push(input_file);
-									}
+								ContentPart::Binary(binary) => {
+									values.push(binary_to_input_content(binary, &mut unamed_file_count))
 								}
 
 								// Use `match` instead of `if let`. This will allow to future-proof this
@@ -664,7 +628,7 @@ impl OpenAIRespAdapter {
 							input_items.push(json!({
 								"type": response_type,
 								"call_id": tool_response.call_id,
-								"output": tool_response.content,
+								"output": tool_output(tool_response.content, &mut unamed_file_count),
 							}));
 						}
 					}
@@ -769,6 +733,59 @@ fn apply_resp_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _
 	Ok(())
 }
 
+/// The `input_image` / `input_file` content item for a binary.
+/// Files without a name get a generated one (`file-{n}`), as the API requires a filename.
+fn binary_to_input_content(mut binary: Binary, unamed_file_count: &mut usize) -> Value {
+	// Process the image
+	if binary.is_image() {
+		let image_url = binary.into_url();
+		return json!({
+			"type": "input_image",
+			"detail": "auto",
+			"image_url": image_url
+		});
+	}
+
+	// Process file
+	// TODO - Needs to support audio
+	let mut input_file = Map::new();
+	input_file.insert("type".into(), "input_file".into());
+
+	// Set the file name if not defined (otherwise error)
+	if let Some(file_name) = binary.name.take() {
+		input_file.insert("filename".into(), file_name.into());
+	} else {
+		*unamed_file_count += 1;
+		input_file.insert("filename".into(), format!("file-{unamed_file_count}").into());
+	}
+
+	let file_url = binary.into_url();
+	if file_url.starts_with("data") {
+		input_file.insert("file_data".into(), file_url.into());
+	} else {
+		input_file.insert("file_url".into(), file_url.into());
+	}
+	input_file.into()
+}
+
+/// The `output` of a function/custom tool call output item: a plain string when the response is
+/// text only, else an array of `input_text`, `input_image` and `input_file` items.
+fn tool_output(content: MessageContent, unamed_file_count: &mut usize) -> Value {
+	if !content.contains_binary() {
+		return json!(content.into_joined_texts().unwrap_or_default());
+	}
+
+	let mut items: Vec<Value> = Vec::new();
+	for part in content {
+		match part {
+			ContentPart::Text(text) => items.push(json!({"type": "input_text", "text": text})),
+			ContentPart::Binary(binary) => items.push(binary_to_input_content(binary, unamed_file_count)),
+			// Only text and binary parts are meaningful in a tool output.
+			_ => {}
+		}
+	}
+	Value::Array(items)
+}
 // endregion: --- Support
 
 // region:    --- Tests

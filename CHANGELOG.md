@@ -2,6 +2,9 @@
 
 ## PENDING [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...main)
 
+- `!` API CHANGE: `ToolResponse.content` is now a `MessageContent` (was `String`), so a tool can return binary parts (images, PDFs, ...) next to its text. `ToolResponse::new(..)` and `from_tool_call(..)` take `impl Into<MessageContent>`, so `&str`/`String` call sites keep compiling; code that read `content` as a `String` should use `text_content()`. New `with_binary(..)`, `with_text(..)`, `binaries()` and `contains_binary()`. A serialized `ToolResponse` with a string `content` still deserializes.
+  - Binaries are sent natively by Anthropic (`tool_result` blocks), Bedrock Converse (`toolResult` blocks), OpenAI Responses (`output` array), Gemini 3 (`functionResponse.parts`), Gemini Interactions (`function_result.result`) and Ollama (base64 images in the tool message's `images`). Other providers (OpenAI Chat Completions and compatible adapters, Gemini before 3) receive only the text parts, and the dropped binaries are logged with a warning.
+
 ## 2026-10-27 [v0.7.0..v0.7.2](https://github.com/jeremychone/rust-genai/compare/v0.7.0...v0.7.2)
 
 - `+` New Adapters:
