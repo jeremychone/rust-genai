@@ -385,6 +385,9 @@ impl AnthropicAdapter {
 				// Tool responses are represented as user tool_result items in Anthropic.
 				ChatRole::Tool => {
 					let mut values: Vec<Value> = Vec::new();
+					// Text rides in the same user message, after the tool_result blocks (Anthropic
+					// requires tool_result blocks to come first in the content array).
+					let mut text_values: Vec<Value> = Vec::new();
 					for part in msg.content {
 						match part {
 							ContentPart::ToolResponse(tool_response) => {
@@ -394,10 +397,12 @@ impl AnthropicAdapter {
 									"tool_use_id": tool_response.call_id,
 								}));
 							}
+							ContentPart::Text(text) => text_values.push(json!({"type": "text", "text": text})),
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
 							_ => {}
 						}
 					}
+					values.extend(text_values);
 					if !values.is_empty() {
 						let values = apply_cache_control_to_parts(cache_control.as_ref(), values);
 						messages.push(json!({"role": "user", "content": values}));
