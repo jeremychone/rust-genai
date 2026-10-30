@@ -260,8 +260,10 @@ impl Adapter for OpenAIRespAdapter {
 			payload.x_insert("temperature", temperature)?;
 		}
 
+		// The Responses API has no `stop` parameter; sending it is an HTTP 400.
+		// (Callers who know their backend accepts it can still set it with `extra_body`.)
 		if !chat_options.stop_sequences().is_empty() {
-			payload.x_insert("stop", chat_options.stop_sequences())?;
+			tracing::warn!("stop sequences are not supported by the OpenAI Responses API and were not sent");
 		}
 
 		if let Some(max_tokens) = chat_options.max_tokens() {
@@ -270,8 +272,9 @@ impl Adapter for OpenAIRespAdapter {
 		if let Some(top_p) = chat_options.top_p() {
 			payload.x_insert("top_p", top_p)?;
 		}
-		if let Some(seed) = chat_options.seed() {
-			payload.x_insert("seed", seed)?;
+		// Same for `seed`: the Responses API does not accept it.
+		if chat_options.seed().is_some() {
+			tracing::warn!("seed is not supported by the OpenAI Responses API and was not sent");
 		}
 
 		// -- OpenAI prompt cache options
