@@ -137,7 +137,7 @@ impl futures::Stream for GeminiStreamer {
 						stream_thoughts.extend(thought_signature);
 						match data {
 							GeminiPartData::Reasoning(reasoning) => {
-								stream_reasoning_content.get_or_insert_with(String::new).push_str(&reasoning);
+								stream_reasoning_content.get_or_insert_default().push_str(&reasoning);
 							}
 							GeminiPartData::Text(text) => stream_text_content.push_str(&text),
 							GeminiPartData::Binary(_) => {

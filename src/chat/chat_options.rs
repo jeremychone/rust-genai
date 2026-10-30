@@ -166,7 +166,8 @@ impl ChatOptions {
 	/// This also gates capture of the thought signatures that accompany reasoning, because a
 	/// signature signs the reasoning text it belongs to and is unusable without it. To replay a
 	/// signed assistant turn back to a provider that requires it (Anthropic extended thinking with
-	/// tool use), enable this alongside `with_capture_tool_calls`.
+	/// tool use), enable this alongside `with_capture_tool_calls`. Providers that stream thought
+	/// signatures independently of this flag (for example Gemini) capture them regardless.
 	pub fn with_capture_reasoning_content(mut self, value: bool) -> Self {
 		self.capture_reasoning_content = Some(value);
 		self
