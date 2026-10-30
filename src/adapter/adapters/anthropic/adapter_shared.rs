@@ -40,7 +40,7 @@ pub(in crate::adapter::adapters) const MAX_TOKENS_4K: u32 = 4096; // claude-3-op
 impl AnthropicAdapter {
 	/// Resolves the max_tokens value for an Anthropic model, using the user-provided
 	/// value if set, or a model-appropriate default.
-	fn resolve_max_tokens_for_capabilities(
+	pub(in crate::adapter::adapters) fn resolve_max_tokens_for_capabilities(
 		capabilities: &AnthropicModelCapabilities,
 		options_set: &ChatOptionsSet,
 	) -> u32 {

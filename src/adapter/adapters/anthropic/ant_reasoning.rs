@@ -9,7 +9,7 @@ pub(super) const REASONING_LOW: u32 = 1024;
 pub(super) const REASONING_MEDIUM: u32 = 8000;
 pub(super) const REASONING_HIGH: u32 = 24000;
 
-pub(super) fn insert_anthropic_reasoning(
+pub(in crate::adapter::adapters) fn insert_anthropic_reasoning(
 	payload: &mut Value,
 	output_config: &mut Map<String, Value>,
 	capabilities: &AnthropicModelCapabilities,

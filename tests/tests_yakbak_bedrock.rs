@@ -1,7 +1,8 @@
 //! Replay integration tests for the Bedrock Converse adapter.
 //!
 //! These tests use pre-recorded cassettes from `tests/data/yakbak/bedrock/`, recorded against
-//! gpt-5.6-terra (encrypted reasoning) and Claude Haiku 4.5 (signed thinking). Streaming cassettes
+//! gpt-5.6-terra (encrypted reasoning), Claude Haiku 4.5 (signed thinking) and Claude Opus 5.5
+//! (adaptive thinking, summarized). Streaming cassettes
 //! are raw AWS event-stream bytes (binary), as ConverseStream sends them.
 
 mod support;
@@ -197,6 +198,125 @@ async fn test_yakbak_bedrock_claude_thinking_tool_stream_round_trip() -> TestRes
 	assert!(matches!(&assistant_parts[1], ContentPart::ReasoningContent(text) if *text == reasoning));
 
 	// -- Round 2: the answer
+	let continuation_res = client.exec_chat_stream(model, continuation_request, Some(&options)).await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	assert!(!continuation.content.as_deref().unwrap_or_default().is_empty());
+	assert!(matches!(
+		continuation.stream_end.captured_stop_reason,
+		Some(StopReason::Completed(_))
+	));
+	assert!(continuation.stream_end.captured_usage.is_some());
+
+	Ok(())
+}
+
+/// Claude Opus 5.5 with adaptive thinking (sent as `thinking.type: adaptive` +
+/// `output_config.effort`, since it rejects `thinking.type: enabled`). Round 1 streams a signed,
+/// summarized `reasoningText` block and a tool call; round 2 answers after the replayed turn.
+#[tokio::test]
+async fn test_yakbak_bedrock_claude_adaptive_tool_stream_round_trip() -> TestResult<()> {
+	let (client, _server) = replay_client("bedrock", "claude_adaptive_tool_stream").await?;
+	let model = "bedrock_api::us.anthropic.claude-opus-5-5";
+	let options = reasoning_options();
+	let initial_request = reasoning_tool_request();
+	let continuation_base = initial_request.clone();
+
+	// -- Round 1: adaptive thinking + tool call
+	let stream_res = client.exec_chat_stream(model, initial_request, Some(&options)).await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+
+	let reasoning = first.reasoning_content.clone().ok_or("streamed reasoning")?;
+	assert!(!reasoning.is_empty());
+	assert_eq!(first.thought_signature_chunks.len(), 1);
+	let signature = first.thought_signature_chunks[0].clone();
+
+	let parts = first.stream_end.captured_content.as_ref().ok_or("captured content")?.parts();
+	assert!(matches!(&parts[0], ContentPart::ThoughtSignature(sig) if *sig == signature));
+	assert!(matches!(&parts[1], ContentPart::ReasoningContent(text) if *text == reasoning));
+	assert!(matches!(parts.last(), Some(ContentPart::ToolCall(_))));
+
+	let tool_calls = first.stream_end.captured_tool_calls().ok_or("tool calls")?;
+	assert_eq!(tool_calls.len(), 1);
+	assert_eq!(tool_calls[0].fn_name, "get_weather");
+	assert!(first.stream_end.captured_usage.is_some());
+	assert!(matches!(
+		first.stream_end.captured_stop_reason,
+		Some(StopReason::ToolCall(_))
+	));
+
+	// -- Round 2: the answer
+	let tool_call = tool_calls[0].clone();
+	let continuation_request = continuation_base.append_tool_use_from_stream_end(
+		&first.stream_end,
+		ToolResponse::from_tool_call(&tool_call, r#"{"weather": "Sunny", "temperature": "24C"}"#),
+	);
+	let continuation_res = client.exec_chat_stream(model, continuation_request, Some(&options)).await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	assert!(!continuation.content.as_deref().unwrap_or_default().is_empty());
+	assert!(matches!(
+		continuation.stream_end.captured_stop_reason,
+		Some(StopReason::Completed(_))
+	));
+	assert!(continuation.stream_end.captured_usage.is_some());
+
+	Ok(())
+}
+
+/// Claude Opus 5.5 with parallel tool calls. Round 1 streams two `get_weather` calls; round 2
+/// sends each result as its own `ChatRole::Tool` message, which the adapter merges into the one
+/// user message Converse requires (recorded live, so Bedrock accepted that request shape).
+#[tokio::test]
+async fn test_yakbak_bedrock_claude_parallel_tool_stream_round_trip() -> TestResult<()> {
+	let (client, _server) = replay_client("bedrock", "claude_parallel_tool_stream").await?;
+	let model = "bedrock_api::us.anthropic.claude-opus-5-5";
+	let options = reasoning_options();
+	let initial_request = ChatRequest::new(vec![ChatMessage::user(
+		"Get the weather (in C) for Paris and for Lyon, France. Call get_weather for both cities in parallel, \
+		 in one turn.",
+	)])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city": { "type": "string" },
+			"country": { "type": "string" },
+			"unit": { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})));
+
+	// -- Round 1: two tool calls in one turn
+	let stream_res = client.exec_chat_stream(model, initial_request.clone(), Some(&options)).await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+
+	let tool_calls: Vec<ToolCall> = first
+		.stream_end
+		.captured_tool_calls()
+		.ok_or("tool calls")?
+		.into_iter()
+		.cloned()
+		.collect();
+	assert_eq!(tool_calls.len(), 2);
+	assert!(tool_calls.iter().all(|call| call.fn_name == "get_weather"));
+	assert_ne!(tool_calls[0].call_id, tool_calls[1].call_id);
+	let cities: Vec<&str> = tool_calls
+		.iter()
+		.filter_map(|call| call.fn_arguments["city"].as_str())
+		.collect();
+	assert_eq!(cities, ["Paris", "Lyon"]);
+	assert!(matches!(
+		first.stream_end.captured_stop_reason,
+		Some(StopReason::ToolCall(_))
+	));
+
+	// -- Round 2: one Tool message per response, as chat-service sends them
+	let mut responses = tool_calls
+		.iter()
+		.map(|call| ToolResponse::from_tool_call(call, r#"{"weather": "Sunny", "temperature": "24C"}"#));
+	let mut continuation_request =
+		initial_request.append_tool_use_from_stream_end(&first.stream_end, responses.next().ok_or("tool response")?);
+	for response in responses {
+		continuation_request = continuation_request.append_message(response);
+	}
 	let continuation_res = client.exec_chat_stream(model, continuation_request, Some(&options)).await?;
 	let continuation = extract_stream_end(continuation_res.stream).await?;
 	assert!(!continuation.content.as_deref().unwrap_or_default().is_empty());

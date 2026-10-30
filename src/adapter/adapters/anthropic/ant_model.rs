@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AnthropicModelFamily {
+pub(in crate::adapter::adapters) enum AnthropicModelFamily {
 	Opus,
 	Sonnet,
 	Haiku,
@@ -9,7 +9,7 @@ pub(super) enum AnthropicModelFamily {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct AnthropicModel<'a> {
+pub(in crate::adapter::adapters) struct AnthropicModel<'a> {
 	pub normalized_name: &'a str,
 	pub family: AnthropicModelFamily,
 	pub major_version: Option<u32>,
@@ -19,7 +19,7 @@ pub(super) struct AnthropicModel<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct AnthropicModelCapabilities {
+pub(in crate::adapter::adapters) struct AnthropicModelCapabilities {
 	pub supports_effort: bool,
 	pub supports_max_effort: bool,
 	pub supports_xhigh_effort: bool,
@@ -30,7 +30,7 @@ pub(super) struct AnthropicModelCapabilities {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AnthropicMaxTokens {
+pub(in crate::adapter::adapters) enum AnthropicMaxTokens {
 	Tokens4K,
 	Tokens8K,
 	Tokens32K,

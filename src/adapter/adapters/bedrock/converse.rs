@@ -4,6 +4,7 @@
 //! work lives here. Publisher-specific bits (reasoning budget, etc.) go under
 //! `additionalModelRequestFields` via [`BedrockPublisher`].
 
+use crate::adapter::adapters::anthropic::{AnthropicAdapter, AnthropicModel, insert_anthropic_reasoning};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ContentPart, MessageContent,
 	ReasoningEffort, StopReason, Tool, ToolCall, ToolName, Usage,
@@ -104,8 +105,12 @@ pub(super) fn build_converse_payload(
 
 	// additionalModelRequestFields — publisher-specific (reasoning, etc.)
 	if let Some(effort) = options_set.reasoning_effort()
-		&& let Some(additional) = publisher_additional_fields(publisher, effort)
-	{
+		&& let Some(additional) = publisher_additional_fields(
+			publisher,
+			model_name,
+			effort,
+			options_set.capture_reasoning_content().unwrap_or_default(),
+		)? {
 		payload.x_insert("additionalModelRequestFields", additional)?;
 	}
 
@@ -250,19 +255,8 @@ fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
 		// Conservative defaults by publisher; most Bedrock publishers require maxTokens in inferenceConfig.
 		match BedrockPublisher::from_model_id(model_name) {
 			BedrockPublisher::Anthropic => {
-				// Mirror the Anthropic adapter's heuristics for parity.
-				if model_name.contains("claude-sonnet")
-					|| model_name.contains("claude-haiku")
-					|| model_name.contains("claude-opus-4-5")
-				{
-					crate::adapter::adapters::anthropic::MAX_TOKENS_64K.max(64000)
-				} else if model_name.contains("claude-opus-4") {
-					32000
-				} else if model_name.contains("claude-3-5") {
-					8192
-				} else {
-					4096
-				}
+				let capabilities = AnthropicModel::parse(anthropic_model_name(model_name)).capabilities();
+				AnthropicAdapter::resolve_max_tokens_for_capabilities(&capabilities, options_set)
 			}
 			BedrockPublisher::AmazonNova => 5000,
 			// Reasoning tokens count against the output budget.
@@ -272,43 +266,67 @@ fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
 	})
 }
 
-fn publisher_additional_fields(publisher: BedrockPublisher, effort: &ReasoningEffort) -> Option<Value> {
-	match publisher {
-		BedrockPublisher::Anthropic => {
-			let budget = match effort {
-				ReasoningEffort::Zero => return None,
-				ReasoningEffort::Budget(n) => *n,
-				ReasoningEffort::Minimal | ReasoningEffort::Low => 1024,
-				ReasoningEffort::Medium => 8000,
-				ReasoningEffort::High | ReasoningEffort::XHigh | ReasoningEffort::Max => 24000,
-			};
-			Some(json!({
-				"thinking": {
-					"type": "enabled",
-					"budget_tokens": budget,
-				}
-			}))
-		}
+fn publisher_additional_fields(
+	publisher: BedrockPublisher,
+	model_name: &str,
+	effort: &ReasoningEffort,
+	capture_reasoning_content: bool,
+) -> Result<Option<Value>> {
+	let fields = match publisher {
+		BedrockPublisher::Anthropic => match effort {
+			// Bedrock rejects `thinking.type: disabled` (unlike the Anthropic API), so `Zero` sends
+			// nothing; models with thinking on by default (e.g., Opus 5) keep their default there.
+			ReasoningEffort::Zero => None,
+			effort => anthropic_reasoning_fields(anthropic_model_name(model_name), effort, capture_reasoning_content)?,
+		},
 		BedrockPublisher::AmazonNova => {
 			// Nova 2 takes `reasoningConfig { type, maxReasoningEffort }` (required when enabled).
 			// Reasoning is off by default, so `Zero` sends nothing; Nova 1 and Titan (also `amazon.*`)
 			// don't accept the field.
-			let level = nova_reasoning_effort(effort)?;
-			Some(json!({
-				"inferenceConfig": { "reasoningConfig": { "type": "enabled", "maxReasoningEffort": level } }
-			}))
+			nova_reasoning_effort(effort).map(|level| {
+				json!({
+					"inferenceConfig": { "reasoningConfig": { "type": "enabled", "maxReasoningEffort": level } }
+				})
+			})
 		}
 		BedrockPublisher::OpenAI => {
 			// Passed through to the OpenAI Responses API, which takes `reasoning.effort`.
 			// `reasoning.summary` is rejected on Bedrock, so reasoning only comes back encrypted.
 			let effort = match effort {
-				ReasoningEffort::Zero => "none",
-				other => other.as_keyword()?,
+				ReasoningEffort::Zero => Some("none"),
+				other => other.as_keyword(),
 			};
-			Some(json!({ "reasoning": { "effort": effort } }))
+			effort.map(|effort| json!({ "reasoning": { "effort": effort } }))
 		}
 		BedrockPublisher::Other => None,
+	};
+	Ok(fields)
+}
+
+fn anthropic_reasoning_fields(
+	model_name: &str,
+	effort: &ReasoningEffort,
+	capture_reasoning_content: bool,
+) -> Result<Option<Value>> {
+	let capabilities = AnthropicModel::parse(model_name).capabilities();
+	let mut fields = json!({});
+	let mut output_config: Map<String, Value> = Map::new();
+	insert_anthropic_reasoning(
+		&mut fields,
+		&mut output_config,
+		&capabilities,
+		effort,
+		capture_reasoning_content,
+	)?;
+	if !output_config.is_empty() {
+		fields.x_insert("output_config", Value::Object(output_config))?;
 	}
+
+	Ok(fields.as_object().is_some_and(|fields| !fields.is_empty()).then_some(fields))
+}
+
+fn anthropic_model_name(model_id: &str) -> &str {
+	model_id.split_once("anthropic.").map_or(model_id, |(_, name)| name)
 }
 
 /// Nova's `maxReasoningEffort` for a genai effort, or `None` for reasoning off.
@@ -338,6 +356,8 @@ struct ConverseRequestParts {
 fn into_converse_request_parts(chat_req: ChatRequest, publisher: BedrockPublisher) -> Result<ConverseRequestParts> {
 	let mut messages: Vec<Value> = Vec::new();
 	let mut systems: Vec<String> = Vec::new();
+	// Shared across messages, since contiguous user messages get merged into one.
+	let mut document_names: Vec<String> = Vec::new();
 
 	if let Some(system) = chat_req.system {
 		systems.push(system);
@@ -351,23 +371,17 @@ fn into_converse_request_parts(chat_req: ChatRequest, publisher: BedrockPublishe
 				}
 			}
 			ChatRole::User => {
-				let blocks = user_content_to_converse_blocks(msg.content);
-				if !blocks.is_empty() {
-					messages.push(json!({ "role": "user", "content": blocks }));
-				}
+				let blocks = user_content_to_converse_blocks(msg.content, &mut document_names);
+				push_converse_message(&mut messages, "user", blocks);
 			}
 			ChatRole::Assistant => {
 				let blocks = assistant_content_to_converse_blocks(msg.content, publisher);
-				if !blocks.is_empty() {
-					messages.push(json!({ "role": "assistant", "content": blocks }));
-				}
+				push_converse_message(&mut messages, "assistant", blocks);
 			}
 			ChatRole::Tool => {
 				// Tool responses become a user message whose content is tool_result blocks.
 				let blocks = tool_content_to_converse_blocks(msg.content);
-				if !blocks.is_empty() {
-					messages.push(json!({ "role": "user", "content": blocks }));
-				}
+				push_converse_message(&mut messages, "user", blocks);
 			}
 		}
 	}
@@ -392,14 +406,29 @@ fn into_converse_request_parts(chat_req: ChatRequest, publisher: BedrockPublishe
 	})
 }
 
-fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
+/// Push `blocks` as a `role` message, merging into the last message when it has the same role.
+/// Converse requires alternating roles, so e.g. parallel tool results must share one user message.
+fn push_converse_message(messages: &mut Vec<Value>, role: &str, blocks: Vec<Value>) {
+	if blocks.is_empty() {
+		return;
+	}
+	if let Some(last) = messages.last_mut()
+		&& last["role"] == role
+		&& let Some(content) = last.get_mut("content").and_then(Value::as_array_mut)
+	{
+		content.extend(blocks);
+		return;
+	}
+	messages.push(json!({ "role": role, "content": blocks }));
+}
+
+fn user_content_to_converse_blocks(content: MessageContent, document_names: &mut Vec<String>) -> Vec<Value> {
 	let mut blocks = Vec::new();
-	let mut document_names: Vec<String> = Vec::new();
 	for part in content {
 		match part {
 			ContentPart::Text(text) => blocks.push(json!({ "text": text })),
 			ContentPart::Binary(binary) => {
-				if let Some(block) = binary_to_converse_block(binary, &mut document_names) {
+				if let Some(block) = binary_to_converse_block(binary, document_names) {
 					blocks.push(block);
 				}
 			}
@@ -646,7 +675,7 @@ mod tests {
 
 	use super::*;
 	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ChatOptions};
+	use crate::chat::{ChatMessage, ChatOptions, ToolResponse};
 
 	#[test]
 	fn parse_usage_counts_cache_tokens_in_prompt_tokens() -> Result<()> {
@@ -728,6 +757,54 @@ mod tests {
 			payload["additionalModelRequestFields"]["thinking"]["budget_tokens"],
 			1024
 		);
+		Ok(())
+	}
+
+	#[test]
+	fn adaptive_anthropic_model_gets_adaptive_thinking_and_effort() -> Result<()> {
+		// -- Setup & Fixtures
+		let chat_req = || ChatRequest::new(vec![ChatMessage::user("hi")]);
+		let high = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+		let zero = ChatOptions::default().with_reasoning_effort(ReasoningEffort::Zero);
+
+		// -- Exec
+		let high_payload = payload_for("us.anthropic.claude-opus-5-5", chat_req(), &high)?;
+		let zero_payload = payload_for("us.anthropic.claude-opus-5-5", chat_req(), &zero)?;
+
+		// -- Check
+		assert_eq!(
+			high_payload["additionalModelRequestFields"],
+			json!({ "thinking": { "type": "adaptive" }, "output_config": { "effort": "high" } })
+		);
+		assert_eq!(high_payload["inferenceConfig"]["maxTokens"], 128000);
+		// Opus 5 rejects `thinking.type: disabled`, so `Zero` sends no reasoning fields.
+		assert_eq!(zero_payload.get("additionalModelRequestFields"), None);
+		Ok(())
+	}
+
+	#[test]
+	fn parallel_tool_responses_share_one_user_message() -> Result<()> {
+		// -- Setup & Fixtures
+		let call = |id: &str| ToolCall {
+			call_id: id.to_string(),
+			..tool_call()
+		};
+		let chat_req = ChatRequest::new(vec![ChatMessage::user("weather in Paris and Lyon?")])
+			.append_message(ChatMessage::from(vec![call("call_a"), call("call_b")]))
+			.append_message(ToolResponse::new("call_a", "20C"))
+			.append_message(ToolResponse::new("call_b", "22C"))
+			.append_message(ChatMessage::user("and tomorrow?"));
+
+		// -- Exec
+		let payload = payload_for("us.anthropic.claude-opus-5-5", chat_req, &ChatOptions::default())?;
+
+		// -- Check
+		let messages = payload["messages"].as_array().ok_or("messages")?;
+		assert_eq!(messages.len(), 3);
+		assert_eq!(messages[2]["role"], "user");
+		assert_eq!(messages[2]["content"][0]["toolResult"]["toolUseId"], "call_a");
+		assert_eq!(messages[2]["content"][1]["toolResult"]["toolUseId"], "call_b");
+		assert_eq!(messages[2]["content"][2]["text"], "and tomorrow?");
 		Ok(())
 	}
 
@@ -886,6 +963,55 @@ mod tests {
 			.filter_map(|block| block["document"]["name"].as_str())
 			.collect();
 		assert_eq!(names, ["report-v2", "report-v2-2", "document"]);
+		Ok(())
+	}
+
+	#[test]
+	fn merged_user_messages_keep_document_names_unique() -> Result<()> {
+		// -- Setup & Fixtures
+		let user = || {
+			ChatMessage::user(MessageContent::from_parts(vec![ContentPart::from_binary_base64(
+				"application/pdf",
+				"AAAA",
+				Some("report.pdf".to_string()),
+			)]))
+		};
+		let chat_req = ChatRequest::new(vec![user(), user()]);
+
+		// -- Exec
+		let payload = payload_for("amazon.nova-lite-v1:0", chat_req, &ChatOptions::default())?;
+
+		// -- Check
+		let messages = payload["messages"].as_array().ok_or("messages")?;
+		assert_eq!(messages.len(), 1);
+		let names: Vec<&str> = messages[0]["content"]
+			.as_array()
+			.ok_or("content should be an array")?
+			.iter()
+			.filter_map(|block| block["document"]["name"].as_str())
+			.collect();
+		assert_eq!(names, ["report", "report-2"]);
+		Ok(())
+	}
+
+	#[test]
+	fn full_bedrock_anthropic_id_parses_as_anthropic_model() -> Result<()> {
+		// -- Setup & Fixtures
+		let model_id = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+
+		// -- Exec
+		let model = AnthropicModel::parse(anthropic_model_name(model_id));
+
+		// -- Check
+		assert_eq!(model.normalized_name, "claude-sonnet-4-5-20250929-v1:0");
+		assert_eq!(model.version(), Some((4, 5)));
+		assert_eq!(model.date_label, Some("20250929"));
+		let payload = payload_for(
+			model_id,
+			ChatRequest::new(vec![ChatMessage::user("hi")]),
+			&ChatOptions::default(),
+		)?;
+		assert_eq!(payload["inferenceConfig"]["maxTokens"], 64000);
 		Ok(())
 	}
 
