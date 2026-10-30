@@ -255,7 +255,8 @@ fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
 		// Conservative defaults by publisher; most Bedrock publishers require maxTokens in inferenceConfig.
 		match BedrockPublisher::from_model_id(model_name) {
 			BedrockPublisher::Anthropic => {
-				AnthropicAdapter::resolve_max_tokens(anthropic_model_name(model_name), options_set)
+				let capabilities = AnthropicModel::parse(anthropic_model_name(model_name)).capabilities();
+				AnthropicAdapter::resolve_max_tokens_for_capabilities(&capabilities, options_set)
 			}
 			BedrockPublisher::AmazonNova => 5000,
 			// Reasoning tokens count against the output budget.
