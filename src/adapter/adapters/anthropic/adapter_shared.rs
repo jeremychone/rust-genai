@@ -585,8 +585,14 @@ impl AnthropicAdapter {
 			payload.x_insert("output_config", Value::Object(output_config))?;
 		}
 
+		// Some models only accept default sampling values and answer `temperature` / `top_p` with a 400.
+		// (`extra_body` can still set them.)
 		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("temperature", temperature)?;
+			if capabilities.supports_sampling_params {
+				payload.x_insert("temperature", temperature)?;
+			} else {
+				tracing::warn!("temperature is not supported by '{model_name}' and was not sent");
+			}
 		}
 
 		if !options_set.stop_sequences().is_empty() {
@@ -597,7 +603,11 @@ impl AnthropicAdapter {
 		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
 
 		if let Some(top_p) = options_set.top_p() {
-			payload.x_insert("top_p", top_p)?;
+			if capabilities.supports_sampling_params {
+				payload.x_insert("top_p", top_p)?;
+			} else {
+				tracing::warn!("top_p is not supported by '{model_name}' and was not sent");
+			}
 		}
 
 		if let Some(extra_body) = options_set.extra_body() {

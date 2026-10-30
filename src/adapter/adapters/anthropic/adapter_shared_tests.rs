@@ -12,6 +12,58 @@ use crate::resolver::AuthData;
 use crate::webc::WebResponse;
 use reqwest::StatusCode;
 
+fn anthropic_payload(model: &str, chat_options: ChatOptions) -> Value {
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, model),
+	};
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+	AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, ChatRequest::from_user("hello"), options_set)
+		.expect("to_web_request_data should succeed")
+		.payload
+}
+
+/// Claude Opus 4.7+, Sonnet 5.x, Fable and Mythos only accept the default sampling values,
+/// and answer any `temperature` or `top_p` with an HTTP 400.
+#[test]
+fn test_anthropic_sampling_params_are_omitted_for_models_that_reject_them() {
+	for model in [
+		"claude-opus-4-7",
+		"claude-opus-5-5",
+		"claude-sonnet-5-5",
+		"claude-fable-5-1",
+		"claude-mythos-5-1",
+	] {
+		let payload = anthropic_payload(model, ChatOptions::default().with_temperature(0.5).with_top_p(0.9));
+		assert!(payload.get("temperature").is_none(), "temperature sent to {model}");
+		assert!(payload.get("top_p").is_none(), "top_p sent to {model}");
+	}
+}
+
+#[test]
+fn test_anthropic_sampling_params_are_kept_for_models_that_accept_them() {
+	for model in [
+		"claude-opus-4-6",
+		"claude-sonnet-4-6",
+		"claude-haiku-4-5",
+		"claude-3-5-sonnet-latest",
+	] {
+		let payload = anthropic_payload(model, ChatOptions::default().with_temperature(0.5).with_top_p(0.9));
+		assert_eq!(payload["temperature"], 0.5, "temperature for {model}");
+		assert_eq!(payload["top_p"], 0.9, "top_p for {model}");
+	}
+}
+
+#[test]
+fn test_anthropic_extra_body_can_still_set_sampling_params() {
+	let payload = anthropic_payload(
+		"claude-opus-5-5",
+		ChatOptions::default().with_extra_body(json!({"temperature": 1.0})),
+	);
+	assert_eq!(payload["temperature"], 1.0);
+}
+
 /// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
 /// on a model that uses the `output_config` effort API (e.g. `claude-sonnet-4-6`), both
 /// `effort` and `format` must appear inside the same `output_config` JSON object.
