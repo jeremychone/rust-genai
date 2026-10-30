@@ -71,6 +71,38 @@ fn capture_usage_tail(
 	}
 }
 
+/// Slot of each streamed tool call. OpenAI sends an `index` with every delta, but some
+/// OpenAI-compatible servers (e.g. Gemini's) omit it. Without one, a delta starts the next
+/// slot when it carries an `id` different from the last one, or a function name and no `id`;
+/// any other delta continues the last slot.
+#[derive(Debug, Default)]
+struct ToolCallSlots {
+	started: usize,
+	last_id: Option<String>,
+}
+
+impl ToolCallSlots {
+	fn slot(&mut self, index: Option<usize>, id: Option<&str>, has_name: bool) -> usize {
+		let id = id.filter(|id| !id.is_empty());
+		let new_id = id.is_some_and(|id| self.last_id.as_deref() != Some(id));
+		if let Some(id) = id {
+			self.last_id = Some(id.to_string());
+		}
+		match index {
+			Some(index) => {
+				self.started = self.started.max(index + 1);
+				index
+			}
+			None => {
+				if new_id || (id.is_none() && has_name) || self.started == 0 {
+					self.started += 1;
+				}
+				self.started - 1
+			}
+		}
+	}
+}
+
 pub struct OpenAIStreamer {
 	inner: EventSourceStream,
 	options: StreamerOptions,
@@ -81,6 +113,7 @@ pub struct OpenAIStreamer {
 	captured_data: StreamerCapturedData,
 	/// Events read from a message but not returned yet, since one chunk can carry several.
 	pending_events: VecDeque<InterStreamEvent>,
+	tool_call_slots: ToolCallSlots,
 }
 
 impl OpenAIStreamer {
@@ -93,6 +126,7 @@ impl OpenAIStreamer {
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 			pending_events: VecDeque::new(),
+			tool_call_slots: ToolCallSlots::default(),
 		}
 	}
 
@@ -178,15 +212,19 @@ impl OpenAIStreamer {
 		};
 
 		for mut tool_call_obj in delta_tool_calls {
-			if let (Ok(index), Ok(mut function)) = (
-				tool_call_obj.x_take::<u32>("index"),
-				tool_call_obj.x_take::<Value>("function"),
-			) {
+			let id = tool_call_obj.get("id").and_then(Value::as_str).map(str::to_string);
+			let index = tool_call_obj.x_take::<u32>("index").ok().map(|index| index as usize);
+			if let Ok(mut function) = tool_call_obj.x_take::<Value>("function") {
+				let has_name = function
+					.get("name")
+					.and_then(Value::as_str)
+					.is_some_and(|name| !name.is_empty());
+				let index = self.tool_call_slots.slot(index, id.as_deref(), has_name);
 				let call_id = tool_call_obj.x_take::<String>("id").unwrap_or_else(|_| format!("call_{index}"));
 				let fn_name = function.x_take::<String>("name").unwrap_or_default();
 				let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 
-				let tool_call = self.capture_tool_call(index as usize, call_id, fn_name, arguments);
+				let tool_call = self.capture_tool_call(index, call_id, fn_name, arguments);
 				self.pending_events.push_back(InterStreamEvent::ToolCallChunk(tool_call));
 			}
 		}
@@ -487,5 +525,32 @@ mod tests {
 
 		assert!(usage.is_none());
 		assert_eq!(message_data["usage"]["prompt_tokens"], 11);
+	}
+
+	#[test]
+	fn test_tool_call_slots_keep_explicit_indexes() {
+		let mut slots = ToolCallSlots::default();
+		assert_eq!(slots.slot(Some(0), Some("a"), true), 0);
+		assert_eq!(slots.slot(Some(0), None, false), 0);
+		assert_eq!(slots.slot(Some(1), Some("b"), true), 1);
+	}
+
+	#[test]
+	fn test_tool_call_slots_without_index_follow_the_id() {
+		let mut slots = ToolCallSlots::default();
+		// Two parallel calls; the second one's arguments arrive in two deltas, one repeating its id.
+		assert_eq!(slots.slot(None, Some("a"), true), 0);
+		assert_eq!(slots.slot(None, Some("b"), true), 1);
+		assert_eq!(slots.slot(None, Some("b"), false), 1);
+		assert_eq!(slots.slot(None, None, false), 1);
+		assert_eq!(slots.slot(None, Some("c"), true), 2);
+	}
+
+	#[test]
+	fn test_tool_call_slots_without_index_or_id_follow_the_function_name() {
+		let mut slots = ToolCallSlots::default();
+		assert_eq!(slots.slot(None, None, true), 0);
+		assert_eq!(slots.slot(None, None, false), 0);
+		assert_eq!(slots.slot(None, None, true), 1);
 	}
 }
