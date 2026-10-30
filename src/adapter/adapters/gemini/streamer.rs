@@ -136,7 +136,9 @@ impl futures::Stream for GeminiStreamer {
 					{
 						stream_thoughts.extend(thought_signature);
 						match data {
-							GeminiPartData::Reasoning(reasoning) => stream_reasoning_content = Some(reasoning),
+							GeminiPartData::Reasoning(reasoning) => {
+								stream_reasoning_content.get_or_insert_with(String::new).push_str(&reasoning);
+							}
 							GeminiPartData::Text(text) => stream_text_content.push_str(&text),
 							GeminiPartData::Binary(_) => {
 								// For now, we do not stream binary content.
@@ -163,7 +165,7 @@ impl futures::Stream for GeminiStreamer {
 					}
 
 					if let Some(reasoning_content) = stream_reasoning_content {
-						if self.options.capture_content {
+						if self.options.capture_reasoning_content {
 							match self.captured_data.reasoning_content {
 								Some(ref mut rc) => rc.push_str(&reasoning_content),
 								None => self.captured_data.reasoning_content = Some(reasoning_content.clone()),
