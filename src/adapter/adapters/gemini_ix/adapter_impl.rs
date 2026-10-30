@@ -407,7 +407,7 @@ impl GeminiIxAdapter {
 									"type": "function_result",
 									"call_id": tool_response.call_id,
 									"name": fn_name,
-									"result": [{"type": "text", "text": tool_response.content}],
+									"result": ix_function_result_content(tool_response.content),
 								}));
 							}
 							// A user turn carries no tool calls, thoughts or reasoning text.
@@ -562,6 +562,23 @@ fn ix_function_result_name(
 
 /// Maps a `Binary` onto the matching content block, keyed by MIME type.
 /// DOC: <https://ai.google.dev/api/interactions#Resource:Content>
+/// `function_result.result` as an array of Content: the response's text and media blocks.
+fn ix_function_result_content(content: MessageContent) -> Vec<Value> {
+	let mut blocks: Vec<Value> = Vec::new();
+	for part in content {
+		match part {
+			ContentPart::Text(text) => blocks.push(json!({"type": "text", "text": text})),
+			ContentPart::Binary(binary) => blocks.push(binary_to_ix_content(binary)),
+			// Only text and binary parts are meaningful in a function result.
+			_ => {}
+		}
+	}
+	if blocks.is_empty() {
+		blocks.push(json!({"type": "text", "text": ""}));
+	}
+	blocks
+}
+
 fn binary_to_ix_content(binary: Binary) -> Value {
 	let Binary {
 		content_type, source, ..

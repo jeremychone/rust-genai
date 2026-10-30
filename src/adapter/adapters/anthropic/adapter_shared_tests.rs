@@ -1122,3 +1122,64 @@ fn test_tool_message_text_part_serializes_after_tool_result() {
 		])
 	);
 }
+
+// region:    --- Tool Response Binaries
+
+fn anthropic_payload(req: ChatRequest) -> Value {
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		req,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("to_web_request_data should succeed")
+	.payload
+}
+
+#[test]
+fn test_tool_result_with_binary_sends_content_blocks() {
+	// -- Setup & Fixtures
+	let tool_response = ToolResponse::new("toolu_1", "Screenshot taken")
+		.with_binary(Binary::from_base64("image/png", "iVBORw0KGgo=", None))
+		.with_binary(Binary::from_base64(
+			"application/pdf",
+			"JVBERi0=",
+			Some("report.pdf".to_string()),
+		));
+	let req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+	// -- Exec
+	let payload = anthropic_payload(req);
+
+	// -- Check
+	let tool_result = &payload["messages"][0]["content"][0];
+	assert_eq!(tool_result["type"], "tool_result");
+	assert_eq!(tool_result["tool_use_id"], "toolu_1");
+	assert_eq!(
+		tool_result["content"],
+		json!([
+			{"type": "text", "text": "Screenshot taken"},
+			{"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "iVBORw0KGgo="}},
+			{"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": "JVBERi0="}},
+		])
+	);
+}
+
+#[test]
+fn test_tool_result_text_only_sends_string_content() {
+	// -- Setup & Fixtures
+	let req = ChatRequest::new(vec![ChatMessage::from(ToolResponse::new("toolu_1", "25 C"))]);
+
+	// -- Exec
+	let payload = anthropic_payload(req);
+
+	// -- Check
+	assert_eq!(payload["messages"][0]["content"][0]["content"], json!("25 C"));
+}
+
+// endregion: --- Tool Response Binaries

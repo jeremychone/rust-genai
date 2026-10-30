@@ -6,7 +6,7 @@
 
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ContentPart, MessageContent,
-	ReasoningEffort, StopReason, Tool, ToolCall, ToolName, Usage,
+	ReasoningEffort, StopReason, Tool, ToolCall, ToolName, ToolResponse, Usage,
 };
 use crate::webc::WebResponse;
 use crate::{Error, ModelIden, Result};
@@ -404,12 +404,7 @@ fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 				}
 			}
 			ContentPart::ToolResponse(tool_response) => {
-				blocks.push(json!({
-					"toolResult": {
-						"toolUseId": tool_response.call_id,
-						"content": [{ "text": tool_response.content }],
-					}
-				}));
+				blocks.push(tool_response_to_converse_block(tool_response, &mut document_names));
 			}
 			// Not valid in user role for Converse — skip.
 			ContentPart::ToolCall(_) => {}
@@ -496,17 +491,37 @@ fn assistant_content_to_converse_blocks(content: MessageContent, publisher: Bedr
 
 fn tool_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
 	let mut blocks = Vec::new();
+	let mut document_names: Vec<String> = Vec::new();
 	for part in content {
 		if let ContentPart::ToolResponse(tool_response) = part {
-			blocks.push(json!({
-				"toolResult": {
-					"toolUseId": tool_response.call_id,
-					"content": [{ "text": tool_response.content }],
-				}
-			}));
+			blocks.push(tool_response_to_converse_block(tool_response, &mut document_names));
 		}
 	}
 	blocks
+}
+
+/// A `toolResult` block whose content carries the response's text, image and document blocks.
+/// Document names are shared with the rest of the message, where they must be unique.
+fn tool_response_to_converse_block(tool_response: ToolResponse, document_names: &mut Vec<String>) -> Value {
+	let mut content: Vec<Value> = Vec::new();
+	for part in tool_response.content {
+		match part {
+			ContentPart::Text(text) => content.push(json!({ "text": text })),
+			ContentPart::Binary(binary) => content.extend(binary_to_converse_block(binary, document_names)),
+			// Only text and binary parts are meaningful in a tool result.
+			_ => {}
+		}
+	}
+	// Converse requires at least one content block.
+	if content.is_empty() {
+		content.push(json!({ "text": "" }));
+	}
+	json!({
+		"toolResult": {
+			"toolUseId": tool_response.call_id,
+			"content": content,
+		}
+	})
 }
 
 fn binary_to_converse_block(binary: Binary, document_names: &mut Vec<String>) -> Option<Value> {
@@ -926,6 +941,39 @@ mod tests {
 			parts,
 			["sig:sig-1", "text:thinking", "sig:blob", r#"call:Some(["sig-1", "blob"])"#]
 		);
+		Ok(())
+	}
+
+	#[test]
+	fn tool_response_binary_goes_in_tool_result_content() -> Result<()> {
+		// -- Setup & Fixtures
+		let tool_response = ToolResponse::new("tool_1", "Screenshot taken").with_binary(Binary::from_base64(
+			"image/png",
+			"iVBORw0KGgo=",
+			None,
+		));
+		let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+		// -- Exec
+		let parts = into_converse_request_parts(chat_req, BedrockPublisher::Anthropic)?;
+
+		// -- Check
+		assert_eq!(
+			parts.messages[0],
+			json!({
+				"role": "user",
+				"content": [{
+					"toolResult": {
+						"toolUseId": "tool_1",
+						"content": [
+							{ "text": "Screenshot taken" },
+							{ "image": { "format": "png", "source": { "bytes": "iVBORw0KGgo=" } } },
+						],
+					}
+				}],
+			})
+		);
+
 		Ok(())
 	}
 }

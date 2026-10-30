@@ -585,3 +585,42 @@ fn test_openai_resp_to_chat_response_incomplete_reason_sets_stop_reason() -> Res
 
 	Ok(())
 }
+
+#[test]
+fn test_openai_resp_tool_output_with_binary_is_content_array() -> Result<()> {
+	// -- Setup & Fixtures
+	let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6");
+	let tool_response = ToolResponse::new("call_1", "Screenshot taken").with_binary(crate::chat::Binary::from_base64(
+		"image/png",
+		"iVBORw0KGgo=",
+		None,
+	));
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+	// -- Exec
+	let parts = OpenAIRespAdapter::into_openai_request_parts(&model_iden, chat_req, None)?;
+
+	// -- Check
+	let item = &parts.input_items[0];
+	assert_eq!(item["type"], "function_call_output");
+	assert_eq!(
+		item["output"],
+		json!([
+			{"type": "input_text", "text": "Screenshot taken"},
+			{"type": "input_image", "detail": "auto", "image_url": "data:image/png;base64,iVBORw0KGgo="},
+		])
+	);
+
+	Ok(())
+}
+
+#[test]
+fn test_openai_resp_tool_output_text_only_is_string() -> Result<()> {
+	let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6");
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(ToolResponse::new("call_1", "25 C"))]);
+
+	let parts = OpenAIRespAdapter::into_openai_request_parts(&model_iden, chat_req, None)?;
+
+	assert_eq!(parts.input_items[0]["output"], json!("25 C"));
+	Ok(())
+}

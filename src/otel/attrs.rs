@@ -118,7 +118,7 @@ fn part_value(part: &ContentPart) -> Option<Value> {
 		ContentPart::ToolResponse(tr) => Some(json!({
 			"type": "tool_call_response",
 			"id": tr.call_id,
-			"result": tr.content,
+			"result": tr.text_content(),
 		})),
 		ContentPart::ReasoningContent(text) => Some(json!({ "type": "reasoning", "content": text })),
 		// Opaque/internal parts: represented by type only (no content emitted).

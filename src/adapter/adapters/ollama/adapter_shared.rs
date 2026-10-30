@@ -123,7 +123,27 @@ impl OllamaAdapter {
 					}
 					ContentPart::ToolResponse(tr) => {
 						// Note: Ollama native API expects role "tool" for tool response
-						ollama_msg.x_insert("content", tr.content)?;
+						ollama_msg.x_insert("content", tr.text_content())?;
+						// Note: Ollama accepts `images` on any message role, so the tool's images ride along.
+						//       Only base64 images are supported; other binaries are dropped.
+						let mut dropped = 0;
+						for binary in tr.content.into_binaries() {
+							match binary {
+								Binary {
+									content_type,
+									source: BinarySource::Base64(data),
+									..
+								} if content_type.starts_with("image/") => images.push(data),
+								_ => dropped += 1,
+							}
+						}
+						if dropped > 0 {
+							tracing::warn!(
+								call_id = %tr.call_id,
+								dropped,
+								"ollama - only base64 images of a tool response are sent; other binary parts are dropped"
+							);
+						}
 					}
 					_ => {}
 				}
@@ -328,6 +348,24 @@ mod tests {
 		assert_eq!(cloud.payload["format"], schema);
 
 		Ok(())
+	}
+
+	#[test]
+	fn test_tool_response_images_go_in_images_field() {
+		// -- Setup & Fixtures
+		let tool_response = crate::chat::ToolResponse::new("call_1", "Screenshot taken")
+			.with_binary(Binary::from_base64("image/png", "iVBORw0KGgo=", None))
+			.with_binary(Binary::from_base64("application/pdf", "JVBERi0=", None));
+		let chat_req = ChatRequest::new(vec![crate::chat::ChatMessage::from(tool_response)]);
+
+		// -- Exec
+		let parts = OllamaAdapter::into_ollama_request_parts(chat_req).expect("request parts");
+
+		// -- Check
+		assert_eq!(
+			parts.messages[0],
+			json!({"role": "tool", "content": "Screenshot taken", "images": ["iVBORw0KGgo="]})
+		);
 	}
 }
 
