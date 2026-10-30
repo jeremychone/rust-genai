@@ -1,7 +1,9 @@
 use super::parse_cache_creation_details;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
-use crate::chat::{ChatOptionsSet, CustomPart, PromptTokensDetails, StopReason, ToolCall, Usage};
+use crate::chat::{
+	ChatOptionsSet, CompletionTokensDetails, CustomPart, PromptTokensDetails, StopReason, ToolCall, Usage,
+};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -411,67 +413,11 @@ impl AnthropicStreamer {
 			};
 
 			// NOTE: Permissive on this one; if the usage object is absent, treat it as nonexistent (for now)
-			let Ok(mut usage_value) = data.x_take::<Value>(usage_path) else {
+			let Ok(usage_value) = data.x_take::<Value>(usage_path) else {
 				return Ok(());
 			};
 
-			// -- Capture the eventual input/output tokens
-			let input_tokens = usage_value.x_take::<i32>("input_tokens").ok();
-			let output_tokens = usage_value.x_take::<i32>("output_tokens").ok();
-
-			// -- Capture cache tokens.
-			// Standard Anthropic reports them in `message_start` and repeats them in `message_delta`;
-			// some gateways (e.g. Alibaba DashScope / Qwen) report them only in `message_delta`.
-			// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
-			// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
-			let cache_creation: i32 = usage_value.x_get("cache_creation_input_tokens").unwrap_or(0);
-			let cache_read: i32 = usage_value.x_get("cache_read_input_tokens").unwrap_or(0);
-
-			// Parse cache_creation breakdown if present (TTL-specific breakdown)
-			let cache_creation_details = usage_value
-				.x_get::<Value>("cache_creation")
-				.ok()
-				.as_ref()
-				.and_then(parse_cache_creation_details);
-
-			let has_cache = cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some();
-
-			// Nothing to capture from this snapshot, leave `usage` as-is (possibly None).
-			if input_tokens.is_none() && output_tokens.is_none() && !has_cache {
-				return Ok(());
-			}
-
-			let usage = self.captured_data.usage.get_or_insert(Usage::default());
-
-			if let Some(input_tokens) = input_tokens {
-				usage.prompt_tokens = Some(input_tokens + cache_creation + cache_read);
-			}
-			// NOTE: Cache tokens without `input_tokens` (gateway shape) are deliberately NOT added
-			// to `prompt_tokens`, since gateway token accounting is provider-specific.
-
-			if let Some(output_tokens) = output_tokens {
-				usage.completion_tokens = Some(output_tokens);
-			}
-
-			if has_cache {
-				// Anthropic sends the `cache_creation` breakdown only in `message_start`, while
-				// `message_delta` repeats the totals without it. Keep the earlier breakdown so the
-				// later snapshot does not erase it.
-				let cache_creation_details = cache_creation_details.or_else(|| {
-					usage
-						.prompt_tokens_details
-						.as_ref()
-						.and_then(|details| details.cache_creation_details.clone())
-				});
-
-				// Set prompt_tokens_details (match into_usage behavior: always Some(value))
-				usage.prompt_tokens_details = Some(PromptTokensDetails {
-					cache_creation_tokens: Some(cache_creation),
-					cache_creation_details,
-					cached_tokens: Some(cache_read),
-					audio_tokens: None,
-				});
-			}
+			merge_usage_snapshot(&mut self.captured_data.usage, usage_value);
 		}
 
 		Ok(())
@@ -540,10 +486,93 @@ impl AnthropicStreamer {
 	}
 }
 
+/// Merges one Anthropic `message_start` / `message_delta` usage snapshot into the captured usage.
+///
+/// Mirrors `AnthropicAdapter::into_usage()` for the non-streaming path.
+fn merge_usage_snapshot(captured: &mut Option<Usage>, mut usage_value: Value) {
+	// -- Capture the eventual input/output tokens
+	let input_tokens = usage_value.x_take::<i32>("input_tokens").ok();
+	let output_tokens = usage_value.x_take::<i32>("output_tokens").ok();
+
+	// -- Capture the thinking share of `output_tokens` (`output_tokens_details.thinking_tokens`),
+	// mapped to `completion_tokens_details.reasoning_tokens` like `AnthropicAdapter::into_usage()`.
+	let thinking_tokens = usage_value
+		.get("output_tokens_details")
+		.and_then(|details| details.get("thinking_tokens"))
+		.and_then(Value::as_i64)
+		.map(|tokens| tokens as i32)
+		.filter(|&tokens| tokens > 0);
+
+	// -- Capture cache tokens.
+	// Standard Anthropic reports them in `message_start` and repeats them in `message_delta`;
+	// some gateways (e.g. Alibaba DashScope / Qwen) report them only in `message_delta`.
+	// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
+	// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
+	let cache_creation: i32 = usage_value.x_get("cache_creation_input_tokens").unwrap_or(0);
+	let cache_read: i32 = usage_value.x_get("cache_read_input_tokens").unwrap_or(0);
+
+	// Parse cache_creation breakdown if present (TTL-specific breakdown)
+	let cache_creation_details = usage_value
+		.x_get::<Value>("cache_creation")
+		.ok()
+		.as_ref()
+		.and_then(parse_cache_creation_details);
+
+	let has_cache = cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some();
+
+	// Nothing to capture from this snapshot, leave `usage` as-is (possibly None).
+	if input_tokens.is_none() && output_tokens.is_none() && thinking_tokens.is_none() && !has_cache {
+		return;
+	}
+
+	let usage = captured.get_or_insert(Usage::default());
+
+	if let Some(input_tokens) = input_tokens {
+		usage.prompt_tokens = Some(input_tokens + cache_creation + cache_read);
+	}
+	// NOTE: Cache tokens without `input_tokens` (gateway shape) are deliberately NOT added
+	// to `prompt_tokens`, since gateway token accounting is provider-specific.
+
+	if let Some(output_tokens) = output_tokens {
+		usage.completion_tokens = Some(output_tokens);
+	}
+
+	if let Some(reasoning_tokens) = thinking_tokens {
+		usage.completion_tokens_details = Some(CompletionTokensDetails {
+			accepted_prediction_tokens: None,
+			rejected_prediction_tokens: None,
+			reasoning_tokens: Some(reasoning_tokens),
+			audio_tokens: None,
+		});
+	}
+
+	if has_cache {
+		// Anthropic sends the `cache_creation` breakdown only in `message_start`, while
+		// `message_delta` repeats the totals without it. Keep the earlier breakdown so the
+		// later snapshot does not erase it.
+		let cache_creation_details = cache_creation_details.or_else(|| {
+			usage
+				.prompt_tokens_details
+				.as_ref()
+				.and_then(|details| details.cache_creation_details.clone())
+		});
+
+		// Set prompt_tokens_details (match into_usage behavior: always Some(value))
+		usage.prompt_tokens_details = Some(PromptTokensDetails {
+			cache_creation_tokens: Some(cache_creation),
+			cache_creation_details,
+			cached_tokens: Some(cache_read),
+			audio_tokens: None,
+		});
+	}
+}
+
 #[cfg(test)]
 mod tests {
-	use super::ThinkingBlock;
+	use super::{ThinkingBlock, merge_usage_snapshot};
 	use crate::adapter::inter_stream::InterStreamThoughtBlock;
+	use crate::chat::Usage;
+	use serde_json::json;
 
 	fn signature(start: &str, deltas: &[&str]) -> Option<String> {
 		let mut block = ThinkingBlock::new(None, Some(start.to_string()));
@@ -574,5 +603,35 @@ mod tests {
 		// Signatures are opaque base64, so no resend/overlap collapsing is applied.
 		assert_eq!(signature("ab", &["ab"]).as_deref(), Some("abab"));
 		assert_eq!(signature("", &["QUJD", "QUJD"]).as_deref(), Some("QUJDQUJD"));
+	}
+
+	#[test]
+	fn stream_usage_captures_thinking_tokens_as_reasoning_tokens() {
+		let mut usage: Option<Usage> = None;
+		merge_usage_snapshot(&mut usage, json!({"input_tokens": 25, "output_tokens": 1}));
+		merge_usage_snapshot(
+			&mut usage,
+			json!({"output_tokens": 120, "output_tokens_details": {"thinking_tokens": 80}}),
+		);
+
+		let usage = usage.expect("usage");
+		assert_eq!(usage.prompt_tokens, Some(25));
+		assert_eq!(usage.completion_tokens, Some(120));
+		assert_eq!(
+			usage.completion_tokens_details.and_then(|details| details.reasoning_tokens),
+			Some(80)
+		);
+	}
+
+	#[test]
+	fn stream_usage_without_thinking_tokens_has_no_completion_details() {
+		let mut usage: Option<Usage> = None;
+		merge_usage_snapshot(&mut usage, json!({"input_tokens": 25, "output_tokens": 10}));
+		merge_usage_snapshot(
+			&mut usage,
+			json!({"output_tokens": 12, "output_tokens_details": {"thinking_tokens": 0}}),
+		);
+
+		assert!(usage.expect("usage").completion_tokens_details.is_none());
 	}
 }
