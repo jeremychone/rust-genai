@@ -1,8 +1,8 @@
 use super::OpenAIAdapter;
 use crate::adapter::AdapterKind;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
-use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
+use crate::chat::{ChatOptionsSet, CustomPart, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
@@ -81,6 +81,8 @@ pub struct OpenAIStreamer {
 	captured_data: StreamerCapturedData,
 	/// Events read from a message but not returned yet, since one chunk can carry several.
 	pending_events: VecDeque<InterStreamEvent>,
+	/// OpenRouter's streamed `reasoning_details`, merged back into whole blocks.
+	reasoning_details: Vec<Value>,
 }
 
 impl OpenAIStreamer {
@@ -93,6 +95,7 @@ impl OpenAIStreamer {
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
 			pending_events: VecDeque::new(),
+			reasoning_details: Vec::new(),
 		}
 	}
 
@@ -260,6 +263,21 @@ impl futures::Stream for OpenAIStreamer {
 							None
 						};
 
+						// OpenRouter's reasoning blocks lead the content as `Custom` parts, as in a
+						// non-streamed answer, so the next request sends them back as `reasoning_details`.
+						let reasoning_details = std::mem::take(&mut self.reasoning_details);
+						let captured_thought_blocks = (!reasoning_details.is_empty()).then(|| {
+							reasoning_details
+								.into_iter()
+								.map(|data| {
+									InterStreamThoughtBlock::Custom(CustomPart {
+										model_iden: Some(self.options.model_iden.clone()),
+										data,
+									})
+								})
+								.collect()
+						});
+
 						// Return the internal stream end
 						let inter_stream_end = InterStreamEnd {
 							captured_usage,
@@ -268,7 +286,7 @@ impl futures::Stream for OpenAIStreamer {
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls,
 							captured_thought_signatures: None,
-							captured_thought_blocks: None,
+							captured_thought_blocks,
 							captured_response_id: None,
 						};
 
@@ -297,6 +315,11 @@ impl futures::Stream for OpenAIStreamer {
 						// One chunk can carry several pieces (reasoning and content, or more than one
 						// `delta.tool_calls` entry). Queue an event for each, in that order.
 						self.queue_delta_text(&mut first_choice);
+						if self.options.capture_reasoning_content
+							&& let Ok(details) = first_choice.x_take::<Value>("/delta/reasoning_details")
+						{
+							merge_reasoning_details(&mut self.reasoning_details, details);
+						}
 						if let Ok(delta_tool_calls) = first_choice.x_take::<Value>("/delta/tool_calls") {
 							self.queue_delta_tool_calls(delta_tool_calls);
 						}
@@ -367,6 +390,53 @@ fn take_delta_content(choice: &mut Value) -> (Option<String>, Option<String>) {
 	}
 }
 
+/// Folds one streamed `delta.reasoning_details` array into the blocks gathered so far.
+///
+/// OpenRouter streams a `reasoning.text` or `reasoning.summary` block in fragments, with a text
+/// block's `signature` on a last, text-less piece. A fragment extends the last block when it has
+/// the same type, unless that block is signed: the signature closes the block it signs, so two
+/// signed thinking blocks stay apart. `index` can't tell blocks apart, since some providers send
+/// `index: 0` on every piece. Any other piece (`reasoning.encrypted`) is a whole block.
+fn merge_reasoning_details(blocks: &mut Vec<Value>, delta: Value) {
+	let Value::Array(pieces) = delta else {
+		return;
+	};
+	for piece in pieces {
+		let Value::Object(piece) = piece else {
+			continue;
+		};
+		let appended_key = match piece.get("type").and_then(Value::as_str) {
+			Some("reasoning.text") => "text",
+			Some("reasoning.summary") => "summary",
+			_ => {
+				blocks.push(Value::Object(piece));
+				continue;
+			}
+		};
+		let Some(Value::Object(block)) = blocks
+			.last_mut()
+			.filter(|block| block.get("type") == piece.get("type") && !is_set(block.get("signature")))
+		else {
+			blocks.push(Value::Object(piece));
+			continue;
+		};
+		for (key, value) in piece {
+			if key == appended_key
+				&& let (Some(Value::String(gathered)), Value::String(more)) = (block.get_mut(&key), &value)
+			{
+				gathered.push_str(more);
+			} else if !is_set(block.get(&key)) {
+				block.insert(key, value);
+			}
+		}
+	}
+}
+
+/// Whether a field holds something other than `null` or `""`.
+fn is_set(value: Option<&Value>) -> bool {
+	value.is_some_and(|value| !value.is_null() && value.as_str() != Some(""))
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -394,6 +464,74 @@ mod tests {
 
 		let mut empty = serde_json::json!({"delta": {"role": "assistant"}});
 		assert_eq!(take_delta_content(&mut empty), (None, None));
+	}
+
+	fn merged(deltas: Vec<Value>) -> Vec<Value> {
+		let mut blocks = Vec::new();
+		for delta in deltas {
+			merge_reasoning_details(&mut blocks, delta);
+		}
+		blocks
+	}
+
+	/// OpenRouter streams unsigned reasoning one token per piece, all at `index: 0`
+	/// (frames trimmed from a live `nvidia/nemotron-3.5-lightning:free` stream).
+	#[test]
+	fn test_merge_reasoning_details_joins_text_pieces() {
+		let blocks = merged(vec![
+			serde_json::json!([{"type": "reasoning.text", "text": "The", "format": "unknown", "index": 0}]),
+			serde_json::json!([{"type": "reasoning.text", "text": " user", "format": "unknown", "index": 0}]),
+			serde_json::json!([{"type": "reasoning.text", "text": " asks", "format": "unknown", "index": 0}]),
+		]);
+		assert_eq!(
+			blocks,
+			[serde_json::json!({"type": "reasoning.text", "text": "The user asks", "format": "unknown", "index": 0})]
+		);
+	}
+
+	/// A signature closes the text block it signs, so two signed Claude thinking blocks stay
+	/// apart even when both use `index: 0`, and an encrypted block is never merged.
+	#[test]
+	fn test_merge_reasoning_details_keeps_signed_blocks_apart() {
+		let text = |text: &str| serde_json::json!([{"type": "reasoning.text", "text": text, "signature": null, "format": "anthropic-claude-v1", "index": 0}]);
+		let signature = |signature: &str| serde_json::json!([{"type": "reasoning.text", "signature": signature, "format": "anthropic-claude-v1", "index": 0}]);
+		let blocks = merged(vec![
+			text("Read "),
+			text("the file."),
+			signature("sig-1"),
+			text("Then check."),
+			signature("sig-2"),
+			serde_json::json!([
+				{"type": "reasoning.encrypted", "data": "opaque-1", "index": 1},
+				{"type": "reasoning.encrypted", "data": "opaque-2", "index": 1}
+			]),
+		]);
+		assert_eq!(
+			blocks,
+			[
+				serde_json::json!({"type": "reasoning.text", "text": "Read the file.", "signature": "sig-1", "format": "anthropic-claude-v1", "index": 0}),
+				serde_json::json!({"type": "reasoning.text", "text": "Then check.", "signature": "sig-2", "format": "anthropic-claude-v1", "index": 0}),
+				serde_json::json!({"type": "reasoning.encrypted", "data": "opaque-1", "index": 1}),
+				serde_json::json!({"type": "reasoning.encrypted", "data": "opaque-2", "index": 1}),
+			]
+		);
+	}
+
+	#[test]
+	fn test_merge_reasoning_details_joins_summary_pieces() {
+		let blocks = merged(vec![
+			serde_json::json!([{"type": "reasoning.summary", "summary": "Check ", "format": "openai-responses-v1", "index": 0}]),
+			serde_json::json!([{"type": "reasoning.summary", "summary": "Paris.", "index": 0}]),
+			serde_json::json!("not an array"),
+			serde_json::json!([{"type": "reasoning.encrypted", "data": "opaque", "format": "openai-responses-v1", "index": 0}]),
+		]);
+		assert_eq!(
+			blocks,
+			[
+				serde_json::json!({"type": "reasoning.summary", "summary": "Check Paris.", "format": "openai-responses-v1", "index": 0}),
+				serde_json::json!({"type": "reasoning.encrypted", "data": "opaque", "format": "openai-responses-v1", "index": 0}),
+			]
+		);
 	}
 
 	#[test]
