@@ -110,7 +110,7 @@ pub(super) fn build_converse_payload(
 			model_name,
 			effort,
 			options_set.capture_reasoning_content().unwrap_or_default(),
-		) {
+		)? {
 		payload.x_insert("additionalModelRequestFields", additional)?;
 	}
 
@@ -270,35 +270,36 @@ fn publisher_additional_fields(
 	model_name: &str,
 	effort: &ReasoningEffort,
 	capture_reasoning_content: bool,
-) -> Option<Value> {
-	match publisher {
-		// Use adaptive thinking.
+) -> Result<Option<Value>> {
+	let fields = match publisher {
 		BedrockPublisher::Anthropic => match effort {
+			// Bedrock rejects `thinking.type: disabled` (unlike the Anthropic API), so `Zero` sends
+			// nothing; models with thinking on by default (e.g., Opus 5) keep their default there.
 			ReasoningEffort::Zero => None,
-			effort => anthropic_reasoning_fields(anthropic_model_name(model_name), effort, capture_reasoning_content)
-				.ok()
-				.flatten(),
+			effort => anthropic_reasoning_fields(anthropic_model_name(model_name), effort, capture_reasoning_content)?,
 		},
 		BedrockPublisher::AmazonNova => {
 			// Nova 2 takes `reasoningConfig { type, maxReasoningEffort }` (required when enabled).
 			// Reasoning is off by default, so `Zero` sends nothing; Nova 1 and Titan (also `amazon.*`)
 			// don't accept the field.
-			let level = nova_reasoning_effort(effort)?;
-			Some(json!({
-				"inferenceConfig": { "reasoningConfig": { "type": "enabled", "maxReasoningEffort": level } }
-			}))
+			nova_reasoning_effort(effort).map(|level| {
+				json!({
+					"inferenceConfig": { "reasoningConfig": { "type": "enabled", "maxReasoningEffort": level } }
+				})
+			})
 		}
 		BedrockPublisher::OpenAI => {
 			// Passed through to the OpenAI Responses API, which takes `reasoning.effort`.
 			// `reasoning.summary` is rejected on Bedrock, so reasoning only comes back encrypted.
 			let effort = match effort {
-				ReasoningEffort::Zero => "none",
-				other => other.as_keyword()?,
+				ReasoningEffort::Zero => Some("none"),
+				other => other.as_keyword(),
 			};
-			Some(json!({ "reasoning": { "effort": effort } }))
+			effort.map(|effort| json!({ "reasoning": { "effort": effort } }))
 		}
 		BedrockPublisher::Other => None,
-	}
+	};
+	Ok(fields)
 }
 
 fn anthropic_reasoning_fields(
@@ -354,6 +355,8 @@ struct ConverseRequestParts {
 fn into_converse_request_parts(chat_req: ChatRequest, publisher: BedrockPublisher) -> Result<ConverseRequestParts> {
 	let mut messages: Vec<Value> = Vec::new();
 	let mut systems: Vec<String> = Vec::new();
+	// Shared across messages, since contiguous user messages get merged into one.
+	let mut document_names: Vec<String> = Vec::new();
 
 	if let Some(system) = chat_req.system {
 		systems.push(system);
@@ -367,7 +370,7 @@ fn into_converse_request_parts(chat_req: ChatRequest, publisher: BedrockPublishe
 				}
 			}
 			ChatRole::User => {
-				let blocks = user_content_to_converse_blocks(msg.content);
+				let blocks = user_content_to_converse_blocks(msg.content, &mut document_names);
 				push_converse_message(&mut messages, "user", blocks);
 			}
 			ChatRole::Assistant => {
@@ -402,15 +405,15 @@ fn into_converse_request_parts(chat_req: ChatRequest, publisher: BedrockPublishe
 	})
 }
 
-// this is needed for parallel tool call results. We have to merge
-// the contiguous messages based on the lsat role.
+/// Push `blocks` as a `role` message, merging into the last message when it has the same role.
+/// Converse requires alternating roles, so e.g. parallel tool results must share one user message.
 fn push_converse_message(messages: &mut Vec<Value>, role: &str, blocks: Vec<Value>) {
 	if blocks.is_empty() {
 		return;
 	}
 	if let Some(last) = messages.last_mut()
 		&& last["role"] == role
-		&& let Some(content) = last["content"].as_array_mut()
+		&& let Some(content) = last.get_mut("content").and_then(Value::as_array_mut)
 	{
 		content.extend(blocks);
 		return;
@@ -418,14 +421,13 @@ fn push_converse_message(messages: &mut Vec<Value>, role: &str, blocks: Vec<Valu
 	messages.push(json!({ "role": role, "content": blocks }));
 }
 
-fn user_content_to_converse_blocks(content: MessageContent) -> Vec<Value> {
+fn user_content_to_converse_blocks(content: MessageContent, document_names: &mut Vec<String>) -> Vec<Value> {
 	let mut blocks = Vec::new();
-	let mut document_names: Vec<String> = Vec::new();
 	for part in content {
 		match part {
 			ContentPart::Text(text) => blocks.push(json!({ "text": text })),
 			ContentPart::Binary(binary) => {
-				if let Some(block) = binary_to_converse_block(binary, &mut document_names) {
+				if let Some(block) = binary_to_converse_block(binary, document_names) {
 					blocks.push(block);
 				}
 			}
@@ -960,6 +962,55 @@ mod tests {
 			.filter_map(|block| block["document"]["name"].as_str())
 			.collect();
 		assert_eq!(names, ["report-v2", "report-v2-2", "document"]);
+		Ok(())
+	}
+
+	#[test]
+	fn merged_user_messages_keep_document_names_unique() -> Result<()> {
+		// -- Setup & Fixtures
+		let user = || {
+			ChatMessage::user(MessageContent::from_parts(vec![ContentPart::from_binary_base64(
+				"application/pdf",
+				"AAAA",
+				Some("report.pdf".to_string()),
+			)]))
+		};
+		let chat_req = ChatRequest::new(vec![user(), user()]);
+
+		// -- Exec
+		let payload = payload_for("amazon.nova-lite-v1:0", chat_req, &ChatOptions::default())?;
+
+		// -- Check
+		let messages = payload["messages"].as_array().ok_or("messages")?;
+		assert_eq!(messages.len(), 1);
+		let names: Vec<&str> = messages[0]["content"]
+			.as_array()
+			.ok_or("content should be an array")?
+			.iter()
+			.filter_map(|block| block["document"]["name"].as_str())
+			.collect();
+		assert_eq!(names, ["report", "report-2"]);
+		Ok(())
+	}
+
+	#[test]
+	fn full_bedrock_anthropic_id_parses_as_anthropic_model() -> Result<()> {
+		// -- Setup & Fixtures
+		let model_id = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+
+		// -- Exec
+		let model = AnthropicModel::parse(anthropic_model_name(model_id));
+
+		// -- Check
+		assert_eq!(model.normalized_name, "claude-sonnet-4-5-20250929-v1:0");
+		assert_eq!(model.version(), Some((4, 5)));
+		assert_eq!(model.date_label, Some("20250929"));
+		let payload = payload_for(
+			model_id,
+			ChatRequest::new(vec![ChatMessage::user("hi")]),
+			&ChatOptions::default(),
+		)?;
+		assert_eq!(payload["inferenceConfig"]["maxTokens"], 64000);
 		Ok(())
 	}
 
