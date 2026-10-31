@@ -1,8 +1,8 @@
 use super::{OpenAIAdapter, ToWebRequestDataOptions};
 use crate::adapter::AdapterKind;
 use crate::chat::{
-	CacheControl, ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest, ContentPart, MessageContent, Tool, ToolCall,
-	ToolChoice,
+	Binary, CacheControl, ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest, ContentPart, MessageContent, Tool,
+	ToolCall, ToolChoice, ToolResponse,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::{ModelIden, ServiceTarget};
@@ -631,21 +631,122 @@ fn payload(
 
 // endregion: --- Support
 
+// region:    --- Tool Response Binaries
+
+fn tool_call(call_id: &str, fn_name: &str) -> ToolCall {
+	ToolCall {
+		call_id: call_id.to_string(),
+		fn_name: fn_name.to_string(),
+		fn_arguments: json!({}),
+		thought_signatures: None,
+	}
+}
+
+/// The request a tool-using agent sends: each tool response in its own `Tool` message.
+fn seed_tool_turn(second_response: ToolResponse) -> ChatRequest {
+	ChatRequest::new(vec![
+		ChatMessage::user("Check the weather and take a screenshot."),
+		ChatMessage::assistant(vec![
+			tool_call("call_1", "get_weather"),
+			tool_call("call_2", "screenshot"),
+		]),
+		ChatMessage::from(ToolResponse::new("call_1", "Sunny").with_fn_name("get_weather")),
+		ChatMessage::from(second_response),
+	])
+}
+
+fn roles(messages: &[Value]) -> Vec<&str> {
+	messages.iter().map(|m| m["role"].as_str().unwrap_or_default()).collect()
+}
+
 #[test]
-fn test_tool_response_binary_is_dropped_and_text_kept() -> Result<()> {
+fn test_tool_response_binary_goes_in_user_message_after_tool_messages() -> Result<()> {
 	// -- Setup & Fixtures
-	let tool_response = crate::chat::ToolResponse::new("call_1", "Screenshot taken")
-		.with_binary(crate::chat::Binary::from_base64("image/png", "iVBORw0KGgo=", None));
-	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+	let screenshot = ToolResponse::new("call_2", "Screenshot taken")
+		.with_fn_name("screenshot")
+		.with_binary(Binary::from_base64("image/png", "iVBORw0KGgo=", None));
+	let chat_req = seed_tool_turn(screenshot);
 
 	// -- Exec
 	let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req, None)?;
 
 	// -- Check
 	assert_eq!(
-		parts.messages[0],
-		json!({"role": "tool", "content": "Screenshot taken", "tool_call_id": "call_1"})
+		roles(&parts.messages),
+		vec!["user", "assistant", "tool", "tool", "user"]
+	);
+	assert_eq!(
+		parts.messages[3],
+		json!({"role": "tool", "content": "Screenshot taken", "tool_call_id": "call_2"})
+	);
+	assert_eq!(
+		parts.messages[4],
+		json!({"role": "user", "content": [
+			{"type": "text", "text": "Attachments returned by tool call call_2 (screenshot):"},
+			{"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBORw0KGgo="}},
+		]})
 	);
 
 	Ok(())
 }
+
+#[test]
+fn test_tool_response_without_binary_adds_no_user_message() -> Result<()> {
+	// -- Setup & Fixtures
+	let chat_req = seed_tool_turn(ToolResponse::new("call_2", "No screen").with_fn_name("screenshot"));
+
+	// -- Exec
+	let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req, None)?;
+
+	// -- Check
+	assert_eq!(roles(&parts.messages), vec!["user", "assistant", "tool", "tool"]);
+
+	Ok(())
+}
+
+#[test]
+fn test_tool_response_url_image_and_empty_text() -> Result<()> {
+	// -- Setup & Fixtures
+	let screenshot = ToolResponse::new("call_2", "")
+		.with_fn_name("screenshot")
+		.with_binary(Binary::from_url("image/png", "https://example.com/shot.png", None));
+	let chat_req = seed_tool_turn(screenshot);
+
+	// -- Exec
+	let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req, None)?;
+
+	// -- Check
+	// An empty tool content is replaced, as some providers reject it.
+	assert_eq!(parts.messages[3]["content"], "[1 attachment in the next user message]");
+	assert_eq!(
+		parts.messages[4]["content"][1],
+		json!({"type": "image_url", "image_url": {"url": "https://example.com/shot.png"}})
+	);
+
+	Ok(())
+}
+
+#[test]
+fn test_tool_response_binary_comes_before_next_assistant_message() -> Result<()> {
+	// -- Setup & Fixtures
+	let screenshot = ToolResponse::new("call_2", "Screenshot taken")
+		.with_fn_name("screenshot")
+		.with_binary(Binary::from_base64("image/png", "iVBORw0KGgo=", None));
+	let chat_req = seed_tool_turn(screenshot)
+		.append_message(ChatMessage::assistant("It is sunny, and the screen shows a duck."))
+		.append_message(ChatMessage::user("Thanks"));
+
+	// -- Exec
+	let parts = OpenAIAdapter::into_openai_request_parts(&test_model(), chat_req, None)?;
+
+	// -- Check
+	assert_eq!(
+		roles(&parts.messages),
+		vec!["user", "assistant", "tool", "tool", "user", "assistant", "user"]
+	);
+	assert_eq!(parts.messages[4]["content"][1]["type"], "image_url");
+
+	Ok(())
+}
+
+// endregion: --- Tool Response Binaries

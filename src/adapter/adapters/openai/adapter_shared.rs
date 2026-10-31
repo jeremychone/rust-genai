@@ -5,11 +5,11 @@ use super::cache_policy::{
 };
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
-use crate::adapter::adapters::support::{get_api_key, tool_response_text_only};
+use crate::adapter::adapters::support::{get_api_key, warn_dropped_tool_response_binaries};
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, CustomPart, ReasoningEffort,
-	ToolChoice, Usage,
+	Binary, BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, CustomPart,
+	ReasoningEffort, ToolChoice, ToolResponse, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebClient;
@@ -315,7 +315,14 @@ impl OpenAIAdapter {
 		}
 
 		// -- Process the messages
+		// Binaries of tool responses can't go in a `tool` message, and nothing may come between the
+		// `tool` messages that answer an assistant's tool calls. So they are held here and sent as
+		// one `user` message right after the run of tool messages.
+		let mut tool_attachments: Vec<Value> = Vec::new();
 		for msg in chat_req.messages {
+			if msg.role != ChatRole::Tool {
+				flush_tool_attachments(&mut messages, &mut tool_attachments);
+			}
 			let cache_controlled = cache_policy.is_some()
 				&& msg
 					.options
@@ -351,56 +358,7 @@ impl OpenAIAdapter {
 						for part in msg.content {
 							match part {
 								ContentPart::Text(content) => values.push(json!({"type": "text", "text": content})),
-								ContentPart::Binary(binary) => {
-									let is_audio = binary.is_audio();
-									let is_image = binary.is_image();
-
-									// let Binary {
-									// 	content_type, source, ..
-									// } = binary;
-
-									if is_audio {
-										match &binary.source {
-											BinarySource::Url(_url) => {
-												warn!(
-													"OpenAI doesn't support audio from URL, need to handle it gracefully"
-												);
-											}
-											BinarySource::Base64(content) => {
-												let mut format =
-													binary.content_type.split('/').next_back().unwrap_or("");
-												if format == "mpeg" {
-													format = "mp3";
-												}
-												values.push(json!({
-													"type": "input_audio",
-													"input_audio": {
-														"data": content,
-														"format": format
-													}
-												}));
-											}
-										}
-									} else if is_image {
-										let image_url = binary.into_url();
-										values.push(json!({"type": "image_url", "image_url": {"url": image_url}}));
-									} else if binary.is_video() {
-										// OpenAI-compatible providers that support video (e.g. Alibaba qwen)
-										// accept it as a `video_url` content part, symmetric to `image_url`.
-										let video_url = binary.into_url();
-										values.push(json!({"type": "video_url", "video_url": {"url": video_url}}));
-									} else if matches!(&binary.source, BinarySource::Url(_)) {
-										// TODO: Need to return error
-										warn!("OpenAI doesn't support file from URL, need to handle it gracefully");
-									} else {
-										let filename = binary.name.clone();
-										let file_base64_url = binary.into_url();
-										values.push(json!({"type": "file", "file": {
-											"filename": filename,
-											"file_data": file_base64_url
-										}}))
-									}
-								}
+								ContentPart::Binary(binary) => values.extend(binary_to_openai_part(binary)),
 
 								// Use `match` instead of `if let`. This will allow to future-proof this
 								// implementation in case some new message content types would appear,
@@ -499,8 +457,15 @@ impl OpenAIAdapter {
 				ChatRole::Tool => {
 					for part in msg.content {
 						if let ContentPart::ToolResponse(tool_response) = part {
-							// Chat Completions tool messages accept only text.
-							let content = tool_response_text_only(model_iden, &tool_response);
+							// Chat Completions tool messages accept only text; binaries go in the
+							// `user` message that follows the tool messages.
+							let attached = push_tool_attachments(model_iden, &tool_response, &mut tool_attachments);
+							let mut content = tool_response.text_content();
+							if content.is_empty() && attached > 0 {
+								// An empty tool message content is rejected by some providers.
+								let noun = if attached == 1 { "attachment" } else { "attachments" };
+								content = format!("[{attached} {noun} in the next user message]");
+							}
 							messages.push(json!({
 								"role": "tool",
 								"content": content,
@@ -513,6 +478,8 @@ impl OpenAIAdapter {
 				}
 			}
 		}
+
+		flush_tool_attachments(&mut messages, &mut tool_attachments);
 
 		// -- Process the tools
 		let tools = chat_req.tools.map(|tools| {
@@ -623,6 +590,86 @@ pub struct ToWebRequestDataOptions {
 struct OpenAIRequestParts {
 	messages: Vec<Value>,
 	tools: Option<Vec<Value>>,
+}
+
+/// The `user` content part for a binary: `image_url`, `input_audio` (base64 only), `video_url`, or
+/// `file` (base64 only). `None` when it can't be sent.
+fn binary_to_openai_part(binary: Binary) -> Option<Value> {
+	if binary.is_audio() {
+		match &binary.source {
+			BinarySource::Url(_url) => {
+				warn!("OpenAI doesn't support audio from URL, need to handle it gracefully");
+				None
+			}
+			BinarySource::Base64(content) => {
+				let mut format = binary.content_type.split('/').next_back().unwrap_or("");
+				if format == "mpeg" {
+					format = "mp3";
+				}
+				Some(json!({
+					"type": "input_audio",
+					"input_audio": {
+						"data": content,
+						"format": format
+					}
+				}))
+			}
+		}
+	} else if binary.is_image() {
+		let image_url = binary.into_url();
+		Some(json!({"type": "image_url", "image_url": {"url": image_url}}))
+	} else if binary.is_video() {
+		// OpenAI-compatible providers that support video (e.g. Alibaba qwen)
+		// accept it as a `video_url` content part, symmetric to `image_url`.
+		let video_url = binary.into_url();
+		Some(json!({"type": "video_url", "video_url": {"url": video_url}}))
+	} else if matches!(&binary.source, BinarySource::Url(_)) {
+		// TODO: Need to return error
+		warn!("OpenAI doesn't support file from URL, need to handle it gracefully");
+		None
+	} else {
+		let filename = binary.name.clone();
+		let file_base64_url = binary.into_url();
+		Some(json!({"type": "file", "file": {
+			"filename": filename,
+			"file_data": file_base64_url
+		}}))
+	}
+}
+
+/// Adds the binaries of a tool response to `attachments`, after a text part naming the tool call.
+/// Returns how many were added; the ones that can't be sent are dropped with a warning.
+fn push_tool_attachments(model_iden: &ModelIden, tool_response: &ToolResponse, attachments: &mut Vec<Value>) -> usize {
+	let binaries = tool_response.binaries();
+	if binaries.is_empty() {
+		return 0;
+	}
+
+	let total = binaries.len();
+	let parts: Vec<Value> = binaries.into_iter().cloned().filter_map(binary_to_openai_part).collect();
+	warn_dropped_tool_response_binaries(model_iden, tool_response, total - parts.len());
+	if parts.is_empty() {
+		return 0;
+	}
+
+	let header = match &tool_response.fn_name {
+		Some(fn_name) => format!(
+			"Attachments returned by tool call {} ({fn_name}):",
+			tool_response.call_id
+		),
+		None => format!("Attachments returned by tool call {}:", tool_response.call_id),
+	};
+	let count = parts.len();
+	attachments.push(json!({"type": "text", "text": header}));
+	attachments.extend(parts);
+	count
+}
+
+/// Sends the held tool attachments, if any, as one `user` message.
+fn flush_tool_attachments(messages: &mut Vec<Value>, attachments: &mut Vec<Value>) {
+	if !attachments.is_empty() {
+		messages.push(json!({"role": "user", "content": std::mem::take(attachments)}));
+	}
 }
 
 fn apply_chat_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _scope: &'static str) -> Result<()> {

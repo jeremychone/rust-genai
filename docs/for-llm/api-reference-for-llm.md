@@ -491,7 +491,7 @@ Use through `Tool::new_web_search().with_config(WebSearchConfig { ... })` or `To
 ### `ToolResponse`
 
 - `call_id: String`, `content: MessageContent` (text parts, usually JSON, plus optional binary parts such as images or PDFs). A legacy string `content` still deserializes.
-- Binaries are sent natively by Anthropic, Bedrock Converse, OpenAI Responses, Gemini 3, Gemini Interactions and Ollama (base64 images only); other providers receive only the text parts (dropped binaries are logged with a warning).
+- Binaries are sent natively by Anthropic, Bedrock Converse, OpenAI Responses, Gemini 3, Gemini Interactions and Ollama (base64 images only). OpenAI Chat Completions and compatible adapters send them in a `user` message right after the tool messages. Gemini before 3 receives only the text parts (dropped binaries are logged with a warning).
 - `fn_name: Option<String>`: Name of the function that produced the response. Gemini uses it as `functionResponse.name`. When unset, the adapter looks up the matching call in the request.
 - `ToolResponse::new(call_id, content: impl Into<MessageContent>)`: Constructor. `fn_name` is `None`.
 - `ToolResponse::from_tool_call(tool_call, content)`: Constructor from the originating `ToolCall`, copying its `call_id` and `fn_name`.
