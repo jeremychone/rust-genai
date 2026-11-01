@@ -408,6 +408,47 @@ fn test_assistant_custom_thinking_blocks_keep_their_order() {
 	);
 }
 
+/// OpenRouter's `reasoning.*` blocks aren't Anthropic content (a 400 on the `type` tag), so a
+/// conversation moving to Anthropic from the gateway drops them. Other custom parts still go.
+#[test]
+fn test_assistant_drops_openrouter_reasoning_details() {
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::from_custom(
+			json!({"type": "reasoning.text", "text": "Read first.", "signature": "sig-1", "index": 0}),
+			Some(ModelIden::new(AdapterKind::OpenRouter, "anthropic/claude-sonnet-4")),
+		),
+		ContentPart::from_custom(json!({"type": "reasoning.encrypted", "data": "opaque"}), None),
+		ContentPart::from_custom(json!({"type": "server_tool_use", "id": "srv_1"}), None),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call-1".to_string(),
+			fn_name: "lookup".to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: None,
+		}),
+	]));
+	let request = ChatRequest::new(vec![assistant, ChatMessage::from(ToolResponse::new("call-1", "ok"))]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		request,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("continuation request should serialize");
+
+	assert_eq!(
+		web_req.payload["messages"][0]["content"],
+		json!([
+			{"type": "server_tool_use", "id": "srv_1"},
+			{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {}}
+		])
+	);
+}
+
 /// Unpaired reasoning/signature metadata must not fail the request. Pairing by position
 /// would sign the wrong text, so the thinking blocks are dropped and the rest of the
 /// message is still sent.

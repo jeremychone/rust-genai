@@ -2,7 +2,7 @@ use super::AnthropicAdapter;
 use super::ant_model::{AnthropicMaxTokens, AnthropicModel, AnthropicModelCapabilities};
 use crate::Result;
 use crate::adapter::adapters::anthropic::ant_reasoning::insert_anthropic_reasoning;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{get_api_key, is_reasoning_detail};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
@@ -357,6 +357,9 @@ impl AnthropicAdapter {
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) | ContentPart::ReasoningContent(_) => {}
+							// OpenRouter's reasoning blocks aren't Anthropic content: it refuses
+							// their `type` with a 400 when a conversation moves here.
+							ContentPart::Custom(custom_part) if is_reasoning_detail(&custom_part) => {}
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
 						}
 					}
