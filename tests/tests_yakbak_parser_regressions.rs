@@ -140,6 +140,36 @@ async fn openrouter_stream_keeps_reasoning_details_for_the_next_turn() -> TestRe
 	Ok(())
 }
 
+// A stream's tool call indexes can have gaps: each call keeps its own arguments, and a gap
+// adds no calls of its own, and a huge index allocates nothing.
+#[tokio::test]
+async fn openrouter_stream_keeps_tool_calls_with_sparse_indexes_apart() -> TestResult<()> {
+	let (client, _server) = replay_client("open_router", "tool_call_sparse_index_regression").await?;
+	let options = ChatOptions::default().with_capture_tool_calls(true);
+	let res = client
+		.exec_chat_stream(
+			"open_router::fixture-model",
+			ChatRequest::from_user("Read first"),
+			Some(&options),
+		)
+		.await?;
+	let end = extract_stream_end(res.stream).await?.stream_end;
+	let calls = end.captured_tool_calls().ok_or("OpenRouter tool calls")?;
+	let calls: Vec<_> = calls
+		.iter()
+		.map(|call| (call.call_id.as_str(), call.fn_name.as_str(), call.fn_arguments.clone()))
+		.collect();
+	assert_eq!(
+		calls,
+		[
+			("call_two", "read_file", json!({"path": "/runbook"})),
+			("call_seven", "list_dir", json!({})),
+			("call_max", "stat_file", json!({})),
+		]
+	);
+	Ok(())
+}
+
 // #302: keep each Gemini signature next to the part it arrived on.
 #[tokio::test]
 async fn gemini_nonstream_keeps_signature_on_function_call() -> TestResult<()> {

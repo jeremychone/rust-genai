@@ -6,7 +6,8 @@ use crate::chat::{ChatOptionsSet, CustomPart, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
-use std::collections::VecDeque;
+use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, VecDeque};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -83,6 +84,9 @@ pub struct OpenAIStreamer {
 	pending_events: VecDeque<InterStreamEvent>,
 	/// OpenRouter's streamed `reasoning_details`, merged back into whole blocks.
 	reasoning_details: Vec<Value>,
+	/// Tool calls by the stream's `index`. The stream sets it, so a map keeps a large or sparse one
+	/// from allocating or inventing slots for calls that never came.
+	tool_calls: BTreeMap<u32, ToolCall>,
 }
 
 impl OpenAIStreamer {
@@ -96,6 +100,7 @@ impl OpenAIStreamer {
 			captured_data: Default::default(),
 			pending_events: VecDeque::new(),
 			reasoning_details: Vec::new(),
+			tool_calls: BTreeMap::new(),
 		}
 	}
 
@@ -104,9 +109,9 @@ impl OpenAIStreamer {
 		self.inner.frame_tap()
 	}
 
-	/// Captures a single tool call into `captured_data.tool_calls`, merging with existing if needed.
+	/// Captures a single tool call into `tool_calls`, merging with existing if needed.
 	/// Returns the (possibly merged) tool call for use in events.
-	fn capture_tool_call(&mut self, index: usize, call_id: String, fn_name: String, arguments: String) -> ToolCall {
+	fn capture_tool_call(&mut self, index: u32, call_id: String, fn_name: String, arguments: String) -> ToolCall {
 		let tool_call = ToolCall {
 			call_id: call_id.clone(),
 			fn_name: fn_name.clone(),
@@ -118,24 +123,22 @@ impl OpenAIStreamer {
 			return tool_call;
 		}
 
-		let calls = self.captured_data.tool_calls.get_or_insert_with(Vec::new);
-
-		if let Some(existing_call) = calls.get_mut(index) {
-			// Merge with existing: accumulate arguments as strings
-			if let Some(existing_args) = existing_call.fn_arguments.as_str() {
-				let accumulated = format!("{existing_args}{arguments}");
-				existing_call.fn_arguments = Value::String(accumulated);
+		match self.tool_calls.entry(index) {
+			Entry::Occupied(mut existing) => {
+				let existing_call = existing.get_mut();
+				// Merge with existing: accumulate arguments as strings
+				if let Some(existing_args) = existing_call.fn_arguments.as_str() {
+					let accumulated = format!("{existing_args}{arguments}");
+					existing_call.fn_arguments = Value::String(accumulated);
+				}
+				// Update call_id and fn_name on first chunk that has them
+				if !fn_name.is_empty() {
+					existing_call.call_id = call_id;
+					existing_call.fn_name = fn_name;
+				}
+				existing_call.clone()
 			}
-			// Update call_id and fn_name on first chunk that has them
-			if !fn_name.is_empty() {
-				existing_call.call_id = call_id;
-				existing_call.fn_name = fn_name;
-			}
-			existing_call.clone()
-		} else {
-			// New tool call - resize to handle potential gaps (though unlikely in streaming)
-			calls.resize(index + 1, tool_call.clone());
-			tool_call
+			Entry::Vacant(slot) => slot.insert(tool_call).clone(),
 		}
 	}
 
@@ -189,7 +192,7 @@ impl OpenAIStreamer {
 				let fn_name = function.x_take::<String>("name").unwrap_or_default();
 				let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 
-				let tool_call = self.capture_tool_call(index as usize, call_id, fn_name, arguments);
+				let tool_call = self.capture_tool_call(index, call_id, fn_name, arguments);
 				self.pending_events.push_back(InterStreamEvent::ToolCallChunk(tool_call));
 			}
 		}
@@ -227,9 +230,10 @@ impl futures::Stream for OpenAIStreamer {
 
 						// -- Process the captured_tool_calls
 						// NOTE: here we attempt to parse the `fn_arguments` if it is string, because it means that it was accumulated
-						let captured_tool_calls = if let Some(tools_calls) = self.captured_data.tool_calls.take() {
-							let tools_calls: Vec<ToolCall> = tools_calls
-								.into_iter()
+						let tool_calls = std::mem::take(&mut self.tool_calls);
+						let captured_tool_calls = if !tool_calls.is_empty() {
+							let tools_calls: Vec<ToolCall> = tool_calls
+								.into_values()
 								.map(|tool_call| {
 									// extrat
 									let ToolCall {
