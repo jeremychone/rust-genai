@@ -394,9 +394,10 @@ fn take_delta_content(choice: &mut Value) -> (Option<String>, Option<String>) {
 ///
 /// OpenRouter streams a `reasoning.text` or `reasoning.summary` block in fragments, with a text
 /// block's `signature` on a last, text-less piece. A fragment extends the last block when it has
-/// the same type, unless that block is signed: the signature closes the block it signs, so two
-/// signed thinking blocks stay apart. `index` can't tell blocks apart, since some providers send
-/// `index: 0` on every piece. Any other piece (`reasoning.encrypted`) is a whole block.
+/// the same type, unless that block is signed (the signature closes the block it signs, so two
+/// signed thinking blocks stay apart) or the fragment's content has a different `index`. The same
+/// `index` says nothing, since some providers send `index: 0` on every piece. Any other piece
+/// (`reasoning.encrypted`) is a whole block.
 fn merge_reasoning_details(blocks: &mut Vec<Value>, delta: Value) {
 	let Value::Array(pieces) = delta else {
 		return;
@@ -413,10 +414,16 @@ fn merge_reasoning_details(blocks: &mut Vec<Value>, delta: Value) {
 				continue;
 			}
 		};
-		let Some(Value::Object(block)) = blocks
-			.last_mut()
-			.filter(|block| block.get("type") == piece.get("type") && !is_set(block.get("signature")))
-		else {
+		// A piece with no content (a signature) always belongs to the block before it.
+		let new_index = |block: &Value| {
+			is_set(piece.get(appended_key))
+				&& is_set(block.get("index"))
+				&& is_set(piece.get("index"))
+				&& block.get("index") != piece.get("index")
+		};
+		let Some(Value::Object(block)) = blocks.last_mut().filter(|block| {
+			block.get("type") == piece.get("type") && !is_set(block.get("signature")) && !new_index(block)
+		}) else {
 			blocks.push(Value::Object(piece));
 			continue;
 		};
@@ -531,6 +538,41 @@ mod tests {
 				serde_json::json!({"type": "reasoning.summary", "summary": "Check Paris.", "format": "openai-responses-v1", "index": 0}),
 				serde_json::json!({"type": "reasoning.encrypted", "data": "opaque", "format": "openai-responses-v1", "index": 0}),
 			]
+		);
+	}
+
+	/// A different `index` opens a new block even without a signature, so a multi-part summary
+	/// stays in parts, as in a non-streamed answer.
+	#[test]
+	fn test_merge_reasoning_details_splits_unsigned_blocks_on_a_new_index() {
+		let blocks = merged(vec![
+			serde_json::json!([{"type": "reasoning.summary", "summary": "First ", "index": 0}]),
+			serde_json::json!([{"type": "reasoning.summary", "summary": "part.", "index": 0}]),
+			serde_json::json!([{"type": "reasoning.summary", "summary": "Second part.", "index": 1}]),
+			serde_json::json!([{"type": "reasoning.text", "text": "No index, "}]),
+			serde_json::json!([{"type": "reasoning.text", "text": "so one block."}]),
+		]);
+		assert_eq!(
+			blocks,
+			[
+				serde_json::json!({"type": "reasoning.summary", "summary": "First part.", "index": 0}),
+				serde_json::json!({"type": "reasoning.summary", "summary": "Second part.", "index": 1}),
+				serde_json::json!({"type": "reasoning.text", "text": "No index, so one block."}),
+			]
+		);
+	}
+
+	/// A signature-only piece belongs to the block before it whatever its `index` says: split off,
+	/// it would leave the signed text without its signature.
+	#[test]
+	fn test_merge_reasoning_details_keeps_a_signature_on_its_block_across_indexes() {
+		let blocks = merged(vec![
+			serde_json::json!([{"type": "reasoning.text", "text": "Read the file.", "index": 0}]),
+			serde_json::json!([{"type": "reasoning.text", "text": "", "signature": "sig-1", "index": 1}]),
+		]);
+		assert_eq!(
+			blocks,
+			[serde_json::json!({"type": "reasoning.text", "text": "Read the file.", "signature": "sig-1", "index": 0})]
 		);
 	}
 
