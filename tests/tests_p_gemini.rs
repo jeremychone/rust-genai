@@ -11,6 +11,8 @@ use genai::resolver::AuthData;
 const MODEL_FLASH_3: &str = "gemini-3.8-flash"; // pure gem, fast, cheap, and good!
 const MODEL_FLASH_LITE: &str = "gemini-3.5-flash-lite";
 const MODEL_NS: &str = "gemini::gemini-3.5-flash-lite";
+// Without the namespace, `gemini-4-argon` resolves to the Interactions API (GeminiIx).
+const MODEL_GEMINI_4: &str = "gemini::gemini-4-argon";
 
 // region:    --- Chat
 
@@ -27,6 +29,13 @@ async fn test_chat_reasoning_ok() -> TestResult<()> {
 		Some(Check::REASONING_USAGE | Check::REASONING_USAGE),
 	)
 	.await
+}
+
+/// Gemini 4 takes a thinking level, and refuses a thinking budget with a 400.
+#[tokio::test]
+async fn test_chat_reasoning_gemini_4_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL_GEMINI_4, ReasoningEffort::High, Some(Check::REASONING_USAGE))
+		.await
 }
 
 #[tokio::test]
@@ -135,6 +144,15 @@ async fn test_tool_full_flow_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_tool_deterministic_history_gemini_3_ok() -> TestResult<()> {
+	tool_deterministic_history_ok(MODEL_FLASH_3).await
+}
+
+#[tokio::test]
+async fn test_tool_deterministic_history_gemini_4_ok() -> TestResult<()> {
+	tool_deterministic_history_ok(MODEL_GEMINI_4).await
+}
+
+async fn tool_deterministic_history_ok(model: &str) -> TestResult<()> {
 	use genai::chat::{ChatMessage, ChatRequest, Tool, ToolCall, ToolResponse};
 	use serde_json::json;
 
@@ -167,8 +185,8 @@ async fn test_tool_deterministic_history_gemini_3_ok() -> TestResult<()> {
 	let chat_req = ChatRequest::new(messages).with_tools(vec![weather_tool]);
 
 	// This verifies that the adapter correctly injects 'skip_thought_signature_validator'.
-	// (Otherwise Gemini 3 would return a 400 error.)
-	let chat_res = client.exec_chat(MODEL_FLASH_3, chat_req, None).await?;
+	// (Otherwise Gemini 3 and later would return a 400 error.)
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
 
 	assert!(
 		chat_res.first_text().is_some(),

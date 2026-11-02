@@ -839,3 +839,71 @@ fn test_gemini_to_chat_response_reasoning_content_none_when_empty() -> Result<()
 
 	Ok(())
 }
+
+// region:    --- Gemini 3 and later
+
+fn build_payload_for(model: &str, chat_req: ChatRequest, options: &ChatOptions) -> Value {
+	let model_iden = ModelIden::new(AdapterKind::Gemini, model);
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(options));
+	GeminiAdapter::build_gemini_request_payload(&model_iden, model, chat_req, options_set)
+		.unwrap()
+		.0
+}
+
+#[test]
+fn test_gemini_generation_is_read_from_the_model_name() {
+	assert_eq!(gemini_generation("gemini-2.5-flash"), Some(2));
+	assert_eq!(gemini_generation("gemini-3.1-pro-preview"), Some(3));
+	assert_eq!(gemini_generation("gemini-4-argon"), Some(4));
+	assert_eq!(gemini_generation("gemini::gemini-4-argon"), Some(4));
+	assert_eq!(gemini_generation("gemini-10-flash"), Some(10));
+	assert_eq!(gemini_generation("gemini-flash-latest"), None);
+	assert_eq!(gemini_generation("gemma-4-26b-it"), None);
+}
+
+/// Gemini 4 refuses a thinking budget ("Thinking budget is not supported for this model.
+/// Use thinking level instead."), as Gemini 3 does; Gemini 2.5 still takes one.
+#[test]
+fn test_gemini_3_and_later_get_a_thinking_level_and_2_5_a_budget() {
+	let options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+	let thinking = |model: &str| {
+		let payload = build_payload_for(model, ChatRequest::from_user("hi"), &options);
+		payload["generationConfig"]["thinkingConfig"].clone()
+	};
+
+	assert_eq!(thinking("gemini-4-argon"), json!({"thinkingLevel": "HIGH"}));
+	assert_eq!(thinking("gemini-3.8-flash"), json!({"thinkingLevel": "HIGH"}));
+	assert_eq!(thinking("gemma-4-26b-it"), json!({"thinkingLevel": "HIGH"}));
+	assert_eq!(thinking("gemini-2.5-flash"), json!({"thinkingBudget": REASONING_HIGH}));
+	assert_eq!(
+		thinking("gemini-flash-latest"),
+		json!({"thinkingBudget": REASONING_HIGH})
+	);
+}
+
+/// Gemini 4 refuses an unsigned first call ("Function call is missing a thought_signature
+/// in functionCall parts"), as Gemini 3 does, and accepts the validator placeholder.
+#[test]
+fn test_gemini_4_unsigned_first_call_gets_the_validator_placeholder_and_2_5_does_not() {
+	let first_call_signature = |model: &str| {
+		let content = MessageContent::from_parts(vec![ContentPart::ToolCall(signed_call("a", None))]);
+		let chat_req = ChatRequest::from_user("hi").append_message(ChatMessage::assistant(content));
+		let payload = build_payload_for(model, chat_req, &ChatOptions::default());
+		let model_turn = payload["contents"]
+			.as_array()
+			.unwrap()
+			.iter()
+			.find(|c| c["role"] == "model")
+			.expect("model turn")
+			.clone();
+		model_turn["parts"][0].get("thoughtSignature").cloned()
+	};
+
+	assert_eq!(
+		first_call_signature("gemini-4-argon"),
+		Some(json!(SKIP_THOUGHT_SIGNATURE_VALIDATOR))
+	);
+	assert_eq!(first_call_signature("gemini-2.5-flash"), None);
+}
+
+// endregion: --- Gemini 3 and later
