@@ -43,8 +43,39 @@ struct OpenAIEmbedResponse {
 
 #[derive(Debug, Deserialize)]
 struct OpenAIEmbedData {
-	embedding: Vec<f32>,
+	embedding: OpenAIEmbedVector,
 	index: usize,
+}
+
+/// With `encoding_format: "float"` (the default) the API returns an array of numbers;
+/// with `"base64"` it returns the same f32 values as a base64 string of little-endian bytes.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum OpenAIEmbedVector {
+	Floats(Vec<f32>),
+	Base64(String),
+}
+
+impl OpenAIEmbedVector {
+	fn into_f32s(self) -> Result<Vec<f32>> {
+		match self {
+			OpenAIEmbedVector::Floats(floats) => Ok(floats),
+			OpenAIEmbedVector::Base64(encoded) => {
+				let bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, encoded)
+					.map_err(|err| Error::Internal(format!("OpenAI embedding is not valid base64: {err}")))?;
+				if !bytes.len().is_multiple_of(4) {
+					return Err(Error::Internal(format!(
+						"OpenAI base64 embedding has {} bytes, which is not a multiple of 4 (f32)",
+						bytes.len()
+					)));
+				}
+				Ok(bytes
+					.chunks_exact(4)
+					.map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+					.collect())
+			}
+		}
+	}
 }
 
 #[derive(Debug, Deserialize)]
@@ -123,11 +154,11 @@ pub fn to_embed_response(
 		})?;
 
 	// Convert to our format
-	let embeddings: Vec<Embedding> = openai_res
+	let embeddings = openai_res
 		.data
 		.into_iter()
-		.map(|data| Embedding::new(data.embedding, data.index))
-		.collect();
+		.map(|data| Ok(Embedding::new(data.embedding.into_f32s()?, data.index)))
+		.collect::<Result<Vec<Embedding>>>()?;
 
 	// Create usage information
 	let usage = Usage {
@@ -155,3 +186,53 @@ pub fn to_embed_response(
 }
 
 // endregion: --- Public Functions
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::AdapterKind;
+	use reqwest::StatusCode;
+
+	fn embed_response(embedding: serde_json::Value) -> Result<EmbedResponse> {
+		let web_response = WebResponse {
+			status: StatusCode::OK,
+			body: serde_json::json!({
+				"model": "text-embedding-3-small",
+				"usage": {"prompt_tokens": 2, "total_tokens": 2},
+				"data": [{"index": 0, "embedding": embedding}]
+			}),
+		};
+		let model_iden = ModelIden::new(AdapterKind::OpenAI, "text-embedding-3-small");
+
+		to_embed_response(model_iden, web_response, EmbedOptionsSet::default())
+	}
+
+	#[test]
+	fn test_to_embed_response_float_embedding() {
+		let response = embed_response(serde_json::json!([1.0, -2.5])).expect("float embedding");
+
+		assert_eq!(response.embeddings[0].vector, vec![1.0, -2.5]);
+	}
+
+	#[test]
+	fn test_to_embed_response_base64_embedding() {
+		// encoding_format = "base64": the API returns the f32 values as little-endian bytes, base64 encoded.
+		let bytes: Vec<u8> = [1.0f32, -2.5].iter().flat_map(|f| f.to_le_bytes()).collect();
+		let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes);
+
+		let response = embed_response(serde_json::json!(encoded)).expect("base64 embedding");
+
+		assert_eq!(response.embeddings[0].vector, vec![1.0, -2.5]);
+	}
+
+	#[test]
+	fn test_to_embed_response_base64_embedding_with_partial_float_is_an_error() {
+		let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, [0u8, 0, 128, 63, 1]);
+
+		assert!(embed_response(serde_json::json!(encoded)).is_err());
+	}
+}
+
+// endregion: --- Tests
