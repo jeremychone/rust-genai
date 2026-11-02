@@ -6,7 +6,7 @@ use crate::chat::{ChatOptionsSet, StopReason, ToolCall, Usage};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use value_ext::JsonValueExt;
@@ -71,35 +71,48 @@ fn capture_usage_tail(
 	}
 }
 
+/// Upper bound on the slot a streamed tool call can take. The provider-sent `index` is
+/// untrusted, so it is checked against this cap before any arithmetic or allocation.
+const MAX_TOOL_CALL_SLOTS: usize = 128;
+
 /// Slot of each streamed tool call. OpenAI sends an `index` with every delta, but some
-/// OpenAI-compatible servers (e.g. Gemini's) omit it. Without one, a delta starts the next
-/// slot when it carries an `id` different from the last one, or a function name and no `id`;
-/// any other delta continues the last slot.
+/// OpenAI-compatible servers (e.g. Gemini's) omit it. Without one, a delta with an `id` goes to
+/// the slot that `id` already has, or starts the next slot; a delta with neither `index` nor `id`
+/// continues the last used slot, or starts the next one when it carries a function name.
+///
+/// Limitation: when a provider omits both `index` and `id`, a delta that repeats the function
+/// name starts a new call.
 #[derive(Debug, Default)]
 struct ToolCallSlots {
-	started: usize,
-	last_id: Option<String>,
+	/// First slot not used yet.
+	next: usize,
+	/// Slot of the latest routed delta, where a delta without `index` and `id` continues.
+	last_slot: Option<usize>,
+	/// Slot of each `id` seen, so an `id` that comes back continues its own call.
+	slot_by_id: HashMap<String, usize>,
 }
 
 impl ToolCallSlots {
-	fn slot(&mut self, index: Option<usize>, id: Option<&str>, has_name: bool) -> usize {
+	/// Returns `None` when the delta cannot be routed safely (slot out of bounds).
+	fn slot(&mut self, index: Option<usize>, id: Option<&str>, has_name: bool) -> Option<usize> {
 		let id = id.filter(|id| !id.is_empty());
-		let new_id = id.is_some_and(|id| self.last_id.as_deref() != Some(id));
+		let slot = match (index, id) {
+			(Some(index), _) => index,
+			(None, Some(id)) => self.slot_by_id.get(id).copied().unwrap_or(self.next),
+			(None, None) => match self.last_slot {
+				Some(last_slot) if !has_name => last_slot,
+				_ => self.next,
+			},
+		};
+		if slot >= MAX_TOOL_CALL_SLOTS {
+			return None;
+		}
 		if let Some(id) = id {
-			self.last_id = Some(id.to_string());
+			self.slot_by_id.entry(id.to_string()).or_insert(slot);
 		}
-		match index {
-			Some(index) => {
-				self.started = self.started.max(index + 1);
-				index
-			}
-			None => {
-				if new_id || (id.is_none() && has_name) || self.started == 0 {
-					self.started += 1;
-				}
-				self.started - 1
-			}
-		}
+		self.next = self.next.max(slot + 1);
+		self.last_slot = Some(slot);
+		Some(slot)
 	}
 }
 
@@ -113,6 +126,7 @@ pub struct OpenAIStreamer {
 	captured_data: StreamerCapturedData,
 	/// Events read from a message but not returned yet, since one chunk can carry several.
 	pending_events: VecDeque<InterStreamEvent>,
+	/// Routes each tool call delta to its slot, for providers that omit `index`.
 	tool_call_slots: ToolCallSlots,
 }
 
@@ -212,15 +226,20 @@ impl OpenAIStreamer {
 		};
 
 		for mut tool_call_obj in delta_tool_calls {
-			let id = tool_call_obj.get("id").and_then(Value::as_str).map(str::to_string);
+			let id = tool_call_obj.x_take::<String>("id").ok();
 			let index = tool_call_obj.x_take::<u32>("index").ok().map(|index| index as usize);
 			if let Ok(mut function) = tool_call_obj.x_take::<Value>("function") {
 				let has_name = function
 					.get("name")
 					.and_then(Value::as_str)
 					.is_some_and(|name| !name.is_empty());
-				let index = self.tool_call_slots.slot(index, id.as_deref(), has_name);
-				let call_id = tool_call_obj.x_take::<String>("id").unwrap_or_else(|_| format!("call_{index}"));
+				let Some(index) = self.tool_call_slots.slot(index, id.as_deref(), has_name) else {
+					tracing::warn!(
+						"Dropping a streamed tool call delta whose index exceeds {MAX_TOOL_CALL_SLOTS} slots"
+					);
+					continue;
+				};
+				let call_id = id.unwrap_or_else(|| format!("call_{index}"));
 				let fn_name = function.x_take::<String>("name").unwrap_or_default();
 				let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 
@@ -530,27 +549,61 @@ mod tests {
 	#[test]
 	fn test_tool_call_slots_keep_explicit_indexes() {
 		let mut slots = ToolCallSlots::default();
-		assert_eq!(slots.slot(Some(0), Some("a"), true), 0);
-		assert_eq!(slots.slot(Some(0), None, false), 0);
-		assert_eq!(slots.slot(Some(1), Some("b"), true), 1);
+		assert_eq!(slots.slot(Some(0), Some("a"), true), Some(0));
+		assert_eq!(slots.slot(Some(0), None, false), Some(0));
+		assert_eq!(slots.slot(Some(1), Some("b"), true), Some(1));
 	}
 
 	#[test]
 	fn test_tool_call_slots_without_index_follow_the_id() {
 		let mut slots = ToolCallSlots::default();
 		// Two parallel calls; the second one's arguments arrive in two deltas, one repeating its id.
-		assert_eq!(slots.slot(None, Some("a"), true), 0);
-		assert_eq!(slots.slot(None, Some("b"), true), 1);
-		assert_eq!(slots.slot(None, Some("b"), false), 1);
-		assert_eq!(slots.slot(None, None, false), 1);
-		assert_eq!(slots.slot(None, Some("c"), true), 2);
+		assert_eq!(slots.slot(None, Some("a"), true), Some(0));
+		assert_eq!(slots.slot(None, Some("b"), true), Some(1));
+		assert_eq!(slots.slot(None, Some("b"), false), Some(1));
+		assert_eq!(slots.slot(None, None, false), Some(1));
+		assert_eq!(slots.slot(None, Some("c"), true), Some(2));
+	}
+
+	#[test]
+	fn test_tool_call_slots_interleaved_ids_without_index_continue_their_call() {
+		let mut slots = ToolCallSlots::default();
+		assert_eq!(slots.slot(None, Some("a"), true), Some(0));
+		assert_eq!(slots.slot(None, Some("b"), true), Some(1));
+		assert_eq!(slots.slot(None, Some("a"), false), Some(0));
+	}
+
+	#[test]
+	fn test_tool_call_slots_continue_the_last_used_slot_not_the_highest() {
+		let mut slots = ToolCallSlots::default();
+		assert_eq!(slots.slot(Some(0), None, true), Some(0));
+		assert_eq!(slots.slot(Some(1), None, true), Some(1));
+		assert_eq!(slots.slot(Some(0), None, false), Some(0));
+		assert_eq!(slots.slot(None, None, false), Some(0));
+	}
+
+	#[test]
+	fn test_tool_call_slots_reject_an_oversized_index() {
+		let mut slots = ToolCallSlots::default();
+		assert_eq!(slots.slot(Some(u32::MAX as usize), Some("a"), true), None);
+		assert_eq!(slots.slot(Some(usize::MAX), None, true), None);
+		assert_eq!(slots.slot(Some(MAX_TOOL_CALL_SLOTS), None, true), None);
+		assert_eq!(
+			slots.slot(Some(MAX_TOOL_CALL_SLOTS - 1), None, true),
+			Some(MAX_TOOL_CALL_SLOTS - 1)
+		);
+		// A rejected delta leaves the routing state untouched.
+		let mut slots = ToolCallSlots::default();
+		assert_eq!(slots.slot(Some(u32::MAX as usize), Some("a"), true), None);
+		assert_eq!(slots.slot(None, Some("b"), true), Some(0));
 	}
 
 	#[test]
 	fn test_tool_call_slots_without_index_or_id_follow_the_function_name() {
 		let mut slots = ToolCallSlots::default();
-		assert_eq!(slots.slot(None, None, true), 0);
-		assert_eq!(slots.slot(None, None, false), 0);
-		assert_eq!(slots.slot(None, None, true), 1);
+		assert_eq!(slots.slot(None, None, true), Some(0));
+		assert_eq!(slots.slot(None, None, false), Some(0));
+		// Documented limitation: a repeated name without an id starts a new call.
+		assert_eq!(slots.slot(None, None, true), Some(1));
 	}
 }
