@@ -26,6 +26,8 @@ pub(super) struct AnthropicModelCapabilities {
 	pub supports_adaptive_thinking: bool,
 	pub thinking_enabled_by_default: bool,
 	pub supports_legacy_budget_thinking: bool,
+	/// `false` when the model only accepts default sampling values (no `temperature` or `top_p`).
+	pub supports_sampling_params: bool,
 	pub max_tokens: AnthropicMaxTokens,
 }
 
@@ -112,6 +114,7 @@ impl<'a> AnthropicModel<'a> {
 			supports_adaptive_thinking,
 			thinking_enabled_by_default: self.thinking_enabled_by_default(),
 			supports_legacy_budget_thinking: !supports_adaptive_thinking,
+			supports_sampling_params: self.supports_sampling_params(),
 			max_tokens: self.max_tokens(),
 		}
 	}
@@ -207,6 +210,16 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
 			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_adaptive_thinking(self.normalized_name),
+		}
+	}
+
+	fn supports_sampling_params(&self) -> bool {
+		match self.family {
+			AnthropicModelFamily::Opus => self.version().is_none_or(|version| version < (4, 7)),
+			AnthropicModelFamily::Sonnet => self.version().is_none_or(|version| version < (5, 0)),
+			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => false,
+			AnthropicModelFamily::Haiku => !self.is_haiku_5_or_later(),
+			AnthropicModelFamily::Unknown => true,
 		}
 	}
 
