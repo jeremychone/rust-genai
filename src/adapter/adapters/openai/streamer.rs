@@ -240,9 +240,7 @@ impl OpenAIStreamer {
 					.and_then(Value::as_str)
 					.is_some_and(|name| !name.is_empty());
 				let Some(index) = self.tool_call_slots.slot(index, id.as_deref(), has_name) else {
-					tracing::warn!(
-						"Dropping a streamed tool call delta whose slot does not fit a u32"
-					);
+					tracing::warn!("Dropping a streamed tool call delta whose slot does not fit a u32");
 					continue;
 				};
 				let call_id = id.unwrap_or_else(|| format!("call_{index}"));
@@ -772,7 +770,10 @@ mod tests {
 		let mut slots = ToolCallSlots::default();
 		assert_eq!(slots.slot(Some(usize::MAX), None, true), None);
 		assert_eq!(slots.slot(Some(MAX_TOOL_CALL_SLOT + 1), None, true), None);
-		assert_eq!(slots.slot(Some(MAX_TOOL_CALL_SLOT), None, true), Some(MAX_TOOL_CALL_SLOT));
+		assert_eq!(
+			slots.slot(Some(MAX_TOOL_CALL_SLOT), None, true),
+			Some(MAX_TOOL_CALL_SLOT)
+		);
 		// A rejected delta leaves the routing state untouched.
 		let mut slots = ToolCallSlots::default();
 		assert_eq!(slots.slot(Some(usize::MAX), Some("a"), true), None);

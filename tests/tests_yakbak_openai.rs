@@ -127,9 +127,7 @@ async fn test_yakbak_openai_stream_tool_calls_without_index() -> TestResult<()> 
 			"properties": { "zone": { "type": "string" } },
 		})));
 
-	let options = ChatOptions::default()
-		.with_capture_tool_calls(true)
-		.with_capture_usage(true);
+	let options = ChatOptions::default().with_capture_tool_calls(true).with_capture_usage(true);
 
 	let stream_res = client.exec_chat_stream("gpt-4o-mini", chat_req, Some(&options)).await?;
 	let extract = extract_stream_end(stream_res.stream).await?;
