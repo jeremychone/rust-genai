@@ -72,9 +72,9 @@ fn capture_usage_tail(
 	}
 }
 
-/// Upper bound on the slot a streamed tool call can take. The provider-sent `index` is
-/// untrusted, so it is checked against this cap before any arithmetic or allocation.
-const MAX_TOOL_CALL_SLOTS: usize = 128;
+/// Upper bound on the slot a streamed tool call can take: the slot must fit the `u32` key of
+/// `OpenAIStreamer::tool_calls`. That map is sparse, so a large `index` allocates nothing.
+const MAX_TOOL_CALL_SLOT: usize = u32::MAX as usize;
 
 /// Slot of each streamed tool call. OpenAI sends an `index` with every delta, but some
 /// OpenAI-compatible servers (e.g. Gemini's) omit it. Without one, a delta with an `id` goes to
@@ -105,13 +105,13 @@ impl ToolCallSlots {
 				_ => self.next,
 			},
 		};
-		if slot >= MAX_TOOL_CALL_SLOTS {
+		if slot > MAX_TOOL_CALL_SLOT {
 			return None;
 		}
 		if let Some(id) = id {
 			self.slot_by_id.entry(id.to_string()).or_insert(slot);
 		}
-		self.next = self.next.max(slot + 1);
+		self.next = self.next.max(slot.saturating_add(1));
 		self.last_slot = Some(slot);
 		Some(slot)
 	}
@@ -241,7 +241,7 @@ impl OpenAIStreamer {
 					.is_some_and(|name| !name.is_empty());
 				let Some(index) = self.tool_call_slots.slot(index, id.as_deref(), has_name) else {
 					tracing::warn!(
-						"Dropping a streamed tool call delta whose index exceeds {MAX_TOOL_CALL_SLOTS} slots"
+						"Dropping a streamed tool call delta whose slot does not fit a u32"
 					);
 					continue;
 				};
@@ -249,7 +249,7 @@ impl OpenAIStreamer {
 				let fn_name = function.x_take::<String>("name").unwrap_or_default();
 				let arguments = function.x_take::<String>("arguments").unwrap_or_default();
 
-				// `slot` caps the index at `MAX_TOOL_CALL_SLOTS`, so it always fits a `u32`.
+				// `slot` caps the index at `MAX_TOOL_CALL_SLOT`, so it always fits a `u32`.
 				let tool_call = self.capture_tool_call(index as u32, call_id, fn_name, arguments);
 				self.pending_events.push_back(InterStreamEvent::ToolCallChunk(tool_call));
 			}
@@ -770,16 +770,12 @@ mod tests {
 	#[test]
 	fn test_tool_call_slots_reject_an_oversized_index() {
 		let mut slots = ToolCallSlots::default();
-		assert_eq!(slots.slot(Some(u32::MAX as usize), Some("a"), true), None);
 		assert_eq!(slots.slot(Some(usize::MAX), None, true), None);
-		assert_eq!(slots.slot(Some(MAX_TOOL_CALL_SLOTS), None, true), None);
-		assert_eq!(
-			slots.slot(Some(MAX_TOOL_CALL_SLOTS - 1), None, true),
-			Some(MAX_TOOL_CALL_SLOTS - 1)
-		);
+		assert_eq!(slots.slot(Some(MAX_TOOL_CALL_SLOT + 1), None, true), None);
+		assert_eq!(slots.slot(Some(MAX_TOOL_CALL_SLOT), None, true), Some(MAX_TOOL_CALL_SLOT));
 		// A rejected delta leaves the routing state untouched.
 		let mut slots = ToolCallSlots::default();
-		assert_eq!(slots.slot(Some(u32::MAX as usize), Some("a"), true), None);
+		assert_eq!(slots.slot(Some(usize::MAX), Some("a"), true), None);
 		assert_eq!(slots.slot(None, Some("b"), true), Some(0));
 	}
 
