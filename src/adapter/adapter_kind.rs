@@ -151,6 +151,11 @@ pub enum AdapterKind {
 	/// Uses `CLOUDGPU_API_KEY`. Embeddings are not supported.
 	CloudGpu,
 
+	/// cheapaimodel: OpenAI-compatible gateway for open-weight models, selected via the `cheapaimodel::` namespace.
+	/// Example: `cheapaimodel::deepseek-v4-1-flash`. Website: <https://cheapaimodel.ai>.
+	/// Uses `CHEAPAIMODEL_API_KEY`. Embeddings are not supported.
+	Cheapaimodel,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -203,6 +208,7 @@ adapter_kind_str_maps! {
 	Heabsy             => "Heabsy",             "heabsy",              adapters::all_adapters::HeabsyAdapter;
 	Runcrate           => "Runcrate",           "runcrate",            adapters::all_adapters::RuncrateAdapter;
 	CloudGpu           => "CloudGpu",           "cloudgpu",            adapters::all_adapters::CloudGpuAdapter;
+	Cheapaimodel       => "Cheapaimodel",       "cheapaimodel",        adapters::all_adapters::CheapaimodelAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
