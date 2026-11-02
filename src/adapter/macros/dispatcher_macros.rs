@@ -172,6 +172,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<CloudGpu Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Cheapaimodel => {
+				type A = crate::adapter::adapters::all_adapters::[<Cheapaimodel Adapter>];
+				$body
+			}
 
 			crate::adapter::AdapterKind::Custom(_) => {
 				type A = crate::adapter::adapters::all_adapters::[<Custom Adapter>];
