@@ -1108,6 +1108,118 @@ async fn record_bedrock_claude_thinking_tool_stream() -> TestResult<()> {
 	Ok(())
 }
 
+fn bedrock_parallel_tool_request() -> ChatRequest {
+	ChatRequest::new(vec![ChatMessage::user(
+		"Get the weather (in C) for Paris and for Lyon, France. Call get_weather for both cities in parallel, \
+		 in one turn.",
+	)])
+	.append_tool(Tool::new("get_weather").with_schema(json!({
+		"type": "object",
+		"properties": {
+			"city": { "type": "string" },
+			"country": { "type": "string" },
+			"unit": { "type": "string", "enum": ["C", "F"] }
+		},
+		"required": ["city", "country", "unit"],
+	})))
+}
+
+/// Claude Opus 5.5 with parallel tool calls: two streamed turns, the second sending each tool
+/// result as its own `ChatRole::Tool` message, which Converse needs merged into one user message.
+/// Needs `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`.
+#[tokio::test]
+#[ignore]
+async fn record_bedrock_claude_parallel_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("bedrock", "claude_parallel_tool_stream", &bedrock_backend()).await?;
+	let model = "bedrock_api::us.anthropic.claude-opus-5-5";
+	let options = bedrock_reasoning_options();
+	let initial_request = bedrock_parallel_tool_request();
+
+	let stream_res = client.exec_chat_stream(model, initial_request.clone(), Some(&options)).await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+	let tool_calls: Vec<ToolCall> = first
+		.stream_end
+		.captured_tool_calls()
+		.ok_or("recorded response should contain tool calls")?
+		.into_iter()
+		.cloned()
+		.collect();
+	eprintln!(
+		"[record] Reasoning: {} bytes, tool calls: {}, usage: {:?}",
+		first.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		tool_calls.len(),
+		first.stream_end.captured_usage,
+	);
+	if tool_calls.len() < 2 {
+		return Err("expected parallel tool calls; re-record".into());
+	}
+
+	let mut responses = tool_calls
+		.iter()
+		.map(|call| ToolResponse::from_tool_call(call, r#"{"weather": "Sunny", "temperature": "24C"}"#));
+	let mut continuation_request =
+		initial_request.append_tool_use_from_stream_end(&first.stream_end, responses.next().ok_or("tool response")?);
+	for response in responses {
+		continuation_request = continuation_request.append_message(response);
+	}
+	let continuation_res = client.exec_chat_stream(model, continuation_request, Some(&options)).await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	eprintln!(
+		"[record] Continuation text: {} bytes, stop: {:?}, usage: {:?}",
+		continuation.content.as_deref().map(str::len).unwrap_or(0),
+		continuation.stream_end.captured_stop_reason,
+		continuation.stream_end.captured_usage,
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
+/// Claude Opus 5.5 with adaptive thinking (`thinking.type: adaptive` + `output_config.effort`;
+/// it rejects `thinking.type: enabled`): two streamed turns, the first one's signed
+/// `reasoningText` block replayed with its `toolUse`. Needs `BEDROCK_API_KEY` or
+/// `AWS_BEARER_TOKEN_BEDROCK`.
+#[tokio::test]
+#[ignore]
+async fn record_bedrock_claude_adaptive_tool_stream() -> TestResult<()> {
+	let (client, mut server) = record_client("bedrock", "claude_adaptive_tool_stream", &bedrock_backend()).await?;
+	let model = "bedrock_api::us.anthropic.claude-opus-5-5";
+	let options = bedrock_reasoning_options();
+	let initial_request = bedrock_reasoning_tool_request();
+
+	let stream_res = client.exec_chat_stream(model, initial_request.clone(), Some(&options)).await?;
+	let first = extract_stream_end(stream_res.stream).await?;
+	eprintln!(
+		"[record] Reasoning: {} bytes, signature chunks: {}, tool calls: {:?}, usage: {:?}",
+		first.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		first.thought_signature_chunks.len(),
+		first.stream_end.captured_tool_calls().map(|calls| calls.len()),
+		first.stream_end.captured_usage,
+	);
+
+	let tool_call = first
+		.stream_end
+		.captured_tool_calls()
+		.and_then(|calls| calls.first().cloned().cloned())
+		.ok_or("recorded response should contain a tool call")?;
+	let continuation_request = initial_request.append_tool_use_from_stream_end(
+		&first.stream_end,
+		ToolResponse::from_tool_call(&tool_call, r#"{"weather": "Sunny", "temperature": "24C"}"#),
+	);
+	let continuation_res = client.exec_chat_stream(model, continuation_request, Some(&options)).await?;
+	let continuation = extract_stream_end(continuation_res.stream).await?;
+	eprintln!(
+		"[record] Continuation text: {} bytes, reasoning: {} bytes, stop: {:?}, usage: {:?}",
+		continuation.content.as_deref().map(str::len).unwrap_or(0),
+		continuation.reasoning_content.as_deref().map(str::len).unwrap_or(0),
+		continuation.stream_end.captured_stop_reason,
+		continuation.stream_end.captured_usage,
+	);
+
+	server.shutdown().await;
+	Ok(())
+}
+
 /// One non-streamed reasoning + tool call turn.
 /// Needs `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`.
 #[tokio::test]
