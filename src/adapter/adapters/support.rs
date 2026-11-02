@@ -58,3 +58,9 @@ pub struct StreamerCapturedData {
 }
 
 // endregion: --- Streamer Captured Data
+
+/// Is this `Custom` part one of OpenRouter's `reasoning_details` entries
+/// (`reasoning.text`, `reasoning.encrypted`, `reasoning.summary`, …)?
+pub fn is_reasoning_detail(custom: &crate::chat::CustomPart) -> bool {
+	custom.typ().is_some_and(|typ| typ.starts_with("reasoning."))
+}

@@ -5,11 +5,10 @@ use super::cache_policy::{
 };
 use super::schema::{OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema};
 use crate::adapter::adapters::openai::OpenAIAdapter;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{get_api_key, is_reasoning_detail};
 use crate::adapter::{AdapterDispatcher, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, CustomPart, ReasoningEffort,
-	ToolChoice, Usage,
+	BinarySource, CacheControl, ChatOptionsSet, ChatRequest, ChatRole, ContentPart, ReasoningEffort, ToolChoice, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::WebClient;
@@ -451,9 +450,13 @@ impl OpenAIAdapter {
 							ContentPart::ThoughtSignature(_) => {}
 							// OpenRouter's reasoning blocks, captured verbatim by the response path,
 							// go back verbatim: a signed or encrypted block cannot be rebuilt from
-							// the plaintext, and the gateway requires the original sequence.
+							// the plaintext, and the gateway requires the original sequence. Blocks
+							// from another adapter stay behind: strict providers refuse the field
+							// (Groq with a 400, Mistral with a 422).
 							ContentPart::Custom(custom) if is_reasoning_detail(&custom) => {
-								reasoning_details.push(custom.data)
+								if custom.adapter_kind().is_none_or(|kind| kind == model_iden.adapter_kind) {
+									reasoning_details.push(custom.data)
+								}
 							}
 							// Other Custom parts are ignored for this logic
 							ContentPart::Custom(_) => {}
@@ -692,10 +695,4 @@ pub(super) fn split_content_chunks(chunks: &[Value]) -> (Option<String>, Option<
 	}
 	let non_empty = |s: String| (!s.is_empty()).then_some(s);
 	(non_empty(text), non_empty(reasoning))
-}
-
-/// Is this `Custom` part one of OpenRouter's `reasoning_details` entries
-/// (`reasoning.text`, `reasoning.encrypted`, `reasoning.summary`, …)?
-fn is_reasoning_detail(custom: &CustomPart) -> bool {
-	custom.typ().is_some_and(|typ| typ.starts_with("reasoning."))
 }
