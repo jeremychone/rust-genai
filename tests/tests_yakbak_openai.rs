@@ -109,3 +109,47 @@ async fn test_yakbak_openai_stream_tool_call_with_finish_reason() -> TestResult<
 
 	Ok(())
 }
+
+/// Regression test for providers (e.g. Gemini's OpenAI-compatible endpoint) that omit `index` on
+/// streamed tool call deltas. Two parallel calls are interleaved, with the arguments split across
+/// deltas that only carry the call `id`.
+#[tokio::test]
+async fn test_yakbak_openai_stream_tool_calls_without_index() -> TestResult<()> {
+	let (client, _server) = replay_client("openai", "stream_tool_calls_without_index").await?;
+
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Weather in Paris and the time in CET?")])
+		.append_tool(Tool::new("get_weather").with_schema(json!({
+			"type": "object",
+			"properties": { "city": { "type": "string" }, "unit": { "type": "string" } },
+		})))
+		.append_tool(Tool::new("get_time").with_schema(json!({
+			"type": "object",
+			"properties": { "zone": { "type": "string" } },
+		})));
+
+	let options = ChatOptions::default()
+		.with_capture_tool_calls(true)
+		.with_capture_usage(true);
+
+	let stream_res = client.exec_chat_stream("gpt-4o-mini", chat_req, Some(&options)).await?;
+	let extract = extract_stream_end(stream_res.stream).await?;
+
+	// -- One ToolCallChunk per delta, each attributed to the call its `id` belongs to.
+	let chunk_ids: Vec<&str> = extract.tool_call_chunks.iter().map(|c| c.call_id.as_str()).collect();
+	assert_eq!(chunk_ids, ["call_a", "call_b", "call_a", "call_b", "call_a"]);
+
+	// -- The captured calls keep their own parsed arguments.
+	let tool_calls = extract
+		.stream_end
+		.captured_tool_calls()
+		.ok_or("Should have captured tool calls")?;
+	assert_eq!(tool_calls.len(), 2);
+	assert_eq!(tool_calls[0].call_id, "call_a");
+	assert_eq!(tool_calls[0].fn_name, "get_weather");
+	assert_eq!(tool_calls[0].fn_arguments, json!({"city": "Paris", "unit": "C"}));
+	assert_eq!(tool_calls[1].call_id, "call_b");
+	assert_eq!(tool_calls[1].fn_name, "get_time");
+	assert_eq!(tool_calls[1].fn_arguments, json!({"zone": "CET"}));
+
+	Ok(())
+}

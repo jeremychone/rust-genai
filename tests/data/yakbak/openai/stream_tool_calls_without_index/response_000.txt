@@ -1,0 +1,16 @@
+data: {"id":"yakbak-fixture-tool-no-index","created":1775744502,"object":"chat.completion.chunk","model":"yakbak-openai-compat-model","choices":[{"index":0,"delta":{"role":"assistant"}}]}
+
+data: {"id":"yakbak-fixture-tool-no-index","created":1775744502,"object":"chat.completion.chunk","model":"yakbak-openai-compat-model","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_a","type":"function","function":{"name":"get_weather","arguments":""}}]}}]}
+
+data: {"id":"yakbak-fixture-tool-no-index","created":1775744502,"object":"chat.completion.chunk","model":"yakbak-openai-compat-model","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_b","type":"function","function":{"name":"get_time","arguments":""}}]}}]}
+
+data: {"id":"yakbak-fixture-tool-no-index","created":1775744502,"object":"chat.completion.chunk","model":"yakbak-openai-compat-model","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_a","function":{"arguments":"{\"city\": \"Paris\","}}]}}]}
+
+data: {"id":"yakbak-fixture-tool-no-index","created":1775744502,"object":"chat.completion.chunk","model":"yakbak-openai-compat-model","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_b","function":{"arguments":"{\"zone\": \"CET\"}"}}]}}]}
+
+data: {"id":"yakbak-fixture-tool-no-index","created":1775744502,"object":"chat.completion.chunk","model":"yakbak-openai-compat-model","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_a","function":{"arguments":" \"unit\": \"C\"}"}}]}}]}
+
+data: {"id":"yakbak-fixture-tool-no-index","created":1775744502,"object":"chat.completion.chunk","model":"yakbak-openai-compat-model","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":20,"completion_tokens":30,"total_tokens":50}}
+
+data: [DONE]
+
