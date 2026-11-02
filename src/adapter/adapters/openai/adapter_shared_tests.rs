@@ -236,6 +236,39 @@ fn test_reasoning_details_echoed_verbatim_on_assistant_message() -> Result<()> {
 	Ok(())
 }
 
+/// Strict OpenAI-compatible providers refuse an unknown `reasoning_details` field (Groq with a
+/// 400, Mistral with a 422), so a conversation moving away from the gateway that made the blocks
+/// drops them. Blocks captured on this adapter, or with no origin on them, still go back.
+#[test]
+fn test_reasoning_details_from_another_adapter_are_not_echoed() -> Result<()> {
+	// -- Setup & Fixtures
+	let block = |text: &str| json!({"type": "reasoning.text", "text": text, "index": 0});
+	let open_router = ModelIden::new(AdapterKind::OpenRouter, "anthropic/claude-sonnet-4");
+	let chat_req = || {
+		ChatRequest::new(vec![
+			ChatMessage::user("Hi"),
+			ChatMessage::assistant(MessageContent::from_parts(vec![
+				ContentPart::from_custom(block("stamped"), Some(open_router.clone())),
+				ContentPart::from_custom(block("no origin"), None),
+				ContentPart::Text("Done.".to_string()),
+			])),
+		])
+	};
+
+	// -- Exec
+	let to_groq = OpenAIAdapter::into_openai_request_parts(&ModelIden::new(AdapterKind::Groq, "m"), chat_req(), None)?;
+	let to_gateway = OpenAIAdapter::into_openai_request_parts(&open_router, chat_req(), None)?;
+
+	// -- Check
+	assert_eq!(to_groq.messages[1]["reasoning_details"], json!([block("no origin")]));
+	assert_eq!(
+		to_gateway.messages[1]["reasoning_details"],
+		json!([block("stamped"), block("no origin")])
+	);
+
+	Ok(())
+}
+
 /// A `Custom` part that is not a reasoning block stays ignored on this wire,
 /// as before: only entries whose `type` starts with `reasoning.` are echoed.
 #[test]

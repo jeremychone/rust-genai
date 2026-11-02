@@ -1,0 +1,1 @@
+{"id": "gen_fixture_2", "model": "anthropic/claude-sonnet-4", "choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": "Done."}}], "usage": {"prompt_tokens": 20, "completion_tokens": 2, "total_tokens": 22}}

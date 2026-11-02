@@ -434,9 +434,8 @@ impl GeminiAdapter {
 
 		// -- Set the reasoning effort
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			// -- For gemini-3, gemma-4 use the thinkingLevel
-			let models = ["gemini-3", "gemma-4"];
-			if models.iter().any(|m| provider_model_name.contains(m)) {
+			// -- For Gemini 3 and later, and Gemma 4, use the thinkingLevel
+			if takes_thinking_level(provider_model_name) {
 				let thinking_level = match computed_reasoning_effort {
 					ReasoningEffort::Zero => None,
 					ReasoningEffort::Budget(_) => None,
@@ -681,8 +680,8 @@ impl GeminiAdapter {
 					contents.push(json!({"role": "user", "parts": parts_values}));
 				}
 				ChatRole::Assistant => {
-					let is_gemini_3 = model_iden.model_name.contains("gemini-3");
-					let parts = GeminiModelPart::from_assistant_content(msg.content, is_gemini_3);
+					let signs_first_call = is_gemini_3_or_later(&model_iden.model_name);
+					let parts = GeminiModelPart::from_assistant_content(msg.content, signs_first_call);
 					if !parts.is_empty() {
 						contents.push(json!({"role": "model", "parts": serde_json::to_value(parts)?}));
 					}
@@ -881,7 +880,7 @@ enum GeminiModelPartData {
 }
 
 impl GeminiModelPart {
-	fn from_assistant_content(content: MessageContent, is_gemini_3: bool) -> Vec<Self> {
+	fn from_assistant_content(content: MessageContent, signs_first_call: bool) -> Vec<Self> {
 		let call_signatures: HashSet<String> = content
 			.tool_calls()
 			.into_iter()
@@ -902,15 +901,15 @@ impl GeminiModelPart {
 					thought_signature: pending_signature.take(),
 				}),
 				ContentPart::ToolCall(call) => {
-					// For Gemini 3 models, the first call of a turn must carry a signature; when there
-					// is none, the API accepts this placeholder.
+					// For Gemini 3 and later, the first call of a turn must carry a signature; when
+					// there is none, the API accepts this placeholder.
 					// See: https://ai.google.dev/gemini-api/docs/thought-signatures#faqs
 					let thought_signature = call
 						.thought_signatures
 						.and_then(|signatures| signatures.into_iter().next())
 						.or_else(|| pending_signature.take())
 						.or_else(|| {
-							(is_gemini_3 && is_first_call).then(|| SKIP_THOUGHT_SIGNATURE_VALIDATOR.to_string())
+							(signs_first_call && is_first_call).then(|| SKIP_THOUGHT_SIGNATURE_VALIDATOR.to_string())
 						});
 					parts.push(Self {
 						data: GeminiModelPartData::FunctionCall {
@@ -944,6 +943,27 @@ pub(in crate::adapter) struct GeminiChatRequestParts {
 }
 
 // region:    --- Helpers
+
+/// The Gemini generation a model name belongs to: `3` for `gemini-3.1-pro-preview`, `4`
+/// for `gemini-4-argon`. `None` for a name with no version right after `gemini-`, such as
+/// `gemini-flash-latest`.
+fn gemini_generation(model_name: &str) -> Option<u32> {
+	let start = model_name.find("gemini-")? + "gemini-".len();
+	let digits: String = model_name[start..].chars().take_while(char::is_ascii_digit).collect();
+	digits.parse().ok()
+}
+
+/// Gemini 3 and later: a thinking level rather than a budget, and a signature on every
+/// turn's first function call.
+fn is_gemini_3_or_later(model_name: &str) -> bool {
+	gemini_generation(model_name).is_some_and(|generation| generation >= 3)
+}
+
+/// Whether a model takes `thinkingLevel` (Gemini 3 and later, Gemma 4) rather than
+/// `thinkingBudget` (Gemini 2.5, and any name without a version).
+fn takes_thinking_level(model_name: &str) -> bool {
+	is_gemini_3_or_later(model_name) || model_name.contains("gemma-4")
+}
 
 /// Extract and remove a string field from a JSON Value.
 fn take_string(v: &mut Value, key: &str) -> Option<String> {
