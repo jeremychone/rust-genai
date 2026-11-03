@@ -4,7 +4,7 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
-## v0.7.3 (pending)
+## v0.7.3
 
 - [pcbeingused333](https://github.com/pcbeingused333)
   - [#372](https://github.com/jeremychone/rust-genai/pull/372) fix(openai): keep streamed tool calls whose deltas omit index

@@ -1,6 +1,6 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## PENDING [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...main)
+## 2026-11-03 [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...v0.7.3)
 
 - `+` New Adapters:
   - `cheapaimodel::` - Cheapaimodel - OpenAI-compatible chat gateway, namespace only, no embeddings. `CHEAPAIMODEL_API_KEY`, `https://api.cheapaimodel.ai/v1/`. Adds `AdapterKind::Cheapaimodel`. (PR #375)
