@@ -1,0 +1,13 @@
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "fixture-model", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "tool_calls": [{"index": 2, "id": "call_two", "type": "function", "function": {"name": "read_file", "arguments": "{\"path\":"}}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "fixture-model", "choices": [{"index": 0, "delta": {"content": "", "tool_calls": [{"index": 7, "id": "call_seven", "type": "function", "function": {"name": "list_dir", "arguments": "{}"}}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "fixture-model", "choices": [{"index": 0, "delta": {"content": "", "tool_calls": [{"index": 2, "function": {"arguments": "\"/runbook\"}"}}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "fixture-model", "choices": [{"index": 0, "delta": {"content": "", "tool_calls": [{"index": 4294967295, "id": "call_max", "type": "function", "function": {"name": "stat_file", "arguments": "{}"}}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "fixture-model", "choices": [{"index": 0, "delta": {"content": ""}, "finish_reason": "tool_calls"}], "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}}
+
+data: [DONE]
+
+: end

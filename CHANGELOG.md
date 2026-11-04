@@ -1,6 +1,26 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## PENDING [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...main)
+## 2026-11-03 [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...v0.7.3)
+
+- `+` New Adapters:
+  - `cheapaimodel::` - Cheapaimodel - OpenAI-compatible chat gateway, namespace only, no embeddings. `CHEAPAIMODEL_API_KEY`, `https://api.cheapaimodel.ai/v1/`. Adds `AdapterKind::Cheapaimodel`. (PR #375)
+- `-` cohere - `all_model_names` lists `command-a-03-2025`, `command-r-plus-08-2024`, `command-r-08-2024` and `command-r7b-12-2024` instead of the four ids deprecated on 2025-09-15. (PR #356)
+- `-` bedrock - `prompt_tokens` includes the cache tokens Converse leaves out of `inputTokens`, so `prompt_tokens + completion_tokens` equals `total_tokens`. Unchanged without cache fields. (PR #357)
+- `-` bedrock - Adaptive-thinking Claude models get adaptive thinking and `output_config.effort` from the Anthropic capabilities, instead of a fixed `thinking.type: enabled` budget. `Zero` sends no reasoning fields, since Bedrock rejects `thinking.type: disabled`. (PR #359)
+- `-` bedrock - Contiguous same-role messages, such as parallel tool results, merge into one Converse message, with unique document names. (PR #359)
+- `-` openai - OpenRouter's streamed `reasoning_details` are merged into whole signed, summary, and encrypted blocks under `capture_reasoning_content`, so a streamed tool loop echoes them back as `Custom` parts. (PR #360)
+- `-` openai - `reasoning.*` blocks captured on another adapter are no longer sent to providers that refuse them, and Anthropic drops them; a part with no origin still goes back. (PR #360)
+- `-` openai - Streamed tool calls are keyed by `index` in a `BTreeMap`, so a gap no longer invents copies of the current call and a huge `index` allocates nothing. (PR #360)
+- `-` ollama - A JSON-schema response format goes to the top-level `format` param in the Ollama and Ollama Cloud adapters, instead of being dropped. (PR #362)
+- `-` gemini - Streamed reasoning is captured with `capture_reasoning_content` rather than `capture_content`, and every thought part of a chunk joins one reasoning chunk. (PR #364)
+- `-` anthropic - Streamed `output_tokens_details.thinking_tokens` is captured as `completion_tokens_details.reasoning_tokens`, as on the non-streaming path. (PR #365)
+- `-` vertex - Claude gets `tool_choice`, `output_config.effort`, `response_format` and `extra_body`, which the hand-built body dropped. The body now comes from the Anthropic adapter's `build_anthropic_request_payload`, minus `model` (it is in the URL) and plus `anthropic_version`. (PR #366)
+- `-` openai - `EmbedOptions::with_encoding_format("base64")` decodes the little-endian f32 bytes OpenAI returns, instead of failing with `StreamParse`. Invalid base64 or a length not a multiple of 4 returns `Error::Internal`. The `float` default is unchanged, and Baidu gets the fix too. (PR #368)
+- `-` openai_resp - `stop` and `seed` are not sent, since the Responses API answers them with an HTTP 400; the adapter logs a `tracing::warn!`, and `extra_body` can still set either. (PR #370)
+- `-` anthropic - `temperature` and `top_p` are omitted for the models that only accept the defaults: Claude Opus 4.7+, Sonnet 5+, Haiku 5+, Fable and Mythos. `AnthropicModelCapabilities` gains `supports_sampling_params`; the builder logs a `tracing::warn!`, and `extra_body` can still set either. (PR #371)
+- `-` openai - A streamed tool call delta without an `index`, as Gemini's OpenAI-compatible endpoint sends, is no longer dropped: an `id` continues that call or starts the next, no `id` continues the last slot, or starts the next when it carries a function name. Slots are capped at 128. (PR #372)
+- `-` gemini - Gemini 4+ take a `thinkingLevel` rather than a `thinkingBudget`, and get the `skip_thought_signature_validator` stand-in on a first function call without a signature, as Gemini 3 does, on the Gemini API and Vertex. Gemini 2.5 and version-less names such as `gemini-flash-latest` keep the budget and no stand-in; Gemma 4 still takes a level. (PR #373)
+- `+` tests - Yakbak replays, one case per fix above: gemini (#364, #373), anthropic (#361, #363, #365, #371), openai_resp (#358, #370), bedrock (#357), vertex (#366), ollama (#362), cohere (#351). (PR #374)
 
 - `!` API CHANGE: `ToolResponse.content` is now a `MessageContent` (was `String`), so a tool can return binary parts (images, PDFs, ...) next to its text. `ToolResponse::new(..)` and `from_tool_call(..)` take `impl Into<MessageContent>`, so `&str`/`String` call sites keep compiling; code that read `content` as a `String` should use `text_content()`. New `with_binary(..)`, `with_text(..)`, `binaries()` and `contains_binary()`. A serialized `ToolResponse` with a string `content` still deserializes.
   - Binaries are sent natively by Anthropic (`tool_result` blocks), Bedrock Converse (`toolResult` blocks), OpenAI Responses (`output` array), Gemini 3 (`functionResponse.parts`), Gemini Interactions (`function_result.result`) and Ollama (base64 images in the tool message's `images`). OpenAI Chat Completions and the adapters built on it (oMLX, Groq, OpenRouter, ...) keep the text in the `tool` messages and send the binaries in one `user` message right after the run of tool messages, each call's attachments introduced by its call id. Gemini before 3 receives only the text parts, and binaries that can't be sent are logged with a warning.

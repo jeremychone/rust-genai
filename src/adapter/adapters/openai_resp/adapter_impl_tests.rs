@@ -105,6 +105,46 @@ fn function_tool_strict_is_sent_only_when_set() -> Result<()> {
 }
 
 #[test]
+fn test_openai_resp_omits_stop_and_seed_the_responses_api_rejects() {
+	let chat_options = ChatOptions::default()
+		.with_stop_sequences(vec!["END".to_string()])
+		.with_seed(42)
+		.with_top_p(0.3);
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+	};
+
+	let web_req =
+		OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, ChatRequest::from_user("hello"), options_set)
+			.expect("to_web_request_data should succeed");
+
+	// The Responses API has no `stop` or `seed`; sending either is an HTTP 400.
+	assert!(web_req.payload.get("stop").is_none());
+	assert!(web_req.payload.get("seed").is_none());
+	assert_eq!(web_req.payload["top_p"], 0.3);
+}
+
+#[test]
+fn test_openai_resp_extra_body_can_still_set_stop() {
+	let chat_options = ChatOptions::default().with_extra_body(json!({"stop": ["END"]}));
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+	};
+
+	let web_req =
+		OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, ChatRequest::from_user("hello"), options_set)
+			.expect("to_web_request_data should succeed");
+
+	assert_eq!(web_req.payload["stop"][0], "END");
+}
+
+#[test]
 fn test_openai_resp_extra_body_merged_into_response_payload() {
 	let chat_options = ChatOptions::default()
 		.with_top_p(0.3)

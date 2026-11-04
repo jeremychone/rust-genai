@@ -1,6 +1,6 @@
 [package]
 name = "genai"
-version = "0.7.3"
+version = "0.7.4"
 publish = false  # WIP, remove/comment before release
 edition = "2024"
 license = "MIT OR Apache-2.0"

@@ -1,0 +1,1 @@
+{"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-opus-5-5", "content": [{"type": "text", "text": "Done."}], "stop_reason": "end_turn", "usage": {"input_tokens": 3, "output_tokens": 2}}

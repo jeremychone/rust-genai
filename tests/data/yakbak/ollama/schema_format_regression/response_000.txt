@@ -1,0 +1,1 @@
+{"model": "llama3.2:3b", "message": {"role": "assistant", "content": "{\"ok\":true}"}, "done": true, "done_reason": "stop", "prompt_eval_count": 3, "eval_count": 3}

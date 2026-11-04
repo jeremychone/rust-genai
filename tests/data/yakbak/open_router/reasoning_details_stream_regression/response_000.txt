@@ -1,0 +1,17 @@
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "anthropic/claude-sonnet-4", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "", "reasoning": "Read ", "reasoning_details": [{"type": "reasoning.text", "text": "Read ", "format": "anthropic-claude-v1", "index": 0}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "anthropic/claude-sonnet-4", "choices": [{"index": 0, "delta": {"content": "", "reasoning": "first.", "reasoning_details": [{"type": "reasoning.text", "text": "first.", "format": "anthropic-claude-v1", "index": 0}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "anthropic/claude-sonnet-4", "choices": [{"index": 0, "delta": {"content": "", "reasoning_details": [{"type": "reasoning.text", "signature": "fixture-signature-1", "format": "anthropic-claude-v1", "index": 0}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "anthropic/claude-sonnet-4", "choices": [{"index": 0, "delta": {"content": "", "reasoning": "Now the runbook.", "reasoning_details": [{"type": "reasoning.text", "text": "Now the runbook.", "format": "anthropic-claude-v1", "index": 0}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "anthropic/claude-sonnet-4", "choices": [{"index": 0, "delta": {"content": "", "reasoning_details": [{"type": "reasoning.text", "signature": "fixture-signature-2", "format": "anthropic-claude-v1", "index": 0}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "anthropic/claude-sonnet-4", "choices": [{"index": 0, "delta": {"content": "", "tool_calls": [{"index": 0, "id": "call_read", "type": "function", "function": {"name": "read_file", "arguments": "{\"path\":\"/runbook\"}"}}]}, "finish_reason": null}]}
+
+data: {"id": "gen_fixture", "object": "chat.completion.chunk", "model": "anthropic/claude-sonnet-4", "choices": [{"index": 0, "delta": {"content": ""}, "finish_reason": "tool_calls"}], "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}}
+
+data: [DONE]
+
+: end

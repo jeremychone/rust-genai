@@ -4,8 +4,29 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
-## v0.7.3 (pending)
+## v0.7.3
 
+- [pcbeingused333](https://github.com/pcbeingused333)
+  - [#372](https://github.com/jeremychone/rust-genai/pull/372) fix(openai): keep streamed tool calls whose deltas omit index
+  - [#371](https://github.com/jeremychone/rust-genai/pull/371) fix(anthropic): omit sampling params on models that reject them
+  - [#370](https://github.com/jeremychone/rust-genai/pull/370) fix(openai_resp): do not send stop or seed, the Responses API rejects them
+  - [#368](https://github.com/jeremychone/rust-genai/pull/368) fix(openai): decode base64 embeddings
+  - [#366](https://github.com/jeremychone/rust-genai/pull/366) fix(vertex): send tool_choice, reasoning effort, response format and extra_body to Claude
+  - [#365](https://github.com/jeremychone/rust-genai/pull/365) fix(anthropic): capture streamed thinking tokens as reasoning_tokens
+  - [#364](https://github.com/jeremychone/rust-genai/pull/364) fix(gemini): capture streamed reasoning with capture_reasoning_content and keep every thought part
+  - [#362](https://github.com/jeremychone/rust-genai/pull/362) fix(ollama): send a JSON-schema response format as Ollama's format param
+  - [#357](https://github.com/jeremychone/rust-genai/pull/357) fix(bedrock): count cache tokens in prompt_tokens
+  - [#356](https://github.com/jeremychone/rust-genai/pull/356) fix(cohere): list the current chat models in all_model_names
+- [vagmi](https://github.com/vagmi)
+  - [#359](https://github.com/jeremychone/rust-genai/pull/359) fix(bedrock): support Anthropic adaptive thinking and parallel tool calls in Converse
+- [vdavid](https://github.com/vdavid)
+  - [#360](https://github.com/jeremychone/rust-genai/pull/360) fix(openai): keep OpenRouter's streamed reasoning_details
+- [wouterdebie](https://github.com/wouterdebie)
+  - [#373](https://github.com/jeremychone/rust-genai/pull/373) gemini - a thinking level and the stand-in thought signature for Gemini 4 and later, not only Gemini 3
+- [ropoctl](https://github.com/ropoctl)
+  - [#374](https://github.com/jeremychone/rust-genai/pull/374) test: replay provider regressions merged after #348
+- [nicho810](https://github.com/nicho810)
+  - [#375](https://github.com/jeremychone/rust-genai/pull/375) + Add cheapaimodel OpenAI-compatible adapter
 
 ## v0.7.1..v0.7.2
 

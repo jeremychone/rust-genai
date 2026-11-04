@@ -252,6 +252,17 @@ impl_pass_through_adapter!(
 	unsupported: [embeddings],
 );
 
+// -- cheapaimodel
+pub struct CheapaimodelAdapter;
+impl_pass_through_adapter!(
+	name: CheapaimodelAdapter,
+	kind: AdapterKind::Cheapaimodel,
+	key_env: Some("CHEAPAIMODEL_API_KEY"),
+	endpoint: "https://api.cheapaimodel.ai/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(

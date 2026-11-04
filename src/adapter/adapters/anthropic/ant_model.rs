@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AnthropicModelFamily {
+pub(in crate::adapter::adapters) enum AnthropicModelFamily {
 	Opus,
 	Sonnet,
 	Haiku,
@@ -9,7 +9,7 @@ pub(super) enum AnthropicModelFamily {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct AnthropicModel<'a> {
+pub(in crate::adapter::adapters) struct AnthropicModel<'a> {
 	pub normalized_name: &'a str,
 	pub family: AnthropicModelFamily,
 	pub major_version: Option<u32>,
@@ -19,18 +19,20 @@ pub(super) struct AnthropicModel<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct AnthropicModelCapabilities {
+pub(in crate::adapter::adapters) struct AnthropicModelCapabilities {
 	pub supports_effort: bool,
 	pub supports_max_effort: bool,
 	pub supports_xhigh_effort: bool,
 	pub supports_adaptive_thinking: bool,
 	pub thinking_enabled_by_default: bool,
 	pub supports_legacy_budget_thinking: bool,
+	/// `false` when the model only accepts default sampling values (no `temperature` or `top_p`).
+	pub supports_sampling_params: bool,
 	pub max_tokens: AnthropicMaxTokens,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum AnthropicMaxTokens {
+pub(in crate::adapter::adapters) enum AnthropicMaxTokens {
 	Tokens4K,
 	Tokens8K,
 	Tokens32K,
@@ -112,6 +114,7 @@ impl<'a> AnthropicModel<'a> {
 			supports_adaptive_thinking,
 			thinking_enabled_by_default: self.thinking_enabled_by_default(),
 			supports_legacy_budget_thinking: !supports_adaptive_thinking,
+			supports_sampling_params: self.supports_sampling_params(),
 			max_tokens: self.max_tokens(),
 		}
 	}
@@ -207,6 +210,16 @@ impl<'a> AnthropicModel<'a> {
 			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => true,
 			AnthropicModelFamily::Haiku => self.is_haiku_5_or_later(),
 			AnthropicModelFamily::Unknown => legacy_supports_adaptive_thinking(self.normalized_name),
+		}
+	}
+
+	fn supports_sampling_params(&self) -> bool {
+		match self.family {
+			AnthropicModelFamily::Opus => self.version().is_none_or(|version| version < (4, 7)),
+			AnthropicModelFamily::Sonnet => self.version().is_none_or(|version| version < (5, 0)),
+			AnthropicModelFamily::Fable | AnthropicModelFamily::Mythos => false,
+			AnthropicModelFamily::Haiku => !self.is_haiku_5_or_later(),
+			AnthropicModelFamily::Unknown => true,
 		}
 	}
 
