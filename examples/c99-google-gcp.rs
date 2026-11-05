@@ -10,7 +10,7 @@ use tracing_subscriber::EnvFilter;
 
 // With the Vertex adapter, use the `vertex::` namespace prefix.
 // The adapter handles URL construction and publisher routing automatically.
-const GEMINI_MODEL: &str = "vertex::gemini-2.5-flash";
+const GEMINI_MODEL: &str = "vertex::gemini-3.8-flash";
 const CLAUDE_MODEL: &str = "vertex::claude-sonnet-4-6";
 
 /// This example shows how to use the Vertex AI adapter with an AuthResolver

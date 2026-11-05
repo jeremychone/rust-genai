@@ -12,6 +12,58 @@ use crate::resolver::AuthData;
 use crate::webc::WebResponse;
 use reqwest::StatusCode;
 
+fn anthropic_payload(model: &str, chat_options: ChatOptions) -> Value {
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, model),
+	};
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+	AnthropicAdapter::to_web_request_data(target, ServiceType::Chat, ChatRequest::from_user("hello"), options_set)
+		.expect("to_web_request_data should succeed")
+		.payload
+}
+
+/// Claude Opus 4.7+, Sonnet 5.x, Fable and Mythos only accept the default sampling values,
+/// and answer any `temperature` or `top_p` with an HTTP 400.
+#[test]
+fn test_anthropic_sampling_params_are_omitted_for_models_that_reject_them() {
+	for model in [
+		"claude-opus-4-7",
+		"claude-opus-5-5",
+		"claude-sonnet-5-5",
+		"claude-fable-5-1",
+		"claude-mythos-5-1",
+	] {
+		let payload = anthropic_payload(model, ChatOptions::default().with_temperature(0.5).with_top_p(0.9));
+		assert!(payload.get("temperature").is_none(), "temperature sent to {model}");
+		assert!(payload.get("top_p").is_none(), "top_p sent to {model}");
+	}
+}
+
+#[test]
+fn test_anthropic_sampling_params_are_kept_for_models_that_accept_them() {
+	for model in [
+		"claude-opus-4-6",
+		"claude-sonnet-4-6",
+		"claude-haiku-4-5",
+		"claude-3-5-sonnet-latest",
+	] {
+		let payload = anthropic_payload(model, ChatOptions::default().with_temperature(0.5).with_top_p(0.9));
+		assert_eq!(payload["temperature"], 0.5, "temperature for {model}");
+		assert_eq!(payload["top_p"], 0.9, "top_p for {model}");
+	}
+}
+
+#[test]
+fn test_anthropic_extra_body_can_still_set_sampling_params() {
+	let payload = anthropic_payload(
+		"claude-opus-5-5",
+		ChatOptions::default().with_extra_body(json!({"temperature": 1.0})),
+	);
+	assert_eq!(payload["temperature"], 1.0);
+}
+
 /// Regression guard: when both `reasoning_effort` and `JsonSpec` response format are set
 /// on a model that uses the `output_config` effort API (e.g. `claude-sonnet-4-6`), both
 /// `effort` and `format` must appear inside the same `output_config` JSON object.
@@ -301,6 +353,152 @@ fn test_non_stream_multiple_thinking_blocks_round_trip_without_flattening() {
 		json!({"type": "thinking", "thinking": "Second block.", "signature": "signature-two"})
 	);
 	assert_eq!(content[2]["type"], "tool_use");
+}
+
+/// A `redacted_thinking` block is kept as a custom part, and goes back in its place among
+/// the signed thinking blocks, ahead of the tool use.
+#[test]
+fn test_non_stream_redacted_thinking_round_trips_in_place() {
+	let response = AnthropicAdapter::build_chat_response(
+		ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+		WebResponse {
+			status: StatusCode::OK,
+			body: json!({
+				"model": "fixture-model",
+				"content": [
+					{"type": "redacted_thinking", "data": "redacted-one"},
+					{"type": "thinking", "thinking": "First block.", "signature": "signature-one"},
+					{"type": "redacted_thinking", "data": "redacted-two"},
+					{"type": "thinking", "thinking": "Second block.", "signature": "signature-two"},
+					{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {"query": "status"}}
+				],
+				"stop_reason": "tool_use",
+				"usage": {"input_tokens": 3, "output_tokens": 4}
+			}),
+		},
+	)
+	.expect("Anthropic response should parse");
+
+	let assistant = response
+		.into_assistant_message_for_tool_use()
+		.expect("assistant tool-use message");
+	let request = ChatRequest::new(vec![
+		assistant,
+		ChatMessage::from(ToolResponse::new("call-1", "available")),
+	]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		request,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("continuation request should serialize");
+
+	assert_eq!(
+		web_req.payload["messages"][0]["content"],
+		json!([
+			{"type": "redacted_thinking", "data": "redacted-one"},
+			{"type": "thinking", "thinking": "First block.", "signature": "signature-one"},
+			{"type": "redacted_thinking", "data": "redacted-two"},
+			{"type": "thinking", "thinking": "Second block.", "signature": "signature-two"},
+			{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {"query": "status"}}
+		])
+	);
+}
+
+/// Thinking blocks passed through as custom parts, signed or redacted, go back in their
+/// order, ahead of the tool use.
+#[test]
+fn test_assistant_custom_thinking_blocks_keep_their_order() {
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::from_custom(
+			json!({"type": "thinking", "thinking": "First block.", "signature": "signature-one"}),
+			None,
+		),
+		ContentPart::from_custom(json!({"type": "redacted_thinking", "data": "redacted-one"}), None),
+		ContentPart::from_custom(
+			json!({"type": "thinking", "thinking": "Second block.", "signature": "signature-two"}),
+			None,
+		),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call-1".to_string(),
+			fn_name: "lookup".to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: None,
+		}),
+	]));
+	let request = ChatRequest::new(vec![
+		assistant,
+		ChatMessage::from(ToolResponse::new("call-1", "available")),
+	]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		request,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("continuation request should serialize");
+
+	assert_eq!(
+		web_req.payload["messages"][0]["content"],
+		json!([
+			{"type": "thinking", "thinking": "First block.", "signature": "signature-one"},
+			{"type": "redacted_thinking", "data": "redacted-one"},
+			{"type": "thinking", "thinking": "Second block.", "signature": "signature-two"},
+			{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {}}
+		])
+	);
+}
+
+/// OpenRouter's `reasoning.*` blocks aren't Anthropic content (a 400 on the `type` tag), so a
+/// conversation moving to Anthropic from the gateway drops them. Other custom parts still go.
+#[test]
+fn test_assistant_drops_openrouter_reasoning_details() {
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::from_custom(
+			json!({"type": "reasoning.text", "text": "Read first.", "signature": "sig-1", "index": 0}),
+			Some(ModelIden::new(AdapterKind::OpenRouter, "anthropic/claude-sonnet-4")),
+		),
+		ContentPart::from_custom(json!({"type": "reasoning.encrypted", "data": "opaque"}), None),
+		ContentPart::from_custom(json!({"type": "server_tool_use", "id": "srv_1"}), None),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call-1".to_string(),
+			fn_name: "lookup".to_string(),
+			fn_arguments: json!({}),
+			thought_signatures: None,
+		}),
+	]));
+	let request = ChatRequest::new(vec![assistant, ChatMessage::from(ToolResponse::new("call-1", "ok"))]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		request,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("continuation request should serialize");
+
+	assert_eq!(
+		web_req.payload["messages"][0]["content"],
+		json!([
+			{"type": "server_tool_use", "id": "srv_1"},
+			{"type": "tool_use", "id": "call-1", "name": "lookup", "input": {}}
+		])
+	);
 }
 
 /// Unpaired reasoning/signature metadata must not fail the request. Pairing by position
@@ -607,6 +805,9 @@ fn test_anthropic_adapter_resolve_max_tokens_existing_branches() -> Result<()> {
 		("claude-haiku-4-5", MAX_TOKENS_64K),
 		("claude-haiku-5-5", MAX_TOKENS_128K),
 		("claude-3-7-sonnet-latest", MAX_TOKENS_64K),
+		("claude-opus-4-8", MAX_TOKENS_128K),
+		("claude-opus-4-7", MAX_TOKENS_64K),
+		("claude-opus-4-6", MAX_TOKENS_64K),
 		("claude-opus-4-5", MAX_TOKENS_64K),
 		("claude-opus-4-0", MAX_TOKENS_32K),
 		("claude-3-5-sonnet", MAX_TOKENS_8K),
@@ -979,4 +1180,38 @@ fn test_non_stream_usage_zero_thinking_tokens_is_none() -> Result<()> {
 	assert_eq!(response.usage.completion_tokens, Some(5));
 
 	Ok(())
+}
+
+/// A text part on a tool message goes out as a text block after the tool_result blocks, in the
+/// same user message, instead of being dropped.
+#[test]
+fn test_tool_message_text_part_serializes_after_tool_result() {
+	let tool_message = ChatMessage::tool(MessageContent::from_parts(vec![
+		ContentPart::Text("Use the result above.".to_string()),
+		ContentPart::ToolResponse(ToolResponse::new("call-1", "25 C and clear")),
+	]));
+	let req = ChatRequest::new(vec![ChatMessage::user("Weather in Cairo?"), tool_message]);
+	let target = ServiceTarget {
+		endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+		auth: AuthData::from_single("test-key"),
+		model: ModelIden::new(AdapterKind::Anthropic, "fixture-model"),
+	};
+
+	let web_req = AnthropicAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		req,
+		ChatOptionsSet::default().with_chat_options(None),
+	)
+	.expect("to_web_request_data should succeed");
+
+	let message = &web_req.payload["messages"][1];
+	assert_eq!(message["role"], "user");
+	assert_eq!(
+		message["content"],
+		json!([
+			{"type": "tool_result", "content": "25 C and clear", "tool_use_id": "call-1"},
+			{"type": "text", "text": "Use the result above."},
+		])
+	);
 }

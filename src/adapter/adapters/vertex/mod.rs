@@ -5,7 +5,7 @@
 //!   - Gemini on Vertex: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference
 //!   - Claude on Vertex: https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 //!
-//! Usage: namespace model names with `vertex::`, e.g. `vertex::gemini-2.5-flash` or `vertex::claude-sonnet-4-6`
+//! Usage: namespace model names with `vertex::`, e.g. `vertex::gemini-3.8-flash` or `vertex::claude-sonnet-4-6`
 
 // region:    --- Modules
 

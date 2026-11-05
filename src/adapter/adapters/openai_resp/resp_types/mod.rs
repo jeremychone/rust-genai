@@ -14,6 +14,7 @@ mod resp_output_helper;
 mod resp_response;
 mod resp_usage;
 
+pub use resp_output_helper::*;
 pub use resp_response::*;
 pub use resp_usage::*;
 

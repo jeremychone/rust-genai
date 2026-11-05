@@ -1,8 +1,46 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## v0.7.0-beta.x
+## 2026-11-03 [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...v0.7.3)
 
-(see [v0.7.0 migration](docs/migration/migration-v_0_6_to_0_7.md) | [genai beta versions](https://crates.io/crates/genai/versions))
+- `+` New Adapters:
+  - `cheapaimodel::` - Cheapaimodel - OpenAI-compatible chat gateway, namespace only, no embeddings. `CHEAPAIMODEL_API_KEY`, `https://api.cheapaimodel.ai/v1/`. Adds `AdapterKind::Cheapaimodel`. (PR #375)
+- `-` cohere - `all_model_names` lists `command-a-03-2025`, `command-r-plus-08-2024`, `command-r-08-2024` and `command-r7b-12-2024` instead of the four ids deprecated on 2025-09-15. (PR #356)
+- `-` bedrock - `prompt_tokens` includes the cache tokens Converse leaves out of `inputTokens`, so `prompt_tokens + completion_tokens` equals `total_tokens`. Unchanged without cache fields. (PR #357)
+- `-` bedrock - Adaptive-thinking Claude models get adaptive thinking and `output_config.effort` from the Anthropic capabilities, instead of a fixed `thinking.type: enabled` budget. `Zero` sends no reasoning fields, since Bedrock rejects `thinking.type: disabled`. (PR #359)
+- `-` bedrock - Contiguous same-role messages, such as parallel tool results, merge into one Converse message, with unique document names. (PR #359)
+- `-` openai - OpenRouter's streamed `reasoning_details` are merged into whole signed, summary, and encrypted blocks under `capture_reasoning_content`, so a streamed tool loop echoes them back as `Custom` parts. (PR #360)
+- `-` openai - `reasoning.*` blocks captured on another adapter are no longer sent to providers that refuse them, and Anthropic drops them; a part with no origin still goes back. (PR #360)
+- `-` openai - Streamed tool calls are keyed by `index` in a `BTreeMap`, so a gap no longer invents copies of the current call and a huge `index` allocates nothing. (PR #360)
+- `-` ollama - A JSON-schema response format goes to the top-level `format` param in the Ollama and Ollama Cloud adapters, instead of being dropped. (PR #362)
+- `-` gemini - Streamed reasoning is captured with `capture_reasoning_content` rather than `capture_content`, and every thought part of a chunk joins one reasoning chunk. (PR #364)
+- `-` anthropic - Streamed `output_tokens_details.thinking_tokens` is captured as `completion_tokens_details.reasoning_tokens`, as on the non-streaming path. (PR #365)
+- `-` vertex - Claude gets `tool_choice`, `output_config.effort`, `response_format` and `extra_body`, which the hand-built body dropped. The body now comes from the Anthropic adapter's `build_anthropic_request_payload`, minus `model` (it is in the URL) and plus `anthropic_version`. (PR #366)
+- `-` openai - `EmbedOptions::with_encoding_format("base64")` decodes the little-endian f32 bytes OpenAI returns, instead of failing with `StreamParse`. Invalid base64 or a length not a multiple of 4 returns `Error::Internal`. The `float` default is unchanged, and Baidu gets the fix too. (PR #368)
+- `-` openai_resp - `stop` and `seed` are not sent, since the Responses API answers them with an HTTP 400; the adapter logs a `tracing::warn!`, and `extra_body` can still set either. (PR #370)
+- `-` anthropic - `temperature` and `top_p` are omitted for the models that only accept the defaults: Claude Opus 4.7+, Sonnet 5+, Haiku 5+, Fable and Mythos. `AnthropicModelCapabilities` gains `supports_sampling_params`; the builder logs a `tracing::warn!`, and `extra_body` can still set either. (PR #371)
+- `-` openai - A streamed tool call delta without an `index`, as Gemini's OpenAI-compatible endpoint sends, is no longer dropped: an `id` continues that call or starts the next, no `id` continues the last slot, or starts the next when it carries a function name. Slots are capped at 128. (PR #372)
+- `-` gemini - Gemini 4+ take a `thinkingLevel` rather than a `thinkingBudget`, and get the `skip_thought_signature_validator` stand-in on a first function call without a signature, as Gemini 3 does, on the Gemini API and Vertex. Gemini 2.5 and version-less names such as `gemini-flash-latest` keep the budget and no stand-in; Gemma 4 still takes a level. (PR #373)
+- `+` tests - Yakbak replays, one case per fix above: gemini (#364, #373), anthropic (#361, #363, #365, #371), openai_resp (#358, #370), bedrock (#357), vertex (#366), ollama (#362), cohere (#351). (PR #374)
+
+## 2026-10-27 [v0.7.0..v0.7.2](https://github.com/jeremychone/rust-genai/compare/v0.7.0...v0.7.2)
+
+- `+` New Adapters:
+  - `cloudgpu::` - CloudGpu - OpenAI-compatible chat provider, only selected by namespace. Uses `CLOUDGPU_API_KEY` and `https://cloudgpu.app/v1/`; embeddings are unsupported. The new `AdapterKind::CloudGpu` variant requires downstream exhaustive matches to be updated. (PR #355)
+  - `runcrate::` - Runcrate - OpenAI-compatible chat and embeddings provider, only selected by namespace. Uses `RUNCRATE_API_KEY` and `https://api.runcrate.ai/v1/`. The new `AdapterKind::Runcrate` variant requires downstream exhaustive matches to be updated. (PR #350)
+- `-` anthropic - Keep a streamed answer's `redacted_thinking` blocks, in their place among the signed thinking blocks, as the custom parts a non-streamed answer already makes of them, so `captured_content` carries them under the same `capture_reasoning_content` opt-in, and send every thinking block back in the order it came, still ahead of the text and the tool use. A `thinking` block passed through as a custom part takes its place among them too, and unpaired signatures and reasoning are still dropped with the warning. (PR #342)
+- `-` anthropic - Resolve the default max output tokens from the parsed model version rather than substring matching: Claude Opus 4.8 uses 128K, Opus 4.6 and 4.7 use 64K (both fell through to 32K before), Opus 4.0 and 4.1 keep 32K, and Opus 3.x keeps 4K. (PR #343)
+- `-` openai_resp - Capture a non-streaming answer's reasoning summaries and encrypted reasoning content in `ChatResponse::reasoning_content` and the thought signatures, and stop emitting a mirrored `{"type": "reasoning", "encrypted_content": ...}` input item twice when replaying an assistant tool turn. (PR #344)
+- `-` gemini - Forward `ChatOptions::seed` to `generationConfig.seed` and merge `extra_body` into the request payload, and return `reasoning_content: None` instead of `Some("")` when a non-streaming answer has no thought parts. (PR #345)
+- `-` client - Apply `AuthData::RequestOverride` and the client-level and per-request headers in `exec_embed`, and merge the client-level `chat_options.extra_headers` in `exec_chat` and `exec_chat_stream`. (PR #346)
+- `-` openai - Keep every piece of a streamed chunk, not only the first: reasoning, content, and each `delta.tool_calls` entry are queued and drained before the next message, which also removes the two drifted copies of the delta handling and applies to every OpenAI-compatible adapter kind. (PR #347)
+- `-` cohere - Send prior user and assistant turns in the v1 `chat_history` entry's `message` field instead of `content`. (PR #351)
+- `-` vertex - Use `:streamRawPredict` for streaming Claude requests, while non-streaming requests continue to use `:rawPredict`. (PR #352)
+- `-` vertex - Replace the retired Gemini 2.5 models in the static model list with `gemini-3.8-flash`, and update Vertex examples and tests. (PR #353)
+- `-` chat - Map Claude refusals and Gemini image and language finish reasons to `StopReason::ContentFilter`, and Claude context-window and Mistral model-length stops to `StopReason::MaxTokens`, preserving the raw provider strings. These reasons previously mapped to `Other`. (PR #354)
+
+## 2026-10-19 [v0.7.0](https://github.com/jeremychone/rust-genai/compare/v0.6.5...v0.7.0)
+
+(see [v0.7.0 migration](docs/migration/migration-v_0_6_to_0_7.md) | [genai versions](https://crates.io/crates/genai/versions))
 
 ### API Breaking Changes
 
@@ -12,6 +50,7 @@
 - `!` API CHANGE: `ReasoningEffort::None` is renamed to `ReasoningEffort::Zero`, avoiding confusion with `Option::None`. The canonical keyword is now `"zero"` (was `"none"`), `as_keyword()` and `Display` emit `"zero"`, and `from_keyword()` still accepts `"none"` as a backward-compatible alias.
 - `!` API CHANGE: `JsonSpec::schema_with_additional_properties_false` is removed. Provider adapters now sanitize schemas as required by their target API. `JsonSchemaDialect` and `sanitize_json_schema(...)` are available for explicit schema sanitization.
 - `!` API CHANGE: When serializing genai types to json, Optional fields with `None` are now omitted from JSON instead of serialized as `null`. ([migration guide](docs/migration/migration-v_0_6_to_0_7.md) | [merged PR search](https://github.com/jeremychone/rust-genai/pulls?q=is%3Apr+is%3Amerged+in%3Atitle+%22types+json+serialization+now+skip+none%22))
+- `!` Cargo feature: reqwest's `system-proxy` is now the genai `system-proxy` feature, enabled by default. Builds with `default-features = false` no longer read the macOS and Windows system proxy settings unless `system-proxy` is enabled. Proxy environment variables are still honored. (PR #334)
 
 ### API Minor Changes (New Properties / Variants)
 
@@ -66,6 +105,7 @@
   - Opt-in adapter for Google Gemini Interactions API supporting server-side conversation state (`previous_response_id` and `store`).
   - Full streaming and non-streaming support for function calling, thought signatures, media and binary inputs, and structured JSON output.
   - Exposes `genai::adapter::gemini_ix` helper types (`EnrichedEvent`, `UrlCitation`, `GroundingToolCount`) for decoding search grounding citations and server-side tool metadata via `ChatFrameSink`.
+  - `+` Model names starting with `gemini-4-argon` route to the `gemini_ix` adapter by default, without a namespace.
 
 ### Additions & Fixes
 
@@ -75,6 +115,7 @@
 - `+` Chat - Add `ChatFrameSink` and `ChatOptions::with_raw_frame_sink` / `with_raw_frame_fn` to observe raw stream frames across providers. (PR #290)
 - `+` Chat - Add independent streaming header and raw body read timeouts via `ChatOptions::with_stream_header_timeout` / `with_stream_read_timeout`. Per-call values override client defaults independently; unset values inherit defaults, with no additional limit by default. Heartbeats and partial frames reset the read wait, including for error-body reads. These transport-only options are not serialized, existing reqwest deadlines still apply, and `webc::StreamTimeout::{Headers, Read}` identifies the timeout phase. (PR #321)
 - Anthropic:
+  - `!` Responses API function tools without `strict` no longer send `strict: false`, so OpenAI's default applies. Use `with_strict(false)` to keep the previous payload. (PR #333)
   - `+` Expose streaming SSE ping messages as provider-neutral `ChatStreamEvent::Heartbeat` events, allowing callers to distinguish a live long-running stream from a stall. (PR #271)
   - `+` Add prompt caching on tools via `Tool::with_cache_control`, and make request-level `ChatOptions::with_cache_control` automatically apply a cache breakpoint to the static (tools+system) prefix, which was previously ignored. `Ephemeral24h` is documented as clamped to Anthropic's max `1h` TTL.
   - `+` Support the `extra_body` `ChatOptions` field, merging extra request body fields. ([#255](https://github.com/jeremychone/rust-genai/pull/255))
@@ -83,10 +124,14 @@
   - `-` Fix: reuse Client WebClient for model listing. ([#249](https://github.com/jeremychone/rust-genai/pull/249))
   - `+` Sanitize JSON Schema for structured responses and strict tools. (PR #263)
   - `^` Preserve signed thinking blocks and thought signatures across streaming and non-streaming tool turns. (PR #275)
+  - `-` Keep a streamed answer's tool call when `max_tokens` cuts the answer off inside a `tool_use` block. Anthropic ends such a stream with `message_delta` (`max_tokens`) and `message_stop` and never sends `content_block_stop`, so the call was dropped and the answer looked like one with no calls. The call is now captured at `message_stop` with its input as far as it got, as a string when it does not parse (an empty one when the cut came before any input); a finished answer is unchanged. (PR #340)
 - OpenAI:
   - `-` Propagate Responses API streaming `error` events as `genai::Error::ChatResponse` and cleanly terminate the stream. (PR #296)
+  - `-` Use the completed arguments from `response.output_item.done` for streaming `function_call` items when the delta arguments were truncated or arrived before `output_item.added`. (PR #332)
+  - `-` Keep a streamed Responses answer's tool calls when it ends with `response.incomplete`, for example when `max_output_tokens` cuts it short, instead of dropping them; a cut-off call keeps its arguments as a string, since they do not parse. A completed answer is unchanged. (PR #339)
   - `+` Capture OpenRouter's `reasoning_details` (signed, encrypted and summary reasoning blocks) as `Custom` parts on the non-streaming path and echo them verbatim, in order, on assistant messages, so a multi-turn tool round trip through OpenRouter keeps the model's continuity token; `reasoning_content` is still echoed beside them. (PR #301)
   - `+` Route GPT-6 models (such as `gpt-6-astra`) to the OpenAI Responses API adapter.
+  - `-` Send `max_completion_tokens` instead of `max_tokens` for `gpt-6*` models on the Chat Completions path, avoiding a 400 from OpenAI. (PR #331)
   - `+` Support OpenAI Responses freeform custom tools with grammar-constrained raw-string input. Custom tools serialize as `type: "custom"`, custom tool-call input streams incrementally, and round-trips as `custom_tool_call` / `custom_tool_call_output` items. (PR #266)
   - `^` Capture `cache_write_tokens` from prompt-cache usage and normalize it to `Usage.prompt_tokens_details.cache_creation_tokens` for Chat Completions and Responses API payloads.
   - `^` GPT-5.6 and later now use cache opt-in only. Here is how to opt in: (see [PR #260](https://github.com/jeremychone/rust-genai/pull/260))
@@ -103,6 +148,7 @@
   - `-` Count server-side built-in tool-use tokens in normalized prompt usage and allow mixing built-in and user-defined function tools. (PR #284)
   - `^` Forward JSON Schema raw via `responseJsonSchema` and `parametersJsonSchema`. (PR #257)
   - `-` Protect known model names such as `deepseek-r1-zero` from reasoning suffix stripping by using a whitelist in `from_model_name()`.
+  - `-` Send each function call's id back with the call and its response, so Gemini can match calls to the same function in one turn. Calls without an id, and responses whose function name cannot be resolved, keep the previous wire shape. (PR #335)
 - Bedrock:
   - `-` Wait for the ConverseStream `metadata` frame after `messageStop` before emitting `End`, preserving usage and cache-token details; finalize at EOF when metadata is absent. Streaming and non-streaming paths share usage normalization, with saturating addition when total tokens are missing. (PR #326)
   - `-` Preserve signed `reasoningText` and opaque `redactedContent` blocks in streaming and non-streaming responses and replay them ahead of assistant text and tool calls. Tool-call-only signature fallback is limited to the OpenAI publisher, avoiding replay of Claude or other providers' signatures as redacted reasoning. (PR #326)
@@ -119,6 +165,7 @@
   - `-` Emit every event-bearing field of an NDJSON line instead of only the first, so fields sharing a line (e.g., `thinking` + `content`), every tool call of a line, and every line of a web chunk are no longer dropped. Events are buffered in stream order and drained before polling the inner stream, and the queued `End` event preserves the final `done` line's events, `done_reason`, and usage captures. (PR #311)
 - Cross-provider adapters:
   - `^` Move messages after tools in JSON payloads for better prompt cache utilization. (PR #262)
+- `^` Dependencies - replace the unmaintained `paste` crate with `pastey`, which clears RUSTSEC-2024-0436 for `cargo audit` and `cargo deny` users. (PR #336)
 - OpenTelemetry:
   - `-` Fix `otel` feature compilation, by covering the `CacheBreakpointNoEligibleContent` error variant in the `error.type` derivation (broken since v0.7.0-beta.18).
   - `-` Cover `Error::ClientBuildFail` in the `error.type` derivation, fixing `otel` compilation when `bedrock-sigv4` is enabled. (PR #310)

@@ -2,6 +2,7 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
+use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 use serial_test::serial;
 
@@ -9,7 +10,8 @@ use serial_test::serial;
 // Env vars needed: VERTEX_PROJECT_ID, VERTEX_LOCATION, VERTEX_API_KEY (Bearer token)
 
 // -- Gemini on Vertex (publishers/google)
-const MODEL_GEMINI: &str = "vertex::gemini-2.5-flash";
+const MODEL_GEMINI: &str = "vertex::gemini-3.8-flash";
+const MODEL_GEMINI_4: &str = "vertex::gemini-4-argon";
 
 // -- Claude on Vertex / Model Garden (publishers/anthropic)
 const MODEL_CLAUDE: &str = "vertex::claude-sonnet-4-6";
@@ -20,6 +22,15 @@ const MODEL_CLAUDE: &str = "vertex::claude-sonnet-4-6";
 #[serial(vertex)]
 async fn test_chat_gemini_simple_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_GEMINI, None).await
+}
+
+/// Vertex refuses a thinking budget for Gemini 4 ("Thinking budget is not supported for
+/// this model. Use thinking level instead.").
+#[tokio::test]
+#[serial(vertex)]
+async fn test_chat_gemini_4_reasoning_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL_GEMINI_4, ReasoningEffort::High, Some(Check::REASONING_USAGE))
+		.await
 }
 
 #[tokio::test]
@@ -166,7 +177,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Vertex, "gemini-2.5-flash").await
+	common_tests::common_test_list_models(AdapterKind::Vertex, "gemini-3.8-flash").await
 }
 
 // endregion: --- List

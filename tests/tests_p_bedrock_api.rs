@@ -18,6 +18,8 @@ const MODEL: &str = "bedrock_api::global.openai.gpt-5.6-terra";
 const MODEL_BARE: &str = "bedrock_api::amazon.nova-lite-v1:0";
 // Nova 2 reasons with `reasoningConfig.maxReasoningEffort`.
 const MODEL_NOVA_2: &str = "bedrock_api::us.amazon.nova-2-lite-v1:0";
+// Claude with adaptive thinking: rejects `thinking.type: enabled`, needs `output_config.effort`.
+const MODEL_CLAUDE_ADAPTIVE: &str = "bedrock_api::us.anthropic.claude-opus-5-5";
 
 // region:    --- Chat
 
@@ -45,6 +47,20 @@ async fn test_chat_reasoning_nova_medium_ok() -> TestResult<()> {
 #[serial(bedrock_api)]
 async fn test_chat_reasoning_nova_high_ok() -> TestResult<()> {
 	common_tests::common_test_chat_reasoning_ok(MODEL_NOVA_2, ReasoningEffort::High, None).await
+}
+
+/// Adaptive-thinking Claude takes `thinking.type: adaptive` + `output_config.effort`.
+#[tokio::test]
+#[serial(bedrock_api)]
+async fn test_chat_reasoning_claude_adaptive_high_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL_CLAUDE_ADAPTIVE, ReasoningEffort::High, None).await
+}
+
+/// Opus 5 rejects `thinking.type: disabled`, so `Zero` must send no reasoning fields.
+#[tokio::test]
+#[serial(bedrock_api)]
+async fn test_chat_reasoning_claude_adaptive_zero_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(MODEL_CLAUDE_ADAPTIVE, ReasoningEffort::Zero, None).await
 }
 
 // endregion: --- Chat

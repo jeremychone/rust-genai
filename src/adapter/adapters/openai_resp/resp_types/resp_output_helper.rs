@@ -58,10 +58,45 @@ impl ContentPart {
 					.into(),
 				);
 			}
+			ItemType::Reasoning => {
+				if let Ok(encrypted) = item_value.x_remove::<String>("encrypted_content")
+					&& !encrypted.is_empty()
+				{
+					parts.push(ContentPart::ThoughtSignature(encrypted));
+				}
+			}
 		}
 
 		Ok(parts)
 	}
+}
+
+pub fn extract_resp_reasoning_texts(item_value: &Value) -> Vec<String> {
+	let mut texts = Vec::new();
+	if item_value.x_get_str("type").ok() != Some("reasoning") {
+		return texts;
+	}
+	if let Some(summary) = item_value.get("summary").and_then(Value::as_array) {
+		for entry in summary {
+			if entry.x_get_str("type").ok() == Some("summary_text")
+				&& let Ok(text) = entry.x_get_str("text")
+				&& !text.is_empty()
+			{
+				texts.push(text.to_string());
+			}
+		}
+	}
+	if let Some(content) = item_value.get("content").and_then(Value::as_array) {
+		for entry in content {
+			if entry.x_get_str("type").ok() == Some("reasoning_text")
+				&& let Ok(text) = entry.x_get_str("text")
+				&& !text.is_empty()
+			{
+				texts.push(text.to_string());
+			}
+		}
+	}
+	texts
 }
 
 // region:    --- Support Type
@@ -71,6 +106,7 @@ enum ItemType {
 	Message,
 	FunctionCall,
 	CustomToolCall,
+	Reasoning,
 }
 
 impl ItemType {
@@ -80,6 +116,7 @@ impl ItemType {
 			"message" => Some(ItemType::Message),
 			"function_call" => Some(ItemType::FunctionCall),
 			"custom_tool_call" => Some(ItemType::CustomToolCall),
+			"reasoning" => Some(ItemType::Reasoning),
 			_ => None,
 		}
 	}

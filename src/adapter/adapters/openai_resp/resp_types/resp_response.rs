@@ -16,6 +16,9 @@ pub struct RespResponse {
 	/// The status of the response generation. One of completed, failed, in_progress, cancelled, queued, or incomplete.
 	pub status: String,
 
+	/// Why the response is `incomplete`: `{reason: "max_output_tokens" | "content_filter"}`.
+	pub incomplete_details: Option<Value>,
+
 	/// {code: String, message: string}
 	pub error: Option<Value>,
 
@@ -36,4 +39,21 @@ pub struct RespResponse {
 	pub output: Vec<Value>,
 
 	pub usage: Option<RespUsage>,
+}
+
+impl RespResponse {
+	/// The provider stop reason: for an `incomplete` response, the reason it was cut short
+	/// (`max_output_tokens`, `content_filter`) when given, otherwise the response status.
+	pub fn stop_reason_raw(&self) -> String {
+		if self.status == "incomplete"
+			&& let Some(reason) = self
+				.incomplete_details
+				.as_ref()
+				.and_then(|details| details.get("reason"))
+				.and_then(Value::as_str)
+		{
+			return reason.to_string();
+		}
+		self.status.clone()
+	}
 }

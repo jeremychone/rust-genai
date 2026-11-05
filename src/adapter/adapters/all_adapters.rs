@@ -220,6 +220,49 @@ impl_pass_through_adapter!(
 	delegate: OpenAIAdapter,
 );
 
+// -- Heabsy
+pub struct HeabsyAdapter;
+impl_pass_through_adapter!(
+	name: HeabsyAdapter,
+	kind: AdapterKind::Heabsy,
+	key_env: Some("HEABSY_API_KEY"),
+	endpoint: "https://api.heabsy.com/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
+// -- Runcrate
+pub struct RuncrateAdapter;
+impl_pass_through_adapter!(
+	name: RuncrateAdapter,
+	kind: AdapterKind::Runcrate,
+	key_env: Some("RUNCRATE_API_KEY"),
+	endpoint: "https://api.runcrate.ai/v1/",
+	delegate: OpenAIAdapter,
+);
+
+// -- CloudGPU
+pub struct CloudGpuAdapter;
+impl_pass_through_adapter!(
+	name: CloudGpuAdapter,
+	kind: AdapterKind::CloudGpu,
+	key_env: Some("CLOUDGPU_API_KEY"),
+	endpoint: "https://cloudgpu.app/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
+// -- cheapaimodel
+pub struct CheapaimodelAdapter;
+impl_pass_through_adapter!(
+	name: CheapaimodelAdapter,
+	kind: AdapterKind::Cheapaimodel,
+	key_env: Some("CHEAPAIMODEL_API_KEY"),
+	endpoint: "https://api.cheapaimodel.ai/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
 // -- Opper
 pub struct OpperAdapter;
 impl_pass_through_adapter!(

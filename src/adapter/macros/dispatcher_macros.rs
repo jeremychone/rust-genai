@@ -1,6 +1,6 @@
 //! Macros for adapter dispatching.
 
-use paste::paste;
+use pastey::paste;
 
 // Dispatch adapter method call based on `AdapterKind`, avoiding repeated `match` arms.
 //
@@ -158,6 +158,22 @@ macro_rules! dispatch_adapter {
 			}
 			crate::adapter::AdapterKind::ApiRoute => {
 				type A = crate::adapter::adapters::all_adapters::[<ApiRoute Adapter>];
+				$body
+			}
+			crate::adapter::AdapterKind::Heabsy => {
+				type A = crate::adapter::adapters::all_adapters::[<Heabsy Adapter>];
+				$body
+			}
+			crate::adapter::AdapterKind::Runcrate => {
+				type A = crate::adapter::adapters::all_adapters::[<Runcrate Adapter>];
+				$body
+			}
+			crate::adapter::AdapterKind::CloudGpu => {
+				type A = crate::adapter::adapters::all_adapters::[<CloudGpu Adapter>];
+				$body
+			}
+			crate::adapter::AdapterKind::Cheapaimodel => {
+				type A = crate::adapter::adapters::all_adapters::[<Cheapaimodel Adapter>];
 				$body
 			}
 			crate::adapter::AdapterKind::Opper => {

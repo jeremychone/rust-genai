@@ -2,7 +2,7 @@ use super::AnthropicAdapter;
 use super::ant_model::{AnthropicMaxTokens, AnthropicModel, AnthropicModelCapabilities};
 use crate::Result;
 use crate::adapter::adapters::anthropic::ant_reasoning::insert_anthropic_reasoning;
-use crate::adapter::adapters::support::get_api_key;
+use crate::adapter::adapters::support::{get_api_key, is_reasoning_detail};
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, CacheControl, CacheCreationDetails, ChatOptionsSet, ChatRequest, ChatResponse,
@@ -40,12 +40,7 @@ pub(in crate::adapter::adapters) const MAX_TOKENS_4K: u32 = 4096; // claude-3-op
 impl AnthropicAdapter {
 	/// Resolves the max_tokens value for an Anthropic model, using the user-provided
 	/// value if set, or a model-appropriate default.
-	pub(in crate::adapter::adapters) fn resolve_max_tokens(model_name: &str, options_set: &ChatOptionsSet) -> u32 {
-		let capabilities = AnthropicModel::parse(model_name).capabilities();
-		Self::resolve_max_tokens_for_capabilities(&capabilities, options_set)
-	}
-
-	fn resolve_max_tokens_for_capabilities(
+	pub(in crate::adapter::adapters) fn resolve_max_tokens_for_capabilities(
 		capabilities: &AnthropicModelCapabilities,
 		options_set: &ChatOptionsSet,
 	) -> u32 {
@@ -266,12 +261,22 @@ impl AnthropicAdapter {
 					let mut has_text = false;
 					let mut thought_signatures: Vec<String> = Vec::new();
 					let mut reasoning_contents: Vec<String> = Vec::new();
+					// The thinking blocks in the order they came: `None` for the next signed
+					// block, `Some(block)` for one kept as a custom part (`redacted_thinking`,
+					// or a block passed through as is).
+					let mut thinking_blocks: Vec<Option<Value>> = Vec::new();
 					let mut other_parts: Vec<ContentPart> = Vec::new();
 
 					for part in msg.content {
 						match part {
-							ContentPart::ThoughtSignature(signature) => thought_signatures.push(signature),
+							ContentPart::ThoughtSignature(signature) => {
+								thought_signatures.push(signature);
+								thinking_blocks.push(None);
+							}
 							ContentPart::ReasoningContent(reasoning) => reasoning_contents.push(reasoning),
+							ContentPart::Custom(custom_part) if is_thinking_block(&custom_part.data) => {
+								thinking_blocks.push(Some(custom_part.data));
+							}
 							other => other_parts.push(other),
 						}
 					}
@@ -283,6 +288,8 @@ impl AnthropicAdapter {
 							ContentPart::ToolCall(tool_call) => tool_call.thought_signatures.clone(),
 							_ => None,
 						}) {
+						// The mirror keeps no position, so its blocks lead.
+						thinking_blocks = std::iter::repeat_n(None, mirrored.len()).chain(thinking_blocks).collect();
 						thought_signatures = mirrored;
 					}
 
@@ -295,16 +302,22 @@ impl AnthropicAdapter {
 					// by position anyway would sign the wrong text, which Anthropic rejects, so
 					// drop the thinking blocks and send the rest of the message instead.
 					if reasoning_contents.len() == thought_signatures.len() {
-						// Anthropic requires every signed thinking block before text/tool-use blocks.
-						values.extend(reasoning_contents.into_iter().zip(thought_signatures).map(
-							|(thinking, signature)| {
-								json!({
-									"type": "thinking",
-									"thinking": thinking,
-									"signature": signature,
-								})
-							},
-						));
+						// Anthropic requires every thinking block before text/tool-use blocks,
+						// and gets them back in the order they came.
+						let mut signed =
+							reasoning_contents
+								.into_iter()
+								.zip(thought_signatures)
+								.map(|(thinking, signature)| {
+									json!({
+										"type": "thinking",
+										"thinking": thinking,
+										"signature": signature,
+									})
+								});
+						for block in thinking_blocks {
+							values.extend(block.or_else(|| signed.next()));
+						}
 					} else if !reasoning_contents.is_empty() || !thought_signatures.is_empty() {
 						tracing::warn!(
 							reasoning_count = reasoning_contents.len(),
@@ -312,6 +325,8 @@ impl AnthropicAdapter {
 							"anthropic - assistant message has unpaired reasoning content and thought signatures; \
 							 omitting thinking blocks from this message"
 						);
+						// A block kept as a custom part needs no pairing, so it still goes back.
+						values.extend(thinking_blocks.into_iter().flatten());
 					}
 
 					for part in other_parts {
@@ -342,6 +357,9 @@ impl AnthropicAdapter {
 							ContentPart::Binary(_) => {}
 							ContentPart::ToolResponse(_) => {}
 							ContentPart::ThoughtSignature(_) | ContentPart::ReasoningContent(_) => {}
+							// OpenRouter's reasoning blocks aren't Anthropic content: it refuses
+							// their `type` with a 400 when a conversation moves here.
+							ContentPart::Custom(custom_part) if is_reasoning_detail(&custom_part) => {}
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
 						}
 					}
@@ -365,6 +383,9 @@ impl AnthropicAdapter {
 				// Tool responses are represented as user tool_result items in Anthropic.
 				ChatRole::Tool => {
 					let mut values: Vec<Value> = Vec::new();
+					// Text rides in the same user message, after the tool_result blocks (Anthropic
+					// requires tool_result blocks to come first in the content array).
+					let mut text_values: Vec<Value> = Vec::new();
 					for part in msg.content {
 						match part {
 							ContentPart::ToolResponse(tool_response) => {
@@ -374,10 +395,12 @@ impl AnthropicAdapter {
 									"tool_use_id": tool_response.call_id,
 								}));
 							}
+							ContentPart::Text(text) => text_values.push(json!({"type": "text", "text": text})),
 							ContentPart::Custom(custom_part) => values.push(custom_part.data),
 							_ => {}
 						}
 					}
+					values.extend(text_values);
 					if !values.is_empty() {
 						let values = apply_cache_control_to_parts(cache_control.as_ref(), values);
 						messages.push(json!({"role": "user", "content": values}));
@@ -459,14 +482,6 @@ impl AnthropicAdapter {
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let response_schema = options_set.response_format().and_then(|format| match format {
-			ChatResponseFormat::JsonSpec(spec) => Some(sanitize_json_schema(
-				&spec.schema,
-				JsonSchemaDialect::AnthropicStructured,
-			)),
-			ChatResponseFormat::JsonMode => None,
-		});
-
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
@@ -478,6 +493,27 @@ impl AnthropicAdapter {
 			("x-api-key".to_string(), api_key),
 			("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
 		]);
+
+		let payload = Self::build_anthropic_request_payload(&model, service_type, chat_req, options_set)?;
+
+		Ok(WebRequestData { url, headers, payload })
+	}
+
+	/// The Messages API request body, shared with the Vertex AI Anthropic publisher
+	/// (which moves `model` to the URL and adds `anthropic_version`).
+	pub(in crate::adapter::adapters) fn build_anthropic_request_payload(
+		model: &ModelIden,
+		service_type: ServiceType,
+		chat_req: ChatRequest,
+		options_set: ChatOptionsSet<'_, '_>,
+	) -> Result<Value> {
+		let response_schema = options_set.response_format().and_then(|format| match format {
+			ChatResponseFormat::JsonSpec(spec) => Some(sanitize_json_schema(
+				&spec.schema,
+				JsonSchemaDialect::AnthropicStructured,
+			)),
+			ChatResponseFormat::JsonMode => None,
+		});
 
 		// -- Parts
 		let AnthropicRequestParts {
@@ -560,8 +596,14 @@ impl AnthropicAdapter {
 			payload.x_insert("output_config", Value::Object(output_config))?;
 		}
 
+		// Some models only accept default sampling values and answer `temperature` / `top_p` with a 400.
+		// (`extra_body` can still set them.)
 		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("temperature", temperature)?;
+			if capabilities.supports_sampling_params {
+				payload.x_insert("temperature", temperature)?;
+			} else {
+				tracing::warn!("temperature is not supported by '{model_name}' and was not sent");
+			}
 		}
 
 		if !options_set.stop_sequences().is_empty() {
@@ -572,14 +614,18 @@ impl AnthropicAdapter {
 		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
 
 		if let Some(top_p) = options_set.top_p() {
-			payload.x_insert("top_p", top_p)?;
+			if capabilities.supports_sampling_params {
+				payload.x_insert("top_p", top_p)?;
+			} else {
+				tracing::warn!("top_p is not supported by '{model_name}' and was not sent");
+			}
 		}
 
 		if let Some(extra_body) = options_set.extra_body() {
 			payload.x_merge(extra_body.clone())?;
 		}
 
-		Ok(WebRequestData { url, headers, payload })
+		Ok(payload)
 	}
 
 	pub(in crate::adapter::adapters) fn build_chat_response(
@@ -897,6 +943,15 @@ fn anthropic_tool_choice(tool_choice: Option<&ToolChoice>) -> Option<Value> {
 			"name": name
 		})),
 	}
+}
+
+/// A thinking block kept as a custom part: `redacted_thinking`, as both the streamed and
+/// the non-streamed response keep it, or a `thinking` block passed through as is.
+fn is_thinking_block(data: &Value) -> bool {
+	matches!(
+		data.get("type").and_then(Value::as_str),
+		Some("thinking" | "redacted_thinking")
+	)
 }
 
 // endregion: --- Support

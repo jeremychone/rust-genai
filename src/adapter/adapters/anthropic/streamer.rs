@@ -1,7 +1,9 @@
 use super::parse_cache_creation_details;
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
-use crate::chat::{ChatOptionsSet, PromptTokensDetails, StopReason, ToolCall, Usage};
+use crate::chat::{
+	ChatOptionsSet, CompletionTokensDetails, CustomPart, PromptTokensDetails, StopReason, ToolCall, Usage,
+};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::{Map, Value};
@@ -66,7 +68,7 @@ impl ThinkingBlock {
 
 	fn into_thought_block(self) -> Option<InterStreamThoughtBlock> {
 		let signature = self.signature.filter(|signature| !signature.is_empty())?;
-		Some(InterStreamThoughtBlock {
+		Some(InterStreamThoughtBlock::Signed {
 			reasoning_content: self.reasoning,
 			signature,
 		})
@@ -154,20 +156,7 @@ impl futures::Stream for AnthropicStreamer {
 									// Callers replaying a signed assistant turn must set
 									// `capture_reasoning_content`, otherwise Anthropic rejects the
 									// continuation.
-									// A signature is only replayable together with the reasoning it signs, so
-									// capturing tool calls alone silently yields a continuation Anthropic
-									// rejects. Surface that once rather than failing later at the provider.
-									if self.options.capture_tool_calls
-										&& !self.options.capture_reasoning_content
-										&& !self.warned_unreplayable_thinking
-									{
-										self.warned_unreplayable_thinking = true;
-										tracing::warn!(
-											"anthropic - thinking block received with capture_tool_calls but not \
-											 capture_reasoning_content; thought signatures will not be captured and \
-											 the tool continuation will be missing its thinking blocks"
-										);
-									}
+									self.warn_if_thinking_is_not_captured();
 
 									let capture_block = self.options.capture_reasoning_content;
 									let captured_reasoning = capture_block.then_some(thinking.clone());
@@ -186,6 +175,23 @@ impl futures::Stream for AnthropicStreamer {
 									}
 									if let Some(event) = self.pending_events.pop_front() {
 										return Poll::Ready(Some(Ok(event)));
+									}
+								}
+								Ok("redacted_thinking") => {
+									// A redacted block arrives whole, with its encrypted `data` and no
+									// deltas, and is replayed as is. Under the same opt-in as a signed
+									// block, it is kept in its place among the thinking blocks, as the
+									// custom part a non-streamed answer makes of it.
+									self.warn_if_thinking_is_not_captured();
+									if self.options.capture_reasoning_content
+										&& let Ok(block) = data.x_take::<Value>("/content_block")
+									{
+										let model_iden = Some(self.options.model_iden.clone());
+										let custom_part = CustomPart {
+											model_iden,
+											data: block,
+										};
+										self.captured_thought_blocks.push(InterStreamThoughtBlock::Custom(custom_part));
 									}
 								}
 								Ok("tool_use") => {
@@ -228,7 +234,11 @@ impl futures::Stream for AnthropicStreamer {
 
 							match &mut self.in_progress_block {
 								InProgressBlock::Text => {
-									let content: String = data.x_take("/delta/text")?;
+									// Server-tool blocks (`server_tool_use`, `web_search_tool_result`) and
+									// `citations_delta` events carry no text: skip them, keep streaming.
+									let Ok(content) = data.x_take::<String>("/delta/text") else {
+										continue;
+									};
 
 									// Add to the captured_content if chat options say so
 									if self.options.capture_content {
@@ -284,33 +294,11 @@ impl futures::Stream for AnthropicStreamer {
 						}
 						"content_block_stop" => {
 							match std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text) {
-								InProgressBlock::ToolUse { id, name, input } if self.options.capture_tool_calls => {
+								InProgressBlock::ToolUse { id, name, input } => {
 									// ToolCallChunks were already emitted incrementally
 									// during content_block_start and content_block_delta.
 									// Here we only finalize capture with parsed arguments.
-									let fn_arguments = if input.is_empty() {
-										Value::Object(Map::new())
-									} else {
-										serde_json::from_str(&input).unwrap_or_else(|e| {
-											tracing::warn!(
-												"Anthropic streamer: failed to parse tool-call input JSON ({} bytes): {e}",
-												input.len()
-											);
-											Value::String(input)
-										})
-									};
-
-									let tc = ToolCall {
-										call_id: id,
-										fn_name: name,
-										fn_arguments,
-										thought_signatures: None,
-									};
-
-									match self.captured_data.tool_calls {
-										Some(ref mut t) => t.push(tc),
-										None => self.captured_data.tool_calls = Some(vec![tc]),
-									}
+									self.capture_tool_call(id, name, input, false);
 								}
 								InProgressBlock::Thinking(thinking_block) => {
 									if let Some(block) = thinking_block.into_thought_block() {
@@ -330,6 +318,15 @@ impl futures::Stream for AnthropicStreamer {
 							// NOTE: This way, the last MessageStop event is still sent,
 							//       but then, on the next poll, it will be stopped.
 							self.done = true;
+
+							// A `tool_use` block cut short (e.g., by `max_tokens`) gets no
+							// `content_block_stop`, so its call is captured here, with its
+							// input as far as it got.
+							if let InProgressBlock::ToolUse { id, name, input } =
+								std::mem::replace(&mut self.in_progress_block, InProgressBlock::Text)
+							{
+								self.capture_tool_call(id, name, input, true);
+							}
 
 							// Capture the usage
 							let captured_usage = if self.options.capture_usage {
@@ -416,70 +413,31 @@ impl AnthropicStreamer {
 			};
 
 			// NOTE: Permissive on this one; if the usage object is absent, treat it as nonexistent (for now)
-			let Ok(mut usage_value) = data.x_take::<Value>(usage_path) else {
+			let Ok(usage_value) = data.x_take::<Value>(usage_path) else {
 				return Ok(());
 			};
 
-			// -- Capture the eventual input/output tokens
-			let input_tokens = usage_value.x_take::<i32>("input_tokens").ok();
-			let output_tokens = usage_value.x_take::<i32>("output_tokens").ok();
-
-			// -- Capture cache tokens.
-			// Standard Anthropic reports them in `message_start` and repeats them in `message_delta`;
-			// some gateways (e.g. Alibaba DashScope / Qwen) report them only in `message_delta`.
-			// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
-			// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
-			let cache_creation: i32 = usage_value.x_get("cache_creation_input_tokens").unwrap_or(0);
-			let cache_read: i32 = usage_value.x_get("cache_read_input_tokens").unwrap_or(0);
-
-			// Parse cache_creation breakdown if present (TTL-specific breakdown)
-			let cache_creation_details = usage_value
-				.x_get::<Value>("cache_creation")
-				.ok()
-				.as_ref()
-				.and_then(parse_cache_creation_details);
-
-			let has_cache = cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some();
-
-			// Nothing to capture from this snapshot, leave `usage` as-is (possibly None).
-			if input_tokens.is_none() && output_tokens.is_none() && !has_cache {
-				return Ok(());
-			}
-
-			let usage = self.captured_data.usage.get_or_insert(Usage::default());
-
-			if let Some(input_tokens) = input_tokens {
-				usage.prompt_tokens = Some(input_tokens + cache_creation + cache_read);
-			}
-			// NOTE: Cache tokens without `input_tokens` (gateway shape) are deliberately NOT added
-			// to `prompt_tokens`, since gateway token accounting is provider-specific.
-
-			if let Some(output_tokens) = output_tokens {
-				usage.completion_tokens = Some(output_tokens);
-			}
-
-			if has_cache {
-				// Anthropic sends the `cache_creation` breakdown only in `message_start`, while
-				// `message_delta` repeats the totals without it. Keep the earlier breakdown so the
-				// later snapshot does not erase it.
-				let cache_creation_details = cache_creation_details.or_else(|| {
-					usage
-						.prompt_tokens_details
-						.as_ref()
-						.and_then(|details| details.cache_creation_details.clone())
-				});
-
-				// Set prompt_tokens_details (match into_usage behavior: always Some(value))
-				usage.prompt_tokens_details = Some(PromptTokensDetails {
-					cache_creation_tokens: Some(cache_creation),
-					cache_creation_details,
-					cached_tokens: Some(cache_read),
-					audio_tokens: None,
-				});
-			}
+			merge_usage_snapshot(&mut self.captured_data.usage, usage_value);
 		}
 
 		Ok(())
+	}
+
+	/// A thinking block is only replayable together with the reasoning it signs (or, when
+	/// redacted, as a whole), so capturing tool calls alone silently yields a continuation
+	/// Anthropic rejects. Surface that once rather than failing later at the provider.
+	fn warn_if_thinking_is_not_captured(&mut self) {
+		if self.options.capture_tool_calls
+			&& !self.options.capture_reasoning_content
+			&& !self.warned_unreplayable_thinking
+		{
+			self.warned_unreplayable_thinking = true;
+			tracing::warn!(
+				"anthropic - thinking block received with capture_tool_calls but not \
+				 capture_reasoning_content; thought signatures will not be captured and \
+				 the tool continuation will be missing its thinking blocks"
+			);
+		}
 	}
 
 	/// Simple wrapper for now, with the corresponding map_err.
@@ -490,18 +448,141 @@ impl AnthropicStreamer {
 			serde_error,
 		})
 	}
+
+	/// Moves a `tool_use` block's call into `captured_data` (when capturing tool calls),
+	/// parsing its input when it is JSON. A block `cut_off` before its `content_block_stop`
+	/// (e.g., by `max_tokens`) keeps its input as far as it got, left as a string when it
+	/// does not parse, an empty one included.
+	fn capture_tool_call(&mut self, id: String, name: String, input: String, cut_off: bool) {
+		if !self.options.capture_tool_calls {
+			return;
+		}
+
+		let fn_arguments = if input.is_empty() && !cut_off {
+			Value::Object(Map::new())
+		} else {
+			serde_json::from_str(&input).unwrap_or_else(|e| {
+				if !cut_off {
+					tracing::warn!(
+						"Anthropic streamer: failed to parse tool-call input JSON ({} bytes): {e}",
+						input.len()
+					);
+				}
+				Value::String(input)
+			})
+		};
+
+		let tc = ToolCall {
+			call_id: id,
+			fn_name: name,
+			fn_arguments,
+			thought_signatures: None,
+		};
+
+		match self.captured_data.tool_calls {
+			Some(ref mut t) => t.push(tc),
+			None => self.captured_data.tool_calls = Some(vec![tc]),
+		}
+	}
+}
+
+/// Merges one Anthropic `message_start` / `message_delta` usage snapshot into the captured usage.
+///
+/// Mirrors `AnthropicAdapter::into_usage()` for the non-streaming path.
+fn merge_usage_snapshot(captured: &mut Option<Usage>, mut usage_value: Value) {
+	// -- Capture the eventual input/output tokens
+	let input_tokens = usage_value.x_take::<i32>("input_tokens").ok();
+	let output_tokens = usage_value.x_take::<i32>("output_tokens").ok();
+
+	// -- Capture the thinking share of `output_tokens` (`output_tokens_details.thinking_tokens`),
+	// mapped to `completion_tokens_details.reasoning_tokens` like `AnthropicAdapter::into_usage()`.
+	let thinking_tokens = usage_value
+		.get("output_tokens_details")
+		.and_then(|details| details.get("thinking_tokens"))
+		.and_then(Value::as_i64)
+		.map(|tokens| tokens as i32)
+		.filter(|&tokens| tokens > 0);
+
+	// -- Capture cache tokens.
+	// Standard Anthropic reports them in `message_start` and repeats them in `message_delta`;
+	// some gateways (e.g. Alibaba DashScope / Qwen) report them only in `message_delta`.
+	// NOTE: Anthropic's input_tokens does NOT include cached tokens, so we must add them.
+	// See also: AnthropicAdapter::into_usage() for non-streaming equivalent.
+	let cache_creation: i32 = usage_value.x_get("cache_creation_input_tokens").unwrap_or(0);
+	let cache_read: i32 = usage_value.x_get("cache_read_input_tokens").unwrap_or(0);
+
+	// Parse cache_creation breakdown if present (TTL-specific breakdown)
+	let cache_creation_details = usage_value
+		.x_get::<Value>("cache_creation")
+		.ok()
+		.as_ref()
+		.and_then(parse_cache_creation_details);
+
+	let has_cache = cache_creation > 0 || cache_read > 0 || cache_creation_details.is_some();
+
+	// Nothing to capture from this snapshot, leave `usage` as-is (possibly None).
+	if input_tokens.is_none() && output_tokens.is_none() && thinking_tokens.is_none() && !has_cache {
+		return;
+	}
+
+	let usage = captured.get_or_insert(Usage::default());
+
+	if let Some(input_tokens) = input_tokens {
+		usage.prompt_tokens = Some(input_tokens + cache_creation + cache_read);
+	}
+	// NOTE: Cache tokens without `input_tokens` (gateway shape) are deliberately NOT added
+	// to `prompt_tokens`, since gateway token accounting is provider-specific.
+
+	if let Some(output_tokens) = output_tokens {
+		usage.completion_tokens = Some(output_tokens);
+	}
+
+	if let Some(reasoning_tokens) = thinking_tokens {
+		usage.completion_tokens_details = Some(CompletionTokensDetails {
+			accepted_prediction_tokens: None,
+			rejected_prediction_tokens: None,
+			reasoning_tokens: Some(reasoning_tokens),
+			audio_tokens: None,
+		});
+	}
+
+	if has_cache {
+		// Anthropic sends the `cache_creation` breakdown only in `message_start`, while
+		// `message_delta` repeats the totals without it. Keep the earlier breakdown so the
+		// later snapshot does not erase it.
+		let cache_creation_details = cache_creation_details.or_else(|| {
+			usage
+				.prompt_tokens_details
+				.as_ref()
+				.and_then(|details| details.cache_creation_details.clone())
+		});
+
+		// Set prompt_tokens_details (match into_usage behavior: always Some(value))
+		usage.prompt_tokens_details = Some(PromptTokensDetails {
+			cache_creation_tokens: Some(cache_creation),
+			cache_creation_details,
+			cached_tokens: Some(cache_read),
+			audio_tokens: None,
+		});
+	}
 }
 
 #[cfg(test)]
 mod tests {
-	use super::ThinkingBlock;
+	use super::{ThinkingBlock, merge_usage_snapshot};
+	use crate::adapter::inter_stream::InterStreamThoughtBlock;
+	use crate::chat::Usage;
+	use serde_json::json;
 
 	fn signature(start: &str, deltas: &[&str]) -> Option<String> {
 		let mut block = ThinkingBlock::new(None, Some(start.to_string()));
 		for delta in deltas {
 			block.append_signature_delta(delta);
 		}
-		block.into_thought_block().map(|block| block.signature)
+		match block.into_thought_block()? {
+			InterStreamThoughtBlock::Signed { signature, .. } => Some(signature),
+			InterStreamThoughtBlock::Custom(_) => None,
+		}
 	}
 
 	#[test]
@@ -522,5 +603,35 @@ mod tests {
 		// Signatures are opaque base64, so no resend/overlap collapsing is applied.
 		assert_eq!(signature("ab", &["ab"]).as_deref(), Some("abab"));
 		assert_eq!(signature("", &["QUJD", "QUJD"]).as_deref(), Some("QUJDQUJD"));
+	}
+
+	#[test]
+	fn stream_usage_captures_thinking_tokens_as_reasoning_tokens() {
+		let mut usage: Option<Usage> = None;
+		merge_usage_snapshot(&mut usage, json!({"input_tokens": 25, "output_tokens": 1}));
+		merge_usage_snapshot(
+			&mut usage,
+			json!({"output_tokens": 120, "output_tokens_details": {"thinking_tokens": 80}}),
+		);
+
+		let usage = usage.expect("usage");
+		assert_eq!(usage.prompt_tokens, Some(25));
+		assert_eq!(usage.completion_tokens, Some(120));
+		assert_eq!(
+			usage.completion_tokens_details.and_then(|details| details.reasoning_tokens),
+			Some(80)
+		);
+	}
+
+	#[test]
+	fn stream_usage_without_thinking_tokens_has_no_completion_details() {
+		let mut usage: Option<Usage> = None;
+		merge_usage_snapshot(&mut usage, json!({"input_tokens": 25, "output_tokens": 10}));
+		merge_usage_snapshot(
+			&mut usage,
+			json!({"output_tokens": 12, "output_tokens_details": {"thinking_tokens": 0}}),
+		);
+
+		assert!(usage.expect("usage").completion_tokens_details.is_none());
 	}
 }

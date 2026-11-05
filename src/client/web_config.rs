@@ -92,10 +92,10 @@ impl WebConfig {
 		if let Some(read_timeout) = self.read_timeout {
 			builder = builder.read_timeout(read_timeout);
 		}
-		if let Some(ref headers) = self.default_headers {
+		if let Some(headers) = self.default_headers.as_ref() {
 			builder = builder.default_headers(headers.clone());
 		}
-		if let Some(ref proxy) = self.proxy {
+		if let Some(proxy) = self.proxy.as_ref() {
 			builder = builder.proxy(proxy.clone());
 		}
 		// Performance optimizations

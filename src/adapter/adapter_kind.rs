@@ -25,7 +25,7 @@ pub enum AdapterKind {
 
 	/// Gemini Interactions API.
 	///
-	/// Opt-in only: reachable via the `gemini_ix::` namespace (or `gemini_interactions::`).
+	/// Reachable via the `gemini_ix::` namespace (or `gemini_interactions::`), and the default adapter for `gemini-4-argon` models.
 	GeminiIx,
 
 	/// Anthopric native protocol as well
@@ -92,7 +92,7 @@ pub enum AdapterKind {
 	Omlx,
 
 	/// Google Vertex AI (Model Garden). Supports Gemini and Claude models via publishers/google and publishers/anthropic.
-	/// Uses namespace routing: `vertex::gemini-2.5-flash`, `vertex::claude-sonnet-4-6`
+	/// Uses namespace routing: `vertex::gemini-3.8-flash`, `vertex::claude-sonnet-4-6`
 	Vertex,
 
 	/// GitHub Models inference API (multi-publisher gateway for OpenAI, Anthropic, and Google models).
@@ -135,6 +135,26 @@ pub enum AdapterKind {
 	/// Examples: `api_route::gpt-6.1-sol`, `api_route::claude-fable-5-1`.
 	/// Uses `API_ROUTE_API_KEY`.
 	ApiRoute,
+
+	/// Heabsy: OpenAI-compatible inference API for open models, selected via the `heabsy::` namespace.
+	/// Example: `heabsy::qwen38`. Website: <https://heabsy.com/platform>.
+	/// Uses `HEABSY_API_KEY`. Embeddings are not supported.
+	Heabsy,
+
+	/// Runcrate: OpenAI-compatible inference API for open models, selected via the `runcrate::` namespace.
+	/// Example: `runcrate::deepseek-ai/DeepSeek-V4.1-Flash`. Website: <https://www.runcrate.ai>.
+	/// Uses `RUNCRATE_API_KEY`.
+	Runcrate,
+
+	/// CloudGPU: OpenAI-compatible inference API for open models, selected via the `cloudgpu::` namespace.
+	/// Example: `cloudgpu::deepseek-v4.1-flash`. Website: <https://cloudgpu.app>.
+	/// Uses `CLOUDGPU_API_KEY`. Embeddings are not supported.
+	CloudGpu,
+
+	/// cheapaimodel: OpenAI-compatible gateway for open-weight models, selected via the `cheapaimodel::` namespace.
+	/// Example: `cheapaimodel::deepseek-v4-1-flash`. Website: <https://cheapaimodel.ai>.
+	/// Uses `CHEAPAIMODEL_API_KEY`. Embeddings are not supported.
+	Cheapaimodel,
 
 	/// Opper: OpenAI-compatible gateway for many providers (OpenAI, Anthropic, Google, etc.).
 	/// Namespace: `opper::claude-sonnet-4-6` (pool name), `opper::anthropic/claude-sonnet-4-6` (pinned route).
@@ -190,6 +210,10 @@ adapter_kind_str_maps! {
 	AtlasCloud         => "AtlasCloud",         "atlascloud",          adapters::all_adapters::AtlasCloudAdapter;
 	Requesty           => "Requesty",           "requesty",            adapters::all_adapters::RequestyAdapter;
 	ApiRoute           => "ApiRoute",           "api_route",           adapters::all_adapters::ApiRouteAdapter;
+	Heabsy             => "Heabsy",             "heabsy",              adapters::all_adapters::HeabsyAdapter;
+	Runcrate           => "Runcrate",           "runcrate",            adapters::all_adapters::RuncrateAdapter;
+	CloudGpu           => "CloudGpu",           "cloudgpu",            adapters::all_adapters::CloudGpuAdapter;
+	Cheapaimodel       => "Cheapaimodel",       "cheapaimodel",        adapters::all_adapters::CheapaimodelAdapter;
 	Opper              => "Opper",              "opper",               adapters::all_adapters::OpperAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
@@ -212,12 +236,13 @@ impl AdapterKind {
 	///  - Zhipu      - starts_with "glm"
 	///  - Cohere     - starts_with "command"
 	///  - Ollama     - For anything else
+	///  - GeminiIx   - starts_with "gemini-4-argon"
 	///
 	/// Other Some adapters have to have model name namespaced to be used,
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
 	/// - e.g., for nebius with `nebius::Qwen/Qwen3-235B-A22B`
 	/// - e.g., for ZAI coding plan with `zai_coding::glm-4.6`
-	/// - e.g., for vertex with `vertex::gemini-2.5-flash` or `vertex::claude-sonnet-4-6`
+	/// - e.g., for vertex with `vertex::gemini-3.8-flash` or `vertex::claude-sonnet-4-6`
 	///
 	/// And all adapters can be force namspaced as well.
 	///
@@ -248,6 +273,8 @@ impl AdapterKind {
 			} else {
 				Ok(Self::OpenAI)
 			}
+		} else if model.starts_with("gemini-4-argon") {
+			Ok(Self::GeminiIx)
 		} else if model.starts_with("gemini") {
 			Ok(Self::Gemini)
 		} else if model.starts_with("claude") {
@@ -380,5 +407,3 @@ mod tests {
 		Ok(())
 	}
 }
-
-// endregion: --- Tests

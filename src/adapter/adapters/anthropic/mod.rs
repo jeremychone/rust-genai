@@ -16,6 +16,9 @@ mod streamer;
 
 pub use adapter_impl::*;
 pub(in crate::adapter::adapters) use adapter_shared::*;
+// For hosts that wrap the Messages API (e.g., Bedrock Converse's `additionalModelRequestFields`).
+pub(in crate::adapter::adapters) use ant_model::AnthropicModel;
+pub(in crate::adapter::adapters) use ant_reasoning::insert_anthropic_reasoning;
 pub use streamer::*;
 
 // endregion: --- Modules

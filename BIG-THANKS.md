@@ -4,7 +4,52 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
-## v0.7.0-beta.x
+## v0.7.3
+
+- [pcbeingused333](https://github.com/pcbeingused333)
+  - [#372](https://github.com/jeremychone/rust-genai/pull/372) fix(openai): keep streamed tool calls whose deltas omit index
+  - [#371](https://github.com/jeremychone/rust-genai/pull/371) fix(anthropic): omit sampling params on models that reject them
+  - [#370](https://github.com/jeremychone/rust-genai/pull/370) fix(openai_resp): do not send stop or seed, the Responses API rejects them
+  - [#368](https://github.com/jeremychone/rust-genai/pull/368) fix(openai): decode base64 embeddings
+  - [#366](https://github.com/jeremychone/rust-genai/pull/366) fix(vertex): send tool_choice, reasoning effort, response format and extra_body to Claude
+  - [#365](https://github.com/jeremychone/rust-genai/pull/365) fix(anthropic): capture streamed thinking tokens as reasoning_tokens
+  - [#364](https://github.com/jeremychone/rust-genai/pull/364) fix(gemini): capture streamed reasoning with capture_reasoning_content and keep every thought part
+  - [#362](https://github.com/jeremychone/rust-genai/pull/362) fix(ollama): send a JSON-schema response format as Ollama's format param
+  - [#357](https://github.com/jeremychone/rust-genai/pull/357) fix(bedrock): count cache tokens in prompt_tokens
+  - [#356](https://github.com/jeremychone/rust-genai/pull/356) fix(cohere): list the current chat models in all_model_names
+- [vagmi](https://github.com/vagmi)
+  - [#359](https://github.com/jeremychone/rust-genai/pull/359) fix(bedrock): support Anthropic adaptive thinking and parallel tool calls in Converse
+- [vdavid](https://github.com/vdavid)
+  - [#360](https://github.com/jeremychone/rust-genai/pull/360) fix(openai): keep OpenRouter's streamed reasoning_details
+- [wouterdebie](https://github.com/wouterdebie)
+  - [#373](https://github.com/jeremychone/rust-genai/pull/373) gemini - a thinking level and the stand-in thought signature for Gemini 4 and later, not only Gemini 3
+- [ropoctl](https://github.com/ropoctl)
+  - [#374](https://github.com/jeremychone/rust-genai/pull/374) test: replay provider regressions merged after #348
+- [nicho810](https://github.com/nicho810)
+  - [#375](https://github.com/jeremychone/rust-genai/pull/375) + Add cheapaimodel OpenAI-compatible adapter
+
+## v0.7.1..v0.7.2
+
+- [pcbeingused333](https://github.com/pcbeingused333)
+  - [#354](https://github.com/jeremychone/rust-genai/pull/354) fix(chat): map refusals and context-window stops
+  - [#353](https://github.com/jeremychone/rust-genai/pull/353) fix(vertex): replace retired Gemini models in the model list
+  - [#352](https://github.com/jeremychone/rust-genai/pull/352) fix(vertex): stream Claude through streamRawPredict
+  - [#351](https://github.com/jeremychone/rust-genai/pull/351) fix(cohere): send chat history entries with the message field
+- [ropoctl](https://github.com/ropoctl)
+  - [#343](https://github.com/jeremychone/rust-genai/pull/343) fix(anthropic): resolve default max_tokens for Claude Opus 4.6, 4.7, and 4.8
+  - [#344](https://github.com/jeremychone/rust-genai/pull/344) fix(openai_resp): capture non-streaming reasoning and deduplicate mirrored thought signatures
+  - [#345](https://github.com/jeremychone/rust-genai/pull/345) fix(gemini): forward seed and extra_body options and omit empty reasoning_content
+  - [#346](https://github.com/jeremychone/rust-genai/pull/346) fix(client): apply RequestOverride and default/extra headers in exec_embed
+- [mrhy7176](https://github.com/mrhy7176)
+  - [#355](https://github.com/jeremychone/rust-genai/pull/355) feat(adapter): add CloudGPU OpenAI-compatible adapter
+- [heydryft](https://github.com/heydryft)
+  - [#350](https://github.com/jeremychone/rust-genai/pull/350) feat(adapter): add Runcrate OpenAI-compatible adapter
+- [Mattbusel](https://github.com/Mattbusel)
+  - [#347](https://github.com/jeremychone/rust-genai/pull/347) fix(openai): keep every piece of a stream chunk
+- [wouterdebie](https://github.com/wouterdebie)
+  - [#342](https://github.com/jeremychone/rust-genai/pull/342) fix(anthropic): keep a stream's redacted thinking, and send thinking blocks back in their order
+
+## v0.7.0
 
 - [ropoctl](https://github.com/ropoctl)
   - [#289](https://github.com/jeremychone/rust-genai/pull/289) feat(client): ClientBuilder::append_provider_config for per-adapter endpoint/auth
@@ -23,6 +68,13 @@ _If I forgot your PR, feel free to submit a PR_
   - [#268](https://github.com/jeremychone/rust-genai/pull/268) fix(anthropic): correct reasoning routing for current model names
   - [#247](https://github.com/jeremychone/rust-genai/pull/247) feat(anthropic): support fine-grained tool streaming (eager_input_streaming)
   - [#253](https://github.com/jeremychone/rust-genai/pull/253) fix: ReasoningEffort::Zero (rename from ::None) disables reasoning on Anthropic (#251)
+- [wouterdebie](https://github.com/wouterdebie)
+  - [#340](https://github.com/jeremychone/rust-genai/pull/340) fix(anthropic): keep a streamed tool call cut off by max_tokens
+  - [#339](https://github.com/jeremychone/rust-genai/pull/339) fix(openai_resp): keep a stream's tool calls when the response is incomplete
+  - [#336](https://github.com/jeremychone/rust-genai/pull/336) deps: replace paste with pastey
+  - [#335](https://github.com/jeremychone/rust-genai/pull/335) fix(gemini): send function call ids back with the call and its response
+  - [#334](https://github.com/jeremychone/rust-genai/pull/334) cargo: make reqwest system-proxy a genai feature (on by default)
+  - [#333](https://github.com/jeremychone/rust-genai/pull/333) fix(openai_resp): send function tool strict only when set
 - [vagmi](https://github.com/vagmi)
   - [#328](https://github.com/jeremychone/rust-genai/pull/328) feat(adapter): add Mistral AI with thinking-content replay and random_seed mapping
   - [#326](https://github.com/jeremychone/rust-genai/pull/326) fix(bedrock): preserve streaming usage and reasoning blocks, detect publishers, refine reasoning mappings and document names
@@ -57,6 +109,10 @@ _If I forgot your PR, feel free to submit a PR_
 - [Jackkakaya](https://github.com/Jackkakaya)
   - [#321](https://github.com/jeremychone/rust-genai/pull/321) feat(chat): add independent streaming header and body read timeouts
   - [#258](https://github.com/jeremychone/rust-genai/pull/258) fix(anthropic): capture streaming cache tokens from `message_delta` fallback
+- [kawayiYokami](https://github.com/kawayiYokami)
+  - [#332](https://github.com/jeremychone/rust-genai/pull/332) fix(openai_resp): use the completed arguments from output_item.done for streaming function_call
+- [emnlmn](https://github.com/emnlmn)
+  - [#331](https://github.com/jeremychone/rust-genai/pull/331) fix(openai): send max_completion_tokens for gpt-6 chat completions
 - [Thibaultjaigu](https://github.com/Thibaultjaigu)
   - [#317](https://github.com/jeremychone/rust-genai/pull/317) feat(adapter): add Requesty OpenAI-compatible adapter
 - [DennyHo0917](https://github.com/DennyHo0917)

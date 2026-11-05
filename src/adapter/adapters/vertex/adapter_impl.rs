@@ -1,4 +1,4 @@
-use crate::adapter::adapters::anthropic::{AnthropicAdapter, AnthropicRequestParts};
+use crate::adapter::adapters::anthropic::AnthropicAdapter;
 use crate::adapter::adapters::gemini::GeminiAdapter;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
@@ -7,7 +7,7 @@ use crate::resolver::{AuthData, Endpoint};
 use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
-use serde_json::json;
+use serde_json::Value;
 use tracing::warn;
 use value_ext::JsonValueExt;
 
@@ -83,9 +83,7 @@ impl Adapter for VertexAdapter {
 		_web_client: &WebClient,
 	) -> Result<Vec<String>> {
 		Ok(vec![
-			"gemini-2.5-pro".to_string(),
-			"gemini-2.5-flash".to_string(),
-			"gemini-2.5-flash-lite".to_string(),
+			"gemini-3.8-flash".to_string(),
 			"claude-sonnet-4-6".to_string(),
 			"claude-opus-4-6".to_string(),
 			"claude-haiku-4-5".to_string(),
@@ -113,8 +111,9 @@ impl Adapter for VertexAdapter {
 				ServiceType::Embed => format!("{base_url}{publisher_path}/models/{model_name}:predict"),
 			},
 			VertexPublisher::Anthropic => match service_type {
-				ServiceType::Chat | ServiceType::ChatStream => {
-					format!("{base_url}{publisher_path}/models/{model_name}:rawPredict")
+				ServiceType::Chat => format!("{base_url}{publisher_path}/models/{model_name}:rawPredict"),
+				ServiceType::ChatStream => {
+					format!("{base_url}{publisher_path}/models/{model_name}:streamRawPredict")
 				}
 				ServiceType::Embed => format!("{base_url}{publisher_path}/models/{model_name}:predict"),
 			},
@@ -148,15 +147,9 @@ impl Adapter for VertexAdapter {
 				chat_req,
 				options_set,
 			),
-			VertexPublisher::Anthropic => Self::to_anthropic_web_request_data(
-				model,
-				&model_name,
-				endpoint,
-				headers,
-				service_type,
-				chat_req,
-				options_set,
-			),
+			VertexPublisher::Anthropic => {
+				Self::to_anthropic_web_request_data(model, endpoint, headers, service_type, chat_req, options_set)
+			}
 		}
 	}
 
@@ -240,52 +233,18 @@ impl VertexAdapter {
 impl VertexAdapter {
 	fn to_anthropic_web_request_data(
 		model: ModelIden,
-		model_name: &str,
 		endpoint: Endpoint,
 		headers: Headers,
 		service_type: ServiceType,
 		chat_req: ChatRequest,
 		options_set: ChatOptionsSet<'_, '_>,
 	) -> Result<WebRequestData> {
-		let AnthropicRequestParts {
-			system,
-			messages,
-			tools,
-		} = AnthropicAdapter::into_anthropic_request_parts(chat_req, options_set.cache_control().cloned())?;
-
-		// Vertex Anthropic: model is in URL, not body; anthropic_version goes in body
-		let stream = matches!(service_type, ServiceType::ChatStream);
-		let mut payload = json!({
-			"anthropic_version": VERTEX_ANTHROPIC_VERSION,
-			"stream": stream,
-		});
-
-		if let Some(system) = system {
-			payload.x_insert("system", system)?;
-		}
-
-		// -- Tools (before messages)
-		if let Some(tools) = tools {
-			payload.x_insert("/tools", tools)?;
-		}
-
-		// -- Messages (after tools)
-		payload.x_insert("messages", messages)?;
-
-		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("temperature", temperature)?;
-		}
-
-		if !options_set.stop_sequences().is_empty() {
-			payload.x_insert("stop_sequences", options_set.stop_sequences())?;
-		}
-
-		let max_tokens = AnthropicAdapter::resolve_max_tokens(model_name, &options_set);
-		payload.x_insert("max_tokens", max_tokens)?; // required for Anthropic
-
-		if let Some(top_p) = options_set.top_p() {
-			payload.x_insert("top_p", top_p)?;
-		}
+		// Same body as the direct Anthropic adapter (tool_choice, effort, JSON schema, extra_body...).
+		// Vertex Anthropic: model is in URL, not body; anthropic_version goes in body.
+		let mut payload =
+			AnthropicAdapter::build_anthropic_request_payload(&model, service_type, chat_req, options_set)?;
+		payload.x_remove::<Value>("model")?;
+		payload.x_insert("anthropic_version", VERTEX_ANTHROPIC_VERSION)?;
 
 		let url = Self::get_service_url(&model, service_type, endpoint)?;
 
@@ -294,3 +253,11 @@ impl VertexAdapter {
 }
 
 // endregion: --- Anthropic Publisher Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+#[path = "adapter_impl_tests.rs"]
+mod tests;
+
+// endregion: --- Tests

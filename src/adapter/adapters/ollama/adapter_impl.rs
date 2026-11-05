@@ -106,10 +106,8 @@ impl Adapter for OllamaAdapter {
 		payload.x_insert("messages", messages)?;
 
 		if let Some(format) = chat_options.response_format() {
-			// Note: Ollama's API uses "format": "json" for its JSON mode, so we set that if the chat options specify json mode.
-			if matches!(format, crate::chat::ChatResponseFormat::JsonMode) {
-				payload.x_insert("format", "json")?;
-			}
+			// Ollama's API takes "format": "json" for JSON mode, or a JSON Schema for structured output.
+			payload.x_insert("format", Self::response_format_to_format(format))?;
 		}
 
 		// -- Reasoning (`think`)

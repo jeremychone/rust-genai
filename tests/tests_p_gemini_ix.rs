@@ -2,11 +2,13 @@ mod support;
 
 use crate::support::{Check, TestResult, common_tests};
 use genai::adapter::AdapterKind;
+use genai::chat::ReasoningEffort;
 use genai::resolver::AuthData;
 
 // The Interactions API is opt-in, so every model name here carries the `gemini_ix::` prefix.
-const MODEL: &str = "gemini_ix::gemini-3.5-flash";
-const MODEL_NS: &str = "gemini_ix::gemini-3.5-flash";
+const ARGON: &str = "gemini-4-argon";
+const MODEL: &str = "gemini_ix::gemini-3.8-flash";
+const MODEL_NS: &str = "gemini_ix::gemini-3.8-flash";
 
 // region:    --- Provider Specific
 
@@ -83,12 +85,22 @@ async fn test_gemini_ix_stateful_stream_captures_response_id_ok() -> TestResult<
 
 #[tokio::test]
 async fn test_chat_simple_ok() -> TestResult<()> {
-	common_tests::common_test_chat_simple_ok(MODEL, None).await
+	common_tests::common_test_chat_simple_ok(ARGON, None).await
 }
 
 #[tokio::test]
 async fn test_chat_namespaced_ok() -> TestResult<()> {
 	common_tests::common_test_chat_simple_ok(MODEL_NS, None).await
+}
+
+#[tokio::test]
+async fn test_chat_reasoning_ok() -> TestResult<()> {
+	common_tests::common_test_chat_reasoning_ok(
+		ARGON,
+		ReasoningEffort::XHigh,
+		Some(Check::REASONING_CONTENT | Check::REASONING_USAGE),
+	)
+	.await
 }
 
 #[tokio::test]

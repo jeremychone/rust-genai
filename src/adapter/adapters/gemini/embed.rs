@@ -189,14 +189,15 @@ pub fn to_embed_response(
 	let embedding_vectors = if let Ok(single_res) = serde_json::from_value::<GeminiEmbedResponse>(body.clone()) {
 		// Single embedding response
 		vec![single_res.embedding.values]
-	} else if let Ok(batch_res) = serde_json::from_value::<GeminiBatchEmbedResponse>(body.clone()) {
-		// Batch embedding response
-		batch_res.embeddings.into_iter().map(|e| e.values).collect()
 	} else {
-		return Err(Error::StreamParse {
-			model_iden: model_iden.clone(),
-			serde_error: serde_json::from_str::<()>("").unwrap_err(), // Create a dummy serde error
-		});
+		// Batch embedding response
+		let batch_res = serde_json::from_value::<GeminiBatchEmbedResponse>(body.clone()).map_err(|serde_error| {
+			Error::StreamParse {
+				model_iden: model_iden.clone(),
+				serde_error,
+			}
+		})?;
+		batch_res.embeddings.into_iter().map(|e| e.values).collect()
 	};
 
 	// Convert to our format

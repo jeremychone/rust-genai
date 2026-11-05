@@ -5,12 +5,14 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
+use serde_json::Value;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 use tokio::sync::oneshot;
 
 type BoxBody = http_body_util::combinators::BoxBody<Bytes, Infallible>;
@@ -25,11 +27,19 @@ pub enum Mode {
 
 pub struct YakbakServer {
 	addr: SocketAddr,
+	replay_requests: Option<Arc<Mutex<Vec<Value>>>>,
 	shutdown_tx: Option<oneshot::Sender<()>>,
 	join_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl YakbakServer {
+	/// JSON request bodies received by a replay server, in arrival order.
+	pub async fn replay_requests(&self) -> Vec<Value> {
+		match &self.replay_requests {
+			Some(requests) => requests.lock().await.clone(),
+			None => Vec::new(),
+		}
+	}
 	pub fn addr(&self) -> SocketAddr {
 		self.addr
 	}
@@ -66,6 +76,7 @@ impl YakbakServer {
 
 		let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
+		let mut replay_requests = None;
 		let join_handle = match mode {
 			Mode::Record {
 				backend_url,
@@ -83,9 +94,12 @@ impl YakbakServer {
 				}))
 			}
 			Mode::Replay { cassette_dir } => {
+				let requests = Arc::new(Mutex::new(Vec::new()));
+				replay_requests = Some(requests.clone());
 				let state = Arc::new(ReplayState {
 					cassette_dir,
 					counter: AtomicUsize::new(0),
+					requests,
 				});
 				tokio::spawn(run_server(listener, shutdown_rx, move |req| {
 					let state = state.clone();
@@ -96,6 +110,7 @@ impl YakbakServer {
 
 		Ok(YakbakServer {
 			addr,
+			replay_requests,
 			shutdown_tx: Some(shutdown_tx),
 			join_handle: Some(join_handle),
 		})
@@ -232,9 +247,18 @@ async fn handle_record(req: Request<Incoming>, state: &RecordState) -> Result<Re
 struct ReplayState {
 	cassette_dir: PathBuf,
 	counter: AtomicUsize,
+	requests: Arc<Mutex<Vec<Value>>>,
 }
 
-async fn handle_replay(_req: Request<Incoming>, state: &ReplayState) -> Result<Response<BoxBody>, String> {
+async fn handle_replay(req: Request<Incoming>, state: &ReplayState) -> Result<Response<BoxBody>, String> {
+	let request_body = req
+		.into_body()
+		.collect()
+		.await
+		.map_err(|e| format!("read replay request: {e}"))?
+		.to_bytes();
+	let request_json = serde_json::from_slice(&request_body).map_err(|e| format!("parse replay request: {e}"))?;
+	state.requests.lock().await.push(request_json);
 	// -- List .txt files in sorted order
 	let mut files: Vec<PathBuf> = Vec::new();
 	let mut dir = tokio::fs::read_dir(&state.cassette_dir)

@@ -1,0 +1,7 @@
+data: {"id": "cmpl_fixture", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"content": [{"type": "thinking", "thinking": [{"type": "text", "text": "17 x 23 = 391."}]}]}, "finish_reason": null}]}
+
+data: {"id": "cmpl_fixture", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"content": [{"type": "text", "text": "391"}]}, "finish_reason": "stop"}]}
+
+data: [DONE]
+
+: end

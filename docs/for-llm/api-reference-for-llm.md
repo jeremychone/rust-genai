@@ -4,7 +4,7 @@ Comprehensive, dry reference for the `genai` Rust library.
 All public types, methods, and module structure are documented below.
 
 ```toml
-genai = "0.6"
+genai = "0.7"
 ```
 
 ## Crate Structure
@@ -32,7 +32,7 @@ genai (crate root / lib.rs)
 - **ProviderConfig**: Provider-level endpoint/auth overrides for adapter-wide operations such as model listing. Since v0.6.0.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
 - **Bound Adapter**: Optional `Client`/`ClientBuilder` adapter constraint. Since v0.6.0. When set, bare model names route through the bound adapter instead of heuristic inference. Explicit mismatched namespaces or mismatched `ModelIden` values return `AdapterKindMismatch`.
-- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `baidu`, `moonshot`, `aihubmix`, `open_router`, `requesty`, `api_route`, `opper`, `custom`, `xai`.
+- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `mistral`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot`, `atlascloud`, `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`, `opper`, `custom`, `xai`.
   - `github_copilot` (since v0.6.0) is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `ollama_cloud` (since v0.6.0) is the hosted Ollama Cloud service (`ollama.com`). It uses the same native Ollama protocol as the local `ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via the `ollama_cloud::model_name` namespace, for example, `ollama_cloud::gemma3:4b`.
   - `vertex` (since v0.6.0) is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
@@ -42,6 +42,10 @@ genai (crate root / lib.rs)
   - `open_router` (since v0.6.0) is OpenRouter OpenAI-compatible gateway. Uses `OPEN_ROUTER_API_KEY`. Use via the `open_router::` namespace.
   - `requesty` (since v0.7.0) is Requesty OpenAI-compatible gateway. Uses `REQUESTY_API_KEY`. Use via the `requesty::` namespace (e.g., `requesty::openai/gpt-4o-mini`).
   - `api_route` is the [API Route](https://www.api-route.com) OpenAI-compatible gateway. Uses `API_ROUTE_API_KEY` and endpoint `https://global.api-route.com/v1/`. Select it explicitly with `api_route::gpt-6.1-sol` or `api_route::claude-fable-5-1`; the upstream model ID is preserved.
+  - `heabsy` is the [Heabsy](https://heabsy.com/platform) OpenAI-compatible inference API for open models. Uses `HEABSY_API_KEY` and endpoint `https://api.heabsy.com/v1/`. Select it explicitly with `heabsy::qwen38`; the model ID is preserved. Embeddings are not supported.
+  - `runcrate` is the [Runcrate](https://www.runcrate.ai/?utm_source=rust-genai&utm_medium=directory&utm_campaign=gpu_pricing) OpenAI-compatible inference API for open models. Uses `RUNCRATE_API_KEY` and endpoint `https://api.runcrate.ai/v1/`. Select it explicitly with `runcrate::deepseek-ai/DeepSeek-V4.1-Flash`; the `vendor/model` ID is preserved. Chat and embeddings.
+  - `cloudgpu` is the [CloudGPU](https://cloudgpu.app/api/docs?utm_source=github&utm_medium=referral&utm_campaign=202611_seg06_indiedev&utm_content=github_rust_genai_adapter) OpenAI-compatible inference API for open models. Uses `CLOUDGPU_API_KEY` and endpoint `https://cloudgpu.app/v1/`. Select it explicitly with `cloudgpu::deepseek-v4.1-flash`; the model ID is preserved. Embeddings are not supported.
+  - `cheapaimodel` is the [cheapaimodel](https://cheapaimodel.ai) OpenAI-compatible, pay-per-token gateway for open-weight models (DeepSeek, GLM, Kimi) and Grok. Uses `CHEAPAIMODEL_API_KEY` and endpoint `https://api.cheapaimodel.ai/v1/`. Select it explicitly with `cheapaimodel::deepseek-v4-1-flash`; the model ID is preserved. Embeddings are not supported.
   - `opper` is the [Opper](https://opper.ai) OpenAI-compatible gateway. Uses `OPPER_API_KEY` and endpoint `https://api.opper.ai/v3/compat/`. Use via the `opper::` namespace with a pool name such as `opper::claude-sonnet-4-6`, or a `provider/model` ID such as `opper::anthropic/claude-sonnet-4-6` to pin one route; the model ID is preserved.
   - `baidu` (since v0.6.0) is Baidu's OpenAI/Anthropic compatible proxies.
   - `aliyun` (since v0.6.0) is Aliyun's namespace-only OpenAI-compatible service.
@@ -53,9 +57,9 @@ genai (crate root / lib.rs)
 
 ### `Client`
 
-Construct via `Client::default()` or `Client::builder().build()`.
+Construct via `Client::new()?` or `Client::builder().build()?`.
 
-- `Client::default()`: Standard client.
+- `Client::new()`: Standard client. Returns `Result<Client>`.
 - `Client::builder()`: Returns `ClientBuilder`.
 - `adapter_kind()`: Returns `Option<AdapterKind>` when this client is bound to a single adapter. Since v0.6.0.
 - `exec_chat(model, chat_req, options)`: `model: impl Into<ModelSpec>`, `chat_req: ChatRequest`, `options: Option<&ChatOptions>` -> `Result<ChatResponse>`. Updated in v0.6.0 to accept `impl Into<ModelSpec>`.
@@ -80,7 +84,7 @@ Construct via `Client::default()` or `Client::builder().build()`.
 - `with_web_config(web_config)`: Configure `reqwest` (timeouts, proxies, default headers).
 - `with_reqwest(reqwest_client)`: Use a custom `reqwest::Client` directly.
 - `with_config(config)`: Set a `ClientConfig` directly.
-- `build()`: Consumes the builder and returns a `Client`.
+- `build()`: Consumes the builder and returns `Result<Client>`.
 
 ### `ClientConfig`
 
@@ -328,7 +332,9 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `cache_control`: `CacheControl` request-level cache preference. Updated in v0.6.0 for chat-level prompt cache control.
 - `extra_headers`: `Headers` added to the request.
 - `extra_body`: `serde_json::Value` merged into supported provider request bodies as a low-level escape hatch for provider-specific fields. Since v0.6.0. Currently used by OpenAI-compatible chat payloads, including Chat Completions and Responses.
-- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_tool_choice(choice)` (since v0.6.0), `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)` (since v0.6.0), `with_cache_control(cache_control)` (updated in v0.6.0 for chat-level prompt cache control), `with_extra_headers(headers)`, `with_extra_body(value)` (since v0.6.0).
+- `raw_frame_sink`: `Option<Arc<dyn ChatFrameSink>>` to observe raw provider stream frames. Since v0.7.0.
+- `stream_header_timeout`, `stream_read_timeout`: `Option<Duration>` transport bounds for the streamed header phase and each raw body read. Unset means no additional limit and no serialization. Since v0.7.0.
+- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_tool_choice(choice)` (since v0.6.0), `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)` (since v0.6.0), `with_cache_control(cache_control)` (updated in v0.6.0 for chat-level prompt cache control), `with_extra_headers(headers)`, `with_extra_body(value)` (since v0.6.0), `with_raw_frame_sink(sink)` (since v0.7.0), `with_raw_frame_sink_arc(arc)` (since v0.7.0), `with_raw_frame_fn(f)` (since v0.7.0), `with_stream_header_timeout(d)` (since v0.7.0), `with_stream_read_timeout(d)` (since v0.7.0).
 - Deprecated: `with_json_mode(bool)` in favor of `with_response_format(ChatResponseFormat::JsonMode)`.
 
 ### `ChatResponseFormat`
@@ -354,8 +360,9 @@ Updated in v0.6.0.
 
 Provider-specific hint for reasoning intensity/budget.
 
-- Variants: `None`, `Low`, `Medium`, `High`, `XHigh` (since v0.6.0), `Max` (since v0.6.0), `Budget(u32)`, `Minimal` (legacy, for <= gpt-5).
-- `variant_name()`: Returns lowercase name (`"none"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`, `"budget"`, `"minimal"`).
+- Variants: `Zero`, `Low`, `Medium`, `High`, `XHigh` (since v0.6.0), `Max` (since v0.6.0), `Budget(u32)`, `Minimal` (legacy, for <= gpt-5).
+- `Zero` was named `None` before v0.7.0; `from_keyword("none")` and the `-none` model suffix remain accepted as aliases.
+- `variant_name()`: Returns lowercase name (`"zero"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`, `"budget"`, `"minimal"`).
 - `as_keyword()`: Returns `Option<&'static str>` (None for `Budget`).
 - `from_keyword(name)`: Parses keyword string.
 - `from_model_name(model_name)`: If model name ends with `-<effort>`, returns `(Some(effort), trimmed_name)`.
@@ -421,10 +428,10 @@ OpenAI service tier preference for flex processing.
 
 ### `Tool`
 
-- `name: ToolName`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `strict: Option<bool>`, `config: Option<ToolConfig>`. `config` is available since v0.6.0.
+- `name: ToolName`, `description: Option<String>`, `schema: Option<Value>` (JSON Schema), `strict: Option<bool>`, `config: Option<ToolConfig>`, `custom_format: Option<Value>`. `config` is available since v0.6.0, and `custom_format` since v0.7.0.
 - `Tool::new(name)`: Constructor.
 - `Tool::new_web_search()`: Constructor for the built-in web search tool. Since v0.6.0.
-- `with_description(desc)`, `with_schema(parameters)`, `with_strict(bool)`, `with_config(config)`: Chainable setters. `with_config` is available since v0.6.0.
+- `with_description(desc)`, `with_schema(parameters)`, `with_strict(bool)`, `with_config(config)`, `with_custom_format(format)`: Chainable setters. `with_config` is available since v0.6.0, and `with_custom_format` since v0.7.0.
 - `size()`: Approximate in-memory size.
 - `config`: Optional provider-specific config.
 - Gemini and Vertex Gemini tool schema conversion applies the same compatibility normalization used for structured JSON schemas. Updated in v0.6.0.
@@ -486,7 +493,10 @@ Use through `Tool::new_web_search().with_config(WebSearchConfig { ... })` or `To
 ### `ToolResponse`
 
 - `call_id: String`, `content: String` (result as string, usually JSON).
-- `ToolResponse::new(call_id, content)`: Constructor.
+- `fn_name: Option<String>`: Name of the function that produced the response. Gemini uses it as `functionResponse.name`. When unset, the adapter looks up the matching call in the request.
+- `ToolResponse::new(call_id, content)`: Constructor. `fn_name` is `None`.
+- `ToolResponse::from_tool_call(tool_call, content)`: Constructor from the originating `ToolCall`, copying its `call_id` and `fn_name`.
+- `with_fn_name(name)`: Chainable setter for `fn_name`.
 - `size()`: Approximate in-memory size.
 
 ## Responses & Streaming
@@ -529,7 +539,14 @@ Implements `Stream<Item = Result<ChatStreamEvent>>`.
 - `ReasoningChunk(StreamChunk)`: Reasoning content chunk.
 - `ThoughtSignatureChunk(StreamChunk)`: Thought signature chunk.
 - `ToolCallChunk(ToolChunk)`: Tool-call chunk. `ToolChunk { tool_call: ToolCall }`.
+- `Heartbeat`: Provider-neutral keep-alive, emitted for SSE ping messages such as Anthropic's. Since v0.7.0.
 - `End(StreamEnd)`: End of stream with captured data.
+
+### `ChatFrameSink`
+
+Observer for raw provider stream frames, attached with `ChatOptions::with_raw_frame_sink(...)`, `with_raw_frame_sink_arc(...)`, or `with_raw_frame_fn(...)`. Since v0.7.0.
+
+- Receives a `RawFrame` for each frame the adapter reads, so callers can inspect provider payloads that genai does not surface as typed stream events.
 
 ### `StreamEnd`
 
@@ -632,7 +649,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`, `requesty`, `api_route`, `opper`.
+Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`, `opper`.
 
   - Namespace matches adapter lowercase name (updated in v0.6.0 with namespaces such as `open_router::`, `bedrock_api::`, `bedrock_sigv4::`, `vertex::`, `github_copilot::`, `opencode_go::`, `baidu::`, `aliyun::`, `moonshot::`, `aihubmix::`, and `ollama_cloud::`).
 
@@ -682,6 +699,10 @@ Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `f
   - `open_router::model_name` targets OpenRouter OpenAI-compatible gateway (since v0.6.0).
   - `requesty::model_name` targets Requesty OpenAI-compatible gateway (since v0.7.0).
   - `api_route::model_name` targets API Route's OpenAI-compatible Chat Completions API. Use model IDs available to the API key.
+  - `heabsy::model_name` targets Heabsy's OpenAI-compatible Chat Completions API (e.g., `heabsy::qwen38`). Embeddings are not supported.
+  - `runcrate::model_name` targets Runcrate's OpenAI-compatible API (e.g., `runcrate::deepseek-ai/DeepSeek-V4.1-Flash`).
+  - `cloudgpu::model_name` targets CloudGPU's OpenAI-compatible Chat Completions API (e.g., `cloudgpu::deepseek-v4.1-flash`). Embeddings are not supported.
+  - `cheapaimodel::model_name` targets cheapaimodel's OpenAI-compatible Chat Completions API (e.g., `cheapaimodel::deepseek-v4-1-flash`). Embeddings are not supported.
   - `opper::model_name` targets Opper's OpenAI-compatible gateway.
 - **Ollama Fallback**: Unrecognized non-namespaced names default to `Ollama` adapter (localhost:11434).
 - **Reasoning Normalization**: Automatic extraction for DeepSeek/Ollama `<think>` blocks when `normalize_reasoning_content` is enabled.

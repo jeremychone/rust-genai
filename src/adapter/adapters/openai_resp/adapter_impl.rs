@@ -1,4 +1,4 @@
-use super::{OpenAIRespStreamer, RespResponse};
+use super::{OpenAIRespStreamer, RespResponse, extract_resp_reasoning_texts};
 use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::openai::cache_policy::{
 	OpenAiPromptCachePolicy, OpenAiProtocol, openai_prompt_cache_policy, requires_explicit_cache,
@@ -260,8 +260,10 @@ impl Adapter for OpenAIRespAdapter {
 			payload.x_insert("temperature", temperature)?;
 		}
 
+		// The Responses API has no `stop` parameter; sending it is an HTTP 400.
+		// (Callers who know their backend accepts it can still set it with `extra_body`.)
 		if !chat_options.stop_sequences().is_empty() {
-			payload.x_insert("stop", chat_options.stop_sequences())?;
+			tracing::warn!("stop sequences are not supported by the OpenAI Responses API and were not sent");
 		}
 
 		if let Some(max_tokens) = chat_options.max_tokens() {
@@ -270,8 +272,9 @@ impl Adapter for OpenAIRespAdapter {
 		if let Some(top_p) = chat_options.top_p() {
 			payload.x_insert("top_p", top_p)?;
 		}
-		if let Some(seed) = chat_options.seed() {
-			payload.x_insert("seed", seed)?;
+		// Same for `seed`: the Responses API does not accept it.
+		if chat_options.seed().is_some() {
+			tracing::warn!("seed is not supported by the OpenAI Responses API and was not sent");
 		}
 
 		// -- OpenAI prompt cache options
@@ -309,6 +312,7 @@ impl Adapter for OpenAIRespAdapter {
 		let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| body.clone());
 
 		let resp: RespResponse = serde_json::from_value(body)?;
+		let stop_reason = StopReason::from(resp.stop_reason_raw());
 
 		// -- Capture the provider_model_iden
 		let provider_model_iden = model_iden.from_name(&resp.model);
@@ -318,20 +322,32 @@ impl Adapter for OpenAIRespAdapter {
 
 		// -- Capture the content
 		let mut content: MessageContent = MessageContent::default();
-		let reasoning_content: Option<String> = None;
+		let mut reasoning_parts: Vec<String> = Vec::new();
 
 		// -- Extract the content message
 		for output_item in resp.output {
+			reasoning_parts.extend(extract_resp_reasoning_texts(&output_item));
 			let parts = ContentPart::from_resp_output_item(output_item)?;
 			content.extend(parts);
 		}
+
+		let thought_signatures = content.thought_signatures().into_iter().map(str::to_string).collect::<Vec<_>>();
+		if !thought_signatures.is_empty()
+			&& let Some(tool_call) = content.iter_mut().find_map(|part| match part {
+				ContentPart::ToolCall(tool_call) => Some(tool_call),
+				_ => None,
+			}) {
+			tool_call.thought_signatures.get_or_insert(thought_signatures);
+		}
+
+		let reasoning_content = (!reasoning_parts.is_empty()).then(|| reasoning_parts.join("\n"));
 
 		Ok(ChatResponse {
 			content,
 			reasoning_content,
 			model_iden,
 			provider_model_iden,
-			stop_reason: Some(StopReason::from(resp.status)),
+			stop_reason: Some(stop_reason),
 			usage,
 			captured_raw_body,
 			response_id: Some(resp.id),
@@ -549,8 +565,10 @@ impl OpenAIRespAdapter {
 					// parts (from `StreamEnd::captured_content`) or on
 					// `ToolCall::thought_signatures` (rust-genai's streamer stashes
 					// captured blobs there when there are tool calls).
+					let mut has_top_level_thought_signatures = false;
 					for part in msg.content.iter() {
 						if let ContentPart::ThoughtSignature(blob) = part {
+							has_top_level_thought_signatures = true;
 							input_items.push(json!({
 								"type": "reasoning",
 								"encrypted_content": blob,
@@ -558,16 +576,18 @@ impl OpenAIRespAdapter {
 							}));
 						}
 					}
-					for part in msg.content.iter() {
-						if let ContentPart::ToolCall(tool_call) = part
-							&& let Some(sigs) = tool_call.thought_signatures.as_ref()
-						{
-							for blob in sigs {
-								input_items.push(json!({
-									"type": "reasoning",
-									"encrypted_content": blob,
-									"summary": [],
-								}));
+					if !has_top_level_thought_signatures {
+						for part in msg.content.iter() {
+							if let ContentPart::ToolCall(tool_call) = part
+								&& let Some(sigs) = tool_call.thought_signatures.as_ref()
+							{
+								for blob in sigs {
+									input_items.push(json!({
+										"type": "reasoning",
+										"encrypted_content": blob,
+										"summary": [],
+									}));
+								}
 							}
 						}
 					}
@@ -708,16 +728,22 @@ impl OpenAIRespAdapter {
 					tool_value
 				}
 				name => {
-					let strict = strict.unwrap_or(false);
-					let parameters = tool_parameters_schema(schema, strict);
+					let parameters = tool_parameters_schema(schema, strict == Some(true));
 
-					json!({
+					let mut tool_value = json!({
 						"type": "function",
 						"name": name,
-						"description": description,
 						"parameters": parameters,
-						"strict": strict,
-					})
+					});
+					if let Some(description) = description {
+						tool_value.x_insert("description", description)?;
+					}
+					// Unset `strict` is left out, so the Responses API default applies
+					// (strict when the schema allows it, non-strict otherwise).
+					if let Some(strict) = strict {
+						tool_value.x_insert("strict", strict)?;
+					}
+					tool_value
 				}
 			}
 		};
@@ -751,419 +777,7 @@ fn apply_resp_cache_breakpoint(_model_iden: &ModelIden, content: &mut [Value], _
 // region:    --- Tests
 
 #[cfg(test)]
-mod tests {
-	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
-
-	use super::*;
-	use crate::adapter::AdapterKind;
-	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, Tool, ToolCall, ToolChoice, ToolResponse};
-
-	#[test]
-	fn test_cache_control_without_eligible_content_does_not_fail_response_request() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-		let assistant_msg = ChatMessage::assistant(MessageContent::from_parts(vec![ContentPart::ToolCall(ToolCall {
-			call_id: "call_1".to_string(),
-			fn_name: "get_weather".to_string(),
-			fn_arguments: json!({}),
-			thought_signatures: None,
-		})]))
-		.with_options(CacheControl::Ephemeral);
-		let chat_req = ChatRequest::new(vec![ChatMessage::user("hello"), assistant_msg]);
-
-		let web_req =
-			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
-				.expect("unsupported breakpoint placement should be ignored");
-
-		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
-	}
-
-	#[test]
-	fn custom_grammar_tool_and_roundtrip_use_responses_native_items() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-		let patch = "*** Begin Patch\n*** Update File: source.c\n@@\n-old\n+new\n*** End Patch\n";
-		let assistant = ChatMessage::assistant(vec![ToolCall {
-			call_id: "call_patch".to_string(),
-			fn_name: "apply_patch".to_string(),
-			fn_arguments: Value::String(patch.to_string()),
-			thought_signatures: None,
-		}]);
-		let response = ChatMessage::from(ToolResponse::new("call_patch", "Done!"));
-		let format = json!({
-			"type": "grammar",
-			"syntax": "lark",
-			"definition": "start: PATCH",
-		});
-		let request = ChatRequest::new(vec![ChatMessage::user("patch it"), assistant, response]).with_tools(vec![
-			Tool::new("apply_patch")
-				.with_description("Apply a patch")
-				.with_custom_format(format.clone()),
-		]);
-
-		let web_req =
-			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, request, ChatOptionsSet::default())
-				.unwrap();
-		assert_eq!(
-			web_req.payload["tools"][0],
-			json!({
-				"type": "custom",
-				"name": "apply_patch",
-				"description": "Apply a patch",
-				"format": format,
-			})
-		);
-		let input = web_req.payload["input"].as_array().unwrap();
-		assert!(input.iter().any(|item| {
-			item["type"] == "custom_tool_call" && item["call_id"] == "call_patch" && item["input"] == patch
-		}));
-		assert!(input.iter().any(|item| {
-			item["type"] == "custom_tool_call_output" && item["call_id"] == "call_patch" && item["output"] == "Done!"
-		}));
-	}
-
-	#[test]
-	fn test_extra_body_merged_into_response_payload() {
-		let chat_options = ChatOptions::default()
-			.with_top_p(0.3)
-			.with_extra_body(json!({"top_p": 0.9, "metadata": {"source": "test"}}));
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("hello"),
-			options_set,
-		)
-		.expect("to_web_request_data should succeed");
-
-		assert_eq!(web_req.payload["top_p"], 0.9);
-		assert_eq!(web_req.payload["metadata"]["source"], "test");
-	}
-
-	#[test]
-	fn pydantic_union_schema_is_sanitized_for_responses() {
-		let schema = json!({
-			"type": "object",
-			"properties": {
-				"animal": {
-					"discriminator": {"propertyName": "kind"},
-					"oneOf": [{"$ref": "#/$defs/Cat"}, {"$ref": "#/$defs/Dog"}]
-				}
-			},
-			"$defs": {
-				"Cat": {
-					"type": "object",
-					"properties": {"kind": {"const": "cat"}},
-					"required": ["kind"]
-				},
-				"Dog": {
-					"type": "object",
-					"properties": {"kind": {"const": "dog"}},
-					"required": ["kind"]
-				}
-			}
-		});
-		let options = ChatOptions::default().with_response_format(JsonSpec::new("union", schema));
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("return an animal"),
-			options_set,
-		)
-		.unwrap();
-
-		let animal = &web_req.payload["text"]["format"]["schema"]["properties"]["animal"];
-		assert!(animal.get("oneOf").is_none());
-		assert_eq!(animal["discriminator"], json!({"propertyName": "kind"}));
-		assert_eq!(
-			animal["anyOf"],
-			json!([{"$ref": "#/$defs/Cat"}, {"$ref": "#/$defs/Dog"}])
-		);
-	}
-
-	#[test]
-	fn dynamic_map_schema_is_sent_to_backend_for_validation() {
-		let schema = json!({
-			"type": "object",
-			"properties": {
-				"lookup": {"type": "object", "additionalProperties": {"type": "integer"}}
-			}
-		});
-		let options = ChatOptions::default().with_response_format(JsonSpec::new("mapping", schema));
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("return a mapping"),
-			options_set,
-		)
-		.unwrap();
-
-		assert_eq!(
-			web_req.payload["text"]["format"]["schema"]["properties"]["lookup"]["additionalProperties"],
-			json!({"type": "integer"})
-		);
-	}
-
-	#[test]
-	fn test_tool_choice_specific_tool_serialized_on_response_payload() {
-		let chat_options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-		let chat_req = ChatRequest::from_user("weather").with_tools(vec![Tool::new("get_weather")]);
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, options_set)
-			.expect("to_web_request_data should succeed");
-
-		assert_eq!(
-			web_req.payload["tool_choice"],
-			json!({
-				"type": "function",
-				"name": "get_weather"
-			})
-		);
-	}
-
-	/// Test that assistant message text content uses "output_text" type (not "input_text").
-	///
-	/// This is required by OpenAI's Responses API - assistant content is model output,
-	/// so it must use "output_text". Using "input_text" causes:
-	/// "Invalid value: 'input_text'. Supported values are: 'output_text' and 'refusal'."
-	#[test]
-	fn test_assistant_message_uses_output_text_content_type() {
-		let model_iden = ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-codex");
-
-		// Create a chat request with an assistant message
-		let chat_req = ChatRequest::default()
-			.with_system("You are a helpful assistant.")
-			.append_message(ChatMessage::user("What's the weather?"))
-			.append_message(ChatMessage::assistant("The weather is sunny."));
-
-		// Serialize to OpenAI Responses API format
-		let parts = OpenAIRespAdapter::into_openai_request_parts(&model_iden, chat_req, None)
-			.expect("Should serialize successfully");
-
-		// Find the assistant message in input_items
-		let assistant_msg = parts
-			.input_items
-			.iter()
-			.find(|item| {
-				item.get("type").and_then(|t| t.as_str()) == Some("message")
-					&& item.get("role").and_then(|r| r.as_str()) == Some("assistant")
-			})
-			.expect("Should have an assistant message");
-
-		// Check the content uses "output_text" type
-		let content = assistant_msg
-			.get("content")
-			.and_then(|c| c.as_array())
-			.expect("Assistant message should have content array");
-
-		assert!(!content.is_empty(), "Content should not be empty");
-
-		let first_content = &content[0];
-		let content_type = first_content
-			.get("type")
-			.and_then(|t| t.as_str())
-			.expect("Content should have a type");
-
-		assert_eq!(
-			content_type, "output_text",
-			"Assistant message content should use 'output_text' type, not 'input_text'"
-		);
-	}
-
-	#[test]
-	fn test_gpt_5_6_responses_defaults_to_explicit_cache_mode() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("hello"),
-			ChatOptionsSet::default(),
-		)
-		.expect("to_web_request_data should succeed");
-
-		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
-		assert!(web_req.payload["prompt_cache_options"].get("ttl").is_none());
-		assert!(
-			web_req.payload["input"][0]["content"][0]
-				.get("prompt_cache_breakpoint")
-				.is_none()
-		);
-	}
-
-	#[test]
-	fn test_gpt_6_responses_defaults_to_explicit_cache_mode() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-6"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("hello"),
-			ChatOptionsSet::default(),
-		)
-		.expect("to_web_request_data should succeed");
-
-		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
-		assert!(web_req.payload["prompt_cache_options"].get("ttl").is_none());
-		assert!(
-			web_req.payload["input"][0]["content"][0]
-				.get("prompt_cache_breakpoint")
-				.is_none()
-		);
-	}
-
-	#[test]
-	fn test_gpt_5_6_codex_responses_endpoint_omits_prompt_cache_options() -> Result<()> {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: Endpoint::from_static("https://chatgpt.com/backend-api/codex/"),
-		};
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("hello"),
-			ChatOptionsSet::default(),
-		)?;
-
-		assert!(web_req.payload.get("prompt_cache_options").is_none());
-		Ok(())
-	}
-
-	#[test]
-	fn test_gpt_5_6_responses_cache_key_uses_api_default_cache_mode() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6-mini"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-		let chat_options = ChatOptions::default().with_prompt_cache_key("stable-key");
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("hello"),
-			options_set,
-		)
-		.expect("to_web_request_data should succeed");
-
-		assert!(web_req.payload.get("prompt_cache_options").is_none());
-		assert!(
-			web_req.payload["input"][0]["content"][0]
-				.get("prompt_cache_breakpoint")
-				.is_none()
-		);
-	}
-
-	#[test]
-	fn test_gpt_5_6_responses_places_breakpoint_on_last_eligible_content_block() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-		let chat_req = ChatRequest::new(vec![
-			ChatMessage::user(vec![
-				ContentPart::from_text("stable text"),
-				ContentPart::from_binary_url("image/png", "https://example.com/image.png", None),
-				ContentPart::from_text("last text"),
-			])
-			.with_options(CacheControl::Ephemeral),
-		]);
-
-		let web_req =
-			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
-				.expect("to_web_request_data should succeed");
-
-		let blocks = web_req.payload["input"][0]["content"]
-			.as_array()
-			.expect("message content should be an array");
-		assert!(blocks[0].get("prompt_cache_breakpoint").is_none());
-		assert!(blocks[1].get("prompt_cache_breakpoint").is_none());
-		assert_eq!(blocks[2]["prompt_cache_breakpoint"]["mode"], "explicit");
-	}
-
-	#[test]
-	fn test_gpt_5_6_responses_ignores_tool_cache_control() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.6"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-		let chat_req = ChatRequest::from_user("hello")
-			.append_tool(Tool::new("get_weather").with_cache_control(CacheControl::Ephemeral));
-
-		let web_req =
-			OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, chat_req, ChatOptionsSet::default())
-				.expect("tool cache control should be ignored");
-
-		assert_eq!(web_req.payload["prompt_cache_options"]["mode"], "explicit");
-		assert!(web_req.payload["tools"][0].get("prompt_cache_breakpoint").is_none());
-	}
-
-	#[test]
-	fn test_gpt_5_5_responses_keeps_legacy_cache_retention() {
-		let target = ServiceTarget {
-			model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5.5"),
-			auth: AuthData::from_single("test-key"),
-			endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
-		};
-		let chat_options = ChatOptions::default().with_cache_control(CacheControl::Ephemeral24h);
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
-
-		let web_req = OpenAIRespAdapter::to_web_request_data(
-			target,
-			ServiceType::Chat,
-			ChatRequest::from_user("hello"),
-			options_set,
-		)
-		.expect("to_web_request_data should succeed");
-
-		assert_eq!(web_req.payload["prompt_cache_retention"], "24h");
-		assert!(web_req.payload.get("prompt_cache_options").is_none());
-	}
-}
+#[path = "adapter_impl_tests.rs"]
+mod tests;
 
 // endregion: --- Tests

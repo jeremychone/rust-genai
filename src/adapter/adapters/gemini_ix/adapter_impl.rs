@@ -151,6 +151,12 @@ impl Adapter for GeminiIxAdapter {
 		let ServiceTarget { model, auth, endpoint } = target;
 		let (_, model_name) = model.model_name.namespace_and_name();
 
+		// -- Reasoning effort
+		// A model name suffix (e.g., `gemini-3.5-flash-low`) is always stripped from the wire model name.
+		// The explicit `ChatOptions::reasoning_effort` takes precedence over the suffix.
+		let (suffix_reasoning_effort, model_name) = ReasoningEffort::from_model_name(model_name);
+		let reasoning_effort = chat_options.reasoning_effort().or(suffix_reasoning_effort.as_ref());
+
 		// -- api_key
 		let api_key = get_api_key(auth, &model)?;
 
@@ -227,7 +233,7 @@ impl Adapter for GeminiIxAdapter {
 		if let Some(seed) = chat_options.seed() {
 			generation_config.insert("seed".into(), seed.into());
 		}
-		if let Some(thinking_level) = ix_thinking_level(chat_options.reasoning_effort()) {
+		if let Some(thinking_level) = ix_thinking_level(reasoning_effort) {
 			generation_config.insert("thinking_level".into(), thinking_level.into());
 		}
 		// Thought summaries are opt-in; without this the `thought` steps carry a signature only and

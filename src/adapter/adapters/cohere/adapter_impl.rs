@@ -15,12 +15,14 @@ use value_ext::JsonValueExt;
 
 pub struct CohereAdapter;
 
+// Cohere deprecated `command`, `command-light`, `command-r` and `command-r-plus` on 2025-09-15
+// and recommends these instead: <https://docs.cohere.com/docs/deprecations>
 const MODELS: &[&str] = &[
-	"command-r-plus",
-	"command-r",
-	"command",
+	"command-a-03-2025",
+	"command-r-plus-08-2024",
+	"command-r-08-2024",
+	"command-r7b-12-2024",
 	"command-nightly",
-	"command-light",
 	"command-light-nightly",
 ];
 
@@ -288,8 +290,8 @@ impl CohereAdapter {
 			match msg.role {
 				// For now, system and tool messages go to the system
 				ChatRole::System => systems.push(content),
-				ChatRole::User => chat_history.push(json! ({"role": "USER", "content": content})),
-				ChatRole::Assistant => chat_history.push(json! ({"role": "CHATBOT", "content": content})),
+				ChatRole::User => chat_history.push(json! ({"role": "USER", "message": content})),
+				ChatRole::Assistant => chat_history.push(json! ({"role": "CHATBOT", "message": content})),
 				ChatRole::Tool => {
 					return Err(Error::MessageRoleNotSupported {
 						model_iden,
@@ -326,3 +328,11 @@ struct CohereChatRequestParts {
 }
 
 // endregion: --- Support
+
+// region:    --- Tests
+
+#[cfg(test)]
+#[path = "adapter_impl_tests.rs"]
+mod tests;
+
+// endregion: --- Tests

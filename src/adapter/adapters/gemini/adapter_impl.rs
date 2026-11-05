@@ -12,7 +12,7 @@ use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use serde::Serialize;
 use serde_json::{Value, json};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use value_ext::JsonValueExt;
 
 const SKIP_THOUGHT_SIGNATURE_VALIDATOR: &str = "skip_thought_signature_validator";
@@ -236,7 +236,7 @@ impl Adapter for GeminiAdapter {
 
 		Ok(ChatResponse {
 			content,
-			reasoning_content: Some(reasoning_text),
+			reasoning_content: (!reasoning_text.is_empty()).then_some(reasoning_text),
 			model_iden,
 			provider_model_iden,
 			stop_reason,
@@ -342,7 +342,9 @@ impl GeminiAdapter {
 				let fn_name: String = fc.x_get("name").unwrap_or_default();
 				// Gemini omits call_id; synthesize a unique one to avoid
 				// collisions when the same tool is called multiple times.
-				let call_id: String = fc.x_get("id").unwrap_or(format!("call#{}#{}", fn_name, tool_call_counter));
+				let call_id: String = fc
+					.x_get("id")
+					.unwrap_or_else(|_| format!("call#{}#{}", fn_name, tool_call_counter));
 				tool_call_counter += 1;
 				GeminiPartData::ToolCall(ToolCall {
 					call_id,
@@ -432,9 +434,8 @@ impl GeminiAdapter {
 
 		// -- Set the reasoning effort
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			// -- For gemini-3, gemma-4 use the thinkingLevel
-			let models = ["gemini-3", "gemma-4"];
-			if models.iter().any(|m| provider_model_name.contains(m)) {
+			// -- For Gemini 3 and later, and Gemma 4, use the thinkingLevel
+			if takes_thinking_level(provider_model_name) {
 				let thinking_level = match computed_reasoning_effort {
 					ReasoningEffort::Zero => None,
 					ReasoningEffort::Budget(_) => None,
@@ -511,6 +512,12 @@ impl GeminiAdapter {
 		}
 		if let Some(top_p) = options_set.top_p() {
 			payload.x_insert("/generationConfig/topP", top_p)?;
+		}
+		if let Some(seed) = options_set.seed() {
+			payload.x_insert("/generationConfig/seed", seed)?;
+		}
+		if let Some(extra_body) = options_set.extra_body() {
+			payload.x_merge(extra_body.clone())?;
 		}
 
 		Ok((payload, provider_model_name.to_string()))
@@ -609,6 +616,8 @@ impl GeminiAdapter {
 	) -> Result<GeminiChatRequestParts> {
 		let mut contents: Vec<Value> = Vec::new();
 		let mut systems: Vec<String> = Vec::new();
+		// The name of each call so far, by call id, for the responses that answer it.
+		let mut call_names: HashMap<String, String> = HashMap::new();
 
 		if let Some(system) = chat_req.system {
 			systems.push(system);
@@ -616,6 +625,9 @@ impl GeminiAdapter {
 
 		// -- Build
 		for msg in chat_req.messages {
+			for call in msg.content.tool_calls() {
+				call_names.insert(call.call_id.clone(), call.fn_name.clone());
+			}
 			match msg.role {
 				// For now, system goes as "user" (later, we might have adapter_config.system_to_user_impl)
 				ChatRole::System => {
@@ -648,24 +660,10 @@ impl GeminiAdapter {
 								}
 							}
 							ContentPart::ToolCall(tool_call) => {
-								parts_values.push(json!({
-									"functionCall": {
-										"name": tool_call.fn_name,
-										"args": tool_call.fn_arguments,
-									}
-								}));
+								parts_values.push(gemini_function_call_part(tool_call)?);
 							}
 							ContentPart::ToolResponse(tool_response) => {
-								let fn_name = gemini_function_response_name(&tool_response);
-								parts_values.push(json!({
-									"functionResponse": {
-										"name": &fn_name,
-										"response": {
-											"name": &fn_name,
-											"content": tool_response.content,
-										}
-									}
-								}));
+								parts_values.push(gemini_function_response_part(tool_response, &call_names)?);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -682,8 +680,8 @@ impl GeminiAdapter {
 					contents.push(json!({"role": "user", "parts": parts_values}));
 				}
 				ChatRole::Assistant => {
-					let is_gemini_3 = model_iden.model_name.contains("gemini-3");
-					let parts = GeminiModelPart::from_assistant_content(msg.content, is_gemini_3);
+					let signs_first_call = is_gemini_3_or_later(&model_iden.model_name);
+					let parts = GeminiModelPart::from_assistant_content(msg.content, signs_first_call);
 					if !parts.is_empty() {
 						contents.push(json!({"role": "model", "parts": serde_json::to_value(parts)?}));
 					}
@@ -693,24 +691,10 @@ impl GeminiAdapter {
 					for part in msg.content {
 						match part {
 							ContentPart::ToolCall(tool_call) => {
-								parts_values.push(json!({
-									"functionCall": {
-										"name": tool_call.fn_name,
-										"args": tool_call.fn_arguments,
-									}
-								}));
+								parts_values.push(gemini_function_call_part(tool_call)?);
 							}
 							ContentPart::ToolResponse(tool_response) => {
-								let fn_name = gemini_function_response_name(&tool_response);
-								parts_values.push(json!({
-									"functionResponse": {
-										"name": &fn_name,
-										"response": {
-											"name": &fn_name,
-											"content": tool_response.content,
-										}
-									}
-								}));
+								parts_values.push(gemini_function_response_part(tool_response, &call_names)?);
 							}
 							ContentPart::ThoughtSignature(thought) => {
 								parts_values.push(json!({
@@ -887,11 +871,16 @@ struct GeminiModelPart {
 #[serde(rename_all = "camelCase")]
 enum GeminiModelPartData {
 	Text(String),
-	FunctionCall { name: String, args: Value },
+	FunctionCall {
+		#[serde(skip_serializing_if = "Option::is_none")]
+		id: Option<String>,
+		name: String,
+		args: Value,
+	},
 }
 
 impl GeminiModelPart {
-	fn from_assistant_content(content: MessageContent, is_gemini_3: bool) -> Vec<Self> {
+	fn from_assistant_content(content: MessageContent, signs_first_call: bool) -> Vec<Self> {
 		let call_signatures: HashSet<String> = content
 			.tool_calls()
 			.into_iter()
@@ -912,18 +901,19 @@ impl GeminiModelPart {
 					thought_signature: pending_signature.take(),
 				}),
 				ContentPart::ToolCall(call) => {
-					// For Gemini 3 models, the first call of a turn must carry a signature; when there
-					// is none, the API accepts this placeholder.
+					// For Gemini 3 and later, the first call of a turn must carry a signature; when
+					// there is none, the API accepts this placeholder.
 					// See: https://ai.google.dev/gemini-api/docs/thought-signatures#faqs
 					let thought_signature = call
 						.thought_signatures
 						.and_then(|signatures| signatures.into_iter().next())
 						.or_else(|| pending_signature.take())
 						.or_else(|| {
-							(is_gemini_3 && is_first_call).then(|| SKIP_THOUGHT_SIGNATURE_VALIDATOR.to_string())
+							(signs_first_call && is_first_call).then(|| SKIP_THOUGHT_SIGNATURE_VALIDATOR.to_string())
 						});
 					parts.push(Self {
 						data: GeminiModelPartData::FunctionCall {
+							id: gemini_call_id(&call.call_id).map(str::to_string),
 							name: call.fn_name,
 							args: call.fn_arguments,
 						},
@@ -954,6 +944,27 @@ pub(in crate::adapter) struct GeminiChatRequestParts {
 
 // region:    --- Helpers
 
+/// The Gemini generation a model name belongs to: `3` for `gemini-3.1-pro-preview`, `4`
+/// for `gemini-4-argon`. `None` for a name with no version right after `gemini-`, such as
+/// `gemini-flash-latest`.
+fn gemini_generation(model_name: &str) -> Option<u32> {
+	let start = model_name.find("gemini-")? + "gemini-".len();
+	let digits: String = model_name[start..].chars().take_while(char::is_ascii_digit).collect();
+	digits.parse().ok()
+}
+
+/// Gemini 3 and later: a thinking level rather than a budget, and a signature on every
+/// turn's first function call.
+fn is_gemini_3_or_later(model_name: &str) -> bool {
+	gemini_generation(model_name).is_some_and(|generation| generation >= 3)
+}
+
+/// Whether a model takes `thinkingLevel` (Gemini 3 and later, Gemma 4) rather than
+/// `thinkingBudget` (Gemini 2.5, and any name without a version).
+fn takes_thinking_level(model_name: &str) -> bool {
+	is_gemini_3_or_later(model_name) || model_name.contains("gemma-4")
+}
+
 /// Extract and remove a string field from a JSON Value.
 fn take_string(v: &mut Value, key: &str) -> Option<String> {
 	v.as_object_mut()
@@ -969,12 +980,53 @@ fn take_bool(v: &mut Value, key: &str) -> bool {
 		.unwrap_or(false)
 }
 
-fn gemini_function_response_name(tool_response: &ToolResponse) -> String {
-	tool_response
+/// A `functionCall` part, with the call's id when it has one (see `gemini_call_id`).
+fn gemini_function_call_part(tool_call: ToolCall) -> Result<Value> {
+	let mut function_call = json!({
+		"name": tool_call.fn_name,
+		"args": tool_call.fn_arguments,
+	});
+	if let Some(id) = gemini_call_id(&tool_call.call_id) {
+		function_call.x_insert("id", id)?;
+	}
+	Ok(json!({ "functionCall": function_call }))
+}
+
+/// A `functionResponse` part, with the id of the call it answers when it has one (see `gemini_call_id`).
+///
+/// Its name must be the call's: Gemini rejects a response that carries a call's id under another
+/// name (400 INVALID_ARGUMENT). The name is the response's `fn_name`, else the name of the call with
+/// this id earlier in the request, else the name in a stand-in id. When none is found, the call id
+/// stands in for the name and no id is sent.
+fn gemini_function_response_part(tool_response: ToolResponse, call_names: &HashMap<String, String>) -> Result<Value> {
+	let fn_name = tool_response
 		.fn_name
-		.clone()
-		.or_else(|| infer_gemini_synthetic_call_fn_name(&tool_response.call_id))
-		.unwrap_or_else(|| tool_response.call_id.clone())
+		.or_else(|| call_names.get(&tool_response.call_id).cloned())
+		.or_else(|| infer_gemini_synthetic_call_fn_name(&tool_response.call_id));
+	let id = call_names
+		.contains_key(&tool_response.call_id)
+		.then(|| gemini_call_id(&tool_response.call_id))
+		.flatten();
+	let fn_name = fn_name.as_deref().unwrap_or(&tool_response.call_id);
+	let mut function_response = json!({
+		"name": fn_name,
+		"response": {
+			"name": fn_name,
+			"content": tool_response.content,
+		}
+	});
+	if let Some(id) = id {
+		function_response.x_insert("id", id)?;
+	}
+	Ok(json!({ "functionResponse": function_response }))
+}
+
+/// The id to send back to Gemini for a call: the call's own id (Gemini's, when it returned one),
+/// but not the stand-in this adapter makes for a call that came without one (`call#{name}#{n}`),
+/// so such calls are sent without an id and matched in order.
+/// Ids from other providers or callers are sent as they are.
+fn gemini_call_id(call_id: &str) -> Option<&str> {
+	(!call_id.is_empty() && infer_gemini_synthetic_call_fn_name(call_id).is_none()).then_some(call_id)
 }
 
 fn infer_gemini_synthetic_call_fn_name(call_id: &str) -> Option<String> {
@@ -989,685 +1041,5 @@ fn infer_gemini_synthetic_call_fn_name(call_id: &str) -> Option<String> {
 // endregion: --- Helpers
 
 #[cfg(test)]
-mod tests {
-	use super::*;
-	use crate::chat::{ChatMessage, ChatOptions, JsonSpec, WebSearchConfig};
-
-	// region:    --- usageMetadata normalization
-
-	/// `toolUsePromptTokenCount` sits OUTSIDE `promptTokenCount`: the page content
-	/// `urlContext` retrieves is real, billable input that Gemini reports on its own.
-	/// The numbers are verbatim from a live v1beta `gemini-3.7-flash` call, because the
-	/// arithmetic between them is the claim — 68 + 50 + 112 + 5858 = 6088, the reported
-	/// total, which only closes once the tool-use tokens are counted.
-	#[test]
-	fn tool_use_prompt_tokens_are_folded_into_prompt_tokens() {
-		let usage = GeminiAdapter::into_usage(json!({
-			"promptTokenCount": 68,
-			"candidatesTokenCount": 50,
-			"thoughtsTokenCount": 112,
-			"toolUsePromptTokenCount": 5858,
-			"totalTokenCount": 6088
-		}));
-
-		assert_eq!(usage.prompt_tokens, Some(68 + 5858));
-		assert_eq!(usage.completion_tokens, Some(50 + 112));
-		assert_eq!(usage.total_tokens, Some(6088));
-
-		// The invariant this fix restores: the normalized halves reconcile with the
-		// provider's own total. Without the fold, prompt + completion is 5858 short.
-		assert_eq!(
-			usage.prompt_tokens.unwrap() + usage.completion_tokens.unwrap(),
-			usage.total_tokens.unwrap()
-		);
-	}
-
-	/// A call that used no server-side tool must be untouched — `prompt_tokens` left
-	/// exactly as reported and no details object conjured for it.
-	#[test]
-	fn usage_without_tool_use_is_unchanged() {
-		let usage = GeminiAdapter::into_usage(json!({
-			"promptTokenCount": 10,
-			"candidatesTokenCount": 4,
-			"totalTokenCount": 14
-		}));
-
-		assert_eq!(usage.prompt_tokens, Some(10));
-		assert_eq!(usage.completion_tokens, Some(4));
-		assert_eq!(usage.prompt_tokens_details, None);
-	}
-
-	/// Cached and tool-use tokens are counted differently and must not be conflated:
-	/// `cachedContentTokenCount` is already INSIDE `promptTokenCount` (so it is only
-	/// reported in the details), while `toolUsePromptTokenCount` is outside it (so it
-	/// is added). Adding both, or neither, is the easy mistake here.
-	#[test]
-	fn cached_tokens_are_not_added_but_tool_use_tokens_are() {
-		let usage = GeminiAdapter::into_usage(json!({
-			"promptTokenCount": 100,
-			"cachedContentTokenCount": 80,
-			"candidatesTokenCount": 10,
-			"toolUsePromptTokenCount": 500,
-			"totalTokenCount": 610
-		}));
-
-		assert_eq!(usage.prompt_tokens, Some(600), "only tool-use is added, not cached");
-		assert_eq!(
-			usage.prompt_tokens_details.and_then(|d| d.cached_tokens),
-			Some(80),
-			"cached tokens still reported as a subset"
-		);
-	}
-
-	/// Tool-use tokens with no `promptTokenCount` at all still have to count — dropping
-	/// them would report a call with thousands of billable input tokens as having none.
-	#[test]
-	fn tool_use_tokens_alone_become_the_prompt_count() {
-		let usage = GeminiAdapter::into_usage(json!({
-			"candidatesTokenCount": 10,
-			"toolUsePromptTokenCount": 500,
-			"totalTokenCount": 510
-		}));
-		assert_eq!(usage.prompt_tokens, Some(500));
-	}
-
-	// endregion: --- usageMetadata normalization
-
-	#[test]
-	fn merge_consecutive_tool_responses() {
-		let contents = vec![
-			json!({"role": "model", "parts": [{"functionCall": {"name": "read", "args": {}}}]}),
-			json!({"role": "user", "parts": [{"functionResponse": {"name": "call1", "response": {"content": "a"}}}]}),
-			json!({"role": "user", "parts": [{"functionResponse": {"name": "call2", "response": {"content": "b"}}}]}),
-		];
-		let merged = GeminiAdapter::merge_consecutive_tool_response_entries(contents);
-		assert_eq!(merged.len(), 2); // model + single merged user
-		let parts = merged[1].get("parts").unwrap().as_array().unwrap();
-		assert_eq!(parts.len(), 2); // both functionResponse in one entry
-	}
-
-	#[test]
-	fn merge_does_not_merge_non_tool_user_entries() {
-		let contents = vec![
-			json!({"role": "user", "parts": [{"text": "hello"}]}),
-			json!({"role": "user", "parts": [{"functionResponse": {"name": "c1", "response": {"content": "x"}}}]}),
-		];
-		let merged = GeminiAdapter::merge_consecutive_tool_response_entries(contents);
-		assert_eq!(merged.len(), 2); // not merged — first is text, not tool response
-	}
-
-	#[test]
-	fn merge_three_consecutive_tool_responses() {
-		let contents = vec![
-			json!({"role": "user", "parts": [{"functionResponse": {"name": "c1", "response": {"content": "a"}}}]}),
-			json!({"role": "user", "parts": [{"functionResponse": {"name": "c2", "response": {"content": "b"}}}]}),
-			json!({"role": "user", "parts": [{"functionResponse": {"name": "c3", "response": {"content": "c"}}}]}),
-		];
-		let merged = GeminiAdapter::merge_consecutive_tool_response_entries(contents);
-		assert_eq!(merged.len(), 1);
-		let parts = merged[0].get("parts").unwrap().as_array().unwrap();
-		assert_eq!(parts.len(), 3);
-	}
-
-	#[test]
-	fn function_response_uses_function_name_when_available() {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let chat_req = ChatRequest::new(vec![ChatMessage::from(
-			ToolResponse::new("call_123", "{}").with_fn_name("get_weather"),
-		)]);
-
-		let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
-		let function_response = &parts.contents[0]["parts"][0]["functionResponse"];
-
-		assert_eq!(function_response["name"], "get_weather");
-		assert_eq!(function_response["response"]["name"], "get_weather");
-	}
-
-	#[test]
-	fn function_response_infers_name_from_gemini_synthetic_call_id() {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let chat_req = ChatRequest::new(vec![ChatMessage::from(ToolResponse::new("call#get_weather#0", "{}"))]);
-
-		let parts = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
-		let function_response = &parts.contents[0]["parts"][0]["functionResponse"];
-
-		assert_eq!(function_response["name"], "get_weather");
-		assert_eq!(function_response["response"]["name"], "get_weather");
-	}
-
-	fn build_payload(chat_req: ChatRequest, options: &ChatOptions) -> Value {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-3.7-flash");
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(options));
-		GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-3.7-flash", chat_req, options_set)
-			.unwrap()
-			.0
-	}
-
-	fn web_search_tool() -> Tool {
-		Tool::new_web_search().with_config(WebSearchConfig::default())
-	}
-
-	#[test]
-	fn mixing_builtin_and_function_tools_opts_into_server_side_invocations() {
-		let chat_req = ChatRequest::from_user("What is the weather in Cairo?")
-			.with_tools(vec![web_search_tool(), Tool::new("get_weather")]);
-
-		let payload = build_payload(chat_req, &ChatOptions::default());
-
-		assert_eq!(payload["toolConfig"]["includeServerSideToolInvocations"], true);
-	}
-
-	#[test]
-	fn every_builtin_triggers_the_opt_in_when_mixed() {
-		for builtin in GEMINI_BUILTIN_TOOL_NAMES {
-			let chat_req = ChatRequest::from_user("Do the thing.").with_tools(vec![
-				Tool::new(*builtin).with_config(json!({})),
-				Tool::new("get_weather"),
-			]);
-			let payload = build_payload(chat_req, &ChatOptions::default());
-			assert_eq!(
-				payload["toolConfig"]["includeServerSideToolInvocations"], true,
-				"builtin {builtin} should opt in when mixed with function declarations"
-			);
-		}
-	}
-
-	#[test]
-	fn unmixed_requests_do_not_get_the_opt_in() {
-		// Builtin only.
-		let builtin_only = build_payload(
-			ChatRequest::from_user("Search for something.").with_tools(vec![web_search_tool()]),
-			&ChatOptions::default(),
-		);
-		assert!(
-			builtin_only.get("toolConfig").is_none(),
-			"a builtin-only request needs no toolConfig"
-		);
-
-		// Function declarations only.
-		let functions_only = build_payload(
-			ChatRequest::from_user("What is the weather?").with_tools(vec![Tool::new("get_weather")]),
-			&ChatOptions::default(),
-		);
-		assert!(
-			functions_only.get("toolConfig").is_none(),
-			"a function-only request needs no toolConfig"
-		);
-
-		// No tools at all.
-		let no_tools = build_payload(ChatRequest::from_user("Hello."), &ChatOptions::default());
-		assert!(no_tools.get("toolConfig").is_none());
-	}
-
-	#[test]
-	fn the_opt_in_merges_with_tool_choice_rather_than_replacing_it() {
-		let options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
-		let chat_req = ChatRequest::from_user("What is the weather in Cairo?")
-			.with_tools(vec![web_search_tool(), Tool::new("get_weather")]);
-
-		let payload = build_payload(chat_req, &options);
-
-		assert_eq!(payload["toolConfig"]["includeServerSideToolInvocations"], true);
-		assert_eq!(payload["toolConfig"]["functionCallingConfig"]["mode"], "ANY");
-		assert_eq!(
-			payload["toolConfig"]["functionCallingConfig"]["allowedFunctionNames"],
-			json!(["get_weather"])
-		);
-	}
-
-	#[test]
-	fn tool_choice_required_maps_to_gemini_any_mode() {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let options = ChatOptions::default().with_tool_choice(ToolChoice::Required);
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
-		let chat_req = ChatRequest::from_user("Use the weather tool.").with_tools(vec![Tool::new("get_weather")]);
-
-		let (payload, _) =
-			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
-				.unwrap();
-
-		assert_eq!(payload["toolConfig"]["functionCallingConfig"]["mode"], "ANY");
-		assert!(
-			payload["toolConfig"]["functionCallingConfig"]
-				.get("allowedFunctionNames")
-				.is_none()
-		);
-	}
-
-	#[test]
-	fn tool_choice_specific_tool_sets_gemini_allowed_function() {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let options = ChatOptions::default().with_tool_choice(ToolChoice::tool("get_weather"));
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
-		let chat_req = ChatRequest::from_user("Use the weather tool.").with_tools(vec![Tool::new("get_weather")]);
-
-		let (payload, _) =
-			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
-				.unwrap();
-
-		assert_eq!(payload["toolConfig"]["functionCallingConfig"]["mode"], "ANY");
-		assert_eq!(
-			payload["toolConfig"]["functionCallingConfig"]["allowedFunctionNames"],
-			json!(["get_weather"])
-		);
-	}
-
-	#[test]
-	fn tool_call_id_uses_counter() {
-		// Simulate Gemini response with two functionCalls for the same tool
-		let body = json!({
-			"candidates": [{
-				"content": {
-					"role": "model",
-					"parts": [
-						{"functionCall": {"name": "read_file", "args": {"path": "a.rs"}}},
-						{"functionCall": {"name": "read_file", "args": {"path": "b.rs"}}}
-					]
-				}
-			}],
-			"usageMetadata": {"totalTokenCount": 100}
-		});
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-test");
-		let response = GeminiAdapter::body_to_gemini_chat_response(&model_iden, body).unwrap();
-		let tool_calls: Vec<_> = response
-			.content
-			.into_iter()
-			.filter_map(|part| match part.data {
-				GeminiPartData::ToolCall(tc) => Some(tc),
-				_ => None,
-			})
-			.collect();
-		assert_eq!(tool_calls.len(), 2);
-		assert_ne!(tool_calls[0].call_id, tool_calls[1].call_id);
-		assert!(tool_calls[0].call_id.contains("read_file"));
-		assert!(tool_calls[1].call_id.contains("read_file"));
-	}
-
-	#[test]
-	fn body_to_gemini_chat_response_accepts_usage_only_stream_tail() {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let response = GeminiAdapter::body_to_gemini_chat_response(
-			&model_iden,
-			json!({
-				"candidates": [
-					{
-						"finishReason": "STOP"
-					}
-				],
-				"usageMetadata": {
-					"promptTokenCount": 10,
-					"candidatesTokenCount": 4,
-					"totalTokenCount": 14
-				}
-			}),
-		)
-		.expect("usage-only stream tail should not be treated as an error");
-
-		assert!(response.content.is_empty());
-		assert_eq!(response.usage.total_tokens, Some(14));
-		assert_eq!(response.usage.prompt_tokens, Some(10));
-		assert_eq!(response.usage.completion_tokens, Some(4));
-		assert_eq!(response.stop_reason.as_deref(), Some("STOP"));
-	}
-
-	#[test]
-	fn body_to_gemini_chat_response_accepts_tail_with_null_finish_reason() {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let response = GeminiAdapter::body_to_gemini_chat_response(
-			&model_iden,
-			json!({
-				"candidates": [
-					{
-						"finishReason": null
-					}
-				],
-				"usageMetadata": {
-					"promptTokenCount": 10,
-					"candidatesTokenCount": 4,
-					"totalTokenCount": 14
-				}
-			}),
-		)
-		.expect("usage-only stream tail with null finishReason should not be an error");
-
-		assert!(response.content.is_empty());
-		assert_eq!(response.usage.total_tokens, Some(14));
-	}
-
-	#[test]
-	fn body_to_gemini_chat_response_still_rejects_missing_candidates() {
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let result = GeminiAdapter::body_to_gemini_chat_response(
-			&model_iden,
-			json!({
-				"usageMetadata": {
-					"promptTokenCount": 10,
-					"candidatesTokenCount": 4,
-					"totalTokenCount": 14
-				}
-			}),
-		);
-
-		let err = match result {
-			Err(e) => e,
-			Ok(_) => panic!("missing candidates should still be rejected"),
-		};
-		assert!(matches!(err, Error::ChatResponse { .. }));
-	}
-
-	#[test]
-	fn response_json_schema_is_forwarded_raw() {
-		// A pydantic/schemars-style schema with `$defs` + `$ref`. Gemini's
-		// `responseJsonSchema` field accepts full JSON Schema, so the adapter must
-		// forward it unchanged — no `$ref` inlining / OpenAPI conversion.
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let schema = json!({
-			"type": "object",
-			"properties": { "person": { "$ref": "#/$defs/Person" } },
-			"required": ["person"],
-			"$defs": {
-				"Person": { "type": "object", "properties": { "name": { "type": "string" } }, "required": ["name"] }
-			}
-		});
-		let options = ChatOptions::default().with_response_format(JsonSpec::new("person", schema.clone()));
-		let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
-		let chat_req = ChatRequest::from_user("Return a person.");
-
-		let (payload, _) =
-			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
-				.unwrap();
-
-		assert_eq!(payload["generationConfig"]["responseMimeType"], "application/json");
-		// Forwarded byte-for-byte: `$defs`/`$ref` preserved, not inlined.
-		assert_eq!(payload["generationConfig"]["responseJsonSchema"], schema);
-	}
-
-	#[test]
-	fn tool_parameters_use_parameters_json_schema_raw() {
-		// Tool schemas go to `parametersJsonSchema` (JSON Schema-native), not the
-		// restricted `parameters` field (which rejects `$ref`). Forwarded unchanged.
-		let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-2.5-flash");
-		let schema = json!({
-			"type": "object",
-			"properties": { "loc": { "$ref": "#/$defs/Loc" } },
-			"required": ["loc"],
-			"$defs": {
-				"Loc": { "type": "object", "properties": { "city": { "type": "string" } }, "required": ["city"] }
-			}
-		});
-		let chat_req =
-			ChatRequest::from_user("Use the tool.").with_tools(vec![Tool::new("record").with_schema(schema.clone())]);
-		let options_set = ChatOptionsSet::default();
-
-		let (payload, _) =
-			GeminiAdapter::build_gemini_request_payload(&model_iden, "gemini-2.5-flash", chat_req, options_set)
-				.unwrap();
-
-		let decl = &payload["tools"][0]["functionDeclarations"][0];
-		assert_eq!(decl["parametersJsonSchema"], schema);
-		assert!(
-			decl.get("parameters").is_none(),
-			"must not use the restricted `parameters` field"
-		);
-	}
-
-	// region:    --- thought signatures stay with their part
-
-	fn gemini_3() -> ModelIden {
-		ModelIden::new(AdapterKind::Gemini, "gemini-3-pro")
-	}
-
-	fn response_with_parts(parts: Value) -> WebResponse {
-		WebResponse {
-			status: reqwest::StatusCode::OK,
-			body: json!({
-				"candidates": [{"content": {"parts": parts, "role": "model"}, "finishReason": "STOP"}],
-				"usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 5, "thoughtsTokenCount": 3},
-				"modelVersion": "gemini-3-pro"
-			}),
-		}
-	}
-
-	fn call(path: &str) -> ToolCall {
-		ToolCall {
-			call_id: format!("call#read_file#{path}"),
-			fn_name: "read_file".to_string(),
-			fn_arguments: json!({"path": path}),
-			thought_signatures: None,
-		}
-	}
-
-	/// A compact rendering of parts: text, signature, or call with its mirrored signatures.
-	fn shape(parts: &[ContentPart]) -> Vec<String> {
-		parts
-			.iter()
-			.map(|part| match part {
-				ContentPart::Text(text) => format!("text({text})"),
-				ContentPart::ThoughtSignature(signature) => format!("sig({signature})"),
-				ContentPart::ToolCall(call) => {
-					let mirrored = call.thought_signatures.as_ref().map(|s| s.join("+")).unwrap_or_default();
-					format!("call({}:{mirrored})", call.fn_arguments["path"].as_str().unwrap_or(""))
-				}
-				other => format!("{other:?}"),
-			})
-			.collect()
-	}
-
-	/// Gemini attaches a `thoughtSignature` to a specific part and wants it back on
-	/// that part. Parts therefore keep wire order, with each signature immediately
-	/// before the part it arrived on and each call mirroring its own — rather than
-	/// every signature hoisted to the front and all of them on the first call,
-	/// which lost the association for a turn with two calls.
-	#[test]
-	fn signatures_stay_next_to_the_part_they_arrived_on() {
-		let response = GeminiAdapter::to_chat_response(
-			gemini_3(),
-			response_with_parts(json!([
-				{"text": "Reading both."},
-				{"functionCall": {"name": "read_file", "args": {"path": "/a"}}, "thoughtSignature": "sig-a"},
-				{"functionCall": {"name": "read_file", "args": {"path": "/b"}}, "thoughtSignature": "sig-b"}
-			])),
-			ChatOptionsSet::default(),
-		)
-		.expect("chat response");
-
-		assert_eq!(
-			shape(response.content.parts()),
-			[
-				"text(Reading both.)",
-				"sig(sig-a)",
-				"call(/a:sig-a)",
-				"sig(sig-b)",
-				"call(/b:sig-b)"
-			]
-		);
-	}
-
-	/// The way back: each call carries the signature that preceded it, embedded in
-	/// its own `functionCall` part, so neither needs the validator stand-in.
-	#[test]
-	fn each_call_goes_back_with_its_own_signature() {
-		let content = MessageContent::from_parts(vec![
-			ContentPart::Text("Reading both.".to_string()),
-			ContentPart::ThoughtSignature("sig-a".to_string()),
-			ContentPart::ToolCall(call("/a")),
-			ContentPart::ThoughtSignature("sig-b".to_string()),
-			ContentPart::ToolCall(call("/b")),
-		]);
-		let chat_req = ChatRequest::new(vec![ChatMessage::user("Read both."), ChatMessage::assistant(content)]);
-
-		let parts = GeminiAdapter::into_gemini_request_parts(&gemini_3(), chat_req).expect("request parts");
-
-		let model_turn = &parts.contents[1]["parts"];
-		assert_eq!(model_turn[0], json!({"text": "Reading both."}));
-		assert_eq!(model_turn[1]["thoughtSignature"], "sig-a");
-		assert_eq!(model_turn[1]["functionCall"]["args"]["path"], "/a");
-		assert_eq!(model_turn[2]["thoughtSignature"], "sig-b");
-		assert_eq!(model_turn[2]["functionCall"]["args"]["path"], "/b");
-	}
-
-	/// A signature on a text part rides that text part back, as it was returned.
-	#[test]
-	fn a_signature_on_a_text_part_rides_the_text_part_back() {
-		let content = MessageContent::from_parts(vec![
-			ContentPart::ThoughtSignature("sig-t".to_string()),
-			ContentPart::Text("Done.".to_string()),
-		]);
-		let chat_req = ChatRequest::new(vec![ChatMessage::user("Hi"), ChatMessage::assistant(content)]);
-
-		let parts = GeminiAdapter::into_gemini_request_parts(&gemini_3(), chat_req).expect("request parts");
-
-		assert_eq!(
-			parts.contents[1]["parts"],
-			json!([{"text": "Done.", "thoughtSignature": "sig-t"}])
-		);
-	}
-
-	/// A call that carries its signature only in the `thought_signatures` mirror —
-	/// a turn rebuilt from its tool calls alone — still sends it, instead of the
-	/// Gemini 3 validator stand-in.
-	#[test]
-	fn a_mirrored_signature_on_the_call_is_honoured() {
-		let mut mirrored = call("/a");
-		mirrored.thought_signatures = Some(vec!["sig-m".to_string()]);
-		let content = MessageContent::from_parts(vec![ContentPart::ToolCall(mirrored)]);
-		let chat_req = ChatRequest::new(vec![ChatMessage::user("Read."), ChatMessage::assistant(content)]);
-
-		let parts = GeminiAdapter::into_gemini_request_parts(&gemini_3(), chat_req).expect("request parts");
-
-		assert_eq!(parts.contents[1]["parts"][0]["thoughtSignature"], "sig-m");
-	}
-
-	/// End to end: a two-call turn goes back in the shape the API returned it.
-	#[test]
-	fn a_two_call_turn_round_trips_with_both_signatures() {
-		let response = GeminiAdapter::to_chat_response(
-			gemini_3(),
-			response_with_parts(json!([
-				{"functionCall": {"name": "read_file", "args": {"path": "/a"}}, "thoughtSignature": "sig-a"},
-				{"functionCall": {"name": "read_file", "args": {"path": "/b"}}, "thoughtSignature": "sig-b"}
-			])),
-			ChatOptionsSet::default(),
-		)
-		.expect("chat response");
-		let chat_req = ChatRequest::new(vec![
-			ChatMessage::user("Read both."),
-			ChatMessage::assistant(response.content),
-		]);
-
-		let parts = GeminiAdapter::into_gemini_request_parts(&gemini_3(), chat_req).expect("request parts");
-
-		let model_turn = parts.contents[1]["parts"].as_array().expect("parts");
-		let signatures: Vec<&str> = model_turn
-			.iter()
-			.map(|part| part["thoughtSignature"].as_str().unwrap_or("-"))
-			.collect();
-		assert_eq!(signatures, ["sig-a", "sig-b"]);
-		assert!(model_turn.iter().all(|part| part.get("functionCall").is_some()));
-	}
-
-	// endregion: --- thought signatures stay with their part
-
-	// region:    --- Thought signature placement
-
-	fn signed_call(name: &str, signature: Option<&str>) -> ToolCall {
-		ToolCall {
-			call_id: format!("call#{name}#0"),
-			fn_name: name.to_string(),
-			fn_arguments: json!({}),
-			thought_signatures: signature.map(|s| vec![s.to_string()]),
-		}
-	}
-
-	fn model_parts(parts: Vec<ContentPart>) -> Vec<Value> {
-		let chat_req =
-			ChatRequest::from_user("hi").append_message(ChatMessage::assistant(MessageContent::from_parts(parts)));
-		let payload = build_payload(chat_req, &ChatOptions::default());
-		let contents = payload["contents"].as_array().unwrap();
-		let model = contents.iter().find(|c| c["role"] == "model").expect("model turn");
-		model["parts"].as_array().unwrap().clone()
-	}
-
-	/// Every part carries data; the signature is only ever a field of one.
-	fn assert_no_bare_signatures(parts: &[Value]) {
-		for part in parts {
-			assert!(
-				part.get("text").is_some() || part.get("functionCall").is_some(),
-				"part without data sent: {part}"
-			);
-		}
-	}
-
-	/// The reported bug: two free signatures before a call. The newer one rides the call and
-	/// nothing is sent bare.
-	#[test]
-	fn free_signatures_before_a_call_are_not_sent_bare() {
-		let parts = model_parts(vec![
-			ContentPart::ThoughtSignature("sig-1".to_string()),
-			ContentPart::ThoughtSignature("sig-2".to_string()),
-			ContentPart::ToolCall(signed_call("get_weather", None)),
-		]);
-
-		assert_no_bare_signatures(&parts);
-		assert_eq!(parts.len(), 1);
-		assert_eq!(parts[0]["thoughtSignature"], "sig-2");
-	}
-
-	#[test]
-	fn streamed_shape_puts_each_signature_on_its_part() {
-		let parts = model_parts(vec![
-			ContentPart::ThoughtSignature("sig-t".to_string()),
-			ContentPart::ThoughtSignature("sig-a".to_string()),
-			ContentPart::ThoughtSignature("sig-b".to_string()),
-			ContentPart::Text("Reading both.".to_string()),
-			ContentPart::ToolCall(signed_call("read_a", Some("sig-a"))),
-			ContentPart::ToolCall(signed_call("read_b", Some("sig-b"))),
-		]);
-
-		assert_no_bare_signatures(&parts);
-		let signatures: Vec<&str> = parts.iter().map(|p| p["thoughtSignature"].as_str().unwrap_or("-")).collect();
-		assert_eq!(signatures, ["sig-t", "sig-a", "sig-b"]);
-	}
-
-	#[test]
-	fn trailing_signature_is_dropped() {
-		let parts = model_parts(vec![
-			ContentPart::Text("Hmm.".to_string()),
-			ContentPart::ThoughtSignature("sig-1".to_string()),
-		]);
-
-		assert_eq!(parts, [json!({"text": "Hmm."})]);
-	}
-
-	#[test]
-	fn unsigned_first_call_gets_the_validator_placeholder() {
-		let parts = model_parts(vec![
-			ContentPart::ToolCall(signed_call("a", None)),
-			ContentPart::ToolCall(signed_call("b", None)),
-		]);
-
-		assert_eq!(parts[0]["thoughtSignature"], SKIP_THOUGHT_SIGNATURE_VALIDATOR);
-		assert!(parts[1].get("thoughtSignature").is_none());
-	}
-
-	#[test]
-	fn parser_keeps_a_signature_only_part_as_empty_text() {
-		let body = json!({"candidates": [{"content": {"parts": [
-			{"thoughtSignature": "sig-t"},
-			{"functionCall": {"name": "read_file", "args": {}}, "thoughtSignature": "sig-a"}
-		]}}]});
-		let response = GeminiAdapter::body_to_gemini_chat_response(&gemini_3(), body).unwrap();
-
-		let [first, second] = response.content.as_slice() else {
-			panic!("expected two parts");
-		};
-		assert!(matches!(&first.data, GeminiPartData::Text(text) if text.is_empty()));
-		assert_eq!(first.thought_signature.as_deref(), Some("sig-t"));
-		let GeminiPartData::ToolCall(call) = &second.data else {
-			panic!("expected a call");
-		};
-		assert_eq!(call.thought_signatures.as_deref(), Some(&["sig-a".to_string()][..]));
-	}
-
-	// endregion: --- Thought signature placement
-}
+#[path = "adapter_impl_tests.rs"]
+mod tests;

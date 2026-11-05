@@ -52,6 +52,8 @@ pub struct Tool {
 	/// When `true`, the provider enforces strict schema validation on tool-call arguments.
 	/// For OpenAI and Anthropic this sets `"strict": true` and sanitizes the schema for
 	/// the provider's constrained-decoding dialect.
+	/// When unset, the OpenAI Responses and Anthropic adapters leave `strict` out, so the
+	/// provider's default applies.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub strict: Option<bool>,
 
