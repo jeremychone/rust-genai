@@ -176,6 +176,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<Cheapaimodel Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Opper => {
+				type A = crate::adapter::adapters::all_adapters::[<Opper Adapter>];
+				$body
+			}
 
 			crate::adapter::AdapterKind::Custom(_) => {
 				type A = crate::adapter::adapters::all_adapters::[<Custom Adapter>];

@@ -156,6 +156,11 @@ pub enum AdapterKind {
 	/// Uses `CHEAPAIMODEL_API_KEY`. Embeddings are not supported.
 	Cheapaimodel,
 
+	/// Opper: OpenAI-compatible gateway for many providers (OpenAI, Anthropic, Google, etc.).
+	/// Namespace: `opper::claude-sonnet-4-6` (pool name), `opper::anthropic/claude-sonnet-4-6` (pinned route).
+	/// Uses `OPPER_API_KEY`.
+	Opper,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -209,6 +214,7 @@ adapter_kind_str_maps! {
 	Runcrate           => "Runcrate",           "runcrate",            adapters::all_adapters::RuncrateAdapter;
 	CloudGpu           => "CloudGpu",           "cloudgpu",            adapters::all_adapters::CloudGpuAdapter;
 	Cheapaimodel       => "Cheapaimodel",       "cheapaimodel",        adapters::all_adapters::CheapaimodelAdapter;
+	Opper              => "Opper",              "opper",               adapters::all_adapters::OpperAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 

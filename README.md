@@ -22,7 +22,7 @@ See [v0.7.x](#v070-released)
 
 Supports many models and providers out of the box, including **Ollama** for local execution.
 
-Out-of-the-box providers and adapters: `openai`, `openai_resp`, `anthropic`, `gemini`, `gemini_ix`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`, `atlascloud`, `xai`
+Out-of-the-box providers and adapters: `openai`, `openai_resp`, `anthropic`, `gemini`, `gemini_ix`, `omlx`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`, `cohere`, `nebius`, `mimo`, `deepseek`, `mistral`, `minimax`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot` (moonshot.cn), `kimi` (moonshot.ai), `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`, `opper`, `atlascloud`, `xai`
 
 Common models from OpenAI, Anthropic, and Gemini can be accessed by name, such as `gpt-6-luna`, `claude-...`, or `gemini-...`, and the appropriate adapter will be selected.
 
@@ -138,6 +138,7 @@ You can force a specific adapter by using the `adapter_kind::model_name` syntax.
 - `runcrate::deepseek-ai/DeepSeek-V4.1-Flash` (Forces **Runcrate** adapter)
 - `cloudgpu::deepseek-v4.1-flash` (Forces **CloudGPU** adapter)
 - `cheapaimodel::deepseek-v4-1-flash` (Forces **cheapaimodel** adapter)
+- `opper::claude-sonnet-4-6` or `opper::anthropic/claude-sonnet-4-6` (Forces **Opper** adapter)
 - `atlascloud::qwen/qwen3.5-flash` (Forces **Atlas Cloud** adapter)
 - `genai_1::my-model-7b` (Forces **Custom** adapter with index 1)
 
