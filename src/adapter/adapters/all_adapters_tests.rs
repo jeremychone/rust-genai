@@ -178,6 +178,42 @@ fn test_cheapaimodel_dispatch_preserves_model_and_uses_cheapaimodel_endpoint() -
 	Ok(())
 }
 
+#[test]
+fn test_standardcompute_dispatch_preserves_model_and_uses_standardcompute_endpoint() -> Result<()> {
+	let kind = AdapterKind::from_model("standardcompute::deepseek/deepseek-v4-pro")?;
+	assert_eq!(kind, AdapterKind::StandardCompute);
+	assert_eq!(kind.default_key_env_name(), Some("STANDARDCOMPUTE_API_KEY"));
+	let target = ServiceTarget {
+		model: ModelIden::new(kind, "standardcompute::deepseek/deepseek-v4-pro"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: AdapterDispatcher::default_endpoint(kind),
+	};
+	let request = AdapterDispatcher::to_web_request_data(
+		target.clone(),
+		ServiceType::Chat,
+		ChatRequest::from_user("hello"),
+		ChatOptionsSet::default(),
+	)?;
+	assert_eq!(request.url, "https://api.stdcmpt.com/v1/chat/completions");
+	assert_eq!(request.payload["model"], "deepseek/deepseek-v4-pro");
+	let has_bearer = request
+		.headers
+		.iter()
+		.any(|(name, value)| name.eq_ignore_ascii_case("authorization") && value == "Bearer test-key");
+	assert!(has_bearer);
+	// Standard Compute does not expose an embeddings endpoint.
+	let embed_res =
+		AdapterDispatcher::to_embed_request_data(target, EmbedRequest::new("hello"), EmbedOptionsSet::default());
+	assert!(matches!(
+		embed_res,
+		Err(crate::Error::AdapterNotSupported {
+			adapter_kind: AdapterKind::StandardCompute,
+			..
+		})
+	));
+	Ok(())
+}
+
 // region:    --- DeepSeek
 
 #[test]

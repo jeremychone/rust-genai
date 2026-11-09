@@ -263,6 +263,17 @@ impl_pass_through_adapter!(
 	unsupported: [embeddings],
 );
 
+// -- Standard Compute
+pub struct StandardComputeAdapter;
+impl_pass_through_adapter!(
+	name: StandardComputeAdapter,
+	kind: AdapterKind::StandardCompute,
+	key_env: Some("STANDARDCOMPUTE_API_KEY"),
+	endpoint: "https://api.stdcmpt.com/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(

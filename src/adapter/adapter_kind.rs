@@ -156,6 +156,11 @@ pub enum AdapterKind {
 	/// Uses `CHEAPAIMODEL_API_KEY`. Embeddings are not supported.
 	Cheapaimodel,
 
+	/// Standard Compute: OpenAI-compatible routing gateway, selected via the `standardcompute::` namespace.
+	/// Example: `standardcompute::StandardCompute` (routed) or a pinned id such as `standardcompute::deepseek/deepseek-v4-pro`.
+	/// Website: <https://standardcompute.com>. Uses `STANDARDCOMPUTE_API_KEY`. Embeddings are not supported.
+	StandardCompute,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -209,6 +214,7 @@ adapter_kind_str_maps! {
 	Runcrate           => "Runcrate",           "runcrate",            adapters::all_adapters::RuncrateAdapter;
 	CloudGpu           => "CloudGpu",           "cloudgpu",            adapters::all_adapters::CloudGpuAdapter;
 	Cheapaimodel       => "Cheapaimodel",       "cheapaimodel",        adapters::all_adapters::CheapaimodelAdapter;
+	StandardCompute    => "StandardCompute",    "standardcompute",     adapters::all_adapters::StandardComputeAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
