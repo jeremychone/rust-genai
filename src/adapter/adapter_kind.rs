@@ -161,6 +161,11 @@ pub enum AdapterKind {
 	/// Website: <https://standardcompute.com>. Uses `STANDARDCOMPUTE_API_KEY`. Embeddings are not supported.
 	StandardCompute,
 
+	/// UberLLM: OpenAI-compatible gateway for models from many labs, selected via the `uberllm::` namespace.
+	/// Example: `uberllm::deepseek/deepseek-v4-flash`. Website: <https://uberllm.dev>.
+	/// Uses `UBERLLM_API_KEY`. Embeddings are not supported.
+	UberLlm,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -215,6 +220,7 @@ adapter_kind_str_maps! {
 	CloudGpu           => "CloudGpu",           "cloudgpu",            adapters::all_adapters::CloudGpuAdapter;
 	Cheapaimodel       => "Cheapaimodel",       "cheapaimodel",        adapters::all_adapters::CheapaimodelAdapter;
 	StandardCompute    => "StandardCompute",    "standardcompute",     adapters::all_adapters::StandardComputeAdapter;
+	UberLlm            => "UberLlm",            "uberllm",             adapters::all_adapters::UberLlmAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 
