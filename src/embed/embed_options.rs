@@ -184,8 +184,8 @@ impl<'client, 'request> EmbedOptionsSet<'client, 'request> {
 	/// Get the effective capture_raw_body setting.
 	pub fn capture_raw_body(&self) -> bool {
 		self.request_options
-			.map(|o| o.capture_raw_body())
-			.or_else(|| self.client_options.map(|o| o.capture_raw_body()))
+			.and_then(|o| o.capture_raw_body)
+			.or_else(|| self.client_options.and_then(|o| o.capture_raw_body))
 			.unwrap_or(false)
 	}
 
@@ -234,3 +234,40 @@ impl<'client, 'request> EmbedOptionsSet<'client, 'request> {
 }
 
 // endregion: --- EmbedOptionsSet
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_capture_raw_body_inherits_client_with_request_dimensions() {
+		let client = EmbedOptions::new().with_capture_raw_body(true);
+		let request = EmbedOptions::new().with_dimensions(256);
+		let options = EmbedOptionsSet::new()
+			.with_client_options(Some(&client))
+			.with_request_options(Some(&request));
+
+		assert!(options.capture_raw_body());
+		assert_eq!(options.dimensions(), Some(256));
+	}
+
+	#[test]
+	fn test_capture_raw_body_explicit_request_override() {
+		for capture in [false, true] {
+			let client = EmbedOptions::new().with_capture_raw_body(!capture);
+			let request = EmbedOptions::new().with_capture_raw_body(capture);
+			let options = EmbedOptionsSet::new()
+				.with_client_options(Some(&client))
+				.with_request_options(Some(&request));
+
+			assert_eq!(options.capture_raw_body(), capture);
+		}
+	}
+
+	#[test]
+	fn test_capture_raw_body_defaults_to_false() {
+		assert!(!EmbedOptionsSet::new().capture_raw_body());
+		let request = EmbedOptions::new().with_dimensions(256);
+		assert!(!EmbedOptionsSet::new().with_request_options(Some(&request)).capture_raw_body());
+	}
+}
