@@ -1,6 +1,6 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## PENDING [v0.7.4](https://github.com/jeremychone/rust-genai/compare/v0.7.3...main)
+## 2026-11-11 [v0.7.4](https://github.com/jeremychone/rust-genai/compare/v0.7.3...v0.7.4)
 
 - `-` model_name - `Deserialize` accepts the tagged form `Serialize` emits and a plain string, so a saved `ModelName` round-trips instead of failing. (PR #380)
 - `-` embed - An `EmbedOptions` that only sets `dimensions` no longer drops a client-level `capture_raw_body`; unset request fields inherit it, an explicit value still overrides. (PR #381)
