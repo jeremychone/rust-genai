@@ -32,7 +32,7 @@ genai (crate root / lib.rs)
 - **ProviderConfig**: Provider-level endpoint/auth overrides for adapter-wide operations such as model listing. Since v0.6.0.
 - **Resolvers**: User hooks to customize model mapping, authentication, and service endpoints.
 - **Bound Adapter**: Optional `Client`/`ClientBuilder` adapter constraint. Since v0.6.0. When set, bare model names route through the bound adapter instead of heuristic inference. Explicit mismatched namespaces or mismatched `ModelIden` values return `AdapterKindMismatch`.
-- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `mistral`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot`, `atlascloud`, `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`, `custom`, `xai`.
+- **AdapterKind**: Supported providers (updated in v0.6.x; custom added in v0.7.0-beta): `openai`, `openai_resp`, `anthropic`, `gemini`, `ollama`, `ollama_cloud`, `vertex`, `bedrock_api`, `bedrock_sigv4`, `github_copilot`, `opencode_go`, `groq`, `together`, `fireworks`,  `cohere`, `nebius`, `mimo`, `deepseek`, `minimax`, `mistral`, `zai`, `zai_coding`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `moonshot`, `atlascloud`, `aihubmix`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`, `standardcompute`, `custom`, `xai`.
   - `github_copilot` (since v0.6.0) is a GitHub Models gateway with multi-publisher namespaced models such as `github_copilot::openai/gpt-4.1-mini`, `github_copilot::anthropic/claude-sonnet-4-6`, and `github_copilot::google/gemini-2.5-pro`.
   - `ollama_cloud` (since v0.6.0) is the hosted Ollama Cloud service (`ollama.com`). It uses the same native Ollama protocol as the local `ollama` adapter but authenticates with `Authorization: Bearer $OLLAMA_API_KEY`. Use via the `ollama_cloud::model_name` namespace, for example, `ollama_cloud::gemma3:4b`.
   - `vertex` (since v0.6.0) is Google Vertex AI Model Garden routing for Gemini and Anthropic models via the `vertex::` namespace.
@@ -46,6 +46,7 @@ genai (crate root / lib.rs)
   - `runcrate` is the [Runcrate](https://www.runcrate.ai/?utm_source=rust-genai&utm_medium=directory&utm_campaign=gpu_pricing) OpenAI-compatible inference API for open models. Uses `RUNCRATE_API_KEY` and endpoint `https://api.runcrate.ai/v1/`. Select it explicitly with `runcrate::deepseek-ai/DeepSeek-V4.1-Flash`; the `vendor/model` ID is preserved. Chat and embeddings.
   - `cloudgpu` is the [CloudGPU](https://cloudgpu.app/api/docs?utm_source=github&utm_medium=referral&utm_campaign=202611_seg06_indiedev&utm_content=github_rust_genai_adapter) OpenAI-compatible inference API for open models. Uses `CLOUDGPU_API_KEY` and endpoint `https://cloudgpu.app/v1/`. Select it explicitly with `cloudgpu::deepseek-v4.1-flash`; the model ID is preserved. Embeddings are not supported.
   - `cheapaimodel` is the [cheapaimodel](https://cheapaimodel.ai) OpenAI-compatible, pay-per-token gateway for open-weight models (DeepSeek, GLM, Kimi) and Grok. Uses `CHEAPAIMODEL_API_KEY` and endpoint `https://api.cheapaimodel.ai/v1/`. Select it explicitly with `cheapaimodel::deepseek-v4-1-flash`; the model ID is preserved. Embeddings are not supported.
+  - `standardcompute` is the [Standard Compute](https://standardcompute.com) OpenAI-compatible routing gateway. Uses `STANDARDCOMPUTE_API_KEY` and endpoint `https://api.stdcmpt.com/v1/`. Select it explicitly with `standardcompute::StandardCompute`, which routes each request to the cheapest enabled model that can handle it, with automatic fallback; pinned model IDs such as `standardcompute::deepseek/deepseek-v4-pro` (listed at `GET https://api.stdcmpt.com/v1/models`) are preserved. Embeddings are not supported.
   - `baidu` (since v0.6.0) is Baidu's OpenAI/Anthropic compatible proxies.
   - `aliyun` (since v0.6.0) is Aliyun's namespace-only OpenAI-compatible service.
   - `qwen_cloud` is the managed Qwen Cloud service at `qwencloud.com`. It uses the international Aliyun-compatible endpoint and requires `QWEN_CLOUD_API_KEY`.
@@ -648,7 +649,7 @@ Single-value-per-name HTTP header map.
 
 Enum identifying the AI provider adapter.
 
-Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`.
+Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `fireworks`, `together`, `groq`, `aihubmix`, `mimo`, `moonshot`, `nebius`, `xai`, `deepseek`, `zai`, `bigmodel`, `aliyun`, `qwen_cloud`, `baidu`, `cohere`, `ollama`, `ollama_cloud`, `opencode_go`, `vertex`, `github_copilot`, `bedrock_api`, `bedrock_sigv4`, `open_router`, `requesty`, `api_route`, `heabsy`, `runcrate`, `cloudgpu`, `cheapaimodel`, `standardcompute`.
 
   - Namespace matches adapter lowercase name (updated in v0.6.0 with namespaces such as `open_router::`, `bedrock_api::`, `bedrock_sigv4::`, `vertex::`, `github_copilot::`, `opencode_go::`, `baidu::`, `aliyun::`, `moonshot::`, `aihubmix::`, and `ollama_cloud::`).
 
@@ -702,6 +703,7 @@ Variants (updated in v0.6.0): `openai`, `openai_resp`, `gemini`, `anthropic`, `f
   - `runcrate::model_name` targets Runcrate's OpenAI-compatible API (e.g., `runcrate::deepseek-ai/DeepSeek-V4.1-Flash`).
   - `cloudgpu::model_name` targets CloudGPU's OpenAI-compatible Chat Completions API (e.g., `cloudgpu::deepseek-v4.1-flash`). Embeddings are not supported.
   - `cheapaimodel::model_name` targets cheapaimodel's OpenAI-compatible Chat Completions API (e.g., `cheapaimodel::deepseek-v4-1-flash`). Embeddings are not supported.
+  - `standardcompute::model_name` targets Standard Compute's OpenAI-compatible Chat Completions API (e.g., `standardcompute::StandardCompute` or `standardcompute::deepseek/deepseek-v4-pro`). Embeddings are not supported.
 - **Ollama Fallback**: Unrecognized non-namespaced names default to `Ollama` adapter (localhost:11434).
 - **Reasoning Normalization**: Automatic extraction for DeepSeek/Ollama `<think>` blocks when `normalize_reasoning_content` is enabled.
 
