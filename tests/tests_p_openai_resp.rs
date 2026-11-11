@@ -5,9 +5,9 @@ use genai::adapter::AdapterKind;
 use genai::resolver::AuthData;
 
 // This will use the OpenAIRes adapter
-const MODEL: &str = "gpt-5.6-luna";
+const MODEL: &str = "gpt-6-luna";
 // Also used for the verbosity (codex only supported medium)
-const MODEL_NS: &str = "openai_resp::gpt-5.6-luna";
+const MODEL_NS: &str = "openai_resp::gpt-6-luna";
 
 // region:    --- Provider Specific
 
@@ -173,7 +173,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::OpenAIResp, "gpt-5-codex").await
+	common_tests::common_test_list_models(AdapterKind::OpenAIResp, "gpt-6-luna").await
 }
 
 // endregion: --- List

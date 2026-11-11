@@ -188,7 +188,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 
 #[tokio::test]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::OpenAI, "gpt-5.2-codex").await
+	common_tests::common_test_list_models(AdapterKind::OpenAI, "gpt-4.1-mini").await
 }
 
 // endregion: --- List
