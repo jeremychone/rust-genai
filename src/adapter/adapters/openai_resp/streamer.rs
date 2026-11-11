@@ -1,4 +1,4 @@
-use super::RespResponse;
+use super::{RespResponse, extract_resp_reasoning_texts};
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
 use crate::chat::{ChatOptionsSet, StopReason, ToolCall};
@@ -22,6 +22,7 @@ pub struct OpenAIRespStreamer {
 
 	in_progress_tool_calls: BTreeMap<usize, ToolCall>,
 	custom_tool_call_indexes: BTreeSet<usize>,
+	streamed_reasoning_indexes: BTreeSet<usize>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -65,7 +66,7 @@ enum RespStreamEvent {
 	#[serde(rename = "response.reasoning_text.delta")]
 	ReasoningTextDelta {
 		#[serde(default)]
-		_output_index: usize,
+		output_index: usize,
 		#[serde(default)]
 		_content_index: usize,
 		delta: String,
@@ -84,7 +85,7 @@ enum RespStreamEvent {
 	#[serde(rename = "response.reasoning_summary_text.delta")]
 	ReasoningSummaryTextDelta {
 		#[serde(default)]
-		_output_index: usize,
+		output_index: usize,
 		#[serde(default)]
 		_summary_index: usize,
 		delta: String,
@@ -131,6 +132,7 @@ impl OpenAIRespStreamer {
 			captured_data: Default::default(),
 			in_progress_tool_calls: BTreeMap::new(),
 			custom_tool_call_indexes: BTreeSet::new(),
+			streamed_reasoning_indexes: BTreeSet::new(),
 		}
 	}
 
@@ -190,6 +192,46 @@ impl OpenAIRespStreamer {
 			self.captured_data.tool_calls = Some(tool_calls);
 		}
 	}
+
+	/// Fallback extraction of encrypted reasoning blobs (`thought_signatures`) and
+	/// reasoning summary/content text from the terminal response's `output` items
+	/// when they were not already captured from incremental stream events.
+	fn capture_reasoning_output(&mut self, output: &[Value]) {
+		if !self.options.capture_reasoning_content {
+			return;
+		}
+
+		// Extract encrypted reasoning content from output items
+		// (OpenAI equivalent of Gemini thought signatures).
+		// Only used as a fallback — `output_item.done` is the
+		// primary source. Some backends don't echo `output` in
+		// `response.completed` (it comes back empty), but for
+		// backends that do, this picks up anything missed.
+		if self.captured_data.thought_signatures.is_none() {
+			let mut thought_sigs: Vec<String> = Vec::new();
+			for item in output {
+				if item.x_get_str("type").ok() == Some("reasoning")
+					&& let Ok(encrypted) = item.x_get_str("encrypted_content")
+					&& !encrypted.is_empty()
+				{
+					thought_sigs.push(encrypted.to_string());
+				}
+			}
+			if !thought_sigs.is_empty() {
+				self.captured_data.thought_signatures = Some(thought_sigs);
+			}
+		}
+
+		if self.captured_data.reasoning_content.is_none() {
+			let mut reasoning_parts: Vec<String> = Vec::new();
+			for item in output {
+				reasoning_parts.extend(extract_resp_reasoning_texts(item));
+			}
+			if !reasoning_parts.is_empty() {
+				self.captured_data.reasoning_content = Some(reasoning_parts.join("\n"));
+			}
+		}
+	}
 }
 
 impl futures::Stream for OpenAIRespStreamer {
@@ -245,15 +287,29 @@ impl futures::Stream for OpenAIRespStreamer {
 							// via this stream of `output_item.done` events. Reading them
 							// here keeps the prefix cache round-trip working regardless
 							// of whether the backend echoes `output` at the end.
-							if self.options.capture_reasoning_content
-								&& item_type == Some("reasoning")
-								&& let Ok(encrypted) = item.x_get_str("encrypted_content")
-								&& !encrypted.is_empty()
-							{
-								self.captured_data
-									.thought_signatures
-									.get_or_insert_with(Vec::new)
-									.push(encrypted.to_string());
+							if self.options.capture_reasoning_content && item_type == Some("reasoning") {
+								if let Ok(encrypted) = item.x_get_str("encrypted_content")
+									&& !encrypted.is_empty()
+								{
+									self.captured_data
+										.thought_signatures
+										.get_or_insert_with(Vec::new)
+										.push(encrypted.to_string());
+								}
+								if !self.streamed_reasoning_indexes.contains(&output_index) {
+									let texts = extract_resp_reasoning_texts(&item);
+									if !texts.is_empty() {
+										self.streamed_reasoning_indexes.insert(output_index);
+										let joined = texts.join("\n");
+										match self.captured_data.reasoning_content {
+											Some(ref mut existing) if !existing.is_empty() => {
+												existing.push('\n');
+												existing.push_str(&joined);
+											}
+											_ => self.captured_data.reasoning_content = Some(joined),
+										}
+									}
+								}
 							}
 							// For a function_call, the complete arguments live on `done`. `arguments.delta`
 							// may be truncated or arrive before `output_item.added`; a non-empty `arguments` on `done` wins.
@@ -289,7 +345,10 @@ impl futures::Stream for OpenAIRespStreamer {
 							return Poll::Ready(Some(Ok(InterStreamEvent::Chunk(delta))));
 						}
 
-						RespStreamEvent::ReasoningTextDelta { delta, .. } => {
+						RespStreamEvent::ReasoningTextDelta {
+							output_index, delta, ..
+						} => {
+							self.streamed_reasoning_indexes.insert(output_index);
 							if self.options.capture_reasoning_content {
 								self.captured_data
 									.reasoning_content
@@ -299,7 +358,10 @@ impl futures::Stream for OpenAIRespStreamer {
 							return Poll::Ready(Some(Ok(InterStreamEvent::ReasoningChunk(delta))));
 						}
 
-						RespStreamEvent::ReasoningSummaryTextDelta { delta, .. } => {
+						RespStreamEvent::ReasoningSummaryTextDelta {
+							output_index, delta, ..
+						} => {
+							self.streamed_reasoning_indexes.insert(output_index);
 							if self.options.capture_reasoning_content {
 								self.captured_data.reasoning_content.get_or_insert_default().push_str(&delta);
 							}
@@ -338,27 +400,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							}
 
 							self.capture_tool_calls(&response.output);
-
-							// Extract encrypted reasoning content from output items
-							// (OpenAI equivalent of Gemini thought signatures).
-							// Only used as a fallback — `output_item.done` is the
-							// primary source. Some backends don't echo `output` in
-							// `response.completed` (it comes back empty), but for
-							// backends that do, this picks up anything missed.
-							if self.options.capture_reasoning_content && self.captured_data.thought_signatures.is_none()
-							{
-								let mut thought_sigs: Vec<String> = Vec::new();
-								for item in &response.output {
-									if item.x_get_str("type").ok() == Some("reasoning")
-										&& let Ok(encrypted) = item.x_get_str("encrypted_content")
-									{
-										thought_sigs.push(encrypted.to_string());
-									}
-								}
-								if !thought_sigs.is_empty() {
-									self.captured_data.thought_signatures = Some(thought_sigs);
-								}
-							}
+							self.capture_reasoning_output(&response.output);
 
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: self.captured_data.usage.take(),
@@ -395,6 +437,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							// calls it streamed, a truncated call with its arguments as far as
 							// they got (left as a string when they do not parse).
 							self.capture_tool_calls(&response.output);
+							self.capture_reasoning_output(&response.output);
 							let resp_id = response.id.clone();
 							let inter_stream_end = InterStreamEnd {
 								captured_usage: response.usage.map(Into::into),
@@ -402,7 +445,7 @@ impl futures::Stream for OpenAIRespStreamer {
 								captured_text_content: self.captured_data.content.take(),
 								captured_reasoning_content: self.captured_data.reasoning_content.take(),
 								captured_tool_calls: self.captured_data.tool_calls.take(),
-								captured_thought_signatures: None,
+								captured_thought_signatures: self.captured_data.thought_signatures.take(),
 								captured_thought_blocks: None,
 								captured_response_id: Some(resp_id),
 							};
@@ -447,7 +490,7 @@ impl futures::Stream for OpenAIRespStreamer {
 							captured_text_content: self.captured_data.content.take(),
 							captured_reasoning_content: self.captured_data.reasoning_content.take(),
 							captured_tool_calls: self.captured_data.tool_calls.take(),
-							captured_thought_signatures: None,
+							captured_thought_signatures: self.captured_data.thought_signatures.take(),
 							captured_thought_blocks: None,
 							captured_response_id: None,
 						};
