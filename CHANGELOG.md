@@ -1,5 +1,13 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
+## PENDING [v0.7.4](https://github.com/jeremychone/rust-genai/compare/v0.7.3...main)
+
+- `-` model_name - `Deserialize` accepts the tagged form `Serialize` emits and a plain string, so a saved `ModelName` round-trips instead of failing. (PR #380)
+- `-` embed - An `EmbedOptions` that only sets `dimensions` no longer drops a client-level `capture_raw_body`; unset request fields inherit it, an explicit value still overrides. (PR #381)
+- `-` openai_resp - Streamed reasoning is captured from `output_item.done` and the terminal `output` when no delta arrived, and `thought_signatures` survive `response.incomplete` and EOF. (PR #382)
+- `-` anthropic - A `thinking` block with a missing or empty `signature` no longer fails the response: `reasoning_content` is still captured, with no empty `ThoughtSignature` part. (PR #382)
+- `^` gemini_ix - Every `gemini-4*` model routes to the Gemini Interactions adapter, not only `gemini-4-argon`; `gemini::` and `gemini_ix::` namespaces still win. (PR #383)
+
 ## 2026-11-03 [v0.7.3](https://github.com/jeremychone/rust-genai/compare/v0.7.2...v0.7.3)
 
 - `+` New Adapters:

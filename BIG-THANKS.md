@@ -4,6 +4,14 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
+## v0.7.4 (pending)
+
+- [pcbeingused333](https://github.com/pcbeingused333)
+  - [#380](https://github.com/jeremychone/rust-genai/pull/380) fix(model_name): deserialize what Serialize produces
+  - [#381](https://github.com/jeremychone/rust-genai/pull/381) fix(embed): preserve client raw body capture with request options
+- [ropoctl](https://github.com/ropoctl)
+  - [#382](https://github.com/jeremychone/rust-genai/pull/382) fix(openai_resp, anthropic): capture reasoning on output_item.done/incomplete and unsigned thinking
+
 ## v0.7.3
 
 - [pcbeingused333](https://github.com/pcbeingused333)
