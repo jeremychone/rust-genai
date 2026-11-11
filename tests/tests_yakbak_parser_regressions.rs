@@ -239,3 +239,58 @@ async fn mistral_stream_separates_thinking_and_answer() -> TestResult<()> {
 	assert_eq!(extract.content.as_deref(), Some("391"));
 	Ok(())
 }
+
+// Responses stream keeps reasoning summary from `output_item.done` (when no reasoning delta
+// events were emitted) and preserves `thought_signatures` across `response.incomplete`.
+#[tokio::test]
+async fn responses_stream_captures_done_reasoning_and_incomplete_signatures() -> TestResult<()> {
+	let (client, _server) = replay_client("openai_resp", "stream_reasoning_done_and_incomplete_regression").await?;
+	let options = ChatOptions::default()
+		.with_capture_reasoning_content(true)
+		.with_capture_tool_calls(true);
+	let res = client
+		.exec_chat_stream(
+			"openai_resp::gpt-6-luna",
+			ChatRequest::from_user("Write a summary"),
+			Some(&options),
+		)
+		.await?;
+	let end = extract_stream_end(res.stream).await?.stream_end;
+	assert_eq!(end.captured_reasoning_content.as_deref(), Some("Check Paris."));
+	assert_eq!(
+		end.captured_thought_signatures().as_deref(),
+		Some(["fixture-opaque-reasoning"].as_slice())
+	);
+	let calls = end.captured_tool_calls().ok_or("partial Responses tool call")?;
+	assert_eq!(calls.len(), 1);
+	assert_eq!(
+		calls[0].thought_signatures.as_deref(),
+		Some(["fixture-opaque-reasoning".to_string()].as_slice())
+	);
+	assert!(matches!(end.captured_stop_reason, Some(StopReason::MaxTokens(_))));
+	Ok(())
+}
+
+// Anthropic non-stream response with an unsigned thinking block (e.g. Anthropic-compatible
+// backends that omit `signature`) still parses and preserves `reasoning_content` for tool use.
+#[tokio::test]
+async fn anthropic_nonstream_unsigned_thinking_preserves_reasoning_for_tool_use() -> TestResult<()> {
+	let (client, _server) = replay_client("anthropic", "unsigned_thinking_nonstream_regression").await?;
+	let response = client
+		.exec_chat("anthropic::claude-opus-5", ChatRequest::from_user("Weather"), None)
+		.await?;
+	assert_eq!(response.reasoning_content.as_deref(), Some("Plan the weather lookup."));
+	assert!(response.content.thought_signatures().is_empty());
+	let assistant = response
+		.into_assistant_message_for_tool_use()
+		.ok_or("assistant tool-use message")?;
+	assert!(assistant.content.contains_reasoning_content());
+	assert!(
+		assistant
+			.content
+			.parts()
+			.iter()
+			.any(|p| p.as_reasoning_content() == Some("Plan the weather lookup."))
+	);
+	Ok(())
+}

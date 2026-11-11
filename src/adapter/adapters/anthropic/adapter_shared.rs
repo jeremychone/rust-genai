@@ -669,11 +669,13 @@ impl AnthropicAdapter {
 				}
 				"thinking" => {
 					let reasoning: String = item.x_take("thinking")?;
-					let signature: String = item.x_take("signature")?;
+					let signature = item.x_take::<String>("signature").unwrap_or_default();
 					reasoning_content.push(reasoning.clone());
-					thought_signatures.push(signature.clone());
-					content.push(ContentPart::ThoughtSignature(signature));
-					content.push(ContentPart::ReasoningContent(reasoning));
+					if !signature.is_empty() {
+						thought_signatures.push(signature.clone());
+						content.push(ContentPart::ThoughtSignature(signature));
+						content.push(ContentPart::ReasoningContent(reasoning));
+					}
 				}
 				"tool_use" => {
 					let call_id = item.x_take::<String>("id")?;

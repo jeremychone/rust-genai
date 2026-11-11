@@ -1,0 +1,1 @@
+{"id":"msg_fixture","type":"message","role":"assistant","model":"claude-opus-5","content":[{"type":"thinking","thinking":"Plan the weather lookup."},{"type":"tool_use","id":"toolu_fixture","name":"get_weather","input":{"city":"Paris"}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":12,"output_tokens":8}}
