@@ -15,11 +15,26 @@ enum Inner {
 }
 
 impl<'de> Deserialize<'de> for ModelName {
+	/// Accepts what `Serialize` produces (`{"Shared": "name"}` / `{"Static": "name"}`),
+	/// and also a plain string (`"name"`), so a serialized `ModelName` round-trips.
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
 		D: Deserializer<'de>,
 	{
-		let s: &str = <&str>::deserialize(deserializer)?;
+		#[derive(Deserialize)]
+		enum Tagged {
+			Static(String),
+			Shared(String),
+		}
+
+		#[derive(Deserialize)]
+		#[serde(untagged)]
+		enum Repr {
+			Plain(String),
+			Tagged(Tagged),
+		}
+
+		let (Repr::Plain(s) | Repr::Tagged(Tagged::Static(s) | Tagged::Shared(s))) = Repr::deserialize(deserializer)?;
 		Ok(ModelName(Inner::Shared(Arc::<str>::from(s))))
 	}
 }
@@ -158,3 +173,39 @@ impl PartialEq<ModelName> for String {
 }
 
 // endregion: --- EQ
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
+
+	use super::*;
+
+	#[test]
+	fn test_model_name_serde_round_trip_shared() -> Result<()> {
+		let name = ModelName::new("xiaomi/mimo-v2.6-flash");
+		let json = serde_json::to_string(&name)?;
+		let back: ModelName = serde_json::from_str(&json)?;
+		assert_eq!(back, name);
+		Ok(())
+	}
+
+	#[test]
+	fn test_model_name_serde_round_trip_static() -> Result<()> {
+		let name = ModelName::from_static("gpt-5.6-sol");
+		let json = serde_json::to_string(&name)?;
+		let back: ModelName = serde_json::from_str(&json)?;
+		assert_eq!(back.as_str(), name.as_str());
+		Ok(())
+	}
+
+	#[test]
+	fn test_model_name_deserialize_plain_string() -> Result<()> {
+		let back: ModelName = serde_json::from_str("\"gemini::gemini-3-flash-preview\"")?;
+		assert_eq!(back.as_str(), "gemini::gemini-3-flash-preview");
+		Ok(())
+	}
+}
+
+// endregion: --- Tests
