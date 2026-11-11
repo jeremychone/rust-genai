@@ -25,7 +25,7 @@ pub enum AdapterKind {
 
 	/// Gemini Interactions API.
 	///
-	/// Reachable via the `gemini_ix::` namespace (or `gemini_interactions::`), and the default adapter for `gemini-4-argon` models.
+	/// Reachable via the `gemini_ix::` namespace (or `gemini_interactions::`), and the default adapter for `gemini-4` models.
 	GeminiIx,
 
 	/// Anthopric native protocol as well
@@ -236,7 +236,7 @@ impl AdapterKind {
 	///  - Zhipu      - starts_with "glm"
 	///  - Cohere     - starts_with "command"
 	///  - Ollama     - For anything else
-	///  - GeminiIx   - starts_with "gemini-4-argon"
+	///  - GeminiIx   - starts_with "gemini-4"
 	///
 	/// Other Some adapters have to have model name namespaced to be used,
 	/// - e.g., for together.ai `together::meta-llama/Llama-3-8b-chat-hf`
@@ -273,7 +273,7 @@ impl AdapterKind {
 			} else {
 				Ok(Self::OpenAI)
 			}
-		} else if model.starts_with("gemini-4-argon") {
+		} else if model.starts_with("gemini-4") {
 			Ok(Self::GeminiIx)
 		} else if model.starts_with("gemini") {
 			Ok(Self::Gemini)
@@ -402,6 +402,33 @@ mod tests {
 		assert_eq!(
 			AdapterKind::from_model("anthropic::claude-sonnet-4-5")?,
 			AdapterKind::Anthropic
+		);
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_adapter_kind_from_model_gemini_4_routes_to_gemini_ix() -> Result<()> {
+		// -- Exec & Check
+		assert_eq!(AdapterKind::from_model("gemini-4-argon")?, AdapterKind::GeminiIx);
+		assert_eq!(AdapterKind::from_model("gemini-4-argon")?, AdapterKind::GeminiIx);
+		assert_eq!(AdapterKind::from_model("gemini-4-carbon")?, AdapterKind::GeminiIx);
+		assert_eq!(
+			AdapterKind::from_model("gemini-4-argon-2026-01-01")?,
+			AdapterKind::GeminiIx
+		);
+		assert_eq!(AdapterKind::from_model("gemini-4-flash")?, AdapterKind::GeminiIx);
+		assert_eq!(AdapterKind::from_model("gemini-4")?, AdapterKind::GeminiIx);
+
+		// Older generations still route to the native Gemini adapter
+		assert_eq!(AdapterKind::from_model("gemini-3-flash-preview")?, AdapterKind::Gemini);
+		assert_eq!(AdapterKind::from_model("gemini-2.5-pro")?, AdapterKind::Gemini);
+
+		// Explicit namespaces still win over the model prefix mapping
+		assert_eq!(AdapterKind::from_model("gemini::gemini-4-flash")?, AdapterKind::Gemini);
+		assert_eq!(
+			AdapterKind::from_model("gemini_ix::gemini-4-flash")?,
+			AdapterKind::GeminiIx
 		);
 
 		Ok(())
