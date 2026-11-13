@@ -2,6 +2,13 @@
 
 ## pending [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...main)
 
+- `+` New Adapters:
+  - `uberllm::` - **UberLLM** - OpenAI-compatible gateway for text models from many labs, only selected by namespace. Uses `UBERLLM_API_KEY` and `https://api.uberllm.dev/v1/`; embeddings are unsupported. Adds `AdapterKind::UberLlm`, so downstream exhaustive matches must be updated. (PR #379)
+- `-` **bedrock** - `temperature` and `topP` are omitted from `inferenceConfig` for the Anthropic models that only accept the defaults (Opus 4.7+, Sonnet 5+, Haiku 5+, Fable, Mythos), by consulting the same `supports_sampling_params` capability the Anthropic adapter uses; a `tracing::warn!` is logged and `extra_body` can still set either. (PR #384)
+- `-` cohere - `ChatOptions::seed` is forwarded as `seed` in the v1 `/chat` payload, next to the other sampling options, instead of being dropped. (PR #385)
+- `-` **openai** - `temperature`, `top_p` and, on Chat Completions, `stop` are omitted for reasoning models: the o-series and the original `gpt-5` family always reject them, versioned `gpt-5.N`/`gpt-6*` only with a non-`Zero` reasoning effort, and `-chat` ids such as `gpt-5-chat-latest` keep them. Other OpenAI-compatible adapters are untouched, each dropped parameter logs a `tracing::warn!`, and `extra_body` can still set any of them. (PR #386)
+- `-` **cohere** - `all_model_names` reads the live `GET /v1/models` list instead of a hardcoded list, so new and retired models need no code change.
+
 ## 2026-11-11 [v0.7.4](https://github.com/jeremychone/rust-genai/compare/v0.7.3...v0.7.4)
 
 - `+` adapter - add **Standard Compute** OpenAI-compatible adapter (`standardcompute::`) (#377)

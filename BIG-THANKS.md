@@ -7,6 +7,12 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.5
 
+- [pcbeingused333](https://github.com/pcbeingused333)
+  - [#386](https://github.com/jeremychone/rust-genai/pull/386) fix(openai): omit temperature/top_p/stop for reasoning models
+  - [#385](https://github.com/jeremychone/rust-genai/pull/385) fix(cohere): send ChatOptions seed in the v1 chat payload
+  - [#384](https://github.com/jeremychone/rust-genai/pull/384) fix(bedrock): omit temperature/topP for Anthropic models without sampling support
+- [PSA-Team-source](https://github.com/PSA-Team-source)
+  - [#379](https://github.com/jeremychone/rust-genai/pull/379) feat(adapter): add UberLLM OpenAI-compatible adapter
 
 ## v0.7.4
 
