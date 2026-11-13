@@ -4,6 +4,7 @@ use crate::adapter::adapters::openai::cache_policy::{
 	OpenAiPromptCachePolicy, OpenAiProtocol, openai_prompt_cache_policy, requires_explicit_cache,
 	supports_openai_responses_prompt_cache_options,
 };
+use crate::adapter::adapters::openai::openai_rejects_sampling_params;
 use crate::adapter::adapters::openai::schema::{
 	OpenAiResponseFormatPlan, response_format_plan, tool_parameters_schema,
 };
@@ -191,6 +192,7 @@ impl Adapter for OpenAIRespAdapter {
 		// `summary=detailed` opt-in, and every response came back with
 		// empty `reasoning_content`.
 		let capture_reasoning = chat_options.capture_reasoning_content() == Some(true);
+		let sampling_rejected = openai_rejects_sampling_params(adapter_kind, model_name, reasoning_effort.as_ref());
 		let effort_keyword = reasoning_effort.and_then(|effort| match effort {
 			ReasoningEffort::Zero => Some("none"),
 			_ => effort.as_keyword(),
@@ -257,7 +259,11 @@ impl Adapter for OpenAIRespAdapter {
 
 		// -- Add supported ChatOptions
 		if let Some(temperature) = chat_options.temperature() {
-			payload.x_insert("temperature", temperature)?;
+			if sampling_rejected {
+				tracing::warn!("temperature is not supported by '{model_name}' and was not sent");
+			} else {
+				payload.x_insert("temperature", temperature)?;
+			}
 		}
 
 		// The Responses API has no `stop` parameter; sending it is an HTTP 400.
@@ -270,7 +276,11 @@ impl Adapter for OpenAIRespAdapter {
 			payload.x_insert("max_output_tokens", max_tokens)?;
 		}
 		if let Some(top_p) = chat_options.top_p() {
-			payload.x_insert("top_p", top_p)?;
+			if sampling_rejected {
+				tracing::warn!("top_p is not supported by '{model_name}' and was not sent");
+			} else {
+				payload.x_insert("top_p", top_p)?;
+			}
 		}
 		// Same for `seed`: the Responses API does not accept it.
 		if chat_options.seed().is_some() {

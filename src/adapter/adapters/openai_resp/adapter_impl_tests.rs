@@ -112,7 +112,7 @@ fn test_openai_resp_omits_stop_and_seed_the_responses_api_rejects() {
 		.with_top_p(0.3);
 	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
 	let target = ServiceTarget {
-		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-5-mini"),
+		model: ModelIden::new(AdapterKind::OpenAIResp, "gpt-4.1"),
 		auth: AuthData::from_single("test-key"),
 		endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
 	};
@@ -624,4 +624,34 @@ fn test_openai_resp_to_chat_response_incomplete_reason_sets_stop_reason() -> Res
 	}
 
 	Ok(())
+}
+
+fn resp_payload(model: &str, options: ChatOptions) -> Value {
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::OpenAIResp, model),
+		auth: AuthData::from_single("test-key"),
+		endpoint: OpenAIRespAdapter::default_endpoint(AdapterKind::OpenAIResp),
+	};
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+	OpenAIRespAdapter::to_web_request_data(target, ServiceType::Chat, ChatRequest::from_user("hello"), options_set)
+		.expect("payload should build")
+		.payload
+}
+
+#[test]
+fn test_openai_resp_reasoning_models_omit_sampling_params() {
+	for model in ["o3", "o4-mini", "gpt-5", "gpt-5-mini"] {
+		let payload = resp_payload(model, ChatOptions::default().with_temperature(0.5).with_top_p(0.9));
+		assert!(payload.get("temperature").is_none(), "temperature sent to {model}");
+		assert!(payload.get("top_p").is_none(), "top_p sent to {model}");
+	}
+}
+
+#[test]
+fn test_openai_resp_non_reasoning_models_keep_sampling_params() {
+	for model in ["gpt-4o", "gpt-4.1", "gpt-5-chat-latest", "gpt-5.6", "gpt-6-luna", "gpt-6-astra"] {
+		let payload = resp_payload(model, ChatOptions::default().with_temperature(0.5).with_top_p(0.9));
+		assert_eq!(payload["temperature"], 0.5, "temperature for {model}");
+		assert_eq!(payload["top_p"], 0.9, "top_p for {model}");
+	}
 }

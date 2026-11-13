@@ -1,5 +1,6 @@
 //! This is support implementation of the OpenAI Adapter which can also be called by other OpenAI Adapter Variants
 
+use super::OpenAIModel;
 use super::cache_policy::{
 	OpenAiPromptCachePolicy, OpenAiProtocol, openai_prompt_cache_policy, requires_explicit_cache,
 };
@@ -18,6 +19,39 @@ use serde_json::{Value, json};
 use tracing::error;
 use tracing::warn;
 use value_ext::JsonValueExt;
+
+/// Reasoning models answer `temperature`, `top_p` (and, on Chat Completions, `stop`) with an HTTP 400.
+///
+/// - o-series (`o1`, `o3`, `o4-*`) and the original `gpt-5` family always reject them.
+/// - Versioned families (`gpt-5.1`+, `gpt-6*`) default to no reasoning, and accept them
+///   unless a non-`Zero` reasoning effort is requested.
+/// - `gpt-5-chat*` is a non-reasoning model and accepts them.
+///
+/// Only applies to the official OpenAI adapters; other OpenAI-compatible providers are untouched.
+pub(in crate::adapter::adapters) fn openai_rejects_sampling_params(
+	adapter_kind: AdapterKind,
+	model_name: &str,
+	reasoning_effort: Option<&ReasoningEffort>,
+) -> bool {
+	if !matches!(adapter_kind, AdapterKind::OpenAI | AdapterKind::OpenAIResp) {
+		return false;
+	}
+	if model_name.contains("-chat") {
+		return false;
+	}
+	let model = OpenAIModel::from(model_name);
+	match model.family() {
+		Some("o1" | "o3" | "o4") => true,
+		// Original `gpt-5` family (`gpt-5`, `gpt-5-mini`, ...): always reasoning.
+		Some("gpt") if model.version_str() == Some("5") => true,
+		// Versioned `gpt-5.N` / `gpt-6*`: default to no reasoning, so they accept the params
+		// unless a non-`Zero` reasoning effort is requested.
+		Some("gpt") if model.version().is_some_and(|v| v >= 5.0) => {
+			reasoning_effort.is_some_and(|e| !matches!(e, ReasoningEffort::Zero))
+		}
+		_ => false,
+	}
+}
 
 fn insert_openai_reasoning_effort(payload: &mut Value, effort: &ReasoningEffort) -> Result<()> {
 	let keyword = match effort {
@@ -197,12 +231,23 @@ impl OpenAIAdapter {
 			payload.x_insert("stream_options", json!({"include_usage": true}))?;
 		}
 
+		let sampling_rejected =
+			openai_rejects_sampling_params(model.adapter_kind, model_name, reasoning_effort.as_ref());
+
 		if let Some(temperature) = options_set.temperature() {
-			payload.x_insert("temperature", temperature)?;
+			if sampling_rejected {
+				warn!("temperature is not supported by '{model_name}' and was not sent");
+			} else {
+				payload.x_insert("temperature", temperature)?;
+			}
 		}
 
 		if !options_set.stop_sequences().is_empty() {
-			payload.x_insert("stop", options_set.stop_sequences())?;
+			if sampling_rejected {
+				warn!("stop sequences are not supported by '{model_name}' and were not sent");
+			} else {
+				payload.x_insert("stop", options_set.stop_sequences())?;
+			}
 		}
 
 		// GPT-5.x, GPT-6.x and o-series models require "max_completion_tokens" instead of "max_tokens"
@@ -224,7 +269,11 @@ impl OpenAIAdapter {
 			payload.x_insert(max_tokens_key, max_tokens)?;
 		}
 		if let Some(top_p) = options_set.top_p() {
-			payload.x_insert("top_p", top_p)?;
+			if sampling_rejected {
+				warn!("top_p is not supported by '{model_name}' and was not sent");
+			} else {
+				payload.x_insert("top_p", top_p)?;
+			}
 		}
 		if let Some(seed) = options_set.seed() {
 			// Mistral names it `random_seed` and 422s on an unknown `seed`.
