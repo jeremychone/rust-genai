@@ -86,7 +86,7 @@ async fn test_resolver_auth_ok() -> TestResult<()> {
 #[tokio::test]
 #[serial(cohere)]
 async fn test_list_models() -> TestResult<()> {
-	common_tests::common_test_list_models(AdapterKind::Cohere, "command-r-plus").await
+	common_tests::common_test_list_models(AdapterKind::Cohere, "command-r-08-2024").await
 }
 
 // endregion: --- List
