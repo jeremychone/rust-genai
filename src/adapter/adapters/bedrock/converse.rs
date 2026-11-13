@@ -89,11 +89,24 @@ pub(super) fn build_converse_payload(
 	} else {
 		let max_tokens = resolve_max_tokens(model_name, &options_set);
 		inference.insert("maxTokens".to_string(), json!(max_tokens));
-		if let Some(temperature) = options_set.temperature() {
-			inference.insert("temperature".to_string(), json!(temperature));
-		}
-		if let Some(top_p) = options_set.top_p() {
-			inference.insert("topP".to_string(), json!(top_p));
+		// Some Anthropic models only accept default sampling values and answer temperature / topP with a 400.
+		let supports_sampling = match publisher {
+			BedrockPublisher::Anthropic => {
+				AnthropicModel::parse(anthropic_model_name(model_name))
+					.capabilities()
+					.supports_sampling_params
+			}
+			_ => true,
+		};
+		if supports_sampling {
+			if let Some(temperature) = options_set.temperature() {
+				inference.insert("temperature".to_string(), json!(temperature));
+			}
+			if let Some(top_p) = options_set.top_p() {
+				inference.insert("topP".to_string(), json!(top_p));
+			}
+		} else if options_set.temperature().is_some() || options_set.top_p().is_some() {
+			warn!("Bedrock '{model_name}': temperature and top_p are not supported by this model and were not sent");
 		}
 	}
 	if !options_set.stop_sequences().is_empty() {
@@ -852,6 +865,28 @@ mod tests {
 		assert_eq!(
 			payload["additionalModelRequestFields"]["inferenceConfig"]["reasoningConfig"]["maxReasoningEffort"],
 			"high"
+		);
+		Ok(())
+	}
+
+	#[test]
+	fn anthropic_sampling_params_follow_model_capabilities() -> Result<()> {
+		// -- Setup & Fixtures
+		let options = ChatOptions::default()
+			.with_max_tokens(4000)
+			.with_temperature(0.5)
+			.with_top_p(0.9);
+		let chat_req = || ChatRequest::new(vec![ChatMessage::user("hi")]);
+
+		// -- Exec
+		let opus_4_7 = payload_for("global.anthropic.claude-opus-4-7", chat_req(), &options)?;
+		let sonnet_4_5 = payload_for("global.anthropic.claude-sonnet-4-5-20250929-v1:0", chat_req(), &options)?;
+
+		// -- Check
+		assert_eq!(opus_4_7["inferenceConfig"], json!({ "maxTokens": 4000 }));
+		assert_eq!(
+			sonnet_4_5["inferenceConfig"],
+			json!({ "maxTokens": 4000, "temperature": 0.5, "topP": 0.9 })
 		);
 		Ok(())
 	}
