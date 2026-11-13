@@ -1,5 +1,7 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
+## pending [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...main)
+
 ## 2026-11-11 [v0.7.4](https://github.com/jeremychone/rust-genai/compare/v0.7.3...v0.7.4)
 
 - `+` adapter - add **Standard Compute** OpenAI-compatible adapter (`standardcompute::`) (#377)

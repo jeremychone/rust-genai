@@ -4,7 +4,11 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
-## v0.7.4 (pending)
+
+## v0.7.5
+
+
+## v0.7.4
 
 - [pcbeingused333](https://github.com/pcbeingused333)
   - [#380](https://github.com/jeremychone/rust-genai/pull/380) fix(model_name): deserialize what Serialize produces
