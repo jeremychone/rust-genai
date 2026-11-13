@@ -180,6 +180,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<StandardCompute Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::UberLlm => {
+				type A = crate::adapter::adapters::all_adapters::[<UberLlm Adapter>];
+				$body
+			}
 
 			crate::adapter::AdapterKind::Custom(_) => {
 				type A = crate::adapter::adapters::all_adapters::[<Custom Adapter>];
