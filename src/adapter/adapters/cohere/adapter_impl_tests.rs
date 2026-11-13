@@ -1,6 +1,6 @@
 use super::CohereAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType};
-use crate::chat::{ChatMessage, ChatOptionsSet, ChatRequest};
+use crate::chat::{ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest};
 use crate::resolver::{AuthData, Endpoint};
 use crate::{ModelIden, ServiceTarget};
 use serde_json::json;
@@ -41,6 +41,28 @@ fn test_cohere_chat_history_entries_use_message_field() -> Result<()> {
 			{"role": "CHATBOT", "message": "A systems language."},
 		])
 	);
+
+	Ok(())
+}
+
+#[test]
+fn test_cohere_chat_options_seed_is_sent() -> Result<()> {
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::Cohere, "command-r-plus"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: Endpoint::from_static("https://api.cohere.com/v1/"),
+	};
+	let options = ChatOptions::default().with_seed(42);
+	let chat_req = ChatRequest::new(vec![ChatMessage::user("Hello")]);
+
+	let web_req = CohereAdapter::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		chat_req,
+		ChatOptionsSet::default().with_chat_options(Some(&options)),
+	)?;
+
+	assert_eq!(web_req.payload["seed"], 42);
 
 	Ok(())
 }
