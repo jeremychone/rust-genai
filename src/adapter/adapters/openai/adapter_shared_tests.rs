@@ -663,3 +663,50 @@ fn payload(
 }
 
 // endregion: --- Support
+
+fn chat_payload(model: &str, options: ChatOptions) -> Value {
+	let target = ServiceTarget {
+		model: ModelIden::new(AdapterKind::OpenAI, model),
+		auth: AuthData::from_single("test-key"),
+		endpoint: Endpoint::from_static("https://api.openai.com/v1/"),
+	};
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&options));
+	OpenAIAdapter::util_to_web_request_data(
+		target,
+		crate::adapter::ServiceType::Chat,
+		ChatRequest::from_user("hello"),
+		options_set,
+		None,
+	)
+	.expect("payload should build")
+	.payload
+}
+
+/// Reasoning models answer `temperature`, `top_p` and `stop` with an HTTP 400.
+#[test]
+fn test_openai_reasoning_models_omit_sampling_params_and_stop() {
+	for model in ["o1", "o3", "o3-mini", "o4-mini", "gpt-5", "gpt-5-mini", "gpt-5-nano"] {
+		let options = ChatOptions::default()
+			.with_temperature(0.5)
+			.with_top_p(0.9)
+			.with_stop_sequences(vec!["END".to_string()]);
+		let payload = chat_payload(model, options);
+		assert!(payload.get("temperature").is_none(), "temperature sent to {model}");
+		assert!(payload.get("top_p").is_none(), "top_p sent to {model}");
+		assert!(payload.get("stop").is_none(), "stop sent to {model}");
+	}
+}
+
+#[test]
+fn test_openai_non_reasoning_models_keep_sampling_params_and_stop() {
+	for model in ["gpt-4o", "gpt-4.1", "gpt-5-chat-latest", "gpt-5.6", "gpt-6-luna", "gpt-6-astra"] {
+		let options = ChatOptions::default()
+			.with_temperature(0.5)
+			.with_top_p(0.9)
+			.with_stop_sequences(vec!["END".to_string()]);
+		let payload = chat_payload(model, options);
+		assert_eq!(payload["temperature"], 0.5, "temperature for {model}");
+		assert_eq!(payload["top_p"], 0.9, "top_p for {model}");
+		assert_eq!(payload["stop"], json!(["END"]), "stop for {model}");
+	}
+}
