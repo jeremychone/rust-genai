@@ -283,7 +283,7 @@ impl OllamaAdapter {
 	/// "minimal" level, so `Minimal` maps to "low"; `XHigh`/`Max` both map to "max";
 	/// `Budget` maps to `true` (Ollama has no token-budget knob, so thinking runs
 	/// at the model's default level).
-	fn into_think_value(effort: &ReasoningEffort) -> Value {
+	pub(in crate::adapter::adapters) fn into_think_value(effort: &ReasoningEffort) -> Value {
 		match effort {
 			ReasoningEffort::Zero => json!(false),
 			ReasoningEffort::Minimal | ReasoningEffort::Low => json!("low"),

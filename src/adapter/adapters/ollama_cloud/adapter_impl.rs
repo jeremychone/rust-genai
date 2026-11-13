@@ -99,6 +99,11 @@ impl Adapter for OllamaCloudAdapter {
 			payload.x_insert("format", OllamaAdapter::response_format_to_format(format))?;
 		}
 
+		// -- Reasoning (`think`), same top-level body param as the local Ollama adapter
+		if let Some(reasoning_effort) = chat_options.reasoning_effort() {
+			payload.x_insert("think", OllamaAdapter::into_think_value(reasoning_effort))?;
+		}
+
 		let mut headers = Headers::default();
 		if let Some(extra_headers) = chat_options.extra_headers() {
 			headers.merge_with(extra_headers);
