@@ -10,8 +10,9 @@ use crate::support::{
 };
 use genai::adapter::AdapterKind;
 use genai::chat::{
-	BinarySource, CacheControl, ChatFrameSink, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat, ContentPart,
-	FrameCtx, JsonSpec, RawFrame, RawFrameRef, ReasoningEffort, StreamEnd, Tool, ToolCall, ToolResponse, Verbosity,
+	Binary, BinarySource, CacheControl, ChatFrameSink, ChatMessage, ChatOptions, ChatRequest, ChatResponseFormat,
+	ContentPart, FrameCtx, JsonSpec, RawFrame, RawFrameRef, ReasoningEffort, StreamEnd, Tool, ToolCall, ToolResponse,
+	Verbosity,
 };
 use genai::embed::EmbedOptions;
 use genai::resolver::{AuthData, AuthResolver, AuthResolverFn, IntoAuthResolverFn};
@@ -1087,6 +1088,50 @@ pub async fn common_test_tool_full_flow_ok(model: &str) -> TestResult<()> {
 	// location itself is checked on the first response, above.
 	assert!(content.contains("32"), "Should contain '32'");
 	assert!(content.contains("sunny"), "Should contain 'sunny'");
+
+	Ok(())
+}
+
+/// The tool answers with an image (a tool response with a binary part); the model must describe it.
+pub async fn common_test_tool_binary_response_ok(model: &str) -> TestResult<()> {
+	// -- Setup & Fixtures
+	let client = Client::new()?;
+	let chat_req = ChatRequest::new(vec![ChatMessage::user(
+		"Take a photo with the camera, then tell me in one sentence which animal is in it.",
+	)])
+	.append_tool(
+		Tool::new("take_photo")
+			.with_description("Take a photo with the camera")
+			.with_schema(json!({
+				"type": "object",
+				"properties": {}
+			})),
+	);
+
+	// -- Exec first request to get the tool call
+	let chat_res = client.exec_chat(model, chat_req.clone(), None).await?;
+	let tool_calls = chat_res.into_tool_calls();
+	if tool_calls.is_empty() {
+		return Err("Should have tool calls in chat_res".into());
+	}
+
+	// -- Exec the second request, answering with the image
+	let tool_responses = tool_calls
+		.iter()
+		.map(|tool_call| {
+			ToolResponse::from_tool_call(tool_call, "Photo taken.").with_binary(Binary::from_base64(
+				"image/jpeg",
+				get_b64_duck().expect("duck image"),
+				Some("photo.jpg".to_string()),
+			))
+		})
+		.collect::<Vec<_>>();
+	let chat_req = chat_req.append_message(tool_calls).append_message(tool_responses);
+	let chat_res = client.exec_chat(model, chat_req, None).await?;
+
+	// -- Check
+	let content = chat_res.first_text().ok_or("Last response should be message")?.to_lowercase();
+	assert_contains(&content, "duck");
 
 	Ok(())
 }

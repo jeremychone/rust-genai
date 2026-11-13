@@ -1,4 +1,4 @@
-use crate::chat::{Binary, ContentPart, ToolCall, ToolResponse};
+use crate::chat::{Binary, ContentPart, MessageContent, ToolCall, ToolResponse};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -126,7 +126,7 @@ impl IxStep {
 			IxStep::FunctionResult { call_id, name, result } => vec![ContentPart::ToolResponse(ToolResponse {
 				call_id,
 				fn_name: name,
-				content: ix_result_to_string(result),
+				content: ix_result_to_content(result),
 			})],
 
 			IxStep::UserInput | IxStep::Other => Vec::new(),
@@ -134,22 +134,78 @@ impl IxStep {
 	}
 }
 
-/// `function_result.result` is `array (Content) | object | string`. `ToolResponse.content` is a
-/// plain string, so collapse the array form to its concatenated text and JSON-encode the rest.
-fn ix_result_to_string(result: Value) -> String {
+/// `function_result.result` is `array (Content) | object | string`. The array form keeps its text
+/// and media blocks (consecutive text blocks are concatenated), a string is kept as text, and any
+/// other value is JSON-encoded as text.
+fn ix_result_to_content(result: Value) -> MessageContent {
 	match result {
-		Value::String(text) => text,
+		Value::String(text) => MessageContent::from_text(text),
 		Value::Array(blocks) => {
-			let texts: Vec<String> = blocks
-				.iter()
-				.filter_map(|block| block.get("text").and_then(Value::as_str).map(String::from))
-				.collect();
-			if texts.is_empty() {
-				Value::Array(blocks).to_string()
+			let mut content = MessageContent::default();
+			let mut text_acc: Option<String> = None;
+			for block in blocks.iter().cloned() {
+				let Some(part) = serde_json::from_value::<IxContent>(block)
+					.ok()
+					.and_then(IxContent::into_content_part)
+				else {
+					continue;
+				};
+				match part {
+					ContentPart::Text(text) => text_acc.get_or_insert_with(String::new).push_str(&text),
+					other => {
+						if let Some(text) = text_acc.take() {
+							content.push(ContentPart::Text(text));
+						}
+						content.push(other);
+					}
+				}
+			}
+			if let Some(text) = text_acc {
+				content.push(ContentPart::Text(text));
+			}
+			if content.is_empty() {
+				MessageContent::from_text(Value::Array(blocks).to_string())
 			} else {
-				texts.join("")
+				content
 			}
 		}
-		other => other.to_string(),
+		other => MessageContent::from_text(other.to_string()),
 	}
 }
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use serde_json::json;
+
+	#[test]
+	fn test_function_result_keeps_text_and_media_blocks() -> serde_json::Result<()> {
+		// -- Setup & Fixtures
+		let step: IxStep = serde_json::from_value(json!({
+			"type": "function_result",
+			"call_id": "call_1",
+			"name": "screenshot",
+			"result": [
+				{"type": "text", "text": "Screen"},
+				{"type": "text", "text": "shot"},
+				{"type": "image", "mime_type": "image/png", "data": "AAAA"},
+			],
+		}))?;
+
+		// -- Exec
+		let parts = step.into_content_parts(&mut String::new());
+
+		// -- Check
+		let [ContentPart::ToolResponse(tool_response)] = parts.as_slice() else {
+			panic!("expected a single tool response, got {parts:?}");
+		};
+		assert_eq!(tool_response.text_content(), "Screenshot");
+		assert_eq!(tool_response.binaries().len(), 1);
+		assert_eq!(tool_response.binaries()[0].content_type, "image/png");
+		Ok(())
+	}
+}
+
+// endregion: --- Tests

@@ -974,3 +974,28 @@ fn support_response(body: Value) -> Result<crate::chat::ChatResponse> {
 }
 
 // endregion: --- Support
+
+#[test]
+fn test_ix_function_result_with_binary_sends_media_content() -> Result<()> {
+	// -- Setup & Fixtures
+	let tool_response = ToolResponse::new("call_1", "Screenshot taken")
+		.with_fn_name("screenshot")
+		.with_binary(crate::chat::Binary::from_base64("image/png", "iVBORw0KGgo=", None));
+	let chat_req = ChatRequest::new(vec![ChatMessage::from(tool_response)]);
+
+	// -- Exec
+	let request = support_request(chat_req, None, ServiceType::Chat)?;
+
+	// -- Check
+	let step = &request.payload["input"][0];
+	assert_eq!(step["type"], "function_result");
+	assert_eq!(
+		step["result"],
+		json!([
+			{"type": "text", "text": "Screenshot taken"},
+			{"type": "image", "mime_type": "image/png", "data": "iVBORw0KGgo="},
+		])
+	);
+
+	Ok(())
+}

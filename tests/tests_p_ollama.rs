@@ -10,6 +10,7 @@ use genai::resolver::AuthData;
 const MODEL: &str = "gemma3:4b"; // Text / Image
 const MODEL_NS: &str = "ollama::gemma3:4b"; // Text / Image
 const MODEL_TOOL: &str = "ollama::qwen3:4b";
+const MODEL_TOOL_VISION: &str = "ollama::qwen3-vl:4b"; // Tools + Image
 
 // region:    --- Chat
 
@@ -82,6 +83,11 @@ async fn test_tool_simple_ok() -> TestResult<()> {
 #[tokio::test]
 async fn test_tool_full_flow_ok() -> TestResult<()> {
 	common_tests::common_test_tool_full_flow_ok(MODEL_TOOL).await
+}
+
+#[tokio::test]
+async fn test_tool_binary_response_ok() -> TestResult<()> {
+	common_tests::common_test_tool_binary_response_ok(MODEL_TOOL_VISION).await
 }
 // endregion: --- Tool Tests
 

@@ -2,7 +2,7 @@
 //! It should be private to the `crate::adapter::adapters` module.
 
 use crate::ModelIden;
-use crate::chat::{ChatOptionsSet, FrameCtx, Usage};
+use crate::chat::{ChatOptionsSet, FrameCtx, ToolResponse, Usage};
 use crate::resolver::AuthData;
 use crate::webc::FrameTap;
 use crate::{Error, Result};
@@ -18,6 +18,25 @@ pub fn get_api_key(auth: AuthData, model: &ModelIden) -> Result<String> {
 pub fn new_frame_tap(model_iden: &ModelIden, options_set: &ChatOptionsSet<'_, '_>) -> Option<FrameTap> {
 	let sink = options_set.raw_frame_sink()?;
 	Some(FrameTap::new(sink, FrameCtx::new(model_iden.clone())))
+}
+
+/// The text of a tool response, for providers whose tool results accept only text.
+/// Binary parts are dropped, with a warning.
+pub fn tool_response_text_only(model_iden: &ModelIden, tool_response: &ToolResponse) -> String {
+	warn_dropped_tool_response_binaries(model_iden, tool_response, tool_response.binaries().len());
+	tool_response.text_content()
+}
+
+/// Warns that `dropped` binary parts of a tool response are not sent to the provider.
+pub fn warn_dropped_tool_response_binaries(model_iden: &ModelIden, tool_response: &ToolResponse, dropped: usize) {
+	if dropped > 0 {
+		tracing::warn!(
+			model = %model_iden,
+			call_id = %tool_response.call_id,
+			dropped,
+			"tool response binary parts are not supported by this provider for tool results; sending only the text parts"
+		);
+	}
 }
 
 // region:    --- StreamerChatOptions

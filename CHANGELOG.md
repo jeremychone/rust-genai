@@ -31,6 +31,9 @@
 - `-` gemini - Gemini 4+ take a `thinkingLevel` rather than a `thinkingBudget`, and get the `skip_thought_signature_validator` stand-in on a first function call without a signature, as Gemini 3 does, on the Gemini API and Vertex. Gemini 2.5 and version-less names such as `gemini-flash-latest` keep the budget and no stand-in; Gemma 4 still takes a level. (PR #373)
 - `+` tests - Yakbak replays, one case per fix above: gemini (#364, #373), anthropic (#361, #363, #365, #371), openai_resp (#358, #370), bedrock (#357), vertex (#366), ollama (#362), cohere (#351). (PR #374)
 
+- `!` API CHANGE: `ToolResponse.content` is now a `MessageContent` (was `String`), so a tool can return binary parts (images, PDFs, ...) next to its text. `ToolResponse::new(..)` and `from_tool_call(..)` take `impl Into<MessageContent>`, so `&str`/`String` call sites keep compiling; code that read `content` as a `String` should use `text_content()`. New `with_binary(..)`, `with_text(..)`, `binaries()` and `contains_binary()`. A serialized `ToolResponse` with a string `content` still deserializes.
+  - Binaries are sent natively by Anthropic (`tool_result` blocks), Bedrock Converse (`toolResult` blocks), OpenAI Responses (`output` array), Gemini 3 (`functionResponse.parts`), Gemini Interactions (`function_result.result`) and Ollama (base64 images in the tool message's `images`). OpenAI Chat Completions and the adapters built on it (oMLX, Groq, OpenRouter, ...) keep the text in the `tool` messages and send the binaries in one `user` message right after the run of tool messages, each call's attachments introduced by its call id. Gemini before 3 receives only the text parts, and binaries that can't be sent are logged with a warning.
+
 ## 2026-10-27 [v0.7.0..v0.7.2](https://github.com/jeremychone/rust-genai/compare/v0.7.0...v0.7.2)
 
 - `+` New Adapters:

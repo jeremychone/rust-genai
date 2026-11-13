@@ -143,6 +143,12 @@ async fn test_tool_full_flow_ok() -> TestResult<()> {
 }
 
 #[tokio::test]
+async fn test_tool_binary_response_ok() -> TestResult<()> {
+	// Multimodal function responses need a Gemini 3 model.
+	common_tests::common_test_tool_binary_response_ok(MODEL_FLASH_3).await
+}
+
+#[tokio::test]
 async fn test_tool_deterministic_history_gemini_3_ok() -> TestResult<()> {
 	tool_deterministic_history_ok(MODEL_FLASH_3).await
 }
