@@ -15,16 +15,7 @@ use value_ext::JsonValueExt;
 
 pub struct CohereAdapter;
 
-// Cohere deprecated `command`, `command-light`, `command-r` and `command-r-plus` on 2025-09-15
-// and recommends these instead: <https://docs.cohere.com/docs/deprecations>
-const MODELS: &[&str] = &[
-	"command-a-03-2025",
-	"command-r-plus-08-2024",
-	"command-r-08-2024",
-	"command-r7b-12-2024",
-	"command-nightly",
-	"command-light-nightly",
-];
+// Cohere deprecation notice <https://docs.cohere.com/docs/deprecations>
 
 impl CohereAdapter {
 	pub const API_KEY_DEFAULT_ENV_NAME: &str = "COHERE_API_KEY";
@@ -47,12 +38,12 @@ impl Adapter for CohereAdapter {
 
 	/// Note: For now, it returns the common ones (see above)
 	async fn all_model_names(
-		_kind: AdapterKind,
-		_endpoint: Endpoint,
-		_auth: AuthData,
-		_web_client: &WebClient,
+		kind: AdapterKind,
+		endpoint: Endpoint,
+		auth: AuthData,
+		web_client: &WebClient,
 	) -> Result<Vec<String>> {
-		Ok(MODELS.iter().map(|s| s.to_string()).collect())
+		Self::cohere_list_model_names_for_end_target(kind, endpoint, auth, web_client).await
 	}
 
 	fn get_service_url(_model: &ModelIden, service_type: ServiceType, endpoint: Endpoint) -> Result<String> {
@@ -319,6 +310,52 @@ impl CohereAdapter {
 			message,
 			chat_history,
 		})
+	}
+
+	/// NOTE: Cohere list models do not follow the OpenAI API.
+	/// NOTE: There could be more reuse between the OpenAI and this implementation, but for now, split them apart completely.
+	async fn cohere_list_model_names_for_end_target(
+		kind: AdapterKind,
+		endpoint: Endpoint,
+		auth: AuthData,
+		web_client: &WebClient,
+	) -> Result<Vec<String>> {
+		// -- url
+		let base_url = endpoint.base_url();
+		let url = format!("{base_url}models");
+
+		// -- auth / headers
+		// NOTE: In this case, we accept it if the API key is not defined, and let the provider complain.
+		//       This is compared to web request data that requires it before the request, except if the options say otherwise.
+		//       Will need to align at some point.
+		let api_key = auth.single_key_value().ok();
+		let headers = api_key
+			.map(|api_key| Headers::from(("Authorization".to_string(), format!("Bearer {api_key}"))))
+			.unwrap_or_default();
+
+		// -- Exec request
+		let mut res = web_client
+			.do_get(&url, &headers)
+			.await
+			.map_err(|webc_error| Error::WebAdapterCall {
+				adapter_kind: kind,
+				webc_error,
+			})?;
+
+		// -- Format result
+		let mut models: Vec<String> = Vec::new();
+
+		if let Value::Array(models_value) = res.body.x_take("models")? {
+			for mut model in models_value {
+				let model_name: String = model.x_take("name")?;
+				models.push(model_name);
+			}
+		} else {
+			// TODO: Might want to add tracing (not certain yet)
+			// debug!("....");
+		}
+
+		Ok(models)
 	}
 }
 
