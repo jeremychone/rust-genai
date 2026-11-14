@@ -8,6 +8,7 @@ _If I forgot your PR, feel free to submit a PR_
 ## v0.7.5
 
 - [pcbeingused333](https://github.com/pcbeingused333)
+  - [#389](https://github.com/jeremychone/rust-genai/pull/389) fix(bedrock): send tool_choice in Converse toolConfig
   - [#388](https://github.com/jeremychone/rust-genai/pull/388) fix(ollama_cloud): send reasoning_effort as think
   - [#386](https://github.com/jeremychone/rust-genai/pull/386) fix(openai): omit temperature/top_p/stop for reasoning models
   - [#385](https://github.com/jeremychone/rust-genai/pull/385) fix(cohere): send ChatOptions seed in the v1 chat payload
