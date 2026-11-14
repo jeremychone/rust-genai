@@ -2,13 +2,13 @@ use crate::adapter::adapters::anthropic::{AnthropicAdapter, AnthropicRequestPart
 use crate::adapter::adapters::openai::OpenAIAdapter;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
-use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse};
+use crate::chat::{ChatOptionsSet, ChatRequest, ChatResponse, ChatStreamResponse, ReasoningEffort};
 use crate::embed::{EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
-use serde_json::json;
+use serde_json::{Value, json};
 use value_ext::JsonValueExt;
 
 pub struct OpenCodeGoAdapter;
@@ -40,6 +40,55 @@ impl OpenCodeGoModelKind {
 }
 
 // endregion: --- OpenCodeGoModelKind
+
+/// MiniMax Anthropic wire shape for `ChatOptions::reasoning_effort`.
+///
+/// `MiniMax-M3.1-Flash` tunes depth with `output_config.effort`
+/// (`low|medium|high|xhigh|max`). Omitting it leaves the API default (`max`).
+/// `thinking.type = "disabled"` (and effort `none`) returns HTTP 400, so `Zero`
+/// sends nothing.
+///
+/// `MiniMax-M3` has no effort knob. Omitting `thinking` leaves it off; any
+/// other effort turns it on with `{"type": "adaptive"}`.
+fn insert_minimax_reasoning(payload: &mut Value, model_name: &str, effort: &ReasoningEffort) -> Result<()> {
+	let name = model_name.to_lowercase();
+	if is_minimax_m31_flash(&name) {
+		if let Some(level) = minimax_flash_effort(effort) {
+			payload.x_insert("output_config", json!({ "effort": level }))?;
+		}
+		return Ok(());
+	}
+	if is_minimax_m3(&name) && !matches!(effort, ReasoningEffort::Zero) {
+		payload.x_insert("thinking", json!({ "type": "adaptive" }))?;
+	}
+	Ok(())
+}
+
+fn minimax_name_rest(name_lower: &str) -> &str {
+	name_lower.strip_prefix("minimax-").unwrap_or(name_lower)
+}
+
+fn is_minimax_m31_flash(name_lower: &str) -> bool {
+	let rest = minimax_name_rest(name_lower);
+	rest == "m3.1-flash" || rest.starts_with("m3.1-flash-")
+}
+
+fn is_minimax_m3(name_lower: &str) -> bool {
+	let rest = minimax_name_rest(name_lower);
+	rest == "m3" || rest.starts_with("m3-")
+}
+
+fn minimax_flash_effort(effort: &ReasoningEffort) -> Option<&'static str> {
+	match effort {
+		ReasoningEffort::Minimal | ReasoningEffort::Low => Some("low"),
+		ReasoningEffort::Medium => Some("medium"),
+		ReasoningEffort::High => Some("high"),
+		ReasoningEffort::XHigh => Some("xhigh"),
+		ReasoningEffort::Max => Some("max"),
+		// Flash rejects thinking disabled and effort "none". A token budget has no field.
+		ReasoningEffort::Zero | ReasoningEffort::Budget(_) => None,
+	}
+}
 
 impl Adapter for OpenCodeGoAdapter {
 	const DEFAULT_API_KEY_ENV_NAME: Option<&'static str> = Some(Self::API_KEY_DEFAULT_ENV_NAME);
@@ -136,6 +185,12 @@ impl Adapter for OpenCodeGoAdapter {
 					payload.x_insert("max_tokens", max_tokens)?;
 				}
 
+				// MiniMax-M3.1-Flash takes output_config.effort and rejects thinking disabled.
+				// MiniMax-M3 stays off when thinking is omitted.
+				if let Some(effort) = options_set.reasoning_effort() {
+					insert_minimax_reasoning(&mut payload, &model_name, effort)?;
+				}
+
 				// MiniMax /v1/messages requires `x-api-key` (Bearer returns 401).
 				let api_key = get_api_key(auth, &model)?;
 				let headers = Headers::from(("x-api-key".to_string(), api_key));
@@ -207,7 +262,7 @@ mod tests {
 	use super::*;
 	use crate::ServiceTarget;
 	use crate::adapter::{Adapter, ServiceType};
-	use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest};
+	use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ReasoningEffort};
 	use crate::embed::{EmbedOptionsSet, EmbedRequest};
 	use crate::resolver::AuthData;
 
@@ -390,6 +445,84 @@ mod tests {
 			Some("system-prompt"),
 			"system should be present"
 		);
+	}
+
+	fn payload_with_effort(model_name: &str, effort: Option<ReasoningEffort>) -> serde_json::Value {
+		let chat_options = effort.map(|effort| ChatOptions::default().with_reasoning_effort(effort));
+		let options_set = ChatOptionsSet::default().with_chat_options(chat_options.as_ref());
+		OpenCodeGoAdapter::to_web_request_data(
+			test_target(model_name),
+			ServiceType::Chat,
+			ChatRequest::from_user("hello"),
+			options_set,
+		)
+		.expect("to_web_request_data should succeed")
+		.payload
+	}
+
+	#[test]
+	fn test_minimax_m31_flash_sends_reasoning_effort() {
+		for (effort, keyword) in [
+			(ReasoningEffort::Low, "low"),
+			(ReasoningEffort::Medium, "medium"),
+			(ReasoningEffort::High, "high"),
+			(ReasoningEffort::XHigh, "xhigh"),
+			(ReasoningEffort::Max, "max"),
+			(ReasoningEffort::Minimal, "low"),
+		] {
+			for model_name in ["minimax-m3.1-flash", "MiniMax-M3.1-Flash"] {
+				let payload = payload_with_effort(model_name, Some(effort.clone()));
+				assert_eq!(
+					payload.pointer("/output_config/effort").and_then(|v| v.as_str()),
+					Some(keyword),
+					"{model_name} {effort:?} should send output_config.effort"
+				);
+				assert!(
+					payload.get("thinking").is_none(),
+					"{model_name} must not send thinking (Flash rejects type=disabled with HTTP 400)"
+				);
+			}
+		}
+	}
+
+	#[test]
+	fn test_minimax_m31_flash_zero_omits_thinking_controls() {
+		for effort in [None, Some(ReasoningEffort::Zero), Some(ReasoningEffort::Budget(1024))] {
+			let payload = payload_with_effort("minimax-m3.1-flash", effort);
+			assert!(
+				payload.get("thinking").is_none(),
+				"Flash must not receive thinking disabled"
+			);
+			assert!(
+				payload.get("output_config").is_none(),
+				"omitted effort keeps the API default (max); none/budget are not wire values"
+			);
+		}
+	}
+
+	#[test]
+	fn test_minimax_m3_reasoning_effort_toggles_adaptive_thinking() {
+		for (model_name, effort) in [("minimax-m3", ReasoningEffort::Low), ("MiniMax-M3", ReasoningEffort::Medium)] {
+			let payload = payload_with_effort(model_name, Some(effort));
+			assert_eq!(
+				payload.pointer("/thinking/type").and_then(|v| v.as_str()),
+				Some("adaptive"),
+				"{model_name} turns thinking on with adaptive"
+			);
+			assert!(
+				payload.get("output_config").is_none(),
+				"{model_name} effort is Flash-only"
+			);
+		}
+
+		for effort in [None, Some(ReasoningEffort::Zero)] {
+			let payload = payload_with_effort("MiniMax-M3", effort.clone());
+			assert!(
+				payload.get("thinking").is_none(),
+				"omitted thinking keeps MiniMax-M3 off ({effort:?})"
+			);
+			assert!(payload.get("output_config").is_none());
+		}
 	}
 
 	#[test]
