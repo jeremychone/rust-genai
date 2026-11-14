@@ -8,6 +8,7 @@
 - `-` cohere - `ChatOptions::seed` is forwarded as `seed` in the v1 `/chat` payload, next to the other sampling options, instead of being dropped. (PR #385)
 - `-` **openai** - `temperature`, `top_p` and, on Chat Completions, `stop` are omitted for reasoning models: the o-series and the original `gpt-5` family always reject them, versioned `gpt-5.N`/`gpt-6*` only with a non-`Zero` reasoning effort, and `-chat` ids such as `gpt-5-chat-latest` keep them. Other OpenAI-compatible adapters are untouched, each dropped parameter logs a `tracing::warn!`, and `extra_body` can still set any of them. (PR #386)
 - `-` **cohere** - `all_model_names` reads the live `GET /v1/models` list instead of a hardcoded list, so new and retired models need no code change.
+- `-` **ollama_cloud** - `ChatOptions::reasoning_effort` is sent as the top-level `think` body param, through the same `into_think_value` mapping the local Ollama adapter uses, instead of being dropped. (PR #388)
 
 ## 2026-11-11 [v0.7.4](https://github.com/jeremychone/rust-genai/compare/v0.7.3...v0.7.4)
 
