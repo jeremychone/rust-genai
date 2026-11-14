@@ -1,4 +1,4 @@
-use super::{DeepSeekAdapter, MistralAdapter, OllamaAdapter};
+use super::{DeepSeekAdapter, MistralAdapter, OllamaAdapter, OllamaCloudAdapter};
 use crate::adapter::AdapterDispatcher;
 use crate::adapter::{Adapter, AdapterKind, ServiceType};
 use crate::chat::{
@@ -362,6 +362,30 @@ fn test_ollama_think_enabled_for_budget_effort() -> Result<()> {
 
 	// -- Check
 	assert_eq!(payload["think"], true);
+
+	Ok(())
+}
+
+#[test]
+fn test_ollama_cloud_think_maps_reasoning_effort() -> Result<()> {
+	// -- Setup & Fixtures
+	let chat_options = ChatOptions::default().with_reasoning_effort(ReasoningEffort::High);
+	let options_set = ChatOptionsSet::default().with_chat_options(Some(&chat_options));
+
+	// -- Exec
+	let request = OllamaCloudAdapter::to_web_request_data(
+		ServiceTarget {
+			model: ModelIden::new(AdapterKind::OllamaCloud, "gpt-oss:120b"),
+			auth: AuthData::from_single("test-key"),
+			endpoint: Endpoint::from_static("https://ollama.com/"),
+		},
+		ServiceType::Chat,
+		ChatRequest::from_user("hello"),
+		options_set,
+	)?;
+
+	// -- Check
+	assert_eq!(request.payload["think"], "high");
 
 	Ok(())
 }
