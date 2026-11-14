@@ -216,7 +216,8 @@ mod tests {
 		);
 		assert_eq!(usage.completion_tokens, Some(40));
 		assert_eq!(usage.total_tokens, Some(61));
-		let details = usage.prompt_tokens_details.expect("details should be set");
+		assert!(usage.prompt_tokens_details.is_some(), "details should be set");
+		let details = usage.prompt_tokens_details.unwrap_or_default();
 		assert_eq!(details.cached_tokens, Some(17));
 		assert_eq!(details.cache_creation_tokens, None);
 		assert!(details.cache_creation_details.is_none());

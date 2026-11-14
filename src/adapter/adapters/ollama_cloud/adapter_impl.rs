@@ -83,7 +83,7 @@ impl Adapter for OllamaCloudAdapter {
 			"stream": stream,
 		});
 
-		if !options.as_object().unwrap().is_empty() {
+		if options.as_object().is_some_and(|o| !o.is_empty()) {
 			payload.x_insert("options", options)?;
 		}
 
