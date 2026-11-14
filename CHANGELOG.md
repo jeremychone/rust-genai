@@ -1,6 +1,6 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## pending [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...main)
+## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...v0.7.5)
 
 - `+` New Adapters:
   - `uberllm::` - **UberLLM** - OpenAI-compatible gateway for text models from many labs, only selected by namespace. Uses `UBERLLM_API_KEY` and `https://api.uberllm.dev/v1/`; embeddings are unsupported. Adds `AdapterKind::UberLlm`, so downstream exhaustive matches must be updated. (PR #379)
