@@ -7,7 +7,7 @@
 use crate::adapter::adapters::anthropic::{AnthropicAdapter, AnthropicModel, insert_anthropic_reasoning};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ContentPart, MessageContent,
-	ReasoningEffort, StopReason, Tool, ToolCall, ToolName, Usage,
+	ReasoningEffort, StopReason, Tool, ToolCall, ToolChoice, ToolName, Usage,
 };
 use crate::webc::WebResponse;
 use crate::{Error, ModelIden, Result};
@@ -71,7 +71,11 @@ pub(super) fn build_converse_payload(
 
 	// -- Tools (before messages)
 	if let Some(tools) = tools {
-		payload.x_insert("toolConfig", json!({ "tools": tools }))?;
+		let mut tool_config = json!({ "tools": tools });
+		if let Some(tool_choice) = converse_tool_choice(options_set.tool_choice()) {
+			tool_config.x_insert("toolChoice", tool_choice)?;
+		}
+		payload.x_insert("toolConfig", tool_config)?;
 	}
 
 	// -- Messages (after tools)
@@ -128,6 +132,21 @@ pub(super) fn build_converse_payload(
 	}
 
 	Ok(payload)
+}
+
+/// Map a genai `ToolChoice` to the Converse `toolConfig.toolChoice` union.
+/// DOC: <https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html>
+fn converse_tool_choice(tool_choice: Option<&ToolChoice>) -> Option<Value> {
+	match tool_choice? {
+		ToolChoice::Auto => Some(json!({ "auto": {} })),
+		ToolChoice::Required => Some(json!({ "any": {} })),
+		ToolChoice::Tool { name } => Some(json!({ "tool": { "name": name } })),
+		// Converse has no "none" member; the model default (auto) applies.
+		ToolChoice::None => {
+			warn!("Bedrock Converse: tool_choice 'none' is not supported and was not sent");
+			None
+		}
+	}
 }
 
 /// Parse a Converse JSON response into a genai `ChatResponse`.
@@ -1047,6 +1066,47 @@ mod tests {
 			&ChatOptions::default(),
 		)?;
 		assert_eq!(payload["inferenceConfig"]["maxTokens"], 64000);
+		Ok(())
+	}
+
+	#[test]
+	fn tool_choice_is_sent_in_tool_config() -> Result<()> {
+		// -- Setup & Fixtures
+		let model_id = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+		let chat_req = || {
+			ChatRequest::new(vec![ChatMessage::user("weather in Paris?")])
+				.with_tools(vec![Tool::new("get_weather").with_description("Get the weather")])
+		};
+		let cases = [
+			(ToolChoice::Auto, Some(json!({ "auto": {} }))),
+			(ToolChoice::Required, Some(json!({ "any": {} }))),
+			(
+				ToolChoice::tool("get_weather"),
+				Some(json!({ "tool": { "name": "get_weather" } })),
+			),
+			// Converse has no "none" member, so nothing is sent.
+			(ToolChoice::None, None),
+		];
+
+		for (tool_choice, expected) in cases {
+			// -- Exec
+			let options = ChatOptions::default().with_tool_choice(tool_choice.clone());
+			let payload = payload_for(model_id, chat_req(), &options)?;
+
+			// -- Check
+			assert_eq!(
+				payload["toolConfig"].get("toolChoice"),
+				expected.as_ref(),
+				"tool_choice: {tool_choice:?}"
+			);
+			assert_eq!(payload["toolConfig"]["tools"][0]["toolSpec"]["name"], "get_weather");
+		}
+
+		// Without tools there is no toolConfig to carry the choice.
+		let options = ChatOptions::default().with_tool_choice(ToolChoice::Required);
+		let payload = payload_for(model_id, ChatRequest::new(vec![ChatMessage::user("hi")]), &options)?;
+		assert!(payload.get("toolConfig").is_none());
+
 		Ok(())
 	}
 
