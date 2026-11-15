@@ -17,6 +17,8 @@ mod json_schema;
 mod message_content;
 mod tool;
 mod usage;
+#[cfg(feature = "pricing")]
+mod usage_cost;
 
 // -- Flatten
 pub use binary::*;

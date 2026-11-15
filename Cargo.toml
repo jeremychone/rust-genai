@@ -59,6 +59,12 @@ bedrock-sigv4 = [
 # spans; genai records to whatever `tracing` subscriber is installed.
 otel = []
 
+# -- Pricing
+# `Usage::cost_usd(&ModelIden)` and `ChatResponse::cost_usd()` (OFF by default).
+# List prices come from the `llm-prices` crate (dated, source-cited table, no dependencies of its own);
+# genai keeps no price table. Cache reads and writes bill at their own rates. `None` for unlisted models.
+pricing = ["dep:llm-prices"]
+
 [dependencies]
 # -- Async
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "test-util", "io-util", "time"]}
@@ -90,6 +96,9 @@ regex = "1"
 aws-config = { version = "1", optional = true }
 aws-credential-types = { version = "1", optional = true }
 aws-sigv4 = { version = "1", optional = true }
+
+# -- Pricing (optional, `pricing` feature)
+llm-prices = { version = "1.3", optional = true }
 
 # The OTel example references `genai::otel`, so it only builds with the feature on.
 [[example]]
