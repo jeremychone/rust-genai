@@ -360,6 +360,7 @@ impl Adapter for OpenAIRespAdapter {
 			stop_reason: Some(stop_reason),
 			usage,
 			captured_raw_body,
+			captured_response_headers: None, // Set by the client exec_chat
 			response_id: Some(resp.id),
 		})
 	}
