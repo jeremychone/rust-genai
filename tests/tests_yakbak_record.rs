@@ -687,6 +687,59 @@ async fn record_gemini_builtin_with_functions() -> TestResult<()> {
 	Ok(())
 }
 
+// -- Tool combination: urlContext + a function declaration, full round trip.
+// The follow-up request replays Gemini's server tool parts; recording succeeds only if
+// Gemini accepts it, so each cassette is a known-good exchange.
+
+async fn record_gemini_server_tools(scenario: &str, model: &str, stream: bool) -> TestResult<()> {
+	let (client, mut server) = record_client("gemini", scenario, &gemini_backend()).await?;
+	let turns = support::gemini_server_tools::run_server_tools_round_trip(&client, model, stream).await;
+	server.shutdown().await;
+	let turns = turns?;
+	eprintln!(
+		"[record] {scenario}: {} turns, final text: {:?}",
+		turns.len(),
+		turns.last().and_then(|c| c.first_text())
+	);
+	Ok(())
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_server_tools_flash_3_8() -> TestResult<()> {
+	record_gemini_server_tools("server_tools_flash_3_8", "gemini::gemini-3.8-flash", false).await
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_server_tools_flash_3_8_stream() -> TestResult<()> {
+	record_gemini_server_tools("server_tools_flash_3_8_stream", "gemini::gemini-3.8-flash", true).await
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_server_tools_argon() -> TestResult<()> {
+	record_gemini_server_tools("server_tools_argon", "gemini::gemini-4-argon", false).await
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_server_tools_argon_stream() -> TestResult<()> {
+	record_gemini_server_tools("server_tools_argon_stream", "gemini::gemini-4-argon", true).await
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_server_tools_hydrogen() -> TestResult<()> {
+	record_gemini_server_tools("server_tools_hydrogen", "gemini::gemini-4-hydrogen", false).await
+}
+
+#[tokio::test]
+#[ignore]
+async fn record_gemini_server_tools_hydrogen_stream() -> TestResult<()> {
+	record_gemini_server_tools("server_tools_hydrogen_stream", "gemini::gemini-4-hydrogen", true).await
+}
+
 const GEMINI_MULTI_TURN_MODEL: &str = "gemini-3.8-flash";
 
 /// Streamed multi-turn tool loop where the first tool call fails. Each assistant turn is rebuilt

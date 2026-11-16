@@ -282,3 +282,124 @@ async fn test_yakbak_gemini_multi_turn_thought_signatures() -> TestResult<()> {
 
 	Ok(())
 }
+
+// region:    --- Tool combination (server tool parts)
+
+/// The tool-related parts of a model turn, in order: `(kind, thoughtSignature)`. Text and
+/// signature-only parts are left out.
+fn tool_part_sequence(parts: &[serde_json::Value]) -> Vec<(String, Option<String>)> {
+	const KINDS: &[&str] = &[
+		"toolCall",
+		"toolResponse",
+		"functionCall",
+		"executableCode",
+		"codeExecutionResult",
+	];
+	parts
+		.iter()
+		.filter_map(|part| {
+			let kind = KINDS.iter().find(|k| part.get(**k).is_some())?;
+			let signature = part.get("thoughtSignature").and_then(|s| s.as_str()).map(str::to_string);
+			Some((kind.to_string(), signature))
+		})
+		.collect()
+}
+
+/// The model parts of a recorded response (a JSON body or an SSE stream).
+fn recorded_model_parts(cassette: &str) -> TestResult<Vec<serde_json::Value>> {
+	let body = std::fs::read_to_string(cassette)?;
+	let chunks: Vec<serde_json::Value> = if body.trim_start().starts_with('{') {
+		vec![serde_json::from_str(&body).map_err(|e| e.to_string())?]
+	} else {
+		body.lines()
+			.filter_map(|line| line.strip_prefix("data:"))
+			.map(|data| serde_json::from_str(data.trim()))
+			.collect::<Result<_, _>>()
+			.map_err(|e: serde_json::Error| e.to_string())?
+	};
+	Ok(chunks
+		.iter()
+		.filter_map(|chunk| chunk["candidates"][0]["content"]["parts"].as_array())
+		.flatten()
+		.cloned()
+		.collect())
+}
+
+/// Replays a recorded urlContext + function call round trip and checks that the
+/// follow-up request gives Gemini back its own turn: every server tool part and function
+/// call in the order Gemini sent them, each with its own signature, and no genai-internal
+/// keys. (Recording only succeeds if Gemini accepted that follow-up.)
+async fn replay_server_tools_round_trip(scenario: &str, model: &str, stream: bool) -> TestResult<()> {
+	let (client, server) = replay_client("gemini", scenario).await?;
+	let turns = support::gemini_server_tools::run_server_tools_round_trip(&client, model, stream).await?;
+
+	// -- Turn 1: both server tool parts surface as custom parts, beside the function call.
+	assert_eq!(turns.len(), 2, "one tool turn, then the answer");
+	let first = &turns[0];
+	let custom_parts = first.parts().iter().filter(|p| matches!(p, ContentPart::Custom(_))).count();
+	assert_eq!(custom_parts, 2, "toolCall and toolResponse kept");
+	let calls = first.tool_calls();
+	assert_eq!(calls.len(), 1);
+	assert_eq!(calls[0].fn_name, "record_title");
+	assert!(
+		calls[0].fn_arguments["url"]
+			.as_str()
+			.is_some_and(|u| u.contains("rust-lang.org"))
+	);
+	assert!(turns[1].first_text().is_some_and(|t| !t.is_empty()), "final answer");
+
+	// -- Turn 2 request: the model turn matches what Gemini sent.
+	let requests = server.replay_requests().await;
+	assert_eq!(requests.len(), 2);
+	assert_eq!(requests[0]["toolConfig"]["includeServerSideToolInvocations"], true);
+
+	let model_turn = requests[1]["contents"]
+		.as_array()
+		.ok_or("contents")?
+		.iter()
+		.find(|c| c["role"] == "model")
+		.ok_or("follow-up should carry the model turn")?;
+	let sent = tool_part_sequence(model_turn["parts"].as_array().ok_or("parts")?);
+	let recorded = tool_part_sequence(&recorded_model_parts(&format!(
+		"tests/data/yakbak/gemini/{scenario}/response_000.txt"
+	))?);
+	assert_eq!(sent, recorded, "replayed parts, order and signatures");
+	assert!(
+		!requests[1].to_string().contains("_genaiCalls"),
+		"genai-internal keys must not reach Gemini"
+	);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_yakbak_gemini_server_tools_flash_3_8() -> TestResult<()> {
+	replay_server_tools_round_trip("server_tools_flash_3_8", "gemini::gemini-3.8-flash", false).await
+}
+
+#[tokio::test]
+async fn test_yakbak_gemini_server_tools_flash_3_8_stream() -> TestResult<()> {
+	replay_server_tools_round_trip("server_tools_flash_3_8_stream", "gemini::gemini-3.8-flash", true).await
+}
+
+#[tokio::test]
+async fn test_yakbak_gemini_server_tools_argon() -> TestResult<()> {
+	replay_server_tools_round_trip("server_tools_argon", "gemini::gemini-4-argon", false).await
+}
+
+#[tokio::test]
+async fn test_yakbak_gemini_server_tools_argon_stream() -> TestResult<()> {
+	replay_server_tools_round_trip("server_tools_argon_stream", "gemini::gemini-4-argon", true).await
+}
+
+#[tokio::test]
+async fn test_yakbak_gemini_server_tools_hydrogen() -> TestResult<()> {
+	replay_server_tools_round_trip("server_tools_hydrogen", "gemini::gemini-4-hydrogen", false).await
+}
+
+#[tokio::test]
+async fn test_yakbak_gemini_server_tools_hydrogen_stream() -> TestResult<()> {
+	replay_server_tools_round_trip("server_tools_hydrogen_stream", "gemini::gemini-4-hydrogen", true).await
+}
+
+// endregion: --- Tool combination (server tool parts)

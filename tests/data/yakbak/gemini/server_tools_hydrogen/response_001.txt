@@ -1,0 +1,63 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, here's my interpretation of that thought process, tailored for an expert audience:\n\n**Internal Workflow for Tool Response Validation and Citation Compliance**\n\nAlright, the tool confirmed it \"recorded\" the action, which is what I needed to see. Now I need to formulate a concise response to the user. My focus is on ensuring absolute adherence to the citation rule: every claim drawing on a Google search result *must* end with a proper index citation. If the sentence mentions the page title from the browse result, that requires a `[1.1]` citation. I need to make sure the response is technically sound, and the citation is correctly applied and the response is concise.\n\n\n",
+            "thought": true
+          },
+          {
+            "text": "I recorded the page title \"Rust Programming Language\" for https://www.rust-lang.org.",
+            "thoughtSignature": "Eu8DCuwDAWkUfROx7yglYk3xJuLUMUQTzyzd/Ez5sompKEKA1B6GdP+sTkI3UVdFRKL4Ev3kZgo2CzhkIvdQjI69SROypE5Vgvh57wkdX631b9vkeIWapML/V+ygCuJEwqu8Z2C6wxegdEcBGQ6hXfEXd2GFN9Yj6DBFnz4AJELbAKFuSC1jEctocoXq0TOKjpEpNb0eKmBIZs80SsC1m5bL0n9IAtfE2Tpi8OmnJvvBOpNt9nVFlB2h2YoELVwbj4TYQgK/pDxQ5a3Eg6Lbphg95A3JGZsMLIP7F3FM/uedwgVvhiokNhZbiYdMVv9MqsTPq63xmHvc50UnP10lg2nZpnkErpSrG7Seax1Rfi80t2NtkMxXndk+DDex4KfHSP9PnQnx7OTJgo0ykQfXWgflQUhURLAXQSWTD2Oax3JwOXG1pz/EopXVj+aarDKAA9a7Ht+7e+l9TjU1leE0PReZt8y5XtHgzIxddkhxWhNtKsSXaxaiXW8S6l8son0Bi9j+yPs05VQYOD9Zx5dXzJoKMdc21HRe0N2QcLgFSe88htSN0E8mVqadbwi5xX64yn95hLjUe8xe/6EQ+6G0Mz7jam6zCzscjGqOxFcxbP2AJ/B3wqWqUg5ApYXp6QLd1xwv+9mEFOoNWgeRU+SH70/L"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "groundingMetadata": {
+        "groundingChunks": [
+          {
+            "web": {
+              "uri": "https://rust-lang.org/",
+              "title": "Rust Programming Language"
+            }
+          }
+        ],
+        "groundingSupports": [
+          {
+            "segment": {
+              "endIndex": 83,
+              "text": "I recorded the page title \"Rust Programming Language\" for https://www.rust-lang.org"
+            },
+            "groundingChunkIndices": [
+              0
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1487,
+    "candidatesTokenCount": 29,
+    "totalTokenCount": 1608,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1487
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 29
+      }
+    ],
+    "thoughtsTokenCount": 92,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-4-hydrogen",
+  "responseId": "CzD7avaqMMDlwbUPuKquiQc"
+}

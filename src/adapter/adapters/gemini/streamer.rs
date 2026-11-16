@@ -1,12 +1,13 @@
 use super::{GeminiAdapter, GeminiChatResponse};
 use crate::adapter::adapters::support::{StreamerCapturedData, StreamerOptions, new_frame_tap};
-use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent};
-use crate::chat::{ChatOptionsSet, StopReason, ToolCall};
+use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
+use crate::chat::{ChatOptionsSet, CustomPart, StopReason, ToolCall};
 use crate::webc::{Event, EventSourceStream};
 use crate::{Error, ModelIden, Result};
 use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use value_ext::JsonValueExt as _;
 
 use super::{GeminiPart, GeminiPartData};
 
@@ -21,6 +22,7 @@ pub struct GeminiStreamer {
 	/// the underlying SSE stream. Set right after the synthesized `InterStreamEvent::End` is yielded.
 	done: bool,
 	captured_data: StreamerCapturedData,
+	captured_server_tool_parts: Vec<InterStreamThoughtBlock>,
 	pending_events: VecDeque<InterStreamEvent>,
 }
 
@@ -33,6 +35,7 @@ impl GeminiStreamer {
 			done: false,
 			options: StreamerOptions::new(model_iden, options_set),
 			captured_data: Default::default(),
+			captured_server_tool_parts: Vec::new(),
 			pending_events: VecDeque::new(),
 		}
 	}
@@ -52,7 +55,8 @@ impl GeminiStreamer {
 			captured_reasoning_content: self.captured_data.reasoning_content.take(),
 			captured_tool_calls: self.captured_data.tool_calls.take(),
 			captured_thought_signatures: self.captured_data.thought_signatures.take(),
-			captured_thought_blocks: None,
+			captured_thought_blocks: (!self.captured_server_tool_parts.is_empty())
+				.then(|| std::mem::take(&mut self.captured_server_tool_parts)),
 			captured_response_id: None,
 		};
 		self.pending_events.push_back(InterStreamEvent::End(inter_stream_end));
@@ -145,6 +149,14 @@ impl futures::Stream for GeminiStreamer {
 							}
 							// Carries its own signature in `thought_signatures`.
 							GeminiPartData::ToolCall(tool_call) => stream_tool_calls.push(tool_call),
+							GeminiPartData::ServerTool(mut raw) => {
+								let earlier = self.captured_data.tool_calls.as_ref().map_or(0, Vec::len)
+									+ stream_tool_calls.len();
+								let _ = raw.x_insert(super::adapter_impl::GENAI_CALLS_BEFORE_KEY, earlier);
+								let model_iden = Some(self.options.model_iden.clone());
+								self.captured_server_tool_parts
+									.push(InterStreamThoughtBlock::Custom(CustomPart { model_iden, data: raw }));
+							}
 						}
 					}
 

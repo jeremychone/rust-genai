@@ -1,0 +1,94 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, here's my thought process laid out, assuming I'm an expert working with this system:\n\n**Analyzing the Task & Forming a Strategy**\n\nAlright, the objective is pretty clear. I need to get information from the Rust language website, and specifically, I need the URL and the page title. The system wants me to use `record_title`, but it doesn't have the title yet. Therefore, I need to fetch the page content and figure out what the title is. The task explicitly requests that the user browse the website using `google:browse`. I know this is the first step.\nSo the optimal plan, in my view, is to execute that `google:browse` tool first, then get the information I need, and then record it. Sounds like an iterative approach, which is fine. I'll get the information, then feed it back into the tool.\n\n\n",
+            "thought": true
+          },
+          {
+            "thoughtSignature": "EuYDCuMDCAIS3gMBaRR9EyrQbwf4pckdRiDplkFwWkHLHfGOOkninxMuT/dv4pkf2kpSpgqKxudZd1gZ946Z0vFrCHeRzV30ZiAPPfp6SwTt6SHsn0lmY0CdZWtpMfHeOJXk/+TYsZXZHR7Nt3yM9BUuqSphEfM/PFxdXFhcsTwXS9zcY4XDqctZ3j/fgyRBd9rK9A4mAC52WaWkRMZfmpNe2UNjqDUMOAWAt5yyEFh0cGSWXNnfDiYvKb3qC3Wv/+8EjM/b7iTgxyOwStrluuEAUMf4yWTUJasqJvfQxH/47Ph8i1KB4ErJJ+89SsV43vpMO6U7mYUORViW+nkdGvxAwBT+DKVU2fAT7/j1//kbUSlubjqg4mqdhKnN2czotH6I1+cw4AyAh0s2a8wQdtpfzJo5/4jxF28GvQiqqOk9o64hqxKBKxuWeAGUUnnv6uWZRDYSLLJ204e5wVDi0unRW+PE1SNo+hNc1uEQiLPWLO6DziBUeeJbGZOxG+qx5lMo0QarXLASJ4C3h4HzFFRGQl8HMna/kYWoZyDJUcArRoXSCDCELR18GQS6Z5c5NhAGXgV5v1lcRQ4TmmzPlF9u+jg/AwXKKmJiBnZuNFMEEzOjsInJQBaygS8rXkpUNAAHpHJg/v+v",
+            "toolCall": {
+              "toolType": "URL_CONTEXT",
+              "args": {
+                "urls": [
+                  "https://www.rust-lang.org"
+                ]
+              },
+              "id": "call_12431680093759930076"
+            }
+          },
+          {
+            "thoughtSignature": "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",
+            "toolResponse": {
+              "toolType": "URL_CONTEXT",
+              "response": {
+                "url_metadata": [
+                  {
+                    "url_retrieval_status": "URL_RETRIEVAL_STATUS_SUCCESS",
+                    "retrieved_url": "https://rust-lang.org/"
+                  },
+                  {
+                    "url_retrieval_status": "URL_RETRIEVAL_STATUS_ERROR",
+                    "retrieved_url": "https://www.rust-lang.org"
+                  }
+                ]
+              },
+              "id": "call_12431680093759930076"
+            }
+          },
+          {
+            "text": "Here's my take on the situation:\n\n**Initial Assessment: Rust Programming Language - A Quick Metadata Capture**\n\nAlright, let's process this. I see the title is \"Rust Programming Language\" and the URL points to \"https://www.rust-lang.org.\" Okay, straightforward enough. Seems like someone is building metadata. Not exactly groundbreaking, but it's important to keep track of this. I'm going to quickly log this basic information to a `record_title` function. Input seems clean.\nLet's call the function with the provided info:\n*   `title` as \"Rust Programming Language\"\n*   `url` as \"https://www.rust-lang.org\"\n\nDone. Moving on.\n\n\n",
+            "thought": true
+          },
+          {
+            "functionCall": {
+              "name": "record_title",
+              "args": {
+                "title": "Rust Programming Language",
+                "url": "https://www.rust-lang.org"
+              },
+              "id": "call_12574482618295702030"
+            },
+            "thoughtSignature": "EqICCp8CAWkUfRMjTEmCJ7kEA9RlmF3O2YNzvS2VnRbpZ7IC4fDZhaJyYpmMkahxSKtoQWWpMaK8QFrtCOZzSAg+jzCx+7jFJz0D3D+jBsxbKHtHTrhP6lRog/C0zJfLlxvXk78hxmsu1/jzNnMBzfEkdWbw2KN6/j9d8J0Wkp0c6li0l1I0l9rBsqVbNZgU/oovXma8VUYy30DDTXGKxDVigmvNMHTNSHLnLxDa3fCG8TCMEfYknsQ1o5YmTiET/wltpOAd4wKe6rqJpPVV1IkUO7eshCZd5JS9aglNuHqDjp1HGIIXiGrtOOSVmYvqc33tJ2vMDtNxTxiSi4x8gBNmkHsZRRRZiPB3JR8rZYcj/dUthXoLC9RNFSsuA1hfR84LI2c="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "finishMessage": "Model generated function call(s).",
+      "urlContextMetadata": {
+        "urlMetadata": [
+          {
+            "retrievedUrl": "https://rust-lang.org/",
+            "urlRetrievalStatus": "URL_RETRIEVAL_STATUS_SUCCESS"
+          }
+        ]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 166,
+    "candidatesTokenCount": 52,
+    "totalTokenCount": 1544,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 166
+      }
+    ],
+    "toolUsePromptTokenCount": 1203,
+    "toolUsePromptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1203
+      }
+    ],
+    "thoughtsTokenCount": 123,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "9y_7apGTIt6wytMPirzkyQ8"
+}

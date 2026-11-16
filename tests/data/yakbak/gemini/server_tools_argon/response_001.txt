@@ -1,0 +1,58 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "I have read the Rust homepage and recorded its title, \"Rust Programming Language\".",
+            "thoughtSignature": "EmQKYgFpFH0TvvQ5z3Zlzly3Edk1QUdex9a2aoVeGn1PQoBWsduO6neeJRVL2F35XzgddtcrwnpEBnv4rQR6Ufqf3Ywy/6qmbsKnRRXTvcsbhuYIQoyccnS6Y2MwrL7EGNbuAvee"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "groundingMetadata": {
+        "groundingChunks": [
+          {
+            "web": {
+              "uri": "https://rust-lang.org/",
+              "title": "Rust Programming Language"
+            }
+          }
+        ],
+        "groundingSupports": [
+          {
+            "segment": {
+              "endIndex": 81,
+              "text": "I have read the Rust homepage and recorded its title, \"Rust Programming Language\""
+            },
+            "groundingChunkIndices": [
+              0
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1428,
+    "candidatesTokenCount": 25,
+    "totalTokenCount": 1453,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1428
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 25
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-4-argon",
+  "responseId": "yC_7aprAFNeMytMPq96i4A0"
+}

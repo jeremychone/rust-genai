@@ -3,8 +3,8 @@ use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
 	Binary, BinarySource, ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream,
-	ChatStreamResponse, CompletionTokensDetails, ContentPart, MessageContent, PromptTokensDetails, ReasoningEffort,
-	StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, ToolResponse, Usage,
+	ChatStreamResponse, CompletionTokensDetails, ContentPart, CustomPart, MessageContent, PromptTokensDetails,
+	ReasoningEffort, StopReason, Tool, ToolCall, ToolChoice, ToolConfig, ToolName, ToolResponse, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::StreamRequest as RequestBuilder;
@@ -12,7 +12,7 @@ use crate::webc::{EventSourceStream, WebClient, WebResponse};
 use crate::{Error, Headers, ModelIden, Result, ServiceTarget};
 use serde::Serialize;
 use serde_json::{Value, json};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use value_ext::JsonValueExt;
 
 const SKIP_THOUGHT_SIGNATURE_VALIDATOR: &str = "skip_thought_signature_validator";
@@ -228,6 +228,13 @@ impl Adapter for GeminiAdapter {
 					flush_text(&mut text_buffer, &mut parts);
 					parts.push(ContentPart::Binary(binary));
 				}
+				GeminiPartData::ServerTool(raw) => {
+					flush_text(&mut text_buffer, &mut parts);
+					parts.push(ContentPart::Custom(CustomPart {
+						model_iden: Some(model_iden.clone()),
+						data: raw,
+					}));
+				}
 				GeminiPartData::Reasoning(_) => {}
 			}
 		}
@@ -335,6 +342,14 @@ impl GeminiAdapter {
 
 		let mut tool_call_counter: usize = 0;
 		for mut part in parts {
+			if is_gemini_server_tool_part(&part) {
+				let _ = part.x_insert(GENAI_CALLS_BEFORE_KEY, tool_call_counter);
+				content.push(GeminiPart {
+					data: GeminiPartData::ServerTool(part),
+					thought_signature: None,
+				});
+				continue;
+			}
 			let thought_signature = take_string(&mut part, "thoughtSignature");
 			let is_thought = take_bool(&mut part, "thought");
 
@@ -856,6 +871,16 @@ pub(in crate::adapter) enum GeminiPartData {
 	/// Also mirrors its own signature in `ToolCall.thought_signatures`.
 	ToolCall(ToolCall),
 	Reasoning(String),
+	ServerTool(Value),
+}
+
+pub(in crate::adapter) const GENAI_CALLS_BEFORE_KEY: &str = "_genaiCallsBefore";
+
+const GEMINI_SERVER_TOOL_PART_KEYS: &[&str] = &["toolCall", "toolResponse", "executableCode", "codeExecutionResult"];
+
+fn is_gemini_server_tool_part(part: &Value) -> bool {
+	part.as_object()
+		.is_some_and(|obj| GEMINI_SERVER_TOOL_PART_KEYS.iter().any(|k| obj.contains_key(*k)))
 }
 
 #[derive(Serialize)]
@@ -877,6 +902,8 @@ enum GeminiModelPartData {
 		name: String,
 		args: Value,
 	},
+	#[serde(untagged)]
+	Raw(serde_json::Map<String, Value>),
 }
 
 impl GeminiModelPart {
@@ -888,11 +915,44 @@ impl GeminiModelPart {
 			.flatten()
 			.collect();
 
+		let mut server_parts: VecDeque<ServerToolPart> = content
+			.parts()
+			.iter()
+			.filter_map(|part| match part {
+				ContentPart::Custom(custom)
+					if matches!(
+						custom.adapter_kind(),
+						Some(AdapterKind::Gemini | AdapterKind::Vertex) | None
+					) && is_gemini_server_tool_part(&custom.data) =>
+				{
+					let Value::Object(mut raw) = custom.data.clone() else {
+						return None;
+					};
+					let calls_before =
+						raw.remove(GENAI_CALLS_BEFORE_KEY).and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+					let thought_signature = match raw.remove("thoughtSignature") {
+						Some(Value::String(s)) => Some(s),
+						_ => None,
+					};
+					Some(ServerToolPart {
+						calls_before,
+						raw,
+						thought_signature,
+					})
+				}
+				_ => None,
+			})
+			.collect();
+
 		let mut parts: Vec<Self> = Vec::new();
 		let mut pending_signature: Option<String> = None;
 		let mut is_first_call = true;
+		let mut calls_emitted: usize = 0;
 
 		for part in content {
+			if let ContentPart::ToolCall(_) = &part {
+				flush_server_parts(&mut server_parts, &mut parts, Some(calls_emitted), &mut is_first_call);
+			}
 			match part {
 				ContentPart::ThoughtSignature(signature) if call_signatures.contains(&signature) => {}
 				ContentPart::ThoughtSignature(signature) => pending_signature = Some(signature),
@@ -920,6 +980,7 @@ impl GeminiModelPart {
 						thought_signature,
 					});
 					is_first_call = false;
+					calls_emitted += 1;
 				}
 				// Not replayed in a model turn.
 				ContentPart::Binary(_)
@@ -928,8 +989,38 @@ impl GeminiModelPart {
 				| ContentPart::Custom(_) => {}
 			}
 		}
+		flush_server_parts(&mut server_parts, &mut parts, None, &mut is_first_call);
 
 		parts
+	}
+}
+
+struct ServerToolPart {
+	calls_before: usize,
+	raw: serde_json::Map<String, Value>,
+	thought_signature: Option<String>,
+}
+
+fn flush_server_parts(
+	server_parts: &mut VecDeque<ServerToolPart>,
+	parts: &mut Vec<GeminiModelPart>,
+	upto: Option<usize>,
+	is_first_call: &mut bool,
+) {
+	while server_parts.front().is_some_and(|p| upto.is_none_or(|n| p.calls_before <= n)) {
+		let Some(ServerToolPart {
+			raw, thought_signature, ..
+		}) = server_parts.pop_front()
+		else {
+			break;
+		};
+		if thought_signature.is_some() {
+			*is_first_call = false;
+		}
+		parts.push(GeminiModelPart {
+			data: GeminiModelPartData::Raw(raw),
+			thought_signature,
+		});
 	}
 }
 
