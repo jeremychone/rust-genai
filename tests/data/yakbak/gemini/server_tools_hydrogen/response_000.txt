@@ -1,0 +1,100 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Here's my take on those thoughts:\n\n**Navigating the Rust Landscape**\n\nOkay, so I'm thinking I need to brush up on something Rust-related. Time to head over to the official source. My instinct is to use `google:browse` – that's a quick and reliable way to ensure I'm accessing the *actual* rust-lang.org website, not some potentially misleading imposter or outdated mirror. Direct search is often the most efficient route, avoiding any potential misinterpretations that a direct link could introduce. Let's see what that yields.\n\n\n",
+            "thought": true
+          },
+          {
+            "thoughtSignature": "EqgCCqUCCAISoAIBaRR9Ez1lXLgkyMLToXIki+inhW5Oa582LoBq4ZczBFvJ0gdpkYUlceU4iDl4JmgoWCHmPo9sFCUy70ggd7khuzUbuMWYvjo7GIWO1q9+HOQddg7aq5BB0MR/qhthn7g4hnCzL2SahYZaEMq3IrOcVaJzX9h+1DVQGkpXX4OHwCptmvfouycxVjWpGjmM7s8k132SLfsiNXaeSlztuV8EPqmliJe6Q353horYG9JznzExicp5pUXIyo0V7E6vGrtRsFHD4wGNhXR3l0sgnRvCF04zACKqhrpdLtP2d4CjQYDD5y0FBgaheU/O5jjP8YYYTlT6J5IVSDwIgdefWGiDOZVJC/iCdeJ44J2lvRfi5GmtDeCzysK6nzpSAfpgsWY=",
+            "toolCall": {
+              "toolType": "URL_CONTEXT",
+              "args": {
+                "urls": [
+                  "https://www.rust-lang.org"
+                ]
+              },
+              "id": "call_9673974544686684977"
+            }
+          },
+          {
+            "thoughtSignature": "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",
+            "toolResponse": {
+              "toolType": "URL_CONTEXT",
+              "response": {
+                "url_metadata": [
+                  {
+                    "url_retrieval_status": "URL_RETRIEVAL_STATUS_SUCCESS",
+                    "retrieved_url": "https://rust-lang.org/"
+                  },
+                  {
+                    "url_retrieval_status": "URL_RETRIEVAL_STATUS_ERROR",
+                    "retrieved_url": "https://www.rust-lang.org"
+                  }
+                ]
+              },
+              "id": "call_9673974544686684977"
+            }
+          },
+          {
+            "text": "Okay, here's my take on those thoughts, framed as an expert's internal monologue:\n\n**Thinking Through a Data Recording Task**\n\nAlright, so I've got the source title \"Rust Programming Language\" and the URL \"https://www.rust-lang.org\". I see. This points to a straightforward task: I need to record this information, likely for indexing, a database entry, or maybe a quick lookup. My system has some kind of `record_title` function or method, and I need to use it. The core of this process is to pass the title, and the URL as parameters to the function or method. I'm assuming the function takes the URL and title as parameters. Nothing too complex, just ensuring that the right data goes to the right place. Good, let's execute that command and be done with it.\n\n\n",
+            "thought": true
+          },
+          {
+            "functionCall": {
+              "name": "record_title",
+              "args": {
+                "url": "https://www.rust-lang.org",
+                "title": "Rust Programming Language"
+              },
+              "id": "call_15539033781720825591"
+            },
+            "thoughtSignature": "EvcBCvQBAWkUfRO6Vdw2wdXDhKBTssWVwuieuzJgjEDcb07sGDcnGGA6mhqT9xZmXsPk+pJ5DpOj7QnlAmig3Kaf8ySch4HDmZUY0QfTC+PThdAdFRFp5QCvIvXE46xZ9wvLnfWHh4MGXErWdff1BvAaZANGyVGYXcAiwuy1IUMWI7vj0SWi7kON856jvfTWE9P2hJO0zLtJZxu093hHHrdH+R95862c6YXYFxJXgBKrV6/fZHC5GvOy/WAbImwhtlzHn+dk7YpwCq2sdJFHVmIXUnRjAUKzjM9Jw7WsBqlOkeScT0ITl7aqBzG1Q6coK9cQS1FnMIBghA=="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "finishMessage": "Model generated function call(s).",
+      "urlContextMetadata": {
+        "urlMetadata": [
+          {
+            "retrievedUrl": "https://rust-lang.org/",
+            "urlRetrievalStatus": "URL_RETRIEVAL_STATUS_SUCCESS"
+          }
+        ]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 305,
+    "candidatesTokenCount": 64,
+    "totalTokenCount": 1806,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 305
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 64
+      }
+    ],
+    "toolUsePromptTokenCount": 1378,
+    "toolUsePromptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1378
+      }
+    ],
+    "thoughtsTokenCount": 59,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-4-hydrogen",
+  "responseId": "BzD7apyOCs6FytMP4IDRGA"
+}

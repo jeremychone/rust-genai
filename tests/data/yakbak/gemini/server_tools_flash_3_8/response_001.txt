@@ -1,0 +1,36 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Okay, I'm ready. Here's how I'll summarize the text, speaking as if the thoughts were my own, and assuming the user is an expert.\n\n***\n\n**My Analytical Process**\n\nOkay, here's what I'm thinking. I need to distill this text into a concise, first-person summary, focusing on the core ideas as if they were my own. My aim is to convey the essential thought process, making it clear and impactful for an expert audience. I'm going to present the information directly, avoiding unnecessary jargon but maintaining a high level of precision, and ensure it is presented clearly.\n\nNow reply with one short sentence.\n\n\n",
+            "thought": true
+          },
+          {
+            "text": "The title of the Rust homepage has been recorded.",
+            "thoughtSignature": "EowBCokBAWkUfRPaqcBTRte/Ick/9X2lrCzuuef8galvd/OOiFLsdklkzMSo7TWNZChn5QmAItm7MQEJ4UElDFPpLZmOt6ChypqX0DwwA2+CWjhCTLfYZ06rnYt79T3z7bjGQuytpAQNZttU6PJbAVvZ64sqcE4nq6+kE8MyVJOLi9SZsAiB2j+oEv9m2eg="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1329,
+    "candidatesTokenCount": 10,
+    "totalTokenCount": 1346,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1329
+      }
+    ],
+    "thoughtsTokenCount": 7,
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.8-flash",
+  "responseId": "_i_7aua5JNDZytMP_urk4AE"
+}

@@ -7,6 +7,7 @@
 
 mod asserts;
 mod data;
+pub mod gemini_server_tools;
 mod helpers;
 mod seeders;
 mod test_error;

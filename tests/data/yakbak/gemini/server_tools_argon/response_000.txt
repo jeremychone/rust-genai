@@ -1,0 +1,91 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "thoughtSignature": "EuoBCucBCAIS4gEBaRR9E1AIdTu8mWPZCwSR8mFLRin+nHmm72ydUAn3IVBAquqCKXhQ8Uy+fMzNFPRmaynQ54IX2AUDQ097pwhD4enWFv/0qSElJvPKAUxDeMzfSjTzNbeSG3J7BRQdixbJBx9QYVIKnnIbBz5MktiwhTeq0QzFygKujEsy3O+VofO49IGwlhX6xM2N2gL0PPkS6DvKsGDGSaByD4D6/hF1/xOUcmak4RSuXVliX6Kb+2wG7U6NuEDqv2V5TRM8G8FExsreZ+9XyRXmqF0iWkkiSlZO4Y/cJfh9MG2WwiHevEZF",
+            "toolCall": {
+              "toolType": "URL_CONTEXT",
+              "args": {
+                "urls": [
+                  "https://www.rust-lang.org"
+                ]
+              },
+              "id": "call_8661196417673506162"
+            }
+          },
+          {
+            "thoughtSignature": "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",
+            "toolResponse": {
+              "toolType": "URL_CONTEXT",
+              "response": {
+                "url_metadata": [
+                  {
+                    "retrieved_url": "https://rust-lang.org/",
+                    "url_retrieval_status": "URL_RETRIEVAL_STATUS_SUCCESS"
+                  },
+                  {
+                    "retrieved_url": "https://www.rust-lang.org",
+                    "url_retrieval_status": "URL_RETRIEVAL_STATUS_ERROR"
+                  }
+                ]
+              },
+              "id": "call_8661196417673506162"
+            }
+          },
+          {
+            "functionCall": {
+              "name": "record_title",
+              "args": {
+                "url": "https://www.rust-lang.org",
+                "title": "Rust Programming Language"
+              },
+              "id": "call_4683281392207159965"
+            },
+            "thoughtSignature": "EmMKYQFpFH0TA72jwJ4SE1K01dO1mFMQW+AGpChDnfJdF1ehqZn96k/0wdnKoRWhcaIHQEjKZTamG+XHGzwettu3+n9LHy25+kNDz7aw3CueNNTBcqsEMBvuGTrmbMTqJPVv0YI="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "finishMessage": "Model generated function call(s).",
+      "urlContextMetadata": {
+        "urlMetadata": [
+          {
+            "retrievedUrl": "https://rust-lang.org/",
+            "urlRetrievalStatus": "URL_RETRIEVAL_STATUS_SUCCESS"
+          }
+        ]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 305,
+    "candidatesTokenCount": 64,
+    "totalTokenCount": 1729,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 305
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 64
+      }
+    ],
+    "toolUsePromptTokenCount": 1360,
+    "toolUsePromptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1360
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-4-argon",
+  "responseId": "rS_7avKWMOqRytMPsfG50QE"
+}

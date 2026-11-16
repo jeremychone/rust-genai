@@ -907,3 +907,133 @@ fn test_gemini_4_unsigned_first_call_gets_the_validator_placeholder_and_2_5_does
 }
 
 // endregion: --- Gemini 3 and later
+
+// region:    --- Server-side tool parts (tool combination)
+
+fn mixed_round_body() -> Value {
+	json!({
+		"candidates": [{
+			"content": {
+				"role": "model",
+				"parts": [
+					{"toolCall": {"toolType": "URL_CONTEXT", "args": {"urls": ["https://example.com"]}, "id": "call_1"}, "thoughtSignature": "SIG_TOOL_CALL"},
+					{"functionCall": {"name": "read_library_file", "args": {"paths": ["a.md"]}}},
+					{"functionCall": {"name": "copy_library_files", "args": {"copies": []}}},
+					{"toolResponse": {"toolType": "URL_CONTEXT", "response": {"url_metadata": []}, "id": "call_1"}, "thoughtSignature": "SIG_TOOL_RESPONSE"}
+				]
+			}
+		}]
+	})
+}
+
+#[test]
+fn test_gemini_server_tool_parts_survive_parsing_with_their_own_signatures() {
+	let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-4-argon");
+	let res = GeminiAdapter::body_to_gemini_chat_response(&model_iden, mixed_round_body()).unwrap();
+
+	let server: Vec<&Value> = res
+		.content
+		.iter()
+		.filter_map(|p| match &p.data {
+			GeminiPartData::ServerTool(v) => Some(v),
+			_ => None,
+		})
+		.collect();
+	assert_eq!(server.len(), 2);
+	assert_eq!(server[0]["thoughtSignature"], "SIG_TOOL_CALL");
+	assert_eq!(server[1]["thoughtSignature"], "SIG_TOOL_RESPONSE");
+	assert_eq!(server[0][GENAI_CALLS_BEFORE_KEY], 0);
+	assert_eq!(server[1][GENAI_CALLS_BEFORE_KEY], 2);
+
+	for part in &res.content {
+		if let GeminiPartData::ToolCall(call) = &part.data {
+			assert!(call.thought_signatures.is_none(), "{} got a signature", call.fn_name);
+		}
+		if !matches!(part.data, GeminiPartData::ServerTool(_)) {
+			assert!(part.thought_signature.is_none());
+		}
+	}
+}
+
+#[test]
+fn test_gemini_server_tool_parts_are_replayed_verbatim_in_the_model_turn() {
+	let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-4-argon");
+	let custom = |data: Value| {
+		ContentPart::Custom(CustomPart {
+			model_iden: Some(model_iden.clone()),
+			data,
+		})
+	};
+	let parsed = GeminiAdapter::body_to_gemini_chat_response(&model_iden, mixed_round_body()).unwrap();
+	let server: Vec<Value> = parsed
+		.content
+		.into_iter()
+		.filter_map(|p| match p.data {
+			GeminiPartData::ServerTool(v) => Some(v),
+			_ => None,
+		})
+		.collect();
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		custom(server[0].clone()),
+		custom(server[1].clone()),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call#read_library_file#0".into(),
+			fn_name: "read_library_file".into(),
+			fn_arguments: json!({"paths": ["a.md"]}),
+			thought_signatures: None,
+		}),
+		ContentPart::ToolCall(ToolCall {
+			call_id: "call#copy_library_files#1".into(),
+			fn_name: "copy_library_files".into(),
+			fn_arguments: json!({"copies": []}),
+			thought_signatures: None,
+		}),
+	]));
+	let chat_req = ChatRequest::from_user("Build the deck").append_message(assistant);
+
+	let req = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+	let model_parts = req.contents[1]["parts"].as_array().unwrap();
+
+	assert_eq!(model_parts.len(), 4);
+	assert_eq!(model_parts[0]["toolCall"]["toolType"], "URL_CONTEXT");
+	assert_eq!(model_parts[0]["thoughtSignature"], "SIG_TOOL_CALL");
+	assert_eq!(model_parts[1]["functionCall"]["name"], "read_library_file");
+	assert!(model_parts[1].get("thoughtSignature").is_none());
+	assert_eq!(model_parts[2]["functionCall"]["name"], "copy_library_files");
+	assert_eq!(model_parts[3]["toolResponse"]["id"], "call_1");
+	assert_eq!(model_parts[3]["thoughtSignature"], "SIG_TOOL_RESPONSE");
+	for part in model_parts {
+		assert!(
+			part.get(GENAI_CALLS_BEFORE_KEY).is_none(),
+			"internal key leaked: {part}"
+		);
+	}
+}
+
+#[test]
+fn test_gemini_does_not_replay_another_providers_custom_parts() {
+	let model_iden = ModelIden::new(AdapterKind::Gemini, "gemini-4-argon");
+	let assistant = ChatMessage::assistant(MessageContent::from_parts(vec![
+		ContentPart::Custom(CustomPart {
+			model_iden: Some(ModelIden::new(AdapterKind::Anthropic, "claude-opus-5-5")),
+			data: json!({"toolCall": {"toolType": "URL_CONTEXT"}}),
+		}),
+		ContentPart::Text("hi".into()),
+	]));
+	let chat_req = ChatRequest::from_user("x").append_message(assistant);
+	let req = GeminiAdapter::into_gemini_request_parts(&model_iden, chat_req).unwrap();
+	let model_parts = req.contents[1]["parts"].as_array().unwrap();
+	assert_eq!(model_parts.len(), 1);
+	assert_eq!(model_parts[0]["text"], "hi");
+}
+
+#[test]
+fn test_gemini_major_version_detection() {
+	assert!(is_gemini_3_or_later("gemini-3.7-flash"));
+	assert!(is_gemini_3_or_later("gemini-4-argon"));
+	assert!(is_gemini_3_or_later("models/gemini-10-pro"));
+	assert!(!is_gemini_3_or_later("gemini-2.5-flash"));
+	assert!(!is_gemini_3_or_later("gemma-3-27b"));
+}
+
+// endregion: --- Server-side tool parts (tool combination)
