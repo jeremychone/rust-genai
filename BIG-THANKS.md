@@ -4,6 +4,11 @@ A huge thank you to all the contributors. The `genai` crate is so lucky, we only
 
 _If I forgot your PR, feel free to submit a PR_
 
+## v0.7.6 
+
+- [Mattbusel](https://github.com/Mattbusel)
+  - #393 - fix(example): c14-cost-cap with better price compute
+
 
 ## v0.7.5
 

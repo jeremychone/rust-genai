@@ -1,5 +1,7 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
+## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.5...main)
+
 ## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...v0.7.5)
 
 - `+` New Adapters:
