@@ -2,8 +2,8 @@ use crate::adapter::adapters::cohere::CohereStreamer;
 use crate::adapter::adapters::support::get_api_key;
 use crate::adapter::{Adapter, AdapterKind, ServiceType, WebRequestData};
 use crate::chat::{
-	ChatOptionsSet, ChatRequest, ChatResponse, ChatRole, ChatStream, ChatStreamResponse, MessageContent, StopReason,
-	Usage,
+	ChatOptionsSet, ChatRequest, ChatResponse, ChatResponseFormat, ChatRole, ChatStream, ChatStreamResponse,
+	MessageContent, StopReason, Usage,
 };
 use crate::resolver::{AuthData, Endpoint};
 use crate::webc::StreamRequest as RequestBuilder;
@@ -118,6 +118,14 @@ impl Adapter for CohereAdapter {
 
 		if let Some(seed) = options_set.seed() {
 			payload.x_insert("seed", seed)?;
+		}
+
+		if let Some(format) = options_set.response_format() {
+			let response_format = match format {
+				ChatResponseFormat::JsonMode => json!({"type": "json_object"}),
+				ChatResponseFormat::JsonSpec(spec) => json!({"type": "json_object", "schema": spec.schema}),
+			};
+			payload.x_insert("response_format", response_format)?;
 		}
 
 		Ok(WebRequestData { url, headers, payload })

@@ -1,6 +1,6 @@
 use super::CohereAdapter;
 use crate::adapter::{Adapter, AdapterKind, ServiceType};
-use crate::chat::{ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest};
+use crate::chat::{ChatMessage, ChatOptions, ChatOptionsSet, ChatRequest, ChatResponseFormat, JsonSpec};
 use crate::resolver::{AuthData, Endpoint};
 use crate::{ModelIden, ServiceTarget};
 use serde_json::json;
@@ -74,5 +74,43 @@ fn test_cohere_single_message_has_no_chat_history() -> Result<()> {
 	assert_eq!(payload["message"], "Hello");
 	assert!(payload.get("chat_history").is_none());
 
+	Ok(())
+}
+
+#[test]
+fn test_cohere_chat_options_response_format() -> Result<()> {
+	let schema = json!({
+		"type": "object",
+		"properties": {"name": {"type": "string"}},
+		"required": ["name"]
+	});
+	let cases = [
+		(None, None),
+		(Some(ChatResponseFormat::JsonMode), Some(json!({"type": "json_object"}))),
+		(
+			Some(ChatResponseFormat::JsonSpec(JsonSpec::new("person", schema.clone()))),
+			Some(json!({"type": "json_object", "schema": schema})),
+		),
+	];
+	for service_type in [ServiceType::Chat, ServiceType::ChatStream] {
+		for (format, expected) in &cases {
+			let target = ServiceTarget {
+				model: ModelIden::new(AdapterKind::Cohere, "command-r-plus"),
+				auth: AuthData::from_single("test-key"),
+				endpoint: Endpoint::from_static("https://api.cohere.com/v1/"),
+			};
+			let mut options = ChatOptions::default();
+			if let Some(format) = format {
+				options = options.with_response_format(format.clone());
+			}
+			let web_req = CohereAdapter::to_web_request_data(
+				target,
+				service_type,
+				ChatRequest::new(vec![ChatMessage::user("Generate a JSON person")]),
+				ChatOptionsSet::default().with_chat_options(Some(&options)),
+			)?;
+			assert_eq!(web_req.payload.get("response_format"), expected.as_ref());
+		}
+	}
 	Ok(())
 }
