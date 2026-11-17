@@ -8,6 +8,8 @@ _If I forgot your PR, feel free to submit a PR_
 
 - [Mattbusel](https://github.com/Mattbusel)
   - #393 - fix(example): c14-cost-cap with better price compute
+- [vagmi](https://github.com/vagmi)
+  - [#395](https://github.com/jeremychone/rust-genai/pull/395) fix(gemini): keep server-side tool parts and replay them in order with their own signatures when built-in tools are mixed with function calls
 
 
 ## v0.7.5

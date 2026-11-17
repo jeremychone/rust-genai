@@ -1,6 +1,8 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.5...main)
+## PENDING [v0.7.6](https://github.com/jeremychone/rust-genai/compare/v0.7.5...main)
+
+- `-` **gemini** - Server-side tool parts (`toolCall`, `toolResponse`, `executableCode`, `codeExecutionResult`) are kept, streamed included, and replayed in place with their own `thoughtSignature` instead of being dropped, so a tool loop no longer sends a `functionCall` carrying a server part's signature. (PR #395)
 
 ## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...v0.7.5)
 
@@ -12,6 +14,7 @@
 - `-` **cohere** - `all_model_names` reads the live `GET /v1/models` list instead of a hardcoded list, so new and retired models need no code change.
 - `-` **ollama_cloud** - `ChatOptions::reasoning_effort` is sent as the top-level `think` body param, through the same `into_think_value` mapping the local Ollama adapter uses, instead of being dropped. (PR #388)
 - `-` **bedrock** - `ChatOptions::tool_choice` is sent as `toolConfig.toolChoice` in Converse requests: `Auto` as `{"auto": {}}`, `Required` as `{"any": {}}`, and a named tool as `{"tool": {"name": ...}}`, next to the tools it applies to. Converse has no "none" member, so `None` sends nothing and logs a `tracing::warn!`; `toolChoice` is only written when the request carries tools. (PR #389)
+
 
 ## 2026-11-11 [v0.7.4](https://github.com/jeremychone/rust-genai/compare/v0.7.3...v0.7.4)
 
