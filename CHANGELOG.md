@@ -3,6 +3,7 @@
 ## PENDING [v0.7.6](https://github.com/jeremychone/rust-genai/compare/v0.7.5...main)
 
 - `-` **gemini** - Server-side tool parts (`toolCall`, `toolResponse`, `executableCode`, `codeExecutionResult`) are kept, streamed included, and replayed in place with their own `thoughtSignature` instead of being dropped, so a tool loop no longer sends a `functionCall` carrying a server part's signature. (PR #395)
+- `.` examples - remove `c14-cost-cap` and `llm-budget`, since cost compute is not part of this crate scope, and the examples should be part of the respective costing crates.
 
 ## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...v0.7.5)
 

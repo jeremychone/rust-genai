@@ -97,7 +97,6 @@ name = "c12-otel"
 required-features = ["otel"]
 
 [dev-dependencies]
-llm-budget = "0.4"
 schemars = "1.2.1"
 simple-fs = "0.12"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
