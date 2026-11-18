@@ -13,7 +13,11 @@ use genai::chat::ReasoningEffort;
 use serial_test::serial;
 
 // Cross-region inference profile: newer models are only reachable through one.
-const MODEL: &str = "bedrock_api::global.openai.gpt-5.6-terra";
+const MODEL: &str = "bedrock_api::global.openai.gpt-6-luna";
+
+const MODEL_OPENAI: &str = "bedrock_api::global.openai.gpt-6-luna";
+const MODEL_ANTHROPIC: &str = "bedrock_api::us.anthropic.claude-haiku-5-5";
+
 // Bare (non-profile) id, to exercise publisher detection without a geography prefix.
 const MODEL_BARE: &str = "bedrock_api::amazon.nova-lite-v1:0";
 // Nova 2 reasons with `reasoningConfig.maxReasoningEffort`.
@@ -86,6 +90,60 @@ async fn test_chat_stream_tool_capture_ok() -> TestResult<()> {
 }
 
 // endregion: --- Chat Stream
+
+// region:    --- Binary Tests
+
+/// NOTE: OpenAI - Does not see to get the image, describe something random (might be AWS settings)
+/// NOTE: Anthropic - say `I don't see an image attached to your message. Could you try uploading it again?` but it's a link??
+// #[tokio::test]
+// async fn test_chat_binary_image_url_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_image_url_ok(MODEL_ANTHROPIC).await
+// }
+
+#[tokio::test]
+async fn test_chat_binary_image_b64_ok() -> TestResult<()> {
+	// openai
+	common_tests::common_test_chat_image_b64_ok(MODEL_OPENAI).await?;
+	// anthropic
+	common_tests::common_test_chat_image_b64_ok(MODEL_ANTHROPIC).await?;
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_chat_binary_pdf_b64_ok() -> TestResult<()> {
+	// openai (PDF NOT AVAILABLE on AWS)
+	// common_tests::common_test_chat_pdf_b64_ok(MODEL_OPENAI).await?;
+
+	// anthropic
+	common_tests::common_test_chat_pdf_b64_ok(MODEL_ANTHROPIC).await?;
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_chat_binary_multi_b64_ok() -> TestResult<()> {
+	// openai (PDF not supported, and this request as image & pdf doc)
+	// common_tests::common_test_chat_multi_binary_b64_ok(MODEL_OPENAI).await?;
+
+	// anthropic
+	common_tests::common_test_chat_multi_binary_b64_ok(MODEL_ANTHROPIC).await?;
+
+	Ok(())
+}
+
+// No video model setup yet.
+// #[tokio::test]
+// async fn test_chat_binary_audio_b64_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_audio_b64_ok(MODEL).await
+// }
+
+// No video model setup yet.
+// #[tokio::test]
+// async fn test_chat_binary_video_b64_ok() -> TestResult<()> {
+// 	common_tests::common_test_chat_video_b64_ok(MODEL).await
+// }
+
+// endregion: --- Binary Tests
 
 // region:    --- Tools
 
