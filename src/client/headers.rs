@@ -36,6 +36,15 @@ impl Headers {
 		}
 	}
 
+	/// Returns the value for `name`, if present.
+	/// Lookup is ASCII case-insensitive, since HTTP header names are.
+	pub fn get(&self, name: &str) -> Option<&str> {
+		self.inner
+			.get(name)
+			.or_else(|| self.inner.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v))
+			.map(String::as_str)
+	}
+
 	/// Apply self on top of target, consuming both, and return the result.
 	/// Values in self override those in target.
 	pub fn applied_to(self, target: impl Into<Headers>) -> Headers {
@@ -48,6 +57,26 @@ impl Headers {
 }
 
 // region:    --- Froms
+
+impl Headers {
+	/// Builds `Headers` from a reqwest `HeaderMap` (e.g., HTTP response headers).
+	/// Names are lowercase. Repeated headers are joined with `", "` (one value per name),
+	/// and values that are not valid UTF-8 are converted lossily.
+	pub(crate) fn from_header_map(header_map: &reqwest::header::HeaderMap) -> Self {
+		let mut inner: HashMap<String, String> = HashMap::new();
+		for (name, value) in header_map {
+			let value = String::from_utf8_lossy(value.as_bytes());
+			inner
+				.entry(name.as_str().to_string())
+				.and_modify(|existing| {
+					existing.push_str(", ");
+					existing.push_str(&value);
+				})
+				.or_insert_with(|| value.into_owned());
+		}
+		Headers { inner }
+	}
+}
 impl<K, V> From<(K, V)> for Headers
 where
 	K: Into<String>,
@@ -131,3 +160,46 @@ impl<'a> IntoIterator for &'a mut Headers {
 }
 
 // endregion: --- Iterators
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>; // For tests.
+
+	use super::*;
+	use reqwest::header::{HeaderMap, HeaderValue};
+
+	#[test]
+	fn test_headers_get_case_insensitive() -> Result<()> {
+		// -- Setup & Fixtures
+		let headers = Headers::from([("X-Request-Id", "req-1")]);
+
+		// -- Exec & Check
+		assert_eq!(headers.get("X-Request-Id"), Some("req-1"));
+		assert_eq!(headers.get("x-request-id"), Some("req-1"));
+		assert_eq!(headers.get("x-other"), None);
+
+		Ok(())
+	}
+
+	#[test]
+	fn test_headers_from_header_map_joins_repeated_values() -> Result<()> {
+		// -- Setup & Fixtures
+		let mut header_map = HeaderMap::new();
+		header_map.insert("x-request-id", HeaderValue::from_static("req-1"));
+		header_map.append("x-multi", HeaderValue::from_static("a"));
+		header_map.append("x-multi", HeaderValue::from_static("b"));
+
+		// -- Exec
+		let headers = Headers::from_header_map(&header_map);
+
+		// -- Check
+		assert_eq!(headers.get("x-request-id"), Some("req-1"));
+		assert_eq!(headers.get("x-multi"), Some("a, b"));
+
+		Ok(())
+	}
+}
+
+// endregion: --- Tests

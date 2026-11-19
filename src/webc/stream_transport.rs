@@ -1,9 +1,15 @@
 //! Deadlines around HTTP response headers and each raw body read.
 //! Parsing/heartbeats must never change the meaning of transport progress.
+use crate::Headers;
 use crate::error::BoxError;
 use bytes::Bytes;
 use futures::{StreamExt, stream::BoxStream};
+use std::sync::{Arc, OnceLock};
 use std::{fmt, time::Duration};
+
+/// Shared slot filled with the HTTP response headers once a streaming response arrives.
+/// The transport writes it, and the `ChatStream` reads it to fill `StreamEnd.captured_response_headers`.
+pub(crate) type ResponseHeadersSlot = Arc<OnceLock<Headers>>;
 
 /// The transport phase that exceeded its configured streaming timeout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +33,7 @@ pub(crate) struct StreamRequest {
 	request: reqwest::RequestBuilder,
 	header_timeout: Option<Duration>,
 	read_timeout: Option<Duration>,
+	response_headers: Option<ResponseHeadersSlot>,
 }
 impl StreamRequest {
 	pub(crate) fn new(
@@ -38,7 +45,13 @@ impl StreamRequest {
 			request,
 			header_timeout,
 			read_timeout,
+			response_headers: None,
 		}
+	}
+	/// Sets the slot that receives the response headers (only set when capture is enabled).
+	pub(crate) fn with_response_headers_slot(mut self, slot: Option<ResponseHeadersSlot>) -> Self {
+		self.response_headers = slot;
+		self
 	}
 	pub(crate) async fn send(self) -> Result<StreamResponse, BoxError> {
 		let response = match self.header_timeout {
@@ -48,6 +61,9 @@ impl StreamRequest {
 			None => self.request.send().await,
 		}
 		.map_err(|error| Box::new(error) as BoxError)?;
+		if let Some(slot) = self.response_headers {
+			let _ = slot.set(Headers::from_header_map(response.headers()));
+		}
 		Ok(StreamResponse {
 			response,
 			read_timeout: self.read_timeout,

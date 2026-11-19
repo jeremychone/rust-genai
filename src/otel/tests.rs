@@ -146,6 +146,7 @@ fn chat_response() -> ChatResponse {
 			..Default::default()
 		},
 		captured_raw_body: None,
+		captured_response_headers: None,
 		response_id: Some("chatcmpl-123".to_string()),
 	}
 }

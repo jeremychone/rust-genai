@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::ModelIden;
 use crate::chat::{ChatMessage, ChatStream, MessageContent, ToolCall, Usage};
+use crate::{Headers, ModelIden};
 
 // region:    --- StopReason
 
@@ -141,6 +141,9 @@ pub struct ChatResponse {
 
 	/// Raw response body when raw-body capture is enabled.
 	pub captured_raw_body: Option<serde_json::Value>,
+
+	/// HTTP response headers when `ChatOptions.capture_response_headers` is enabled.
+	pub captured_response_headers: Option<Headers>,
 
 	/// Response ID for stateful sessions (OpenAI Responses API).
 	/// Use as `previous_response_id` in the next request to continue the conversation server-side.

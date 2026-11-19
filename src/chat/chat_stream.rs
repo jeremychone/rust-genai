@@ -1,6 +1,7 @@
+use crate::Headers;
 use crate::adapter::inter_stream::{InterStreamEnd, InterStreamEvent, InterStreamThoughtBlock};
 use crate::chat::{ChatMessage, ContentPart, MessageContent, StopReason, ToolCall, Usage};
-use crate::webc::FrameTap;
+use crate::webc::{FrameTap, ResponseHeadersSlot};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -18,6 +19,10 @@ pub struct ChatStream {
 	/// `StreamEnd` is built, and `on_error` fires on the error path. The tap latches, so
 	/// only the first of the two reaches the sink.
 	frame_tap: Option<FrameTap>,
+
+	/// Filled by the transport with the HTTP response headers when
+	/// `ChatOptions.capture_response_headers` is enabled; copied into `StreamEnd`.
+	response_headers: Option<ResponseHeadersSlot>,
 
 	/// OTel span state for the streaming operation (feature `otel`).
 	/// Set by `Client::exec_chat_stream` so the span covers the full stream
@@ -40,6 +45,7 @@ impl ChatStream {
 		ChatStream {
 			inter_stream,
 			frame_tap: None,
+			response_headers: None,
 			#[cfg(feature = "otel")]
 			otel: None,
 		}
@@ -57,6 +63,12 @@ impl ChatStream {
 	/// the public `StreamEnd` exists (or once the stream fails).
 	pub(crate) fn with_frame_tap(mut self, frame_tap: Option<FrameTap>) -> Self {
 		self.frame_tap = frame_tap;
+		self
+	}
+
+	/// Attaches the response headers slot shared with the transport request.
+	pub(crate) fn with_response_headers_slot(mut self, slot: Option<ResponseHeadersSlot>) -> Self {
+		self.response_headers = slot;
 		self
 	}
 
@@ -96,7 +108,12 @@ impl Stream for ChatStream {
 						ChatStreamEvent::ToolCallChunk(ToolChunk { tool_call })
 					}
 					InterStreamEvent::Heartbeat => ChatStreamEvent::Heartbeat,
-					InterStreamEvent::End(inter_end) => ChatStreamEvent::End(inter_end.into()),
+					InterStreamEvent::End(inter_end) => {
+						let mut stream_end: StreamEnd = inter_end.into();
+						stream_end.captured_response_headers =
+							this.response_headers.as_ref().and_then(|slot| slot.get().cloned());
+						ChatStreamEvent::End(stream_end)
+					}
 				};
 
 				// -- Frame sink: terminal hook, once, with the public StreamEnd.
@@ -214,6 +231,9 @@ pub struct StreamEnd {
 
 	/// Response ID for stateful sessions (OpenAI Responses API).
 	pub captured_response_id: Option<String>,
+
+	/// HTTP response headers if `ChatOptions.capture_response_headers` is enabled.
+	pub captured_response_headers: Option<Headers>,
 }
 
 impl From<InterStreamEnd> for StreamEnd {
@@ -288,6 +308,7 @@ impl From<InterStreamEnd> for StreamEnd {
 			captured_content,
 			captured_reasoning_content: inter_end.captured_reasoning_content,
 			captured_response_id: inter_end.captured_response_id,
+			captured_response_headers: None, // Set by the ChatStream
 		}
 	}
 }
