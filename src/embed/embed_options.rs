@@ -37,9 +37,11 @@ pub struct EmbedOptions {
 	/// Default: "search_document" (Cohere), "SEMANTIC_SIMILARITY" (Gemini)
 	pub embedding_type: Option<String>,
 
-	/// How to handle inputs longer than the maximum token length (supported by Cohere).
+	/// How to handle inputs longer than the maximum token length (supported by Cohere, Ollama and Ollama Cloud).
 	/// Common values: "NONE", "START", "END"
 	/// Default: "END"
+	///
+	/// Ollama only takes a boolean: "NONE" is sent as `false`, "START"/"END" as `true`.
 	pub truncate: Option<String>,
 }
 

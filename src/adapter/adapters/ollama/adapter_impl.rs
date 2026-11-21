@@ -226,7 +226,7 @@ impl Adapter for OllamaAdapter {
 		if let Some(dimensions) = options_set.dimensions() {
 			payload.x_insert("dimensions", dimensions)?;
 		}
-		if let Some(truncate) = options_set.truncate() {
+		if let Some(truncate) = options_set.truncate().and_then(OllamaAdapter::embed_truncate_to_bool) {
 			payload.x_insert("truncate", truncate)?;
 		}
 
@@ -296,3 +296,41 @@ impl OllamaAdapter {
 }
 
 // endregion: --- Reasoning Mapping
+
+// region:    --- Tests
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::adapter::AdapterKind;
+	use crate::embed::{EmbedOptions, EmbedOptionsSet, EmbedRequest};
+	use crate::resolver::AuthData;
+
+	fn embed_payload(truncate: Option<&str>) -> serde_json::Value {
+		let target = ServiceTarget {
+			endpoint: Endpoint::from_static("http://localhost:11434/"),
+			auth: AuthData::from_single("unused"),
+			model: ModelIden::new(AdapterKind::Ollama, "nomic-embed-text"),
+		};
+		let options = truncate.map(|t| EmbedOptions::new().with_truncate(t));
+		let options_set = EmbedOptionsSet::new().with_request_options(options.as_ref());
+		let data = OllamaAdapter::to_embed_request_data(target, EmbedRequest::new("hello"), options_set)
+			.expect("embed request data");
+		data.payload
+	}
+
+	#[test]
+	fn test_ollama_embed_truncate_is_boolean() {
+		assert_eq!(embed_payload(Some("NONE"))["truncate"], serde_json::json!(false));
+		assert_eq!(embed_payload(Some("END"))["truncate"], serde_json::json!(true));
+		assert_eq!(embed_payload(Some("START"))["truncate"], serde_json::json!(true));
+	}
+
+	#[test]
+	fn test_ollama_embed_truncate_unset_or_unknown_is_omitted() {
+		assert!(embed_payload(None).get("truncate").is_none());
+		assert!(embed_payload(Some("bogus")).get("truncate").is_none());
+	}
+}
+
+// endregion: --- Tests

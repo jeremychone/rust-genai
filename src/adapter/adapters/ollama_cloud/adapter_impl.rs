@@ -149,7 +149,7 @@ impl Adapter for OllamaCloudAdapter {
 		if let Some(dimensions) = options_set.dimensions() {
 			payload.x_insert("dimensions", dimensions)?;
 		}
-		if let Some(truncate) = options_set.truncate() {
+		if let Some(truncate) = options_set.truncate().and_then(OllamaAdapter::embed_truncate_to_bool) {
 			payload.x_insert("truncate", truncate)?;
 		}
 

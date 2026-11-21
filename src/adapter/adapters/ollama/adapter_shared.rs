@@ -14,6 +14,18 @@ use value_ext::JsonValueExt;
 
 /// Support functions for other adapters that share Ollama APIs
 impl OllamaAdapter {
+	/// The value of Ollama's embed `truncate` param. Ollama expects a boolean, while `EmbedOptions::truncate`
+	/// uses the Cohere-style strings: `"NONE"` disables truncation, `"START"`/`"END"` enable it.
+	/// `"true"`/`"false"` are accepted as well. Unknown values return `None` (param omitted, server default).
+	/// See <https://docs.ollama.com/api/embed>
+	pub(in crate::adapter::adapters) fn embed_truncate_to_bool(truncate: &str) -> Option<bool> {
+		match truncate.trim().to_ascii_lowercase().as_str() {
+			"none" | "false" => Some(false),
+			"start" | "end" | "true" => Some(true),
+			_ => None,
+		}
+	}
+
 	/// The value of Ollama's top-level `format` param for a response format: `"json"` for JSON mode,
 	/// or the JSON Schema itself for structured output.
 	/// See <https://docs.ollama.com/capabilities/structured-outputs>
@@ -192,6 +204,17 @@ pub(in crate::adapter::adapters) struct OllamaRequestParts {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn test_embed_truncate_to_bool() {
+		assert_eq!(OllamaAdapter::embed_truncate_to_bool("NONE"), Some(false));
+		assert_eq!(OllamaAdapter::embed_truncate_to_bool("none"), Some(false));
+		assert_eq!(OllamaAdapter::embed_truncate_to_bool("false"), Some(false));
+		assert_eq!(OllamaAdapter::embed_truncate_to_bool("START"), Some(true));
+		assert_eq!(OllamaAdapter::embed_truncate_to_bool("END"), Some(true));
+		assert_eq!(OllamaAdapter::embed_truncate_to_bool("true"), Some(true));
+		assert_eq!(OllamaAdapter::embed_truncate_to_bool("bogus"), None);
+	}
 
 	#[test]
 	fn test_into_usage_with_cached_tokens() {
