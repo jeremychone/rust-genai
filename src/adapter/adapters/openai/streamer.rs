@@ -400,8 +400,8 @@ impl futures::Stream for OpenAIStreamer {
 								self.captured_data.usage = Some(usage);
 							}
 						} else if self.pending_events.is_empty() {
-							// TODO: use tracing debug
-							tracing::warn!("EMPTY CHOICE CONTENT");
+							// Role-only deltas and keep-alives do not emit a stream event.
+							tracing::debug!("EMPTY CHOICE CONTENT");
 						}
 
 						if let Some(event) = self.pending_events.pop_front() {
