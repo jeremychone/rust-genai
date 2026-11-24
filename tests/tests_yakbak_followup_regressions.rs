@@ -14,7 +14,9 @@ use support::{TestResult, extract_stream_end};
 #[tokio::test]
 async fn gemini_stream_captures_every_thought_part() -> TestResult<()> {
 	let (client, _server) = replay_client("gemini", "multi_thought_capture_regression").await?;
-	let options = ChatOptions::default().with_capture_reasoning_content(true);
+	let options = ChatOptions::default()
+		.with_capture_reasoning_content(true)
+		.with_capture_content(false);
 	let result = client
 		.exec_chat_stream("gemini-2.5-flash", ChatRequest::from_user("hi"), Some(&options))
 		.await?;

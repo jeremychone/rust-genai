@@ -187,6 +187,7 @@ impl Adapter for OllamaAdapter {
 				.map(StopReason::from),
 			usage,
 			captured_raw_body,
+			captured_response_headers: None, // Set by the client exec_chat
 			response_id: None,
 		})
 	}

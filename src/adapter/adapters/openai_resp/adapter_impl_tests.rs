@@ -655,3 +655,18 @@ fn test_openai_resp_non_reasoning_models_keep_sampling_params() {
 		assert_eq!(payload["top_p"], 0.9, "top_p for {model}");
 	}
 }
+
+#[test]
+fn test_openai_resp_include_reasoning_opts_into_summary_and_encrypted_content() {
+	let default_payload = resp_payload("gpt-5", ChatOptions::default());
+	assert!(default_payload.get("reasoning").is_none());
+	assert!(default_payload.get("include").is_none());
+
+	let capture_only_payload = resp_payload("gpt-5", ChatOptions::default().with_capture_reasoning_content(true));
+	assert!(capture_only_payload.get("reasoning").is_none());
+	assert!(capture_only_payload.get("include").is_none());
+
+	let include_payload = resp_payload("gpt-5", ChatOptions::default().with_include_reasoning(true));
+	assert_eq!(include_payload["reasoning"]["summary"], "detailed");
+	assert_eq!(include_payload["include"], json!(["reasoning.encrypted_content"]));
+}

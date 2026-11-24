@@ -3,7 +3,8 @@ use crate::chat::{ChatOptions, ChatOptionsSet, ChatRequest, ChatResponse, ChatSt
 use crate::client::ModelSpec;
 use crate::embed::{EmbedOptions, EmbedOptionsSet, EmbedRequest, EmbedResponse};
 use crate::resolver::{AuthData, ProviderConfig};
-use crate::{Client, Error, ModelIden, Result, ServiceTarget};
+use crate::webc::ResponseHeadersSlot;
+use crate::{Client, Error, Headers, ModelIden, Result, ServiceTarget};
 
 /// High-level client APIs.
 impl Client {
@@ -130,9 +131,9 @@ impl Client {
 				headers = override_headers;
 			};
 
-			let web_res = self
+			let (web_res, response_headers) = self
 				.web_client()
-				.do_post(&url, &headers, &payload)
+				.do_post_with_headers(&url, &headers, &payload)
 				.await
 				.map_err(|webc_error| Error::WebModelCall {
 					model_iden: model.clone(),
@@ -141,10 +142,15 @@ impl Client {
 
 			// Note: here we capture/clone the raw body if set in the options_set
 			let captured_raw_body = options_set.capture_raw_body().unwrap_or_default().then(|| web_res.body.clone());
+			let captured_response_headers = options_set
+				.capture_response_headers()
+				.unwrap_or(true)
+				.then(|| Headers::from_header_map(&response_headers));
 
 			match AdapterDispatcher::to_chat_response(model.clone(), web_res, options_set) {
 				Ok(mut chat_res) => {
 					chat_res.captured_raw_body = captured_raw_body;
+					chat_res.captured_response_headers = captured_response_headers;
 					Ok(chat_res)
 				}
 				Err(err) => {
@@ -235,8 +241,16 @@ impl Client {
 			let read_timeout = options
 				.and_then(|o| o.stream_read_timeout)
 				.or_else(|| defaults.and_then(|o| o.stream_read_timeout));
-			let reqwest_builder = crate::webc::StreamRequest::new(reqwest_builder, header_timeout, read_timeout);
+			// Shared with the stream, so the headers can be attached to `StreamEnd`.
+			let response_headers_slot: Option<ResponseHeadersSlot> =
+				options_set.capture_response_headers().unwrap_or(true).then(Default::default);
+			let reqwest_builder = crate::webc::StreamRequest::new(reqwest_builder, header_timeout, read_timeout)
+				.with_response_headers_slot(response_headers_slot.clone());
 			let res = AdapterDispatcher::to_chat_stream(model, reqwest_builder, options_set)?;
+			let res = ChatStreamResponse {
+				stream: res.stream.with_response_headers_slot(response_headers_slot),
+				..res
+			};
 
 			Ok(res)
 		})();
@@ -380,6 +394,119 @@ mod tests {
 			let _ = stream.shutdown(Shutdown::Both);
 		});
 		port
+	}
+
+	/// Serves one HTTP response with the given content type, extra header lines, and body.
+	fn serve_with_headers(content_type: &'static str, extra_headers: &'static str, response_body: String) -> u16 {
+		let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+		let port = listener.local_addr().expect("addr").port();
+		std::thread::spawn(move || {
+			let (mut stream, _) = listener.accept().expect("accept");
+			let mut buf = [0_u8; 8192];
+			let _ = stream.read(&mut buf);
+			let header = format!(
+				"HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\n{extra_headers}Connection: close\r\nContent-Length: {}\r\n\r\n",
+				response_body.len()
+			);
+			stream.write_all(header.as_bytes()).expect("header");
+			stream.write_all(response_body.as_bytes()).expect("body");
+			let _ = stream.shutdown(Shutdown::Both);
+		});
+		port
+	}
+
+	fn local_openai_target(port: u16) -> ServiceTarget {
+		ServiceTarget {
+			endpoint: Endpoint::from_owned(format!("http://127.0.0.1:{port}/v1/")),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::OpenAI, "gpt-4o-mini"),
+		}
+	}
+
+	fn chat_completion_body() -> String {
+		serde_json::json!({
+			"id": "chatcmpl-1",
+			"object": "chat.completion",
+			"model": "gpt-4o-mini",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "hi"}, "finish_reason": "stop"}],
+			"usage": {"prompt_tokens": 3, "completion_tokens": 1, "total_tokens": 4}
+		})
+		.to_string()
+	}
+
+	const RESPONSE_HEADERS: &str = "X-Request-Id: req-123\r\nX-Session-State: state-1\r\n";
+
+	#[tokio::test]
+	async fn test_exec_chat_captures_response_headers_by_default() {
+		let port = serve_with_headers("application/json", RESPONSE_HEADERS, chat_completion_body());
+		let client = Client::builder().build().expect("client");
+
+		let res = client
+			.exec_chat(local_openai_target(port), ChatRequest::from_user("hello"), None)
+			.await
+			.expect("chat should succeed");
+
+		assert_eq!(res.first_text(), Some("hi"));
+		let headers = res
+			.captured_response_headers
+			.expect("response headers should be captured by default");
+		assert_eq!(headers.get("x-request-id"), Some("req-123"));
+		assert_eq!(headers.get("X-Session-State"), Some("state-1"));
+	}
+
+	#[tokio::test]
+	async fn test_exec_chat_response_headers_can_be_disabled() {
+		let port = serve_with_headers("application/json", RESPONSE_HEADERS, chat_completion_body());
+		let client = Client::builder().build().expect("client");
+		let options = ChatOptions::default().with_capture_response_headers(false);
+
+		let res = client
+			.exec_chat(
+				local_openai_target(port),
+				ChatRequest::from_user("hello"),
+				Some(&options),
+			)
+			.await
+			.expect("chat should succeed");
+
+		assert!(res.captured_response_headers.is_none());
+	}
+
+	#[tokio::test]
+	async fn test_exec_chat_stream_captures_response_headers_in_stream_end_by_default() {
+		use crate::chat::ChatStreamEvent;
+		use futures::StreamExt;
+
+		let chunk = serde_json::json!({
+			"id": "chatcmpl-1",
+			"object": "chat.completion.chunk",
+			"model": "gpt-4o-mini",
+			"choices": [{"index": 0, "delta": {"content": "hi"}, "finish_reason": null}]
+		});
+		let body = format!("data: {chunk}\n\ndata: [DONE]\n\n");
+		let port = serve_with_headers("text/event-stream", RESPONSE_HEADERS, body);
+
+		let client = Client::builder().build().expect("client");
+
+		let mut stream = client
+			.exec_chat_stream(local_openai_target(port), ChatRequest::from_user("hello"), None)
+			.await
+			.expect("stream should start")
+			.stream;
+
+		let mut stream_end = None;
+		while let Some(event) = stream.next().await {
+			if let ChatStreamEvent::End(end) = event.expect("stream event") {
+				stream_end = Some(end);
+			}
+		}
+
+		let stream_end = stream_end.expect("stream should end with StreamEnd");
+		let headers = stream_end
+			.captured_response_headers
+			.expect("response headers should be captured by default");
+		assert_eq!(headers.get("x-request-id"), Some("req-123"));
+		assert_eq!(headers.get("x-session-state"), Some("state-1"));
 	}
 
 	#[tokio::test]

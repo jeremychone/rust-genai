@@ -52,22 +52,38 @@ pub struct ChatOptions {
 	#[serde(skip)]
 	pub stream_read_timeout: Option<std::time::Duration>,
 
-	/// (streaming) Capture usage metadata; available in `StreamEnd.captured_usage`.
+	/// (streaming) Capture usage metadata in `StreamEnd.captured_usage` (defaults to `true`).
 	pub capture_usage: Option<bool>,
 
-	/// (streaming) Concatenate content chunks; available in `StreamEnd.captured_content`.
+	/// (streaming) Concatenate content chunks in `StreamEnd.captured_content` (defaults to `true`).
 	pub capture_content: Option<bool>,
 
-	/// (streaming) Concatenate reasoning chunks; available in `StreamEnd.captured_reasoning_content`.
+	/// (streaming) Concatenate reasoning chunks and thought signatures in `StreamEnd` (defaults to `true`).
 	pub capture_reasoning_content: Option<bool>,
 
-	/// (streaming) Collect tool calls; available in `StreamEnd.captured_tool_calls`.
+	/// (streaming) Collect tool calls in `StreamEnd.captured_content` (defaults to `true`).
 	pub capture_tool_calls: Option<bool>,
 
 	/// Capture the raw HTTP body (primarily for debugging/inspection).
 	/// Non-streaming only; available in ChatResponse::captured_raw_body.
 	/// For streaming, use [`ChatOptions::raw_frame_sink`]
 	pub capture_raw_body: Option<bool>,
+
+	/// Capture the HTTP response headers (e.g., request ids, rate-limit or session headers; defaults to `true`).
+	/// Non-streaming: available in `ChatResponse::captured_response_headers`.
+	/// Streaming: available in `StreamEnd.captured_response_headers`.
+	pub capture_response_headers: Option<bool>,
+
+	/// Instructs the provider (when supported) to include reasoning text, summaries, or
+	/// encrypted reasoning items in the response payload (e.g., OpenAI Responses
+	/// `reasoning.summary = "detailed"` and `include = ["reasoning.encrypted_content"]`,
+	/// Gemini `thinkingConfig.includeThoughts = true`, Gemini Interactions
+	/// `thinking_summaries = "auto"`, and Anthropic adaptive thinking `display = "summarized"`).
+	///
+	/// Defaults to `false` (unset) so `genai` does not opt into extra provider request parameters
+	/// unless requested. Any reasoning data the provider returns is captured by default unless
+	/// `capture_reasoning_content` is explicitly set to `false`.
+	pub include_reasoning: Option<bool>,
 
 	/// Receives every raw provider frame as it is decoded (see [`ChatFrameSink`]).
 	///
@@ -149,34 +165,29 @@ impl ChatOptions {
 		self
 	}
 
-	/// Enables or disables capturing usage in streaming mode.
+	/// Enables or disables capturing usage in streaming mode (defaults to `true`).
 	pub fn with_capture_usage(mut self, value: bool) -> Self {
 		self.capture_usage = Some(value);
 		self
 	}
 
-	/// Enables or disables capturing concatenated content in streaming mode.
+	/// Enables or disables capturing concatenated content in streaming mode (defaults to `true`).
 	pub fn with_capture_content(mut self, value: bool) -> Self {
 		self.capture_content = Some(value);
 		self
 	}
 
-	/// Enables or disables capturing concatenated reasoning content in streaming mode.
+	/// Enables or disables capturing concatenated reasoning content and thought signatures in
+	/// streaming mode (defaults to `true`).
 	///
-	/// This also gates capture of the thought signatures that accompany reasoning, because a
-	/// signature signs the reasoning text it belongs to and is unusable without it. To replay a
-	/// signed assistant turn back to a provider that requires it (Anthropic extended thinking with
-	/// tool use), enable this alongside `with_capture_tool_calls`. Providers that stream thought
-	/// signatures independently of this flag (for example Gemini) capture them regardless.
-	///
-	/// It also gates OpenRouter's streamed `reasoning_details`, which `captured_content` then carries
-	/// as `Custom` parts for the next request.
+	/// To instruct the upstream provider to include non-default reasoning summaries or encrypted
+	/// reasoning blobs in its response payload, use [`ChatOptions::with_include_reasoning`].
 	pub fn with_capture_reasoning_content(mut self, value: bool) -> Self {
 		self.capture_reasoning_content = Some(value);
 		self
 	}
 
-	/// Enables or disables capturing tool calls in streaming mode.
+	/// Enables or disables capturing tool calls in streaming mode (defaults to `true`).
 	pub fn with_capture_tool_calls(mut self, value: bool) -> Self {
 		self.capture_tool_calls = Some(value);
 		self
@@ -185,6 +196,23 @@ impl ChatOptions {
 	/// Enables or disables capturing the raw HTTP body (non-streaming).
 	pub fn with_capture_raw_body(mut self, value: bool) -> Self {
 		self.capture_raw_body = Some(value);
+		self
+	}
+
+	/// Enables or disables capturing the HTTP response headers (streaming and non-streaming; defaults to `true`).
+	///
+	/// Non-streaming, they are in `ChatResponse::captured_response_headers`.
+	/// Streaming, they are in `StreamEnd.captured_response_headers`, since the request is only
+	/// sent once the stream is polled.
+	pub fn with_capture_response_headers(mut self, value: bool) -> Self {
+		self.capture_response_headers = Some(value);
+		self
+	}
+
+	/// Instructs the provider (when supported) to include reasoning text, summaries, or
+	/// encrypted reasoning items in the response payload (defaults to `false`).
+	pub fn with_include_reasoning(mut self, value: bool) -> Self {
+		self.include_reasoning = Some(value);
 		self
 	}
 
@@ -631,6 +659,18 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.capture_raw_body)
 			.or_else(|| self.client.and_then(|client| client.capture_raw_body))
+	}
+
+	pub fn capture_response_headers(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.capture_response_headers)
+			.or_else(|| self.client.and_then(|client| client.capture_response_headers))
+	}
+
+	pub fn include_reasoning(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.include_reasoning)
+			.or_else(|| self.client.and_then(|client| client.include_reasoning))
 	}
 
 	pub fn raw_frame_sink(&self) -> Option<Arc<dyn ChatFrameSink>> {

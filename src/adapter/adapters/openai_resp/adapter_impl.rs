@@ -77,7 +77,7 @@ impl Adapter for OpenAIRespAdapter {
 	/// - `.store = false` - To maintain consistent behavior with other chat completions, store is set to false
 	/// - `.instructions` For now we do not use the top ".instructions" (genai::ChatRequest.system),
 	///   but just add this top system as a regular system message.
-	/// - `.summary` reasoning summary is opt-in via `ChatOptions.capture_reasoning_content(true)` → `"detailed"`
+	/// - `.summary` reasoning summary is opt-in via `ChatOptions.include_reasoning(true)` → `"detailed"`
 	///
 	fn to_web_request_data(
 		target: ServiceTarget,
@@ -185,27 +185,22 @@ impl Adapter for OpenAIRespAdapter {
 		//     returned in the response (required to populate
 		//     `ChatResponse.reasoning_content` for the Responses API)
 		//
-		// Either half is sufficient to warrant inserting the object;
-		// previously the object was only emitted when `reasoning_effort`
-		// was set, which silently defeated `capture_reasoning_content(true)`
-		// on its own — callers asking for reasoning capture got no
-		// `summary=detailed` opt-in, and every response came back with
-		// empty `reasoning_content`.
-		let capture_reasoning = chat_options.capture_reasoning_content() == Some(true);
+		// Either half is sufficient to warrant inserting the object.
+		let include_reasoning = chat_options.include_reasoning() == Some(true);
 		let sampling_rejected = openai_rejects_sampling_params(adapter_kind, model_name, reasoning_effort.as_ref());
 		let effort_keyword = reasoning_effort.and_then(|effort| match effort {
 			ReasoningEffort::Zero => Some("none"),
 			_ => effort.as_keyword(),
 		});
 
-		if effort_keyword.is_some() || capture_reasoning {
+		if effort_keyword.is_some() || include_reasoning {
 			let mut reasoning_obj = json!({});
 			if let Some(keyword) = effort_keyword {
 				reasoning_obj
 					.x_insert("effort", keyword)
 					.map_err(|e| Error::Internal(format!("reasoning effort insert: {e}")))?;
 			}
-			if capture_reasoning {
+			if include_reasoning {
 				reasoning_obj
 					.x_insert("summary", "detailed")
 					.map_err(|e| Error::Internal(format!("reasoning summary insert: {e}")))?;
@@ -214,8 +209,8 @@ impl Adapter for OpenAIRespAdapter {
 		}
 
 		// -- Opt-in: request encrypted reasoning content (thought signatures)
-		// when the caller explicitly asks for reasoning content capture.
-		if chat_options.capture_reasoning_content() == Some(true) {
+		// when the caller explicitly asks the provider to include reasoning.
+		if include_reasoning {
 			payload.x_insert("include", json!(["reasoning.encrypted_content"]))?;
 		}
 
@@ -360,6 +355,7 @@ impl Adapter for OpenAIRespAdapter {
 			stop_reason: Some(stop_reason),
 			usage,
 			captured_raw_body,
+			captured_response_headers: None, // Set by the client exec_chat
 			response_id: Some(resp.id),
 		})
 	}

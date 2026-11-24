@@ -126,7 +126,7 @@ pub(super) fn build_converse_payload(
 			publisher,
 			model_name,
 			effort,
-			options_set.capture_reasoning_content().unwrap_or_default(),
+			options_set.include_reasoning().unwrap_or_default(),
 		)? {
 		payload.x_insert("additionalModelRequestFields", additional)?;
 	}
@@ -232,6 +232,7 @@ pub(super) fn parse_converse_response(model_iden: ModelIden, web_response: WebRe
 		stop_reason,
 		usage,
 		captured_raw_body: None,
+		captured_response_headers: None, // Set by the client exec_chat
 		response_id: None,
 	})
 }
@@ -302,14 +303,14 @@ fn publisher_additional_fields(
 	publisher: BedrockPublisher,
 	model_name: &str,
 	effort: &ReasoningEffort,
-	capture_reasoning_content: bool,
+	include_reasoning: bool,
 ) -> Result<Option<Value>> {
 	let fields = match publisher {
 		BedrockPublisher::Anthropic => match effort {
 			// Bedrock rejects `thinking.type: disabled` (unlike the Anthropic API), so `Zero` sends
 			// nothing; models with thinking on by default (e.g., Opus 5) keep their default there.
 			ReasoningEffort::Zero => None,
-			effort => anthropic_reasoning_fields(anthropic_model_name(model_name), effort, capture_reasoning_content)?,
+			effort => anthropic_reasoning_fields(anthropic_model_name(model_name), effort, include_reasoning)?,
 		},
 		BedrockPublisher::AmazonNova => {
 			// Nova 2 takes `reasoningConfig { type, maxReasoningEffort }` (required when enabled).
@@ -338,7 +339,7 @@ fn publisher_additional_fields(
 fn anthropic_reasoning_fields(
 	model_name: &str,
 	effort: &ReasoningEffort,
-	capture_reasoning_content: bool,
+	include_reasoning: bool,
 ) -> Result<Option<Value>> {
 	let capabilities = AnthropicModel::parse(model_name).capabilities();
 	let mut fields = json!({});
@@ -348,7 +349,7 @@ fn anthropic_reasoning_fields(
 		&mut output_config,
 		&capabilities,
 		effort,
-		capture_reasoning_content,
+		include_reasoning,
 	)?;
 	if !output_config.is_empty() {
 		fields.x_insert("output_config", Value::Object(output_config))?;

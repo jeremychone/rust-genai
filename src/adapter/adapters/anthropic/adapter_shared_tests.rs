@@ -1215,3 +1215,39 @@ fn test_tool_message_text_part_serializes_after_tool_result() {
 		])
 	);
 }
+
+#[test]
+fn test_adaptive_thinking_display_summarized_requires_include_reasoning() {
+	let build = |options: ChatOptions| {
+		let target = ServiceTarget {
+			endpoint: AnthropicAdapter::default_endpoint(AdapterKind::Anthropic),
+			auth: AuthData::from_single("test-key"),
+			model: ModelIden::new(AdapterKind::Anthropic, "claude-opus-5"),
+		};
+		AnthropicAdapter::to_web_request_data(
+			target,
+			ServiceType::Chat,
+			ChatRequest::from_user("hi"),
+			ChatOptionsSet::default().with_chat_options(Some(&options)),
+		)
+		.expect("to_web_request_data should succeed")
+		.payload
+	};
+
+	let without_include = build(
+		ChatOptions::default()
+			.with_reasoning_effort(ReasoningEffort::Medium)
+			.with_capture_reasoning_content(true),
+	);
+	assert_eq!(without_include["thinking"], json!({"type": "adaptive"}));
+
+	let with_include = build(
+		ChatOptions::default()
+			.with_reasoning_effort(ReasoningEffort::Medium)
+			.with_include_reasoning(true),
+	);
+	assert_eq!(
+		with_include["thinking"],
+		json!({"type": "adaptive", "display": "summarized"})
+	);
+}

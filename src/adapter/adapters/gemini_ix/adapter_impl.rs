@@ -239,9 +239,7 @@ impl Adapter for GeminiIxAdapter {
 		// Thought summaries are opt-in; without this the `thought` steps carry a signature only and
 		// `reasoning_content` comes back empty. Both reasoning-related options express "I want the
 		// model's reasoning text back", so either one turns summaries on.
-		if chat_options.capture_reasoning_content() == Some(true)
-			|| chat_options.normalize_reasoning_content() == Some(true)
-		{
+		if chat_options.include_reasoning() == Some(true) || chat_options.normalize_reasoning_content() == Some(true) {
 			generation_config.insert("thinking_summaries".into(), "auto".into());
 		}
 		if let Some(tool_choice) = ix_tool_choice(chat_options.tool_choice()) {
@@ -330,6 +328,7 @@ impl Adapter for GeminiIxAdapter {
 			stop_reason: ix_status_to_stop_reason(interaction.status),
 			usage,
 			captured_raw_body,
+			captured_response_headers: None, // Set by the client exec_chat
 			response_id: interaction.id,
 		})
 	}
