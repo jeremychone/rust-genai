@@ -258,8 +258,11 @@ fn thinking_tool_request() -> ChatRequest {
 async fn test_yakbak_anthropic_thinking_stream_without_capture_opt_in_captures_nothing() -> TestResult<()> {
 	let (client, _server) = replay_client("anthropic", "thinking_tool_stream").await?;
 
-	// No capture opt-in: signatures still stream live, but nothing is accumulated.
-	let options = ChatOptions::default();
+	// Explicit capture opt-out: signatures still stream live, but nothing is accumulated.
+	let options = ChatOptions::default()
+		.with_capture_content(false)
+		.with_capture_reasoning_content(false)
+		.with_capture_tool_calls(false);
 
 	let stream_res = client
 		.exec_chat_stream("anthropic::fixture-model", thinking_tool_request(), Some(&options))

@@ -248,7 +248,8 @@ impl Adapter for GeminiAdapter {
 			provider_model_iden,
 			stop_reason,
 			usage,
-			captured_raw_body: None, // Set by the client exec_chat
+			captured_raw_body: None,         // Set by the client exec_chat
+			captured_response_headers: None, // Set by the client exec_chat
 			response_id: None,
 		})
 	}
@@ -470,9 +471,9 @@ impl GeminiAdapter {
 		}
 
 		// -- Opt-in for includeThoughts: only request thought content when
-		// the caller explicitly asks for reasoning content capture.
+		// the caller explicitly asks the provider to include reasoning.
 		// Thought *signatures* are always returned by the API regardless of this flag.
-		if options_set.capture_reasoning_content() == Some(true) {
+		if options_set.include_reasoning() == Some(true) {
 			payload.x_insert("/generationConfig/thinkingConfig/includeThoughts", true)?;
 		}
 

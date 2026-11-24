@@ -14,7 +14,7 @@ pub(in crate::adapter::adapters) fn insert_anthropic_reasoning(
 	output_config: &mut Map<String, Value>,
 	capabilities: &AnthropicModelCapabilities,
 	effort: &ReasoningEffort,
-	capture_reasoning_content: bool,
+	include_reasoning: bool,
 ) -> Result<()> {
 	let mut budget: Option<u32> = None;
 	let support_effort = capabilities.supports_effort;
@@ -68,7 +68,7 @@ pub(in crate::adapter::adapters) fn insert_anthropic_reasoning(
 			None => json!({
 				"type": "adaptive"}),
 		};
-		if capture_reasoning_content {
+		if include_reasoning {
 			thinking.x_insert("display", "summarized")?;
 		}
 

@@ -242,17 +242,15 @@ async fn mistral_stream_separates_thinking_and_answer() -> TestResult<()> {
 
 // Responses stream keeps reasoning summary from `output_item.done` (when no reasoning delta
 // events were emitted) and preserves `thought_signatures` across `response.incomplete`.
+// Also verifies that default options (`None`) capture reasoning, signatures, tool calls, and usage.
 #[tokio::test]
 async fn responses_stream_captures_done_reasoning_and_incomplete_signatures() -> TestResult<()> {
 	let (client, _server) = replay_client("openai_resp", "stream_reasoning_done_and_incomplete_regression").await?;
-	let options = ChatOptions::default()
-		.with_capture_reasoning_content(true)
-		.with_capture_tool_calls(true);
 	let res = client
 		.exec_chat_stream(
 			"openai_resp::gpt-6-luna",
 			ChatRequest::from_user("Write a summary"),
-			Some(&options),
+			None,
 		)
 		.await?;
 	let end = extract_stream_end(res.stream).await?.stream_end;

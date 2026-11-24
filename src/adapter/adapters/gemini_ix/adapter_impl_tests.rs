@@ -284,10 +284,8 @@ fn test_gemini_ix_thinking_summaries_opt_in() -> Result<()> {
 	// `reasoning_content` comes back empty. Both reasoning options must turn it on.
 	let cases = [
 		(ChatOptions::default(), None),
-		(
-			ChatOptions::default().with_capture_reasoning_content(true),
-			Some("auto"),
-		),
+		(ChatOptions::default().with_include_reasoning(true), Some("auto")),
+		(ChatOptions::default().with_capture_reasoning_content(true), None),
 		(
 			ChatOptions::default().with_normalize_reasoning_content(true),
 			Some("auto"),

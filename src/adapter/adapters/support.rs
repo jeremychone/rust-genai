@@ -34,10 +34,10 @@ pub struct StreamerOptions {
 impl StreamerOptions {
 	pub fn new(model_iden: ModelIden, options_set: ChatOptionsSet<'_, '_>) -> Self {
 		Self {
-			capture_usage: options_set.capture_usage().unwrap_or(false),
-			capture_content: options_set.capture_content().unwrap_or(false),
-			capture_reasoning_content: options_set.capture_reasoning_content().unwrap_or(false),
-			capture_tool_calls: options_set.capture_tool_calls().unwrap_or(false),
+			capture_usage: options_set.capture_usage().unwrap_or(true),
+			capture_content: options_set.capture_content().unwrap_or(true),
+			capture_reasoning_content: options_set.capture_reasoning_content().unwrap_or(true),
+			capture_tool_calls: options_set.capture_tool_calls().unwrap_or(true),
 			model_iden,
 		}
 	}

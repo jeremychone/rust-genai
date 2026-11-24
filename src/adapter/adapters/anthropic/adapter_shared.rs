@@ -569,13 +569,13 @@ impl AnthropicAdapter {
 		let mut output_config: Map<String, Value> = Map::new();
 
 		if let Some(computed_reasoning_effort) = computed_reasoning_effort {
-			let capture_reasoning_content = options_set.capture_reasoning_content().unwrap_or_default();
+			let include_reasoning = options_set.include_reasoning().unwrap_or_default();
 			insert_anthropic_reasoning(
 				&mut payload,
 				&mut output_config,
 				&capabilities,
 				&computed_reasoning_effort,
-				capture_reasoning_content,
+				include_reasoning,
 			)?;
 		}
 
@@ -721,7 +721,8 @@ impl AnthropicAdapter {
 			provider_model_iden,
 			stop_reason,
 			usage,
-			captured_raw_body: None, // Set by the client exec_chat
+			captured_raw_body: None,         // Set by the client exec_chat
+			captured_response_headers: None, // Set by the client exec_chat
 			response_id: None,
 		})
 	}

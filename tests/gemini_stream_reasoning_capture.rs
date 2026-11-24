@@ -88,8 +88,20 @@ async fn run(options: ChatOptions) -> (String, Option<String>, Option<String>) {
 }
 
 #[tokio::test]
+async fn default_options_capture_both_reasoning_and_content() {
+	let (streamed, reasoning, content) = run(ChatOptions::default()).await;
+
+	assert_eq!(streamed, "First thought. Second thought.");
+	assert_eq!(reasoning.as_deref(), Some("First thought. Second thought."));
+	assert_eq!(content.as_deref(), Some("The answer."));
+}
+
+#[tokio::test]
 async fn capture_reasoning_content_alone_keeps_every_thought_part() {
-	let (streamed, reasoning, content) = run(ChatOptions::default().with_capture_reasoning_content(true)).await;
+	let (streamed, reasoning, content) = run(ChatOptions::default()
+		.with_capture_reasoning_content(true)
+		.with_capture_content(false))
+	.await;
 
 	assert_eq!(streamed, "First thought. Second thought.");
 	assert_eq!(reasoning.as_deref(), Some("First thought. Second thought."));
@@ -98,7 +110,10 @@ async fn capture_reasoning_content_alone_keeps_every_thought_part() {
 
 #[tokio::test]
 async fn capture_content_alone_does_not_capture_reasoning() {
-	let (_, reasoning, content) = run(ChatOptions::default().with_capture_content(true)).await;
+	let (_, reasoning, content) = run(ChatOptions::default()
+		.with_capture_content(true)
+		.with_capture_reasoning_content(false))
+	.await;
 
 	assert_eq!(reasoning, None);
 	assert_eq!(content.as_deref(), Some("The answer."));

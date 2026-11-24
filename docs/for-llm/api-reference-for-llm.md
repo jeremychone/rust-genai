@@ -325,8 +325,10 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `reasoning_effort`: `ReasoningEffort` enum.
 - `verbosity`: `Verbosity` enum (e.g., for GPT-5).
 - `normalize_reasoning_content`: Extract `<think>` blocks into response field.
-- `capture_usage`, `capture_content`, `capture_reasoning_content`, `capture_tool_calls`: (Streaming) Accumulate results in `StreamEnd`.
+- `include_reasoning`: Instructs supported providers to include reasoning text/summaries/encrypted blobs in the response payload (`false` by default). Since v0.8.0.
+- `capture_usage`, `capture_content`, `capture_reasoning_content`, `capture_tool_calls`: (Streaming) Accumulate results in `StreamEnd` (all `true` by default since v0.8.0; set to `false` to opt out).
 - `capture_raw_body`: Capture raw HTTP response body.
+- `capture_response_headers`: Capture HTTP response headers, in `ChatResponse.captured_response_headers` (non-streaming) or `StreamEnd.captured_response_headers` (streaming) (`true` by default since v0.8.0; set to `false` to opt out).
 - `seed`: Deterministic generation.
 - `service_tier`: `Flex`, `Auto`, `Default` (OpenAI).
 - `prompt_cache_key`: OpenAI prompt cache key. Since v0.6.0.
@@ -335,7 +337,7 @@ All fields are `Option<T>` (unset = defer to client default or provider default)
 - `extra_body`: `serde_json::Value` merged into supported provider request bodies as a low-level escape hatch for provider-specific fields. Since v0.6.0. Currently used by OpenAI-compatible chat payloads, including Chat Completions and Responses.
 - `raw_frame_sink`: `Option<Arc<dyn ChatFrameSink>>` to observe raw provider stream frames. Since v0.7.0.
 - `stream_header_timeout`, `stream_read_timeout`: `Option<Duration>` transport bounds for the streamed header phase and each raw body read. Unset means no additional limit and no serialization. Since v0.7.0.
-- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_tool_choice(choice)` (since v0.6.0), `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)` (since v0.6.0), `with_cache_control(cache_control)` (updated in v0.6.0 for chat-level prompt cache control), `with_extra_headers(headers)`, `with_extra_body(value)` (since v0.6.0), `with_raw_frame_sink(sink)` (since v0.7.0), `with_raw_frame_sink_arc(arc)` (since v0.7.0), `with_raw_frame_fn(f)` (since v0.7.0), `with_stream_header_timeout(d)` (since v0.7.0), `with_stream_read_timeout(d)` (since v0.7.0).
+- **Chainable setters**: `with_temperature(f64)`, `with_max_tokens(u32)`, `with_top_p(f64)`, `with_include_reasoning(bool)` (since v0.8.0), `with_capture_usage(bool)`, `with_capture_content(bool)`, `with_capture_reasoning_content(bool)`, `with_capture_tool_calls(bool)`, `with_capture_raw_body(bool)`, `with_capture_response_headers(bool)` (since v0.8.0), `with_stop_sequences(vec)`, `with_normalize_reasoning_content(bool)`, `with_response_format(format)`, `with_tool_choice(choice)` (since v0.6.0), `with_reasoning_effort(effort)`, `with_verbosity(v)`, `with_seed(u64)`, `with_service_tier(tier)`, `with_prompt_cache_key(key)` (since v0.6.0), `with_cache_control(cache_control)` (updated in v0.6.0 for chat-level prompt cache control), `with_extra_headers(headers)`, `with_extra_body(value)` (since v0.6.0), `with_raw_frame_sink(sink)` (since v0.7.0), `with_raw_frame_sink_arc(arc)` (since v0.7.0), `with_raw_frame_fn(f)` (since v0.7.0), `with_stream_header_timeout(d)` (since v0.7.0), `with_stream_read_timeout(d)` (since v0.7.0).
 - Deprecated: `with_json_mode(bool)` in favor of `with_response_format(ChatResponseFormat::JsonMode)`.
 
 ### `ChatResponseFormat`
@@ -521,6 +523,7 @@ Provider-agnostic normalized stop reason used by `ChatResponse` and streaming `S
 - `stop_reason`: `Option<StopReason>` with the normalized provider stop reason.
 - `usage`: `Usage`.
 - `captured_raw_body`: `Option<serde_json::Value>` (populated when `ChatOptions.capture_raw_body` is true).
+- `captured_response_headers`: `Option<Headers>` (populated when `ChatOptions.capture_response_headers` is true). Since v0.7.6.
 - `response_id`: `Option<String>` for stateful OpenAI Responses continuation. Since v0.6.0.
 - **Getters**: `first_text()`, `into_first_text()`, `texts()`, `into_texts()`, `tool_calls()`, `into_tool_calls()`, `stop_reason()`, `response_id()`, `usage()`, `model_iden()`, `provider_model_iden()`.
 
@@ -556,6 +559,7 @@ Observer for raw provider stream frames, attached with `ChatOptions::with_raw_fr
 - `captured_content`: `Option<MessageContent>` (text, tools, thoughts; ordering: ThoughtSignature -> Text -> ToolCall).
 - `captured_reasoning_content`: Concatenated reasoning content when `ChatOptions.capture_reasoning_content` is enabled. Updated in v0.6.0 for assistant message handoff via `into_assistant_message_for_tool_use()`.
 - `captured_response_id`: Response ID for stateful OpenAI Responses continuation. Since v0.6.0.
+- `captured_response_headers`: `Option<Headers>` with the HTTP response headers when `ChatOptions.capture_response_headers` is enabled. Since v0.7.6.
 - **Getters**: `captured_first_text()`, `captured_into_first_text()`, `captured_texts()`, `into_texts()`, `captured_tool_calls()`, `captured_into_tool_calls()`, `captured_thought_signatures()`, `captured_into_thought_signatures()`, `captured_content()`, `captured_usage()`, `captured_stop_reason()`, `captured_response_id()`.
 - `into_assistant_message_for_tool_use()`: Returns a `ChatMessage` ready for the next request in a tool-use flow, preserving thought-signature ordering and attaching reasoning via `with_reasoning_content(...)` when present. Since v0.6.0.
 
@@ -634,6 +638,7 @@ Maps a resolved `ModelIden` to another before execution.
 
 Single-value-per-name HTTP header map.
 
+- `get(name)`: Value for a header name (ASCII case-insensitive), as `Option<&str>`. Since v0.7.6.
 - `merge(overlay)`: Merge overlay into self (consumes overlay).
 - `merge_with(&overlay)`: Merge from borrowed overlay.
 - `applied_to(target)`: Apply self on top of target, consuming both.
