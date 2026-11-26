@@ -69,6 +69,11 @@ pub struct ChatOptions {
 	/// For streaming, use [`ChatOptions::raw_frame_sink`]
 	pub capture_raw_body: Option<bool>,
 
+	/// Capture the HTTP response headers (e.g., request ids, rate-limit or session headers).
+	/// Non-streaming: available in `ChatResponse::captured_response_headers`.
+	/// Streaming: available in `StreamEnd.captured_response_headers`.
+	pub capture_response_headers: Option<bool>,
+
 	/// Receives every raw provider frame as it is decoded (see [`ChatFrameSink`]).
 	///
 	/// This is the streaming counterpart of `capture_raw_body`, and the escape hatch for
@@ -185,6 +190,16 @@ impl ChatOptions {
 	/// Enables or disables capturing the raw HTTP body (non-streaming).
 	pub fn with_capture_raw_body(mut self, value: bool) -> Self {
 		self.capture_raw_body = Some(value);
+		self
+	}
+
+	/// Enables or disables capturing the HTTP response headers (streaming and non-streaming).
+	///
+	/// Non-streaming, they are in `ChatResponse::captured_response_headers`.
+	/// Streaming, they are in `StreamEnd.captured_response_headers`, since the request is only
+	/// sent once the stream is polled.
+	pub fn with_capture_response_headers(mut self, value: bool) -> Self {
+		self.capture_response_headers = Some(value);
 		self
 	}
 
@@ -631,6 +646,12 @@ impl ChatOptionsSet<'_, '_> {
 		self.chat
 			.and_then(|chat| chat.capture_raw_body)
 			.or_else(|| self.client.and_then(|client| client.capture_raw_body))
+	}
+
+	pub fn capture_response_headers(&self) -> Option<bool> {
+		self.chat
+			.and_then(|chat| chat.capture_response_headers)
+			.or_else(|| self.client.and_then(|client| client.capture_response_headers))
 	}
 
 	pub fn raw_frame_sink(&self) -> Option<Arc<dyn ChatFrameSink>> {

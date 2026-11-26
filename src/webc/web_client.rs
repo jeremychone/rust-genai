@@ -50,13 +50,23 @@ impl WebClient {
 	}
 
 	pub async fn do_post(&self, url: &str, headers: &Headers, content: &Value) -> Result<WebResponse> {
+		let (response, _) = self.do_post_with_headers(url, headers, content).await?;
+
+		Ok(response)
+	}
+
+	/// Same as `do_post`, but also returns the HTTP response headers.
+	pub async fn do_post_with_headers(
+		&self,
+		url: &str,
+		headers: &Headers,
+		content: &Value,
+	) -> Result<(WebResponse, HeaderMap)> {
 		let reqwest_builder = self.new_req_builder(url, headers, content)?;
 
 		let reqwest_res = reqwest_builder.send().await?;
 
-		let response = WebResponse::from_reqwest_response(reqwest_res).await?;
-
-		Ok(response)
+		WebResponse::from_reqwest_response_with_headers(reqwest_res).await
 	}
 
 	pub fn new_req_builder(&self, url: &str, headers: &Headers, content: &Value) -> Result<RequestBuilder> {
@@ -90,7 +100,15 @@ impl WebResponse {
 	/// Note 2: Currently, the WebResponse holds a Value (parsed from the entire body), and then the caller
 	///         can cherry-pick/deserialize further. In the future, we might consider returning `body: String`
 	///         to enable more optimized parsing, allowing for selective parsing constrained by the structure.
-	pub(crate) async fn from_reqwest_response(mut res: reqwest::Response) -> Result<WebResponse> {
+	pub(crate) async fn from_reqwest_response(res: reqwest::Response) -> Result<WebResponse> {
+		let (response, _) = Self::from_reqwest_response_with_headers(res).await?;
+		Ok(response)
+	}
+
+	/// Same as `from_reqwest_response`, but also returns the HTTP response headers.
+	pub(crate) async fn from_reqwest_response_with_headers(
+		mut res: reqwest::Response,
+	) -> Result<(WebResponse, HeaderMap)> {
 		let status = res.status();
 
 		if !status.is_success() {
@@ -126,7 +144,7 @@ impl WebResponse {
 			});
 		};
 
-		Ok(WebResponse { status, body })
+		Ok((WebResponse { status, body }, header_map))
 	}
 }
 

@@ -232,6 +232,7 @@ pub(super) fn parse_converse_response(model_iden: ModelIden, web_response: WebRe
 		stop_reason,
 		usage,
 		captured_raw_body: None,
+		captured_response_headers: None, // Set by the client exec_chat
 		response_id: None,
 	})
 }

@@ -165,7 +165,8 @@ impl Adapter for OpenAIAdapter {
 			provider_model_iden,
 			stop_reason,
 			usage,
-			captured_raw_body: None, // Set by the client exec_chat
+			captured_raw_body: None,         // Set by the client exec_chat
+			captured_response_headers: None, // Set by the client exec_chat
 			response_id: None,
 		})
 	}
