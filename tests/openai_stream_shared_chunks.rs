@@ -180,3 +180,38 @@ async fn content_next_to_tool_calls_is_kept() {
 	assert_eq!(end.captured_first_text(), Some("Checking."));
 	assert_eq!(captured_calls(&end).len(), 1);
 }
+
+#[tokio::test]
+async fn empty_stream_deltas_do_not_warn() {
+	use std::sync::atomic::{AtomicUsize, Ordering};
+	use tracing::instrument::WithSubscriber;
+	use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
+
+	#[derive(Default)]
+	struct CountWarnings(std::sync::Arc<AtomicUsize>);
+
+	impl<S: tracing::Subscriber> Layer<S> for CountWarnings {
+		fn on_event(&self, event: &tracing::Event<'_>, _: Context<'_, S>) {
+			let metadata = event.metadata();
+			if *metadata.level() == tracing::Level::WARN
+				&& metadata.target() == "genai::adapter::adapters::openai::streamer"
+			{
+				self.0.fetch_add(1, Ordering::Relaxed);
+			}
+		}
+	}
+
+	let warnings = CountWarnings::default();
+	let subscriber = tracing_subscriber::registry().with(CountWarnings(warnings.0.clone()));
+	let (_events, end) = run(&[
+		(serde_json::json!({ "role": "assistant" }), None),
+		(serde_json::json!({ "content": "" }), None),
+		(serde_json::json!({ "reasoning_content": "" }), None),
+		(serde_json::json!({ "content": "hello" }), Some("stop")),
+	])
+	.with_subscriber(subscriber)
+	.await;
+
+	assert_eq!(warnings.0.load(Ordering::Relaxed), 0);
+	assert_eq!(end.captured_first_text(), Some("hello"));
+}
