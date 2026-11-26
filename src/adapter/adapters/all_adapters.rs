@@ -274,13 +274,24 @@ impl_pass_through_adapter!(
 	unsupported: [embeddings],
 );
 
-// -- UberLLM
+// -- MartLLM
+pub struct MartLlmAdapter;
+impl_pass_through_adapter!(
+	name: MartLlmAdapter,
+	kind: AdapterKind::MartLlm,
+	key_env: Some("MARTLLM_API_KEY"),
+	endpoint: "https://api.martllm.com/v1/",
+	delegate: OpenAIAdapter,
+	unsupported: [embeddings],
+);
+
+// -- UberLLM (legacy name of MartLLM, same endpoint)
 pub struct UberLlmAdapter;
 impl_pass_through_adapter!(
 	name: UberLlmAdapter,
 	kind: AdapterKind::UberLlm,
 	key_env: Some("UBERLLM_API_KEY"),
-	endpoint: "https://api.uberllm.dev/v1/",
+	endpoint: "https://api.martllm.com/v1/",
 	delegate: OpenAIAdapter,
 	unsupported: [embeddings],
 );
