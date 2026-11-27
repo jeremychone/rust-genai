@@ -1,6 +1,8 @@
 use crate::webc::{StreamRequest as RequestBuilder, StreamResponse as Response};
 use bytes::Bytes;
 use futures::{Future, Stream};
+use reqwest::StatusCode;
+use reqwest::header::CONTENT_TYPE;
 use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -32,6 +34,8 @@ pub struct WebStream {
 	// Only set for the delimited modes; in `Sse` mode the `EventSourceStream` wrapper taps
 	// instead, so the sink sees `(event, data)` rather than the undecoded event block.
 	frame_tap: Option<FrameTap>,
+	// Status and content type of the success response, once it arrived.
+	response_head: Option<(StatusCode, String)>,
 }
 
 pub enum StreamMode {
@@ -54,6 +58,7 @@ impl WebStream {
 			remaining_messages: None,
 			utf8_carry: Vec::new(),
 			frame_tap: None,
+			response_head: None,
 		}
 	}
 
@@ -83,7 +88,15 @@ impl WebStream {
 			remaining_messages: None,
 			utf8_carry: Vec::new(),
 			frame_tap: None,
+			response_head: None,
 		}
+	}
+
+	/// Status and content type of the response, once a success response arrived.
+	pub fn response_head(&self) -> Option<(StatusCode, &str)> {
+		self.response_head
+			.as_ref()
+			.map(|(status, content_type)| (*status, content_type.as_str()))
 	}
 }
 
@@ -128,6 +141,13 @@ impl Stream for WebStream {
 							this.response_future = Some(Box::pin(error_future));
 							continue;
 						}
+						let content_type = response
+							.headers()
+							.get(CONTENT_TYPE)
+							.and_then(|v| v.to_str().ok())
+							.unwrap_or_default()
+							.to_string();
+						this.response_head = Some((status, content_type));
 						let bytes_stream = response.bytes_stream();
 						this.bytes_stream = Some(Box::pin(bytes_stream));
 						this.response_future = None;

@@ -129,6 +129,16 @@ Cause:\n{cause}
 		headers: Box<HeaderMap>,
 	},
 
+	#[display(
+		"Stream response is not server-sent events.\nStatus: {status}\nContent-Type: {content_type}\nBody: {body}"
+	)]
+	StreamResponseNotSse {
+		status: StatusCode,
+		content_type: String,
+		/// The blocks of the body that were not SSE, joined by blank lines, at most 4 KiB.
+		body: String,
+	},
+
 	// -- Modules
 	#[display("Resolver error for model '{model_iden}'.\nCause: {resolver_error}")]
 	Resolver {

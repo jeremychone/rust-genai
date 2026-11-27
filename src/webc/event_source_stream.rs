@@ -1,15 +1,22 @@
-use crate::error::BoxError;
+use crate::error::{BoxError, Error as GenaiError};
 use crate::webc::StreamRequest as RequestBuilder;
 use crate::webc::{FrameTap, WebStream};
 use futures::Stream;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+/// How much of a body that is not SSE is kept for `Error::StreamResponseNotSse`.
+const NOT_SSE_BODY_MAX_LEN: usize = 4096;
+
 /// Simple EventSource stream implementation that uses WebStream as a foundation.
 pub struct EventSourceStream {
 	inner: WebStream,
 	opened: bool,
 	frame_tap: Option<FrameTap>,
+	/// Set by the first event with data. Until then, blocks with lines that are not SSE are kept
+	/// in `not_sse_body`, so a stream that ends without any event can say what it got instead.
+	has_data: bool,
+	not_sse_body: String,
 }
 
 #[derive(Debug)]
@@ -32,6 +39,8 @@ impl EventSourceStream {
 			inner: WebStream::new_with_sse(reqwest_builder),
 			opened: false,
 			frame_tap: None,
+			has_data: false,
+			not_sse_body: String::new(),
 		}
 	}
 
@@ -45,6 +54,33 @@ impl EventSourceStream {
 	/// Clones the frame tap, for the terminal `on_end` / `on_error` hooks.
 	pub fn frame_tap(&self) -> Option<FrameTap> {
 		self.frame_tap.clone()
+	}
+
+	/// Keeps a block that is not SSE, up to `NOT_SSE_BODY_MAX_LEN` bytes in all.
+	fn keep_not_sse(&mut self, raw_event: &str) {
+		let separator = if self.not_sse_body.is_empty() { "" } else { "\n\n" };
+		let room = NOT_SSE_BODY_MAX_LEN.saturating_sub(self.not_sse_body.len() + separator.len());
+		let mut end = room.min(raw_event.len());
+		while !raw_event.is_char_boundary(end) {
+			end -= 1;
+		}
+		if end > 0 {
+			self.not_sse_body.push_str(separator);
+			self.not_sse_body.push_str(&raw_event[..end]);
+		}
+	}
+
+	/// At the end of a stream that had no event, the error for the body that was not SSE, if any.
+	fn take_not_sse_error(&mut self) -> Option<BoxError> {
+		if self.has_data || self.not_sse_body.is_empty() {
+			return None;
+		}
+		let (status, content_type) = self.inner.response_head()?;
+		Some(Box::new(GenaiError::StreamResponseNotSse {
+			status,
+			content_type: content_type.to_string(),
+			body: std::mem::take(&mut self.not_sse_body),
+		}))
 	}
 }
 
@@ -70,6 +106,7 @@ impl Stream for EventSourceStream {
 					// applied when building the `Message`, but the tap reports what was on the wire.
 					let mut event: Option<String> = None;
 					let mut data = String::new();
+					let mut has_not_sse_line = false;
 					for line in raw_event.lines() {
 						let line = line.trim();
 						// Skip empty lines or comments (starting with :)
@@ -84,6 +121,10 @@ impl Stream for EventSourceStream {
 								data.push('\n');
 							}
 							data.push_str(d.trim());
+						} else {
+							// Other SSE fields (or a field with no value, like a bare `data`) carry no event here.
+							let field = line.split_once(':').map_or(line, |(field, _)| field);
+							has_not_sse_line |= !matches!(field, "data" | "event" | "id" | "retry");
 						}
 					}
 
@@ -93,7 +134,14 @@ impl Stream for EventSourceStream {
 
 					// If no data found in this block, poll for the next one
 					if data.is_empty() {
+						if has_not_sse_line && !this.has_data {
+							this.keep_not_sse(&raw_event);
+						}
 						continue;
+					}
+					if !this.has_data {
+						this.has_data = true;
+						this.not_sse_body = String::new();
 					}
 
 					let event = event.unwrap_or_else(|| "message".to_string());
@@ -103,7 +151,8 @@ impl Stream for EventSourceStream {
 				Poll::Ready(Some(Err(e))) => {
 					return Poll::Ready(Some(Err(e)));
 				}
-				Poll::Ready(None) => return Poll::Ready(None),
+				// A stream that ended without any event, after content that was not SSE, ends with an error.
+				Poll::Ready(None) => return Poll::Ready(this.take_not_sse_error().map(Err)),
 				Poll::Pending => return Poll::Pending,
 			}
 		}

@@ -45,6 +45,7 @@ pub fn error_type(error: &Error) -> String {
 		// -- Stream
 		Error::StreamParse { .. } => "stream_parse".to_string(),
 		Error::WebStream { .. } => "web_stream".to_string(),
+		Error::StreamResponseNotSse { .. } => "stream_response_not_sse".to_string(),
 
 		// -- Adapter support
 		Error::AdapterNotSupported { .. } => "adapter_not_supported".to_string(),

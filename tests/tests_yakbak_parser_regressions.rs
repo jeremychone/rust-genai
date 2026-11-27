@@ -2,7 +2,9 @@
 
 mod support;
 
-use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ContentPart, StopReason, ToolResponse};
+use futures::StreamExt;
+use genai::Error;
+use genai::chat::{ChatMessage, ChatOptions, ChatRequest, ChatStreamEvent, ContentPart, StopReason, ToolResponse};
 use serde_json::json;
 use support::yakbak::replay_client;
 use support::{TestResult, extract_stream_end};
@@ -167,6 +169,40 @@ async fn openrouter_stream_keeps_tool_calls_with_sparse_indexes_apart() -> TestR
 			("call_max", "stat_file", json!({})),
 		]
 	);
+	Ok(())
+}
+
+// A gateway that ignores `stream: true` answers one JSON completion with a 200: the stream ends
+// with an error carrying the status, content type, and body, not quietly without an `End`.
+#[tokio::test]
+async fn openai_stream_answered_with_plain_json_ends_with_the_body() -> TestResult<()> {
+	let (client, _server) = replay_client("openai", "stream_not_sse_regression").await?;
+	let res = client
+		.exec_chat_stream("gpt-4o-mini", ChatRequest::from_user("hi"), None)
+		.await?;
+	let events: Vec<_> = res.stream.collect().await;
+	assert!(
+		!events.iter().any(|event| matches!(event, Ok(ChatStreamEvent::End(_)))),
+		"a body that is not SSE has no end"
+	);
+	let error = events
+		.into_iter()
+		.find_map(|event| event.err())
+		.ok_or("the stream should end with an error")?;
+	let Error::WebStream { error, .. } = error else {
+		return Err(format!("expected Error::WebStream, got: {error}").into());
+	};
+	let Some(Error::StreamResponseNotSse {
+		status,
+		content_type,
+		body,
+	}) = error.downcast_ref::<Error>()
+	else {
+		return Err(format!("expected Error::StreamResponseNotSse, got: {error}").into());
+	};
+	assert_eq!(status.as_u16(), 200);
+	assert_eq!(content_type, "application/json");
+	assert!(body.contains(r#""object":"chat.completion""#), "body: {body}");
 	Ok(())
 }
 
