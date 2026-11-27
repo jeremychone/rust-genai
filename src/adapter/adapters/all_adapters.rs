@@ -285,6 +285,16 @@ impl_pass_through_adapter!(
 	unsupported: [embeddings],
 );
 
+// -- LLMTR
+pub struct LlmtrAdapter;
+impl_pass_through_adapter!(
+	name: LlmtrAdapter,
+	kind: AdapterKind::Llmtr,
+	key_env: Some("LLMTR_API_KEY"),
+	endpoint: "https://llmtr.com/v1/",
+	delegate: OpenAIAdapter,
+);
+
 // -- TogetherAdapter
 pub struct TogetherAdapter;
 impl_pass_through_adapter!(

@@ -250,6 +250,32 @@ fn test_uberllm_dispatch_preserves_model_and_uses_uberllm_endpoint() -> Result<(
 	Ok(())
 }
 
+#[test]
+fn test_llmtr_dispatch_preserves_model_and_uses_llmtr_endpoint() -> Result<()> {
+	let kind = AdapterKind::from_model("llmtr::qwen/qwen3.8-27b-free")?;
+	assert_eq!(kind, AdapterKind::Llmtr);
+	assert_eq!(kind.default_key_env_name(), Some("LLMTR_API_KEY"));
+	let target = ServiceTarget {
+		model: ModelIden::new(kind, "llmtr::qwen/qwen3.8-27b-free"),
+		auth: AuthData::from_single("test-key"),
+		endpoint: AdapterDispatcher::default_endpoint(kind),
+	};
+	let request = AdapterDispatcher::to_web_request_data(
+		target,
+		ServiceType::Chat,
+		ChatRequest::from_user("hello"),
+		ChatOptionsSet::default(),
+	)?;
+	assert_eq!(request.url, "https://llmtr.com/v1/chat/completions");
+	assert_eq!(request.payload["model"], "qwen/qwen3.8-27b-free");
+	let has_bearer = request
+		.headers
+		.iter()
+		.any(|(name, value)| name.eq_ignore_ascii_case("authorization") && value == "Bearer test-key");
+	assert!(has_bearer);
+	Ok(())
+}
+
 // region:    --- DeepSeek
 
 #[test]
