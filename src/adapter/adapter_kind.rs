@@ -166,6 +166,11 @@ pub enum AdapterKind {
 	/// Uses `UBERLLM_API_KEY`. Embeddings are not supported.
 	UberLlm,
 
+	/// LLMTR: OpenAI-compatible gateway for models from many labs, selected via the `llmtr::` namespace.
+	/// Example: `llmtr::qwen/qwen3.8-27b-free`. Website: <https://llmtr.com>.
+	/// Uses `LLMTR_API_KEY`.
+	Llmtr,
+
 	/// For MiniMax (Anthropic-compatible protocol)
 	MiniMax,
 
@@ -221,6 +226,7 @@ adapter_kind_str_maps! {
 	Cheapaimodel       => "Cheapaimodel",       "cheapaimodel",        adapters::all_adapters::CheapaimodelAdapter;
 	StandardCompute    => "StandardCompute",    "standardcompute",     adapters::all_adapters::StandardComputeAdapter;
 	UberLlm            => "UberLlm",            "uberllm",             adapters::all_adapters::UberLlmAdapter;
+	Llmtr              => "Llmtr",              "llmtr",               adapters::all_adapters::LlmtrAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
 }
 

@@ -184,6 +184,10 @@ macro_rules! dispatch_adapter {
 				type A = crate::adapter::adapters::all_adapters::[<UberLlm Adapter>];
 				$body
 			}
+			crate::adapter::AdapterKind::Llmtr => {
+				type A = crate::adapter::adapters::all_adapters::[<Llmtr Adapter>];
+				$body
+			}
 
 			crate::adapter::AdapterKind::Custom(_) => {
 				type A = crate::adapter::adapters::all_adapters::[<Custom Adapter>];
