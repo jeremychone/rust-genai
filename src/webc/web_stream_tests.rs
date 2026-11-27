@@ -127,6 +127,105 @@ async fn test_web_stream_sse_frame_tap_taps_all_blocks() -> Result<()> {
 }
 
 #[tokio::test]
+async fn test_event_source_stream_json_body_is_not_sse() -> Result<()> {
+	// -- Setup & Fixtures
+	// A gateway that ignores `stream: true` and answers one completion.
+	let body = r#"{"id":"c1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"Hello"},"finish_reason":"stop"}]}"#;
+	let raw_response = support_raw_ok_response("application/json", body);
+	let url = support_spawn_one_shot_http_server(raw_response).await?;
+	let reqwest_builder = reqwest::Client::new().post(&url);
+	let mut event_source = EventSourceStream::new(RequestBuilder::new(reqwest_builder, None, None));
+
+	// -- Exec
+	let items: Vec<_> = (&mut event_source).collect().await;
+
+	// -- Check
+	assert_eq!(items.len(), 2, "should be Open, then the error");
+	assert!(matches!(items[0], Ok(Event::Open)));
+	let err = items
+		.into_iter()
+		.nth(1)
+		.and_then(|item| item.err())
+		.ok_or("Second item should be an error")?;
+	let err = err
+		.downcast::<GenaiError>()
+		.map_err(|err| format!("Error should downcast to genai Error, but was: {err}"))?;
+	match *err {
+		GenaiError::StreamResponseNotSse {
+			status,
+			content_type,
+			body: err_body,
+		} => {
+			assert_eq!(status.as_u16(), 200);
+			assert_eq!(content_type, "application/json");
+			assert_eq!(err_body, body);
+		}
+		other => return Err(format!("Should be an Error::StreamResponseNotSse, but was: {other}").into()),
+	}
+	assert!(event_source.next().await.is_none(), "stream should end after the error");
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_event_source_stream_not_sse_body_is_capped() -> Result<()> {
+	// -- Setup & Fixtures
+	// A web page with a blank line, so it arrives as two blocks, kept as `<html>\n\n` (8 bytes)
+	// and then the second block, where the 2-byte `é` spans bytes 4095-4096 and must be cut whole.
+	let body = format!("<html>\n\n<p>{}é</p>\n\n<p>more</p></html>\n", "a".repeat(4084));
+	let raw_response = support_raw_ok_response("text/html; charset=utf-8", &body);
+	let url = support_spawn_one_shot_http_server(raw_response).await?;
+	let reqwest_builder = reqwest::Client::new().post(&url);
+	let event_source = EventSourceStream::new(RequestBuilder::new(reqwest_builder, None, None));
+
+	// -- Exec
+	let mut errors: Vec<BoxError> = event_source.filter_map(|item| async { item.err() }).collect().await;
+
+	// -- Check
+	assert_eq!(errors.len(), 1, "should end with one error");
+	let err = errors
+		.pop()
+		.ok_or("Should have an error")?
+		.downcast::<GenaiError>()
+		.map_err(|err| format!("Error should downcast to genai Error, but was: {err}"))?;
+	match *err {
+		GenaiError::StreamResponseNotSse {
+			content_type,
+			body: err_body,
+			..
+		} => {
+			assert_eq!(content_type, "text/html; charset=utf-8");
+			assert!(err_body.starts_with("<html>\n\n<p>aaa"), "body: {err_body}");
+			assert_eq!(err_body.len(), 4095, "the cut should fall before the `é`");
+			assert!(err_body.ends_with('a'));
+		}
+		other => return Err(format!("Should be an Error::StreamResponseNotSse, but was: {other}").into()),
+	}
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_event_source_stream_comment_only_body_ends_quietly() -> Result<()> {
+	// -- Setup & Fixtures
+	// Valid SSE that carries no event: not a format problem, so no error.
+	let body = ": keep-alive\n\nid: 1\nretry: 1000\n\nevent\n\n";
+	let raw_response = support_raw_ok_response("text/event-stream", body);
+	let url = support_spawn_one_shot_http_server(raw_response).await?;
+	let reqwest_builder = reqwest::Client::new().post(&url);
+	let event_source = EventSourceStream::new(RequestBuilder::new(reqwest_builder, None, None));
+
+	// -- Exec
+	let items: Vec<_> = event_source.collect().await;
+
+	// -- Check
+	assert_eq!(items.len(), 1, "should only be Open, was: {items:?}");
+	assert!(matches!(items[0], Ok(Event::Open)));
+
+	Ok(())
+}
+
+#[tokio::test]
 async fn test_web_stream_delimited_frame_tap_taps_each_line() -> Result<()> {
 	// -- Setup & Fixtures
 	let body = "{\"a\":1}\n{\"b\":2}\nnot-json\n";
