@@ -763,6 +763,7 @@ let chat_res = client.exec_chat("genai_1::some-model", chat_req, None).await?;
   - `StreamParse { model_iden, serde_error }`: Stream data parse failure.
   - `WebStream { model_iden, cause, error }`: Web stream error.
   - `HttpError { status, canonical_reason, body, headers }`: HTTP error (streaming path); `headers` carries the failed response headers (e.g., `retry-after`).
+  - `StreamResponseNotSse { status, content_type, body }`: Stream answered with a body that isn't SSE (e.g., a gateway ignoring `stream: true`); `body` keeps up to 4 KiB of it, SSE-normalized, ending in `\n[truncated]` if cut. Arrives boxed in `WebStream`'s `error`.
   - `Resolver { model_iden, resolver_error }`: Resolver error wrapper.
   - `AdapterNotSupported { adapter_kind, feature }`: Feature not supported by adapter.
   - `AdapterKindMismatch { bound, requested, model }`: A client bound to one adapter received a namespaced model or `ModelIden` targeting another adapter. Since v0.6.0.

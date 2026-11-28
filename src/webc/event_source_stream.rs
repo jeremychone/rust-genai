@@ -7,6 +7,8 @@ use std::task::{Context, Poll};
 
 /// How much of a body that is not SSE is kept for `Error::StreamResponseNotSse`.
 const NOT_SSE_BODY_MAX_LEN: usize = 4096;
+/// Appended to the kept body when the cap cut it.
+const NOT_SSE_BODY_TRUNCATED: &str = "\n[truncated]";
 
 /// Simple EventSource stream implementation that uses WebStream as a foundation.
 pub struct EventSourceStream {
@@ -17,6 +19,8 @@ pub struct EventSourceStream {
 	/// in `not_sse_body`, so a stream that ends without any event can say what it got instead.
 	has_data: bool,
 	not_sse_body: String,
+	/// Set once the cap cut some of `not_sse_body`.
+	not_sse_truncated: bool,
 }
 
 #[derive(Debug)]
@@ -41,6 +45,7 @@ impl EventSourceStream {
 			frame_tap: None,
 			has_data: false,
 			not_sse_body: String::new(),
+			not_sse_truncated: false,
 		}
 	}
 
@@ -68,6 +73,7 @@ impl EventSourceStream {
 			self.not_sse_body.push_str(separator);
 			self.not_sse_body.push_str(&raw_event[..end]);
 		}
+		self.not_sse_truncated |= end < raw_event.len();
 	}
 
 	/// At the end of a stream that had no event, the error for the body that was not SSE, if any.
@@ -76,10 +82,14 @@ impl EventSourceStream {
 			return None;
 		}
 		let (status, content_type) = self.inner.response_head()?;
+		let mut body = std::mem::take(&mut self.not_sse_body);
+		if self.not_sse_truncated {
+			body.push_str(NOT_SSE_BODY_TRUNCATED);
+		}
 		Some(Box::new(GenaiError::StreamResponseNotSse {
 			status,
 			content_type: content_type.to_string(),
-			body: std::mem::take(&mut self.not_sse_body),
+			body,
 		}))
 	}
 }
@@ -142,6 +152,7 @@ impl Stream for EventSourceStream {
 					if !this.has_data {
 						this.has_data = true;
 						this.not_sse_body = String::new();
+						this.not_sse_truncated = false;
 					}
 
 					let event = event.unwrap_or_else(|| "message".to_string());
