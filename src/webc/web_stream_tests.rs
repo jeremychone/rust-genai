@@ -196,11 +196,103 @@ async fn test_event_source_stream_not_sse_body_is_capped() -> Result<()> {
 		} => {
 			assert_eq!(content_type, "text/html; charset=utf-8");
 			assert!(err_body.starts_with("<html>\n\n<p>aaa"), "body: {err_body}");
-			assert_eq!(err_body.len(), 4095, "the cut should fall before the `é`");
-			assert!(err_body.ends_with('a'));
+			let kept = err_body
+				.strip_suffix("\n[truncated]")
+				.ok_or("body should end with the marker")?;
+			assert_eq!(kept.len(), 4095, "the cut should fall before the `é`");
+			assert!(kept.ends_with('a'));
 		}
 		other => return Err(format!("Should be an Error::StreamResponseNotSse, but was: {other}").into()),
 	}
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_event_source_stream_not_sse_body_at_cap_has_no_marker() -> Result<()> {
+	// -- Setup & Fixtures
+	let body = "a".repeat(4096);
+	let raw_response = support_raw_ok_response("text/plain", &body);
+	let url = support_spawn_one_shot_http_server(raw_response).await?;
+	let reqwest_builder = reqwest::Client::new().post(&url);
+	let event_source = EventSourceStream::new(RequestBuilder::new(reqwest_builder, None, None));
+
+	// -- Exec
+	let mut errors: Vec<BoxError> = event_source.filter_map(|item| async { item.err() }).collect().await;
+
+	// -- Check
+	let err = errors
+		.pop()
+		.ok_or("Should have an error")?
+		.downcast::<GenaiError>()
+		.map_err(|err| format!("Error should downcast to genai Error, but was: {err}"))?;
+	match *err {
+		GenaiError::StreamResponseNotSse { body: err_body, .. } => assert_eq!(err_body, body),
+		other => return Err(format!("Should be an Error::StreamResponseNotSse, but was: {other}").into()),
+	}
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_event_source_stream_not_sse_body_without_content_type() -> Result<()> {
+	// -- Setup & Fixtures
+	let body = "not sse";
+	let raw_response = format!(
+		"HTTP/1.1 200 OK\r\n\
+		content-length: {}\r\n\
+		connection: close\r\n\
+		\r\n\
+		{body}",
+		body.len()
+	);
+	let url = support_spawn_one_shot_http_server(raw_response).await?;
+	let reqwest_builder = reqwest::Client::new().post(&url);
+	let event_source = EventSourceStream::new(RequestBuilder::new(reqwest_builder, None, None));
+
+	// -- Exec
+	let mut errors: Vec<BoxError> = event_source.filter_map(|item| async { item.err() }).collect().await;
+
+	// -- Check
+	assert_eq!(errors.len(), 1, "should end with one error");
+	let err = errors
+		.pop()
+		.ok_or("Should have an error")?
+		.downcast::<GenaiError>()
+		.map_err(|err| format!("Error should downcast to genai Error, but was: {err}"))?;
+	match *err {
+		GenaiError::StreamResponseNotSse {
+			status,
+			content_type,
+			body: err_body,
+		} => {
+			assert_eq!(status.as_u16(), 200);
+			assert_eq!(content_type, "");
+			assert_eq!(err_body, body);
+		}
+		other => return Err(format!("Should be an Error::StreamResponseNotSse, but was: {other}").into()),
+	}
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_event_source_stream_garbage_after_first_event_ends_quietly() -> Result<()> {
+	// -- Setup & Fixtures
+	// Once an event arrived, the stream is SSE, so later blocks that aren't are skipped.
+	let body = "data: {\"a\":1}\n\n<html>oops</html>\n\n";
+	let raw_response = support_raw_ok_response("text/event-stream", body);
+	let url = support_spawn_one_shot_http_server(raw_response).await?;
+	let reqwest_builder = reqwest::Client::new().post(&url);
+	let event_source = EventSourceStream::new(RequestBuilder::new(reqwest_builder, None, None));
+
+	// -- Exec
+	let items: Vec<_> = event_source.collect().await;
+
+	// -- Check
+	assert_eq!(items.len(), 2, "should be Open, then the event, was: {items:?}");
+	assert!(matches!(items[0], Ok(Event::Open)));
+	assert!(matches!(&items[1], Ok(Event::Message(message)) if message.data == r#"{"a":1}"#));
 
 	Ok(())
 }

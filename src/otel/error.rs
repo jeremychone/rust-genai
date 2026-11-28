@@ -44,7 +44,10 @@ pub fn error_type(error: &Error) -> String {
 
 		// -- Stream
 		Error::StreamParse { .. } => "stream_parse".to_string(),
-		Error::WebStream { .. } => "web_stream".to_string(),
+		// Streamers box the genai error (`HttpError`, `StreamResponseNotSse`) here, so report that one.
+		Error::WebStream { error, .. } => error
+			.downcast_ref::<Error>()
+			.map_or_else(|| "web_stream".to_string(), error_type),
 		Error::StreamResponseNotSse { .. } => "stream_response_not_sse".to_string(),
 
 		// -- Adapter support
@@ -117,6 +120,29 @@ mod tests {
 			webc_error,
 		};
 		assert_eq!(error_type(&error), "500");
+	}
+
+	#[test]
+	fn test_otel_error_type_web_stream_boxed_errors() {
+		let web_stream = |error: crate::error::BoxError| Error::WebStream {
+			model_iden: model(),
+			cause: error.to_string(),
+			error,
+		};
+		let http_error = Error::HttpError {
+			status: StatusCode::TOO_MANY_REQUESTS,
+			canonical_reason: "Too Many Requests".to_string(),
+			body: String::new(),
+			headers: Box::new(HeaderMap::new()),
+		};
+		let not_sse = Error::StreamResponseNotSse {
+			status: StatusCode::OK,
+			content_type: "application/json".to_string(),
+			body: "{}".to_string(),
+		};
+		assert_eq!(error_type(&web_stream(Box::new(http_error))), "429");
+		assert_eq!(error_type(&web_stream(Box::new(not_sse))), "stream_response_not_sse");
+		assert_eq!(error_type(&web_stream("connection reset".into())), "web_stream");
 	}
 
 	#[test]

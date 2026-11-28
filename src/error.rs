@@ -129,13 +129,14 @@ Cause:\n{cause}
 		headers: Box<HeaderMap>,
 	},
 
+	/// Arrives boxed in `Error::WebStream`.
 	#[display(
 		"Stream response is not server-sent events.\nStatus: {status}\nContent-Type: {content_type}\nBody: {body}"
 	)]
 	StreamResponseNotSse {
 		status: StatusCode,
 		content_type: String,
-		/// The blocks of the body that were not SSE, joined by blank lines, at most 4 KiB.
+		/// The blocks that were not SSE, SSE-normalized (`\n` line endings), at most 4 KiB, then `\n[truncated]` if cut.
 		body: String,
 	},
 
