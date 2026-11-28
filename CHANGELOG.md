@@ -1,6 +1,6 @@
 `.` minor | `-` Fix | `+` Addition | `^` improvement | `!` Change | `>` Refactor
 
-## PENDING [v0.7.6](https://github.com/jeremychone/rust-genai/compare/v0.7.5...main)
+## 2026-11-27 [v0.7.6](https://github.com/jeremychone/rust-genai/compare/v0.7.5...v0.7.6)
 
 - `+` New Adapters:
   - `llmtr::` - **LLMTR** - OpenAI-compatible gateway, only selected by namespace. Uses `LLMTR_API_KEY` and `https://llmtr.com/v1/`; the `vendor/model` ID is preserved. Adds `AdapterKind::Llmtr`, so downstream exhaustive matches must be updated. (PR #405)
@@ -9,7 +9,7 @@
 - `.` otel - Cover `Error::StreamResponseNotSse` in the `error.type` derivation.
 - `.` examples - remove `c14-cost-cap` and `llm-budget`, since cost compute is not part of this crate scope, and the examples should be part of the respective costing crates.
 
-## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...v0.7.5)
+## 2026-11-14 [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...v0.7.5)
 
 - `+` New Adapters:
   - `uberllm::` - **UberLLM** - OpenAI-compatible gateway for text models from many labs, only selected by namespace. Uses `UBERLLM_API_KEY` and `https://api.uberllm.dev/v1/`; embeddings are unsupported. Adds `AdapterKind::UberLlm`, so downstream exhaustive matches must be updated. (PR #379)
