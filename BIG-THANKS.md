@@ -6,10 +6,14 @@ _If I forgot your PR, feel free to submit a PR_
 
 ## v0.7.6 
 
-- [Mattbusel](https://github.com/Mattbusel)
-  - #393 - fix(example): c14-cost-cap with better price compute
+- [PR406_AUTHOR](https://github.com/PR406_AUTHOR)
+  - [#406](https://github.com/jeremychone/rust-genai/pull/406) fix(webc): error on a streamed response whose body is not SSE
+- [knowhycodata](https://github.com/knowhycodata)
+  - [#405](https://github.com/jeremychone/rust-genai/pull/405) feat(adapter): add LLMTR OpenAI-compatible provider
 - [vagmi](https://github.com/vagmi)
   - [#395](https://github.com/jeremychone/rust-genai/pull/395) fix(gemini): keep server-side tool parts and replay them in order with their own signatures when built-in tools are mixed with function calls
+- [Mattbusel](https://github.com/Mattbusel)
+  - #393 - fix(example): c14-cost-cap with better price compute
 
 
 ## v0.7.5

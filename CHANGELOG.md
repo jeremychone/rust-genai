@@ -2,7 +2,11 @@
 
 ## PENDING [v0.7.6](https://github.com/jeremychone/rust-genai/compare/v0.7.5...main)
 
+- `+` New Adapters:
+  - `llmtr::` - **LLMTR** - OpenAI-compatible gateway, only selected by namespace. Uses `LLMTR_API_KEY` and `https://llmtr.com/v1/`; the `vendor/model` ID is preserved. Adds `AdapterKind::Llmtr`, so downstream exhaustive matches must be updated. (PR #405)
 - `-` **gemini** - Server-side tool parts (`toolCall`, `toolResponse`, `executableCode`, `codeExecutionResult`) are kept, streamed included, and replayed in place with their own `thoughtSignature` instead of being dropped, so a tool loop no longer sends a `functionCall` carrying a server part's signature. (PR #395)
+- `-` **webc** - A streamed response whose body never yields an SSE `data` line now fails with the new `Error::StreamResponseNotSse` instead of ending as a silent empty stream, so a gateway or base URL that answers `200` with a JSON or HTML page surfaces that page. Detection is by content, not by `Content-Type`: a line carrying a field other than `data`, `event`, `id`, or `retry` marks the body as not SSE, while a mislabeled but valid SSE stream is untouched. The first 4 KiB of the body is kept, cut on a UTF-8 char boundary, and nothing is retained once a `data` event arrives. The error reaches the caller as `Error::WebStream { error: Box<Error::StreamResponseNotSse> }`, so it must be downcast, and the added `Error` variant requires downstream exhaustive matches to be updated. (PR #406)
+- `.` otel - Cover `Error::StreamResponseNotSse` in the `error.type` derivation.
 - `.` examples - remove `c14-cost-cap` and `llm-budget`, since cost compute is not part of this crate scope, and the examples should be part of the respective costing crates.
 
 ## [v0.7.5](https://github.com/jeremychone/rust-genai/compare/v0.7.4...v0.7.5)
