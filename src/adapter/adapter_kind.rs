@@ -161,8 +161,13 @@ pub enum AdapterKind {
 	/// Website: <https://standardcompute.com>. Uses `STANDARDCOMPUTE_API_KEY`. Embeddings are not supported.
 	StandardCompute,
 
-	/// UberLLM: OpenAI-compatible gateway for models from many labs, selected via the `uberllm::` namespace.
-	/// Example: `uberllm::deepseek/deepseek-v4-flash`. Website: <https://uberllm.dev>.
+	/// MartLLM: OpenAI-compatible gateway for models from many labs, selected via the `martllm::` namespace.
+	/// Example: `martllm::deepseek/deepseek-v4-flash`. Website: <https://martllm.com>.
+	/// Uses `MARTLLM_API_KEY`. Embeddings are not supported.
+	MartLlm,
+
+	/// Legacy name of MartLLM (formerly UberLLM), selected via the `uberllm::` namespace.
+	/// Same endpoint as `MartLlm`, kept so existing code keeps working. Prefer `MartLlm` / `martllm::`.
 	/// Uses `UBERLLM_API_KEY`. Embeddings are not supported.
 	UberLlm,
 
@@ -225,6 +230,7 @@ adapter_kind_str_maps! {
 	CloudGpu           => "CloudGpu",           "cloudgpu",            adapters::all_adapters::CloudGpuAdapter;
 	Cheapaimodel       => "Cheapaimodel",       "cheapaimodel",        adapters::all_adapters::CheapaimodelAdapter;
 	StandardCompute    => "StandardCompute",    "standardcompute",     adapters::all_adapters::StandardComputeAdapter;
+	MartLlm            => "MartLlm",            "martllm",             adapters::all_adapters::MartLlmAdapter;
 	UberLlm            => "UberLlm",            "uberllm",             adapters::all_adapters::UberLlmAdapter;
 	Llmtr              => "Llmtr",              "llmtr",               adapters::all_adapters::LlmtrAdapter;
 	MiniMax            => "MiniMax",            "minimax",             adapters::all_adapters::MiniMaxAdapter;
