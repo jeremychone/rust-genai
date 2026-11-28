@@ -371,7 +371,77 @@ async fn test_web_stream_utf8_truncated_at_end() -> Result<()> {
 	Ok(())
 }
 
+#[tokio::test]
+async fn test_web_stream_sse_crlf_split_across_chunks() -> Result<()> {
+	// -- Setup & Fixtures
+	// One split inside the event (after `event:`), one inside the blank line ending it.
+	let chunks: &[&[u8]] = &[
+		b"event: content_block_delta\r",
+		b"\ndata: {\"a\":1}\r\n\r",
+		b"\nevent: message_stop\r\n",
+		b"data: {\"b\":2}\r\n\r\n",
+	];
+
+	// -- Exec
+	let messages = support_collect_sse_messages(chunks).await?;
+
+	// -- Check
+	assert_eq!(
+		messages,
+		vec![
+			"event: content_block_delta\ndata: {\"a\":1}",
+			"event: message_stop\ndata: {\"b\":2}",
+		]
+	);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_web_stream_sse_crlf_split_by_empty_chunk() -> Result<()> {
+	// -- Setup & Fixtures
+	let chunks: &[&[u8]] = &[b"event: a\r", b"", b"\ndata: 1\r\n\r\n"];
+
+	// -- Exec
+	let messages = support_collect_sse_messages(chunks).await?;
+
+	// -- Check
+	assert_eq!(messages, vec!["event: a\ndata: 1"]);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn test_web_stream_sse_cr_line_ends_across_chunks() -> Result<()> {
+	// -- Setup & Fixtures
+	// A lone `\r` ending a chunk is a line end on its own: the next `\r\n` still makes a blank line.
+	let chunks: &[&[u8]] = &[b"data: 1\r", b"\r\n", b"event: b\r", b"data: 2\r\r"];
+
+	// -- Exec
+	let messages = support_collect_sse_messages(chunks).await?;
+
+	// -- Check
+	assert_eq!(messages, vec!["data: 1", "event: b\ndata: 2"]);
+
+	Ok(())
+}
+
 // region:    --- Support
+
+/// Feeds the given chunks to an SSE `WebStream` and collects every message it yields.
+async fn support_collect_sse_messages(chunks: &[&'static [u8]]) -> Result<Vec<String>> {
+	let reqwest_builder = reqwest::Client::new().get("http://127.0.0.1/");
+	let mut web_stream = WebStream::new_with_sse(RequestBuilder::new(reqwest_builder, None, None));
+	web_stream.reqwest_builder = None;
+	let chunks: Vec<_> = chunks.iter().map(|c| Ok::<_, BoxError>(Bytes::from_static(c))).collect();
+	web_stream.bytes_stream = Some(Box::pin(futures::stream::iter(chunks)));
+
+	let mut messages = Vec::new();
+	while let Some(message) = web_stream.next().await {
+		messages.push(message.map_err(|err| err.to_string())?);
+	}
+	Ok(messages)
+}
 
 /// Spawns a one-shot HTTP server that answers the first request with the given raw HTTP response.
 async fn support_spawn_one_shot_http_server(raw_response: String) -> Result<String> {

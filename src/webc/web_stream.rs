@@ -30,6 +30,9 @@ pub struct WebStream {
 	// When a multi-byte character is split across TCP/HTTP chunk boundaries,
 	// the trailing bytes are carried over to be prepended to the next chunk.
 	utf8_carry: Vec<u8>,
+	// In `Sse` mode, whether the previous chunk ended in `\r`. That `\r` was already
+	// normalized to a line end, so a `\n` opening the next chunk completes it.
+	sse_cr_pending: bool,
 	// Feeds the user `ChatFrameSink`, when one is configured.
 	// Only set for the delimited modes; in `Sse` mode the `EventSourceStream` wrapper taps
 	// instead, so the sink sees `(event, data)` rather than the undecoded event block.
@@ -57,6 +60,7 @@ impl WebStream {
 			partial_message: None,
 			remaining_messages: None,
 			utf8_carry: Vec::new(),
+			sse_cr_pending: false,
 			frame_tap: None,
 			response_head: None,
 		}
@@ -87,6 +91,7 @@ impl WebStream {
 			partial_message: None,
 			remaining_messages: None,
 			utf8_carry: Vec::new(),
+			sse_cr_pending: false,
 			frame_tap: None,
 			response_head: None,
 		}
@@ -197,7 +202,11 @@ impl Stream for WebStream {
 							StreamMode::Delimiter(delimiter) => {
 								process_buff_string_delimited(buff_string, &mut this.partial_message, delimiter)
 							}
-							StreamMode::Sse => process_buff_string_sse(buff_string, &mut this.partial_message),
+							StreamMode::Sse => process_buff_string_sse(
+								buff_string,
+								&mut this.partial_message,
+								&mut this.sse_cr_pending,
+							),
 						};
 
 						let BuffResponse {
@@ -274,17 +283,25 @@ struct BuffResponse {
 /// normalize all CR/CRLF to LF before dispatching, so we do the same: collapse to LF
 /// and reuse the standard `\n\n` delimiter splitter. This keeps cross-chunk partial
 /// handling identical to the regular delimited path.
+///
+/// A `\r\n` can be split across chunks. The `\r` ending a chunk is normalized right
+/// away (it may be a lone `\r` line end), so `cr_pending` remembers it, and a `\n`
+/// opening the next chunk is dropped instead of being read as a second line end.
 fn process_buff_string_sse(
 	buff_string: String,
 	partial_message: &mut Option<String>,
+	cr_pending: &mut bool,
 ) -> Result<BuffResponse, crate::webc::Error> {
-	// Normalize after concatenation with any prior partial — partial may have
-	// left a lone `\r` that pairs with the next chunk's leading `\n`.
-	let full_string = match partial_message.take() {
-		Some(partial) => format!("{partial}{buff_string}"),
-		None => buff_string,
+	let chunk = if *cr_pending {
+		buff_string.strip_prefix('\n').unwrap_or(&buff_string)
+	} else {
+		&buff_string
 	};
-	let normalized = full_string.replace("\r\n", "\n").replace('\r', "\n");
+	// An empty chunk (an empty frame, or only carried UTF-8 bytes) keeps the pending `\r`.
+	if !buff_string.is_empty() {
+		*cr_pending = buff_string.ends_with('\r');
+	}
+	let normalized = chunk.replace("\r\n", "\n").replace('\r', "\n");
 	process_buff_string_delimited(normalized, partial_message, "\n\n")
 }
 
